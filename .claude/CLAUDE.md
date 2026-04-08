@@ -1,4 +1,3 @@
-
 # ngx-tw — Angular + Tailwind CSS Component Library
 
 This is **ngx-tw**, an Angular component library built exclusively for projects using **Tailwind CSS v4+**. It depends on **Angular CDK** for behavior primitives (overlays, focus management, a11y, collections). The quality bar is [Angular Material](https://github.com/angular/components): well-tested, accessible, composable — but styled with Tailwind utilities instead of Material Design tokens.
@@ -23,11 +22,41 @@ This is **ngx-tw**, an Angular component library built exclusively for projects 
 - Do NOT use `ngClass` or `ngStyle`. Use `class` and `style` bindings.
 - Do not write arrow functions in templates.
 
+### `computed()` vs `linkedSignal()`
+
+- **`computed()`** — read-only derived state. Use when the value is always fully determined by other signals and the component never needs to override it independently.
+- **`linkedSignal()`** — writable derived state. Use when a value should default to or sync with a source signal, but can also be set independently at runtime. The canonical case is a "controlled" internal value: it initializes from an `input()`, but user interaction can update it without the parent re-providing the value.
+
+Example: a tab component's `activeTab` — it defaults to the `defaultTab` input, but clicking a tab updates it locally. Use `linkedSignal()`, not `computed()`.
+
+Never use `linkedSignal()` for purely derived/calculated values — that's `computed()`'s job.
+
 ## TypeScript
 
 - Strict type checking. Avoid `any`; use `unknown` when the type is uncertain.
 - Prefer type inference when obvious.
 - Export only what consumers need from each entry point's `index.ts`.
+
+## JSDoc Requirements
+
+All public API members must have JSDoc comments. Compodoc parses these to generate API tables in the demo app — missing JSDoc means empty tables.
+
+**Required on every:**
+- `input()` — describe what it controls, its type, and its default
+- `output()` — describe when it fires and what the payload contains
+- `model()` — describe the two-way bound value and when it changes
+- Public methods on directives or services
+
+**Format:**
+```typescript
+/** Controls the visual style of the button. Defaults to `'solid'`. */
+variant = input<ButtonVariant>('solid');
+
+/** Fires when the button is clicked. Payload is the native MouseEvent. */
+clicked = output<MouseEvent>();
+```
+
+Keep descriptions to one line where possible. Do not describe TypeScript types — Compodoc extracts those automatically. Describe *purpose and behavior*, not types.
 
 ## Library Structure
 
@@ -212,10 +241,30 @@ All interactive state changes must be animated. Use these standard durations:
 - Color changes (background, text, border): `transition-colors duration-200`
 - Shadow changes: `transition-shadow duration-200`
 - Multiple properties: `transition-[color,shadow] duration-200` — never use `transition-all`
+- For `prefers-reduced-motion` on Tailwind transitions: `transition-colors duration-200 motion-reduce:transition-none`
 
-**Panel/content animations:** Use CSS `@keyframes` with `150ms ease-in` for entry. Always respect `prefers-reduced-motion`:
+#### Enter/Leave Animations
+
+Do NOT use `@angular/animations` — it is deprecated as of Angular v20.2 and will be removed in v23.
+
+Use Angular's native `animate.enter` and `animate.leave` for DOM insertion/removal animations. These are compiler-level features, not directives — use them directly in templates or as host bindings:
+
+- `animate.enter="fade-in"` — applies the CSS class when the element enters the DOM, removes it when the animation completes
+- `animate.leave="fade-out"` — applies the CSS class when the element leaves; Angular holds the element in the DOM until the animation finishes
+- Host binding: `host: { '[animate.enter]': 'enterAnimation' }` where `enterAnimation` is a signal or string property
+- Multiple classes: `animate.enter="slide-in fade-in"` — space-separated
+
+**Where keyframe definitions live:** Define named animation classes (e.g., `.fade-in`, `.slide-in`) in `projects/ngx-tw/theme/default.css` — not in component files. Components reference class names only.
+
+**`prefers-reduced-motion`:** Handle in the theme CSS alongside the keyframe definitions:
+
 ```css
-@media (prefers-reduced-motion: reduce) { animation-duration: 0ms; }
+@keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
+.fade-in { animation: fade-in 150ms ease-in; }
+
+@media (prefers-reduced-motion: reduce) {
+  .fade-in { animation-duration: 0ms; }
+}
 ```
 
 #### Focus Rings
@@ -308,6 +357,22 @@ Follow these patterns based on component type:
 - Use template directives (e.g., `*twCardHeader`) for complex slot customization when content projection alone is insufficient.
 - Components must work with any consumer theme. Use semantic color tokens exclusively — never raw palette colors in component code.
 
+### Content Projection Fallback
+
+Angular v18+ supports native fallback content in `ng-content` slots:
+
+```html
+<ng-content select="[slot='icon']">
+  <!-- fallback renders when no icon is projected -->
+  <tw-icon name="default" />
+</ng-content>
+```
+
+**Convention:**
+- Provide fallback content for optional slots that have a meaningful default (e.g., a dismiss icon, a placeholder avatar).
+- Do NOT provide fallback content for structural slots (header, body, footer of a card) — if content is absent the component should not render that region at all; use `@if` with a `contentChild()` query to detect presence.
+- Do NOT rely on fallback content for logic — fallback does not activate when content is conditionally projected via `@if`. If you need to detect whether content was provided, use `contentChild()` and check for `undefined`.
+
 ## Form Compatibility
 
 - Interactive controls (inputs, selects, toggles, etc.) MUST work with **all three** Angular form strategies: template-driven forms, reactive forms, and signal-based forms.
@@ -334,10 +399,54 @@ Follow these patterns based on component type:
 
 ## Testing
 
-- Tests use **Vitest** (not Jasmine/Karma).
-- Test files live next to the source: `button.spec.ts` beside `button.ts` (matching the bare-name convention).
-- Test behavior, not implementation details. Focus on: user interactions, accessibility (ARIA states), input/output contracts.
-- Use Angular's `TestBed` with CDK test harnesses where available.
+Tests use **Vitest**, which is the default test runner in Angular v21 (`@angular/build:unit-test`). No additional setup packages are needed for new projects.
+
+Test files live next to their source: `button.spec.ts` beside `button.ts`.
+
+### What to test
+
+Every component spec must cover:
+
+**Rendering**
+- Default render: component mounts without errors with no inputs provided
+- Each variant: every value of `variant`, `color`, `size` inputs renders without errors
+- Conditional content: elements that appear/disappear based on inputs are present/absent in the DOM
+
+**Inputs and outputs**
+- Each input changes the rendered output as expected (query the DOM, not the component class)
+- Each output emits with the correct payload when the triggering action occurs
+- Signal inputs are set via `fixture.componentRef.setInput('name', value)`
+
+**Interaction**
+- Click, keyboard, and focus interactions produce expected DOM changes and output emissions
+- Disabled state: interactions on a disabled component produce no output emissions
+
+**Accessibility**
+- Correct ARIA roles and attributes are present in the default state
+- ARIA attributes update correctly when state changes (e.g., `aria-expanded`, `aria-selected`)
+- Every interactive element has a visible focus indicator (query for `focus-visible` styles or check CDK FocusMonitor)
+
+**Content projection**
+- Default (fallback) content renders when no content is projected
+- Projected content renders and replaces fallback when provided
+
+**ControlValueAccessor (form controls only)**
+- `writeValue()` updates the rendered state
+- User interaction calls `onChange` with the correct value
+- `setDisabledState(true)` applies the disabled appearance and blocks interaction
+
+### Vitest-specific rules
+
+- Use `vi.spyOn()` for spies — Jasmine-style spies do not exist in Vitest
+- Do NOT use `fakeAsync` or `tick` — they are not supported with the Vitest runner. Use `async/await` with `fixture.whenStable()` or `vi.useFakeTimers()` / `vi.runAllTimers()` for timer control
+- Import test utilities explicitly: `import { describe, it, expect, vi } from 'vitest'`
+- Always call `fixture.detectChanges()` after setting inputs or triggering interactions before querying the DOM
+
+### What NOT to test
+
+- Internal signal values or computed property values — test DOM output instead
+- Class names applied to elements — test observable behavior, not implementation details
+- Implementation details of CDK modules — trust that CDK works; test your integration with it
 
 ## Templates
 
@@ -352,4 +461,7 @@ Follow these patterns based on component type:
 - Do not add CSS files to components — Tailwind utilities only.
 - Do not use `providedIn: 'root'` in library services (consumers control injection scope).
 - Do not use raw Tailwind palette colors (`blue-*`, `red-*`, etc.) in components — use semantic tokens (`info-*`, `error-*`, etc.).
+- Do not use raw `neutral-*` shades for structural styling — use surface/fg/border tokens instead.
 - Do not assume the consumer's theme — components must work with any semantic token mapping.
+- Do not use `@angular/animations` — it is deprecated. Use `animate.enter`/`animate.leave` with native CSS.
+- Do not use `fakeAsync` or `tick` in tests — they are not supported with the Vitest runner.

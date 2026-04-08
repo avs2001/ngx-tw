@@ -10,6 +10,9 @@
     "paths": {
       "ngx-tw": [
         "./dist/ngx-tw"
+      ],
+      "ngx-tw/*": [
+        "./dist/ngx-tw/*"
       ]
     },
     "noFallthroughCasesInSwitch": true,

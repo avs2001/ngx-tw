@@ -118,6 +118,8 @@ Check for gaps the user may not have thought of:
 - **Accessibility:** keyboard navigation, screen reader text, ARIA roles — required for every interactive component
 - **Variant design:** which variants does this component need? Which shared types from `ngx-tw/core` apply (`TwColor`, `TwSize`)? Does it need slots?
 - **Styling edge cases:** truncation, overflow, responsive behavior — only if relevant
+- **Form control:** does this component accept user input or represent a value the user can change? → `ControlValueAccessor` required. Must support template-driven, reactive, and signal-based forms.
+- **Two-way binding:** does the parent need `[(prop)]` syntax? → use `model()`. All other reactive inputs use `input()`.
 
 Do NOT check for: loading states, error states, cross-theme compatibility, density axes,
 or other concerns unless the component specifically needs them. Avoid gap-inflation.
@@ -158,13 +160,17 @@ relevant CDK modules to import]
 
 ### Inputs
 [Every input with type, default, and purpose. Signal-based: `input<T>()`, `input.required<T>()`.
-Keep the list short — only inputs that serve a real use case.]
+Use `model()` only when the parent needs `[(prop)]` two-way binding — note this explicitly.
+Keep the list short — only inputs that serve a real use case.
+Every input must have a one-line JSDoc comment describing its purpose and default.]
 
 ### Outputs
 [Every output with payload type. Omit section if none.]
 
 ### Content projection
-[`ng-content` slots, directive-based templates. Omit section if none.]
+[`ng-content` slots with fallback content where applicable. Directive-based templates.
+Note which slots are structural (no fallback) vs optional (provide meaningful fallback).
+Omit section if none.]
 
 ## Usage examples
 [3–7 HTML snippets. One-line comment above each. Cover: simplest case, key variants,
@@ -172,18 +178,35 @@ disabled state, composition with other ngx-tw components if applicable.]
 
 ## Styling
 [`tv()` config structure: base classes, variants, slots (if multi-part), defaultVariants.
-How variant inputs wire to `computed()` → host class binding. Keep brief — reference CLAUDE.md.]
+How variant inputs wire to `computed()` → host class binding.
+Use semantic color tokens (`bg-primary-500`, `text-error-800`) and surface/fg/border tokens
+(`bg-surface-muted`, `text-fg`, `border-border`) for structural styling — never raw palette colors.
+For enter/leave animations: specify the CSS class name(s) to use with `animate.enter`/`animate.leave`;
+keyframe definitions go in the theme CSS, not the component.
+Keep brief — reference CLAUDE.md.]
 
 ## Accessibility
 [ARIA roles, keyboard behavior (key → action), focus management via CDK,
 screen reader text. Must meet WCAG AA and pass AXE.]
 
+## Form integration
+[Only include this section if the component is a form control.
+Describe: ControlValueAccessor implementation, writeValue behavior, onChange trigger,
+setDisabledState behavior. Must support template-driven, reactive, and signal-based forms.]
+
 ## Implementation notes
-[Signal inputs, computed state, host bindings, CDK module usage, cleanup.
-Plain English — no code. Only include what isn't obvious from CLAUDE.md.]
+[Signal inputs, computed state, linkedSignal() vs computed() usage, host bindings,
+CDK module usage, cleanup. Plain English — no code.
+Only include what isn't obvious from CLAUDE.md.]
 
 ## File structure
-[Files to create as a secondary entry point: component file, `index.ts`, `ng-package.json`.
+[Files to create as a secondary entry point:
+- `[name].ts` — component/directive
+- `[name].spec.ts` — Vitest tests covering: default render, all variants, inputs/outputs,
+  interactions, disabled state, ARIA attributes, content projection, ControlValueAccessor
+  contract (if applicable). No fakeAsync — use async/await with fixture.whenStable() instead.
+- `index.ts` — public API exports
+- `ng-package.json` — `{ "lib": { "entryFile": "index.ts" } }`
 Reference shared types from `ngx-tw/core` where applicable.]
 
 ## Public API exports
@@ -221,6 +244,15 @@ they solved similar problems — use it as inspiration, not as a target to match
 - No config file. Customization via `@theme` in CSS.
 - Apply utilities directly in templates and `host` class bindings.
 - No separate CSS files for components.
+- Use semantic tokens (`bg-primary-500`, `text-error-800`) for color-specific variants.
+- Use surface/fg/border tokens (`bg-surface-muted`, `text-fg`, `border-border`) for all neutral structural styling — never raw `neutral-*` shades.
+
+## Animations
+- Do NOT use `@angular/animations` — deprecated as of v20.2, removed in v23.
+- Use `animate.enter="class-name"` and `animate.leave="class-name"` for DOM entry/exit animations.
+- These are compiler-level features used in templates or host bindings — not directives.
+- Keyframe definitions live in `projects/ngx-tw/theme/default.css` alongside `prefers-reduced-motion` handling.
+- For Tailwind hover/focus transitions: `transition-colors duration-200 motion-reduce:transition-none`.
 
 ## Visual design system
 All visual tokens (border radius, spacing, gaps, typography, shadows, transitions, focus rings,
@@ -233,8 +265,8 @@ in the gap analysis.
 Components use **semantic color tokens** exclusively — never raw Tailwind palette colors.
 - Token format: `{role}-{shade}` (e.g., `bg-info-50`, `text-error-800`, `border-primary-300`).
 - Semantic roles: `primary`, `secondary`, `accent`, `neutral`, `info`, `success`, `warning`, `error`.
+- For neutral structural styling (backgrounds, text, borders): use surface/fg/border tokens.
 - The library ships a default theme (`projects/ngx-tw/theme/default.css`) mapping semantic tokens to Tailwind palettes. Consumers import it or provide their own.
-- In `tv()` configs, always use semantic tokens: `bg-info-50` not `bg-blue-50`, `text-error-800` not `text-red-800`.
 - Dark mode and brand customization are handled by the consumer's theme layer — components are agnostic.
 
 ## Variants — tailwind-variants
@@ -244,6 +276,11 @@ Components use **semantic color tokens** exclusively — never raw Tailwind pale
 - Always define `defaultVariants`. Use `compoundVariants` when variant combinations need special styling.
 - Enable `twMerge` in all `tv()` configs for consumer class override support.
 - Reference shared variant types from `ngx-tw/core` (`TwColor`, `TwSize`, etc.).
+
+## JSDoc
+Every `input()`, `output()`, and `model()` in the generated prompt's API design section must
+include a one-line JSDoc comment. The downstream implementer copies these directly into code.
+Format: `/** [Purpose and behavior. Default: 'value'.] */`
 
 ## Match existing patterns
 If the library already has components, follow their patterns exactly. If it's empty,
@@ -274,6 +311,7 @@ Permitted:
 - HTML usage examples (input/output illustration only)
 - File names and import paths
 - TypeScript type signatures (not implementations)
+- JSDoc comment strings for inputs/outputs
 
 Never write: component class bodies, template logic, `computed()` implementations,
 lifecycle hook bodies, or CSS. A code block longer than 8 lines means you are
@@ -291,11 +329,17 @@ Before outputting the prompt, verify every item:
 - [ ] CDK modules are identified where applicable
 - [ ] Accessibility covers: ARIA role, keyboard keys, focus management, screen reader text
 - [ ] All styling uses Tailwind v4 utilities with semantic color tokens — no raw palette colors, no CSS files, no hardcoded values
+- [ ] Neutral structural styling uses surface/fg/border tokens — not raw `neutral-*` shades
 - [ ] All visual tokens (radius, spacing, shadows, transitions, focus rings, icons, opacity) match the Visual Design System in CLAUDE.md — no invented values
 - [ ] `tv()` config defines `defaultVariants` and enables `twMerge`
 - [ ] Shared types from `ngx-tw/core` are referenced where applicable
-- [ ] File structure includes `index.ts` and `ng-package.json` for secondary entry point
+- [ ] `model()` is used only where the parent needs `[(prop)]` two-way binding; all other reactive inputs use `input()`
+- [ ] If the component is a form control: `ControlValueAccessor` is specified in the Form integration section
+- [ ] Every `input()`, `output()`, and `model()` in the API design section has a one-line JSDoc comment
+- [ ] File structure includes `index.ts`, `ng-package.json`, and `[name].spec.ts` for secondary entry point
+- [ ] Spec file note covers: default render, all variants, inputs/outputs, interactions, disabled state, ARIA, content projection; no `fakeAsync`
 - [ ] Usage examples cover: simplest case, key variants, disabled state
+- [ ] Enter/leave animations use `animate.enter`/`animate.leave` — no `@angular/animations`
 - [ ] Prompt length is within calibration range
 
 ---
@@ -318,8 +362,13 @@ Create the directory if it doesn't exist.
 - Never skip pre-flight context gathering
 - Never produce a prompt without reading CLAUDE.md first
 - Never use raw Tailwind palette colors (`blue-*`, `red-*`) — use semantic tokens (`info-*`, `error-*`)
+- Never use raw `neutral-*` shades for structural styling — use surface/fg/border tokens
 - Never hardcode spacing or sizes — use Tailwind tokens
 - Never rebuild something that already exists in the library
 - Never skip accessibility requirements
 - Never assume what existing components look like — always read their source
 - Never sacrifice flexibility for brevity — but always provide good defaults
+- Never use `@angular/animations` — it is deprecated
+- Never omit JSDoc from `input()`, `output()`, and `model()` declarations in the API design section
+- Never omit the `[name].spec.ts` from the file structure section
+- Never specify `fakeAsync` or `tick` in test guidance — they are not supported with the Vitest runner

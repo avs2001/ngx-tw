@@ -90,7 +90,11 @@
         "test": {
           "builder": "@angular/build:unit-test",
           "options": {
-            "tsConfig": "projects/ngx-tw/tsconfig.spec.json"
+            "tsConfig": "projects/ngx-tw/tsconfig.spec.json",
+            "include": [
+              "src/**/*.spec.ts",
+              "../theme/**/*.spec.ts"
+            ]
           }
         }
       }

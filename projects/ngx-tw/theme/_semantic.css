@@ -1,0 +1,57 @@
+@theme {
+  /* ===== Background ===== */
+  --color-bg-subtle: var(--color-gray-50);
+  --color-bg-muted: var(--color-gray-100);
+  --color-bg-default: var(--color-white);
+  --color-bg-emphasis: var(--color-gray-900);
+
+  /* ===== Surface ===== */
+  --color-surface-base: var(--color-white);
+  --color-surface-raised: var(--color-white);
+  --color-surface-overlay: var(--color-white);
+  --color-surface-sunken: var(--color-gray-50);
+  --color-surface-muted: var(--color-gray-100);
+
+  /* ===== Text ===== */
+  --color-text-primary: var(--color-gray-900);
+  --color-text-secondary: var(--color-gray-600);
+  --color-text-tertiary: var(--color-gray-500);
+  --color-text-disabled: var(--color-gray-400);
+  --color-text-inverse: var(--color-white);
+  --color-text-link: var(--color-blue-600);
+  --color-text-link-hover: var(--color-blue-700);
+
+  /* ===== Border ===== */
+  --color-border-subtle: var(--color-gray-100);
+  --color-border-muted: var(--color-gray-200);
+  --color-border-default: var(--color-gray-300);
+  --color-border-emphasis: var(--color-gray-400);
+
+  /* ===== Brand ===== */
+  --color-brand-subtle: var(--color-blue-50);
+  --color-brand-muted: var(--color-blue-200);
+  --color-brand-default: var(--color-blue-600);
+  --color-brand-emphasis: var(--color-blue-700);
+  --color-brand-fg: var(--color-white);
+
+  /* ===== Success ===== */
+  --color-success-subtle: var(--color-green-50);
+  --color-success-muted: var(--color-green-200);
+  --color-success-default: var(--color-green-600);
+  --color-success-emphasis: var(--color-green-700);
+  --color-success-fg: var(--color-white);
+
+  /* ===== Warning ===== */
+  --color-warning-subtle: var(--color-amber-50);
+  --color-warning-muted: var(--color-amber-200);
+  --color-warning-default: var(--color-amber-500);
+  --color-warning-emphasis: var(--color-amber-600);
+  --color-warning-fg: var(--color-black);
+
+  /* ===== Danger ===== */
+  --color-danger-subtle: var(--color-red-50);
+  --color-danger-muted: var(--color-red-200);
+  --color-danger-default: var(--color-red-600);
+  --color-danger-emphasis: var(--color-red-700);
+  --color-danger-fg: var(--color-white);
+}

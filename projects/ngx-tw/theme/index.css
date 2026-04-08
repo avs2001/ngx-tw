@@ -1,0 +1,17 @@
+@import "tailwindcss";
+
+/* Scan library source for Tailwind class usage */
+@source "../src/**/*.ts";
+
+/* Palette extensions */
+@import "./_palette.css";
+
+/* Semantic token definitions */
+@import "./_semantic.css";
+
+/* Theme overrides */
+@import "./_dark.css";
+@import "./_high-contrast.css";
+
+/* Base/reset */
+@import "./_base.css";
