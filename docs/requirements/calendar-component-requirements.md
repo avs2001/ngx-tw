@@ -1,6 +1,8 @@
-# Calendar Component — Requirements Specification v2.5
+# Calendar Component — Requirements Specification v2.6
 
 > Angular 21 library component supporting single, multiple, and range date selection with full forms integration (Reactive, Template-driven, Signal Forms), multi-month display, and rich cell customization.
+
+**Changes in v2.6** — Internal-consistency audit reconciliation. Resolved nine critical contradictions: `presetViolationBehavior` union (§25.2 = §33.1 = `'disable' | 'hide' | 'warn'`), mode-change emit order aligned (§11.2 follows §8.3: `selectionCleared → presetChange → modeChange → valueChange`), `overlayState` signal nullability widened to `Signal<CalendarOverlayState | null>` (§33.3, §14.1), year-view "virtual rendering" re-described as per-pane OnPush CD islands (§23.4 ↔ §32.3), `virtualKeyboard: 'auto'` semantics pinned (§9.5, §33.1), `rangeSeparator` default pinned to `' – '` (§9.2.1, §33.1), `PresetGroup` `<D>` generic dropped throughout (§7.4, §25.1, §33.1), `selectionComplete` payload restructured as `{ value; reason }` for non-range modes (§33.2), initial-focus auto-skip gated on `autoSkipEmptyPeriods` (§13.3 ↔ §12.6), `activeDate` signal typed as `Signal<D | null>` (§33.3). Stale cross-references fixed: §43 decision-number callouts in §33.1, "row 9" references in §22.3 and §35.7 replaced with row names, schematics tagged `v1.1` (§37.1). Structural cleanup: duplicate §15.4 deleted, §33.4 `serializeCalendarValue` re-tagged `[REQ] [MUST]`, §9.3 mask classifications unified, §11.5 / §11.7 re-tagged `[WONT] v1`. Gaps closed: `timezone` input vs. `TZ_OVERRIDE` precedence (§4.3, §33.1), `selectionCleared.reason` mapping for every §13.5 close-path, missing §8.3 row for SELECTING-shaped `writeValue` rejection, §29.1 warning list extended, preset-scroll multi-month behavior (§25.2), `CalendarPreset.disabled` context widened (§25.1), §28 `aria-invalid` target in inline mode, §32.2 budgets for constraint-tightening and disabled-flip paths, two-input range SELECTING at form level (§9.4 / §26).
 
 **Changes in v2.1** — Internal State Model (§8), Overlay Lifecycle (§13), Focus Management Contract (§17), Error Display Strategy (§28), Event Ordering (§30). Enhanced interaction-time validation (§10), preset revalidation (§25.6), dynamic-data performance (§32.5), stress testing (§35.7), serialization (§7.5), drag-selection explicit WONT (§42.3).
 
@@ -160,6 +162,7 @@ Selection is the primary responsibility. Customization of day cells (badges, dat
 - `[REQ]` `[MUST]` "Today" indicator hydration-tolerant across server/client timezone mismatch.
 - `[REQ]` `[MUST]` **Hydration mechanism:** on hydration the component re-evaluates `adapter.today()` inside an `afterNextRender` callback. If the client-side "today" differs from the server snapshot, the "today" cell decoration is silently re-applied (CSS class + `aria-current="date"` swap) without emitting any public events and without triggering a full re-render. No hydration-mismatch warning is produced — the text content is stable because cells always render `D`-labels, never "today".
 - `[REQ]` `[MUST]` `TZ_OVERRIDE` is honored **only** by TZ-aware adapters. Floating adapters log a dev-mode warning and ignore the token.
+- `[REQ]` `[MUST]` **Precedence between the per-instance `timezone` input (§33.1) and the `TZ_OVERRIDE` DI token:** the component input **wins** for that component instance; unset instances fall back to `TZ_OVERRIDE`; adapters with neither set use `adapter.getTimezone()`. Floating adapters ignore both sources and log a dev-mode warning once per component instance if either is set.
 
 ### 4.4 DST handling
 
@@ -216,10 +219,10 @@ Selection is the primary responsibility. Customization of day cells (badges, dat
 ### 6.4 Unified behavior
 - `[REQ]` `[MUST]` `disabled` blocks interaction and reflects in ARIA.
 - `[REQ]` `[MUST]` `touched` emits per §13.6.
-- `[REQ]` `[MUST]` `dirty` emits on first user-initiated change; **not** on programmatic `writeValue`.
+- `[REQ]` `[MUST]` `dirty` is the **form control's** dirty flag (not a component output or signal). The component triggers the form's `markAsDirty()` implicitly via the first user-initiated `valueChange`. Programmatic `writeValue` does not mark the control dirty.
 - `[REQ]` `[MUST]` `required` validation is mode-aware:
   - single: value non-null.
-  - multiple: array non-empty.
+  - multiple: array non-empty. Note: an empty array (`[]`) is both the "never selected" and the "user cleared" state — `required` cannot distinguish them; consumers who need the distinction must track it via the form control's `dirty`/`touched` flags alongside `value`.
   - range: both `start` and `end` non-null.
 
 ### 6.5 Form reset behavior
@@ -298,7 +301,7 @@ CalendarIntl, CalendarIntlKeys
 DayCellContext<D, T = unknown>, BadgeConfig
 RangeClickBehavior, RangeGranularity, MaxSelectionBehavior
 ResetBehavior, MobileMode
-CalendarPreset<D>, PresetGroup<D>
+CalendarPreset<D>, PresetGroup
 CalendarValueTransformer<M, D, TOut>
 ```
 
@@ -415,6 +418,7 @@ The component maintains three orthogonal pieces of state with strict ownership r
 | SELECTING | Escape (any `persistPartialRange`) | EMPTY | unchanged | cleared | `selectionCleared`, `closed` |
 | SELECTING | programmatic `writeValue(null)` | EMPTY | null | cleared | `selectionCleared` |
 | SELECTING | programmatic `writeValue(complete)` | COMPLETE | as written | cleared | `selectionCleared`, then form-originated `valueChange` |
+| SELECTING | programmatic `writeValue({start: D, end: null})` (SELECTING-shaped) | EMPTY | unchanged (rejected) | cleared | `selectionCleared` ({reason: 'programmatic'}); control marked `calendarInvalidValue` per §11.1 |
 | SELECTING | preset selected | COMPLETE | preset value | cleared | `selectionCleared`, `monthChange` (if nav needed), `activeDateChange`, `valueChange`, `selectionComplete` |
 | COMPLETE | click C, `rangeClickBehavior='restart'` | SELECTING | unchanged | `{ start: C }` | `activeDateChange`, `selectionRestart` |
 | COMPLETE | click C, `rangeClickBehavior='nearest-edge'` | COMPLETE | new range per §21.3 | — | `activeDateChange`, `valueChange`, `selectionComplete` |
@@ -518,23 +522,36 @@ Calendars inside `@if` / `*ngIf` / route outlets get destroyed and recreated. Th
 - `[REQ]` `[SHOULD]` Parse on input with debouncing (configurable).
 - `[REQ]` `[MUST]` Delegate to `adapter.parse(value, formats)`.
 - `[REQ]` `[MUST]` Locale-aware: "04/10/2026" parses Apr 10 in `en-US`, Oct 4 in most of Europe.
-- `[REQ]` `[MUST]` Unparseable: control marked `calendarParseError`; raw string preserved.
+- `[REQ]` `[MUST]` Unparseable: control marked `calendarParseError`; `externalValue` becomes `null`; the raw string is retained on the input's native `value` property and in the `calendarParseError` error payload. It is **not** preserved on `externalValue` (which must remain `D`-shaped per §7.1).
+
+#### 9.2.1 Per-mode parse strategy
+
+- `[REQ]` `[MUST]` **Single mode:** one input, one value. `adapter.parse(value, formats)` returns `D | null`.
+- `[REQ]` `[MUST]` **Multiple mode:** one input, comma-delimited list. Default separator `,` (configurable via `multipleSeparator` input); whitespace trimmed around each entry; empty entries ignored. Any single entry that fails to parse fails the whole input with `calendarParseError`.
+- `[REQ]` `[MUST]` **Range mode, single input:** `{start} – {end}` form with an en-dash or hyphen separator (configurable via `rangeSeparator`; default `' – '` — space, en-dash, space). Parsing trims whitespace around each endpoint before delegating to `adapter.parse`. Both endpoints must parse; either-one-empty is treated as an incomplete draft (no `valueChange`).
+- `[REQ]` `[MUST]` **Range mode, two inputs (§9.4):** each input parses independently. Range commits (`selectionComplete` + `valueChange`) when both inputs have valid parse and `end ≥ start` (or `allowBackwardRange=true` with auto-swap). Until both sides are valid, only `internalDraftValue` is updated.
 
 ### 9.3 Input masking
 
-- `[REC]` Opt-in input mask for the default locale format.
-- `[REQ]` `[COULD]` Mask configurable and disablable.
-- `[REQ]` `[MUST]` Mask compatible with paste, autofill, IME composition.
+- `[REC]` `[COULD]` Opt-in input mask for the default locale format. **Default: off** (per §43 resolved decision #1). Configurable and disablable per instance.
+- `[REQ]` `[MUST]` When masking is enabled, it must be compatible with paste and autofill.
+- `[REQ]` `[MUST]` **IME composition:** the mask is suspended between `compositionstart` and `compositionend` events. Parse runs only after `compositionend` to avoid racing with the IME.
 
 ### 9.4 Range with two inputs
 
 - `[REQ]` `[SHOULD]` Two separate inputs supported via two directive instances sharing the calendar.
 - `[REQ]` `[MUST]` Focus moves start → end on start commit.
 - `[REQ]` `[MUST]` Either input can open the calendar; SELECTING state syncs with focused input.
+- `[REQ]` `[MUST]` Range commit fires `selectionComplete` + `valueChange` once both inputs have valid parse and the resulting range satisfies `end ≥ start` (auto-swap if `allowBackwardRange=true`). See §9.2.1.
+- `[REQ]` `[MUST]` **SELECTING state with shared calendar + two inputs:** when the first input has a valid parse and the second does not, `selectionState = 'SELECTING'` and `internalDraftValue = { start }`. The picker's grid renders preview highlighting driven by `internalDraftValue` exactly as for a click-driven range. When instead the two inputs are bound to **two separate `FormControl`s** (§26.1), there is no calendar-level SELECTING state — each control commits independently; the "only start filled" intermediate surfaces as a parent-group validator error rather than a calendar-internal state.
 
 ### 9.5 Virtual keyboard (mobile)
 
-- `[REQ]` `[MUST]` Tapping the input opens the calendar by default and suppresses the virtual keyboard. Configurable: `virtualKeyboard: 'show' | 'hide' | 'auto'`.
+- `[REQ]` `[MUST]` Tapping the input opens the calendar by default and suppresses the virtual keyboard. Configurable on the `CalendarInputDirective`: `virtualKeyboard: 'show' | 'hide' | 'auto'`. (This input lives on the input directive, not on the calendar component; see §33.1 for the component inputs list.)
+- `[REQ]` `[MUST]` **`virtualKeyboard` value semantics:**
+  - `'show'` — always show the virtual keyboard on focus; the calendar does not auto-open.
+  - `'hide'` — always suppress the virtual keyboard and auto-open the calendar on focus.
+  - `'auto'` (default) — suppress the virtual keyboard and auto-open the calendar when the focus event's `pointerType` is `'touch'` or when no pointer is available (programmatic focus on mobile viewports per §18.5); otherwise behave like `'show'`. The discriminator is the pointer type of the most recent interaction, tracked via the `pointerdown`/`focus` pair.
 - `[REQ]` `[MUST]` `inputmode` attribute set for numeric date entry where supported.
 
 ---
@@ -562,8 +579,10 @@ type CalendarErrorCode =
   | 'calendarMaxSelections'   // { limit, actual }
   | 'calendarInvalidRange'    // { start, end } — end<start when backward disallowed; also programmatic writeValue with end<start per §21.4
   | 'calendarParseError'      // { raw }
-  | 'calendarInvalidValue';   // wrong shape for mode (§11.6) or transformer fromForm failure (§7.6)
+  | 'calendarInvalidValue';   // { expected: 'single' | 'multiple' | 'range'; actual: unknown; reason: 'shape' | 'transformer' }
 ```
+
+> **Interaction-only rejections (no error codes).** `allowSingleDayRange=false` (clicking the same cell as draft start) and `disableRangesCrossingDisabledDates=true` (click past a disabled cell) are **click no-ops with invalid-flash visual feedback**. They do NOT produce form-level error codes. Consumers who need to surface these to users must observe the corresponding rejected-interaction patterns in the DOM (`data-state-invalid-flash`) or subscribe to `rangePreview`'s `invalidPreview` flag (§8.3).
 
 - `[REQ]` `[MUST]` All error payloads typed and exported.
 - `[REQ]` `[MUST]` Error codes stable across versions.
@@ -600,13 +619,19 @@ Governs what the user can do during interaction vs. what is only flagged post-co
 ### 11.1 Programmatic value change during SELECTING (range)
 
 - `[REQ]` `[MUST]` Cancels the SELECTING state; enters EMPTY or COMPLETE based on the new value.
-- `[REQ]` `[MUST]` `selectionCleared` fires before the form's `valueChange` propagates back.
+- `[REQ]` `[MUST]` `selectionCleared({reason: 'programmatic'})` fires before the form's `valueChange` propagates back.
+- `[REQ]` `[MUST]` If the programmatic value is SELECTING-shaped (`{ start: D, end: null }` in range mode), it is rejected as `calendarInvalidValue` per §11.6; the existing draft is discarded and the control is marked invalid.
+- `[REQ]` `[MUST]` **Retained-draft interaction** (when `persistPartialRange=true` and overlay is closed): a programmatic `writeValue` while a draft is retained behind a closed overlay discards the draft and fires `selectionCleared({reason: 'programmatic'})` immediately. The draft will not re-appear on next open.
 
 ### 11.2 Mode change at runtime
 
 - `[REQ]` `[MUST]` Clears value to the empty state for the new mode.
-- `[REQ]` `[MUST]` Emits in order: `modeChange`, `selectionCleared`, `valueChange` (matches §8.3).
-- `[REQ]` `[MUST]` Closes overlay if open (when `closeOnModeChange: true`, default).
+- `[REQ]` `[MUST]` Emits in canonical order (matches §8.3 and §30.2):
+  1. `selectionCleared` ({reason: `'mode-change'`}) — only if a value was previously held
+  2. `presetChange(null)` — only if `selectedPresetId` was set
+  3. `modeChange`
+  4. `valueChange` (empty for the new mode)
+- `[REQ]` `[MUST]` Closes overlay if open (when `closeOnModeChange: true`, default); the `closed` event fires after `valueChange` per §13.7 invariants.
 
 ### 11.3 `disabled` flipped to true while overlay is open
 
@@ -620,10 +645,11 @@ Governs what the user can do during interaction vs. what is only flagged post-co
 - `[REQ]` `[MUST]` Value **never** auto-mutated; control marked invalid instead.
 - `[REQ]` `[MUST]` If focused date becomes disabled, focus moves to nearest enabled date in same month (§17.2).
 
-### 11.5 `dayData` / `events` change mid-hover
+### 11.5 `dayData` change mid-hover
 
 - `[REQ]` `[MUST]` Hover state and range preview preserved; only cell rendering updates.
 - `[REQ]` `[MUST]` No flicker: data delivered via single signal update, not unmount/remount.
+- `[WONT]` **v1:** `events` is not a v1 input. Event/schedule layer is deferred to the v2 sibling component per §42.1; the picker ships with `dayData` + `dayBadge` + `cellTemplate` as the extensibility ceiling (§24.3).
 
 ### 11.6 `mode` mismatch with `value` shape
 
@@ -631,7 +657,15 @@ Governs what the user can do during interaction vs. what is only flagged post-co
 
 ### 11.7 Adapter change at runtime
 
-- `[REC]` Not supported. Adapter set at injector level, constant for component lifetime.
+- `[WONT]` **v1:** runtime adapter swap is not supported. The `DateAdapter` is set at injector level and is constant for the component lifetime.
+- `[REQ]` `[MUST]` If `DateAdapter` is re-provided at a scope containing a live `CalendarComponent`, the component throws a dev-mode error on its next change-detection cycle. Production behavior is undefined. Consumers must destroy and recreate the component to change adapters.
+
+### 11.8 `interaction` mode change at runtime
+
+- `[REQ]` `[COULD]` Switching `interaction` between `'inline'` and `'overlay'` at runtime. If supported:
+  - `'inline' → 'overlay'`: inline DOM is removed; overlay DOM is created lazily on first open; committed `externalValue` is preserved; `internalDraftValue` is discarded.
+  - `'overlay' → 'inline'`: overlay (if open) is closed per §13.4; inline DOM is mounted; committed `externalValue` is preserved; `internalDraftValue` is discarded.
+- `[REQ]` `[MUST]` If not supported (simpler implementation), dev-mode warning; production: component may render both or neither — undefined.
 
 ---
 
@@ -645,7 +679,7 @@ Governs what the user can do during interaction vs. what is only flagged post-co
 
 ### 12.2 Day view
 
-- `[REQ]` `[MUST]` Grid column count = `adapter.getDaysInWeek()`. All shipped v1 adapters return 7. Non-7 support is only relevant for future non-Gregorian adapters (§19.5) and is therefore `[SHOULD]` rather than `[MUST]` for v1 in terms of CSS tested variants — v1 guarantees correct rendering at 7.
+- `[REQ]` `[MUST]` Grid column count = `adapter.getDaysInWeek()`. All shipped v1 adapters return 7; v1 guarantees correct rendering and tested CSS at 7. Non-7 support is a `[REC]` forward-compatibility posture for future non-Gregorian adapters (§19.5) — the contract accepts non-7 return values but v1 does not validate them.
 - `[REQ]` `[MUST]` Configurable `firstDayOfWeek` (0 through `getDaysInWeek()-1`).
 - `[REC]` Leading/trailing adjacent-month days (dimmed). Configurable via `showAdjacentMonths`.
 - `[REC]` Optional ISO 8601 week numbers via `showWeekNumbers`.
@@ -672,10 +706,11 @@ Without dead-end rules, users can navigate into a month where every date is disa
 **Disabling navigation buttons:**
 - `[REQ]` `[MUST]` "Previous" button is disabled when **every** date in the previous period is outside `minDate`/`maxDate`/`disabledDates`/`disabledDaysOfWeek`/`dateFilter`.
 - `[REQ]` `[MUST]` "Next" button follows the symmetric rule.
-- `[REQ]` `[MUST]` The check scans up to the `minDate`/`maxDate` boundary. When `minDate` or `maxDate` is unbounded, the check is limited to a configurable `navigationBoundaryLookahead: number` (default 24 periods) — beyond that limit, the button remains enabled (pragmatic tradeoff: don't pay unbounded scan cost).
+- `[REQ]` `[MUST]` The check scans up to the `minDate`/`maxDate` boundary. When `minDate` or `maxDate` is unbounded, the check is limited to a configurable `navigationBoundaryLookahead: number` (default `24` periods, resolved per §43) — beyond that limit, the button remains enabled (pragmatic tradeoff: don't pay unbounded scan cost).
 - `[REQ]` `[MUST]` Applies at every view level: day view checks previous/next month, month view checks previous/next year, year view checks previous/next 20-year page.
 - `[REQ]` `[MUST]` Disabled nav buttons get `aria-disabled="true"` and are removed from the tab order.
 - `[REQ]` `[MUST]` Re-evaluated whenever constraints change (reactive to input updates).
+- `[REQ]` `[MUST]` `navigationStep` × dead-end interaction: dead-end prevention checks the **destination period only**, not intermediate periods. If `navigationStep > 1`, a single button press that lands in an enabled period succeeds even when skipped-over periods are fully disabled.
 
 **Keyboard parity:**
 - `[REQ]` `[MUST]` `PageUp`/`PageDown`/`Shift+PageUp`/`Shift+PageDown` respect the same dead-end logic — press becomes a no-op if navigation is blocked.
@@ -687,8 +722,10 @@ It's still possible to land in an entirely-disabled month — e.g., constraints 
 - `[REQ]` `[MUST]` An empty-state message is rendered in place of the grid via `emptyStateTemplate: TemplateRef` input.
 - `[REQ]` `[MUST]` Default template: localized text "No available dates in this month" (from `CalendarIntl`).
 - `[REQ]` `[MUST]` The empty-state element is focusable (`tabindex="0"`) with accessible name matching the message, so screen reader users can perceive the state.
+- `[REQ]` `[MUST]` When the grid is fully disabled, the empty-state element becomes the **initial focus target** per §13.3 (step 4's "first enabled cell" fallback resolves to the empty-state element instead, since no grid cell is available).
 - `[REQ]` `[MUST]` If `minDate`/`maxDate` are both defined and the displayed period is outside their range, an adjacent-direction hint button ("Go to nearest available date") is offered.
-- `[REC]` When navigation is initiated and the destination would be empty, the component may auto-skip to the next non-empty period within the lookahead window. Controlled by `autoSkipEmptyPeriods: boolean` (default `false` — explicit navigation is usually safer than implicit skip).
+- `[REC]` When navigation is initiated and the destination would be empty, the component may auto-skip to the next non-empty period within the lookahead window. Controlled by `autoSkipEmptyPeriods: boolean` (default `false`, resolved per §43 — explicit navigation is usually safer than implicit skip).
+- `[REQ]` `[MUST]` When `autoSkipEmptyPeriods=true` and a skip occurs: `viewChange` fires once with the final destination period; `monthChange` (or the view-appropriate equivalent) fires once; the skip is announced to the live region ("Skipped {N} periods to {destination}" per `CalendarIntl.skipAnnouncement`). If no destination is found within `navigationBoundaryLookahead`, the button remains disabled and no events fire.
 
 **Today button:**
 - `[REQ]` `[MUST]` "Today" button is disabled if `adapter.today()` is outside constraints.
@@ -728,36 +765,52 @@ Order of operations:
   1. If `externalValue` has a selection within the displayed month(s), focus that date (range: focus `start`).
   2. Else if `startAt` provided, focus `startAt` clamped to constraints.
   3. Else focus `adapter.today()` if within constraints.
-  4. Else focus first enabled cell in displayed month.
-- `[REQ]` `[MUST]` If no enabled cell in displayed month, navigate to next month with enabled cells (24-month search limit; else focus first cell regardless).
+  4. Else focus first enabled cell in displayed month. If grid is fully disabled, focus the empty-state element (§12.6).
+- `[REQ]` `[MUST]` **Auto-skip from a fully-disabled initial month is gated on `autoSkipEmptyPeriods`** (default `false`, §12.6). When `autoSkipEmptyPeriods=false`, focus remains on the empty-state element for the initially-displayed month — even if the next month has enabled cells. When `autoSkipEmptyPeriods=true`, the component navigates to the next month with enabled cells — capped at `navigationBoundaryLookahead` periods (default `24`; configurable per §12.6) — and focuses the first enabled cell there; if the lookahead is exhausted, focus remains on the empty-state element of the originally-displayed month and `monthChange` / `viewChange` do NOT fire.
 
 ### 13.4 Close sequence
 
-Triggered by: outside click, Escape, selection commit + `closeOnSelect`, programmatic `close()`, `disabled=true`.
+Triggered by: outside click, Escape, selection commit + `closeOnSelect`, programmatic `close()`, `disabled=true`, scroll dismissal (CDK Overlay `scrollStrategy: 'close'`), focus loss from overlay, form reset (§6.5), adapter change (§11.7), constraint tightening that invalidates the draft, mobile back-button / hardware dismissal.
 
 Order of operations:
 1. `overlayState = 'closing'`.
-2. Focus trap released.
-3. Commit/discard rules applied (§13.5).
-4. Animation plays out.
-5. Overlay detached from DOM.
-6. Focus returned to trigger (unless trigger unmounted).
-7. `closed` event emitted.
-8. `overlayState = 'closed'`.
-9. `onTouched` called if user-initiated (§13.6).
+2. Commit/discard rules applied (§13.5).
+3. `valueChange` emitted (if commit); form write propagated.
+4. `selectionComplete` / `selectionCleared` emitted.
+5. Focus trap released.
+6. Animation plays out.
+7. Overlay detached from DOM.
+8. `closed` event emitted.
+9. `overlayState = 'closed'`.
+10. Focus returned to trigger (unless trigger unmounted).
+11. `onTouched` called if user-initiated (§13.6).
+
+> **Invariant.** In any sequence where both `valueChange` and `closed` fire, `valueChange` strictly precedes `closed`. This mirrors the CVA convention `onChange → onTouched → blur` that consumers rely on.
 
 ### 13.5 Commit vs discard on close
 
-| Close reason | `selectionState` before | Effect on draft / value |
-|---|---|---|
-| Outside click | EMPTY | No change |
-| Outside click | SELECTING | Discard draft if `persistPartialRange=false`; else keep |
-| Outside click | COMPLETE | No change |
-| Escape | any | Discard draft, revert to last committed `externalValue` |
-| `closeOnSelect` commit | COMPLETE | Commit already happened synchronously |
-| Programmatic `close()` | SELECTING | Discard draft |
-| `disabled=true` | any | Discard draft, do **not** emit `onTouched` |
-| Trigger unmount | any | Discard draft, emit no events |
+Every `selectionCleared` cited below carries a `reason` from the §33.2 payload union (`'user' | 'programmatic' | 'mode-change' | 'reset' | 'disabled'`). The mapping is authoritative; consumers relying on `reason` can use the values in this column verbatim.
+
+| Close reason | `selectionState` before | Effect on draft / value | `selectionCleared.reason` | `closed` emitted? | `onTouched` emitted? |
+|---|---|---|---|---|---|
+| Outside click | EMPTY | No change | — | ✓ | ✓ |
+| Outside click | SELECTING | Discard draft if `persistPartialRange=false`; else keep | `'user'` (only if draft discarded) | ✓ | ✓ |
+| Outside click | COMPLETE | No change | — | ✓ | ✓ |
+| Escape | EMPTY | No change | — | ✓ | ✓ |
+| Escape | SELECTING | Discard draft (regardless of `persistPartialRange`); emit `selectionCleared` if draft existed | `'user'` | ✓ | ✓ |
+| Escape | COMPLETE | No change | — | ✓ | ✓ |
+| `closeOnSelect` commit | COMPLETE | Commit happened synchronously; `valueChange`, `selectionComplete` fire before `closed` | — | ✓ | ✓ |
+| Programmatic `close()` | SELECTING | Discard draft | `'programmatic'` | ✓ | ✗ (programmatic) |
+| Programmatic `close()` | COMPLETE / EMPTY | No change | — | ✓ | ✗ |
+| `disabled=true` | SELECTING | Discard draft | `'disabled'` | ✓ | ✗ |
+| `disabled=true` | COMPLETE / EMPTY | No change | — | ✓ | ✗ |
+| Form reset (§6.5) | any | Discard draft; form writes new value; emit `selectionCleared` only if a value was previously held | `'reset'` | ✓ | ✗ |
+| Scroll dismissal | any | Treated as outside click — discard draft per `persistPartialRange` | `'user'` (only if draft discarded) | ✓ | ✓ |
+| Focus loss from overlay | any | Treated as outside click | `'user'` (only if draft discarded) | ✓ | ✓ |
+| Adapter change at runtime | any | Dev error; overlay force-closed; draft discarded; no events guaranteed | — (no events guaranteed) | — | ✗ |
+| Constraint tightening invalidates draft | SELECTING | Discard draft | `'programmatic'` | ✓ | ✗ |
+| Mobile back-button / hardware dismissal | any | Treated as Escape | `'user'` (only if draft discarded) | ✓ | ✓ |
+| Trigger unmount | any | Discard draft; **exception to the paired-events invariant** — no `closed` fires (consumer never subscribed) | — | ✗ | ✗ |
 
 ### 13.6 Form interaction timing
 
@@ -765,14 +818,19 @@ Order of operations:
   - Overlay closes via user action (outside click, Escape, commit), OR
   - Inline calendar loses focus to an element outside its DOM, OR
   - Trigger loses focus to an element outside both trigger and overlay.
-- `[REQ]` `[MUST]` `onTouched` **never** fires for programmatic close or `disabled` close.
-- `[REQ]` `[MUST]` `dirty` fires on the first `valueChange` caused by user action within the overlay lifetime.
+- `[REQ]` `[MUST]` `onTouched` **never** fires for programmatic close, `disabled` close, form reset, adapter change, or trigger unmount (see §13.5 table).
+- `[REQ]` `[MUST]` `dirty` (the form control's flag, see §6.4) is set on the first `valueChange` caused by user action. Semantics across modes:
+  - **Overlay mode:** first `valueChange` caused by user action within the component instance's lifetime (not scoped to a single overlay session — `dirty` persists across overlay re-opens).
+  - **Inline mode:** first `valueChange` caused by user action (no overlay lifetime boundary applies).
+  - **Form reset:** clears `dirty` per §6.5 (form-owned state).
 
 ### 13.7 Invariants
 
-- `[REQ]` `[MUST]` `opened` and `closed` are paired: every `opened` is followed by exactly one `closed`.
+- `[REQ]` `[MUST]` `opened` and `closed` are paired: every `opened` is followed by exactly one `closed` **except** trigger-unmount (§13.5), which fires neither.
 - `[REQ]` `[MUST]` `closed` fires before focus returns to the trigger; focus returns before any follow-on user action can cause a re-open.
-- `[REQ]` `[MUST]` Re-opening during a `closing` phase is debounced: the new `open()` call waits for `overlayState === 'closed'`.
+- `[REQ]` `[MUST]` Re-opening during a `closing` phase is debounced: the new `open()` call is queued in a single-slot buffer (only the latest wins) and executes after `overlayState === 'closed'`.
+- `[REQ]` `[MUST]` `openOnFocus` (§14.2) is suppressed for one focus tick after close to prevent an Escape → focus-return → re-open loop.
+- `[REQ]` `[MUST]` Runtime `appendTo` changes close the overlay first (as if programmatic `close()`; §13.5 "Programmatic `close()`" row governs draft discard and events), then apply on next open. §8.3's selection-state transitions are unaffected — `appendTo` is an overlay-lifecycle concern only.
 
 ---
 
@@ -782,18 +840,26 @@ Order of operations:
 
 - `[REQ]` `[MUST]` Always-visible; no overlay.
 - `[REQ]` `[MUST]` Selection emits immediately; no apply button unless a footer template provides one.
+- `[REQ]` `[MUST]` `overlayState` signal returns `null` in inline mode (the signal type is `Signal<CalendarOverlayState | null>` per §33.3). Sections of §13 that apply: §13.6 (focus-loss `onTouched` via component blur); §13.7 invariants apply vacuously (no `opened`/`closed` fire).
 
 ### 14.2 Overlay
 
 - `[REQ]` `[MUST]` CDK Overlay positioning with fallback positions.
 - `[REQ]` `[MUST]` Opens on: trigger click, `Alt+↓` on trigger.
-- `[REC]` `openOnFocus` optional (default false).
-- `[REQ]` `[MUST]` Closes on: outside click, Escape, selection commit (mode-dependent).
+- `[REC]` `openOnFocus: boolean` optional (default `false`). When enabled, opening is debounced against close per §13.7 to avoid re-open loops.
+- `[REQ]` `[MUST]` Closes on: outside click, Escape, selection commit (see `closeOnSelect` defaults below).
+- `[REQ]` `[MUST]` `closeOnSelect` defaults are mode-derived: `true` in single mode; `false` in multiple and range modes. Consumers may override per instance.
 - `[REQ]` `[MUST]` `appendTo: 'host' | 'body' | ElementRef`.
 - `[REQ]` `[MUST]` Full lifecycle per §13.
+- `[REQ]` `[MUST]` `Alt+↓` on a focused trigger while overlay is already open is a no-op (idempotent).
 
 ### 14.3 Mobile full-screen
-- See §18.5.
+
+The component ships in v1 with adaptive mobile presentation. Default behavior switches between desktop overlay and mobile full-screen/bottom-sheet based on viewport. See §18.5 for the full responsive-mode specification.
+
+- `[REQ]` `[MUST]` `mobileMode: 'auto' | 'overlay' | 'fullscreen' | 'bottom-sheet'` input. Default `'auto'`.
+- `[REQ]` `[MUST]` `'auto'` resolves at runtime (not SSR): desktop viewports (`≥ 600px`) render as overlay; mobile viewports render as full-screen or bottom-sheet per §18.5. On SSR, `'auto'` always resolves to overlay — mobile presentation is a client-only decision made post-hydration via `matchMedia('(max-width: 600px)')`.
+- `[REQ]` `[MUST]` `'bottom-sheet'` positioning: pinned to viewport bottom; swipe-down gesture dismisses (treated as Escape); respects iOS/Android safe-area insets per §18.6.
 
 ---
 
@@ -816,23 +882,33 @@ Order of operations:
 | 2.1.2 No Keyboard Trap | Focus trap releases on Escape |
 | 2.4.3 Focus Order | Logical tab order in overlay |
 | 2.4.7 Focus Visible | Visible focus indicator, not background alone |
-| 2.5.5 / 2.5.8 Target Size | Cell hit targets ≥ 24×24 CSS px |
+| 2.4.11 Focus Not Obscured (Minimum) | Overlay positioning never hides the focused trigger beneath the panel; CDK `flexibleConnectedPositionStrategy` with fallback positions |
+| 2.5.5 Target Size (Enhanced) | `[REC]` 44×44 CSS px on mobile viewports |
+| 2.5.7 Dragging Movements | Drag-selection is explicitly not shipped in v1 (§42.3); all range selection works via discrete taps/clicks |
+| 2.5.8 Target Size (Minimum) | Cell hit targets ≥ 24×24 CSS px |
 | 3.3.1 Error Identification | Validation errors expose `aria-invalid` + message |
 | 4.1.2 Name, Role, Value | All interactives have accessible names |
 | 4.1.3 Status Messages | Live regions for view/range changes |
 
 ### 15.3 Structural ARIA
 
-- `[REQ]` `[MUST]` Calendar grid: `role="grid"`, labeled by the visible month/year header.
+- `[REQ]` `[MUST]` Calendar grid: `role="grid"`, labeled by the visible month/year header via `aria-labelledby`; `aria-rowcount` and `aria-colcount` set (rowcount = weeks rendered, colcount = `adapter.getDaysInWeek()`).
 - `[REQ]` `[MUST]` Rows: `role="row"`.
-- `[REQ]` `[MUST]` Day cells: `role="gridcell"` with `aria-selected` for single/multi; range mode uses accessible name.
+- `[REQ]` `[MUST]` Day cells: `role="gridcell"`.
+  - **Single / multiple modes:** `aria-selected="true"` on selected cells.
+  - **Range mode:** `aria-selected="true"` on both endpoints AND on cells inside the range; accessible name distinguishes "range start" / "range end" / "in range".
+- `[REQ]` `[MUST]` Today's cell: `aria-current="date"`.
 - `[REQ]` `[MUST]` Day column headers: `role="columnheader"` with `abbr`.
-- `[REQ]` `[MUST]` Disabled cells: `aria-disabled="true"`; arrow-key-reachable but not selectable.
+- `[REQ]` `[MUST]` Disabled cells: `aria-disabled="true"`; CAN receive roving focus (`tabindex="0"` when `activeDate`), but Enter/Space is a no-op and no commit event fires.
 - `[REQ]` `[MUST]` Out-of-month cells: `aria-hidden="true"` unless interactive.
+- `[REQ]` `[MUST]` **Focus pattern:** the grid uses **roving-tabindex** — the cell matching `activeDate` has `tabindex="0"`, all others have `tabindex="-1"`. `aria-activedescendant` is NOT used (and must not be added); the two patterns are mutually exclusive.
+- `[REQ]` `[MUST]` Prev/Next navigation buttons: accessible name from `CalendarIntl` (e.g., "Previous month", "Next year"). `aria-label` is sourced from `CalendarIntl`, never hardcoded.
+- `[REQ]` `[MUST]` Header (month/year title): `aria-live="polite"` wrapper; content updates announce the new period.
 
 ### 15.4 Overlay / dialog mode
 
 - `[REQ]` `[MUST]` `role="dialog"`, `aria-modal="true"`, labeled by header.
+- `[REQ]` `[MUST]` `aria-describedby` pointer to the keyboard-help element (§16.4), when rendered.
 - `[REQ]` `[MUST]` Focus trap while open.
 - `[REQ]` `[MUST]` Focus returns to trigger on close (§13.4).
 - `[REQ]` `[MUST]` Trigger accessible name updates with selected value.
@@ -840,14 +916,16 @@ Order of operations:
 ### 15.5 Live regions
 
 - `[REQ]` `[MUST]` Month/year header: `aria-live="polite"` — navigation announces new period.
-- `[REQ]` `[MUST]` Range selection: "Start date selected" / "End date selected".
-- `[REQ]` `[MUST]` During SELECTING, focus movement announces tentative range length.
+- `[REQ]` `[MUST]` Range selection commits: `role="status"` (polite) — "Start date selected" / "End date selected".
+- `[REQ]` `[MUST]` During SELECTING, focus movement announces tentative range length (polite, debounced 150ms to avoid flooding).
+- `[REQ]` `[MUST]` Individual arrow-key day navigation within the same month does NOT announce (too verbose); only period changes (month/year/view) announce.
 - `[REQ]` `[MUST]` Announcements pluralization-aware via `CalendarIntl` (§19).
 
 ### 15.6 Cell accessible names
 
-- `[REQ]` `[MUST]` Full localized date + state: "Tuesday, 15 March 2026, selected, range start, 3 items" (where "3 items" reflects the cell's badge count per §24.3 Layer 1, if present).
+- `[REQ]` `[MUST]` Full localized date + state. Canonical template: `{long date} · {selection role}[ · {state flags}][ · {badge summary}]` where each segment comes from `CalendarIntl` and is joined by the locale's list separator. Omitted segments are fully elided (no trailing separator). The badge summary is present only when the cell has a `BadgeConfig` from §24.3 Layer 1 with a `count > 0` or a non-empty `label`. Example (with badge): "Tuesday, 15 March 2026, range start, 3 items"; without badge: "Tuesday, 15 March 2026, range start".
 - `[REQ]` `[MUST]` `aria-label` for dynamic state; `aria-labelledby` for stable static references.
+- `[REQ]` `[MUST]` Consumers override the template via `CalendarIntl.cellAccessibleName: (ctx: DayCellContext<D>) => string` — `CalendarIntl` ships the default.
 
 ### 15.7 Visual accessibility
 
@@ -857,12 +935,13 @@ Order of operations:
 
 ### 15.8 Screen reader test matrix
 
-- `[REQ]` `[MUST]` Tested on:
+- `[REQ]` `[MUST]` Tested on the latest release of each AT at the time of each library minor release:
   - NVDA + Firefox (Windows)
   - JAWS + Chrome (Windows)
   - VoiceOver + Safari (macOS)
   - VoiceOver + Safari (iOS)
   - TalkBack + Chrome (Android)
+- `[REQ]` `[MUST]` "Critical issue" = any defect that prevents a screen reader user from completing the task the calendar is designed for (selecting a date / range, navigating views, dismissing the overlay). Non-critical issues (verbosity, announcement phrasing) are tracked but do not block release.
 - `[REQ]` `[MUST]` Zero critical issues on any combination before release.
 
 ---
@@ -873,20 +952,45 @@ Order of operations:
 
 | Key | Action |
 |---|---|
-| `←` / `→` | Previous / next day |
+| `←` / `→` | Previous / next day (in RTL, logical prev/next per §19.3 — `→` is logically previous) |
 | `↑` / `↓` | Previous / next week |
-| `Home` / `End` | First / last day of week |
+| `Home` / `End` | First / last day of week (respects `firstDayOfWeek`) |
 | `PageUp` / `PageDown` | Previous / next month |
 | `Shift+PageUp` / `Shift+PageDown` | Previous / next year |
-| `Enter` / `Space` | Select focused date |
+| `Ctrl+Home` | Focus today (if within constraints; no-op otherwise) |
+| `Enter` / `Space` | Select focused date (no-op if cell is `aria-disabled`) |
 | `Escape` | Close overlay (if open); no-op inline |
-| `Tab` / `Shift+Tab` | Next/previous focusable in dialog |
+| `Tab` / `Shift+Tab` | Next/previous focusable in dialog (overlay) or component (inline); Tab cycles only within the grid's focusable set — the active cell |
 
 ### 16.2 Month view
-- `[REQ]` `[MUST]` Arrows navigate months; Enter drills into day view for that month.
+
+| Key | Action |
+|---|---|
+| `←` / `→` | Previous / next month |
+| `↑` / `↓` | Three months up / down |
+| `Home` / `End` | January / December of current year |
+| `PageUp` / `PageDown` | Previous / next year |
+| `Shift+PageUp` / `Shift+PageDown` | Previous / next decade |
+| `Ctrl+Home` | Focus the month containing today (if within constraints) |
+| `Enter` | Drill into day view for that month |
+| `Space` | Commit month (when `rangeGranularity='month'` or `mode='month'`); else drill into day view |
+| `Escape` | Close overlay (if open); no-op inline |
+| `Tab` / `Shift+Tab` | Same as day view |
 
 ### 16.3 Year view
-- `[REQ]` `[MUST]` Arrows navigate years; Enter drills into month view.
+
+| Key | Action |
+|---|---|
+| `←` / `→` | Previous / next year |
+| `↑` / `↓` | Four years up / down (assumes 20-year grid with 5 columns; scales with `yearsPerPage`) |
+| `Home` / `End` | First / last year of current decade page |
+| `PageUp` / `PageDown` | Previous / next decade |
+| `Shift+PageUp` / `Shift+PageDown` | Previous / next century |
+| `Ctrl+Home` | Focus the year containing today (if within constraints) |
+| `Enter` | Drill into month view |
+| `Space` | Commit year (when `rangeGranularity='year'` or `mode='year'`); else drill into month view |
+| `Escape` | Close overlay (if open); no-op inline |
+| `Tab` / `Shift+Tab` | Same as day view |
 
 ### 16.4 Accessibility aid
 - `[REC]` Visible or `aria-describedby`-exposed keyboard help at dialog bottom.
@@ -920,12 +1024,16 @@ Focus is re-resolved on:
 | day → year view | Focus year containing previously focused day |
 | month → day (drill-down) | See §22.3 |
 | month → year view | Focus year containing previously focused month |
-| year → month (drill-down) | Focus first month of drilled year |
+| year → month (drill-down) | Focus the month previously drilled from when available; else first enabled month of drilled year |
 | prev/next navigation (day view) | Same day-of-month in new month; if non-existent (Jan 31 → Feb), last day of new month |
-| Pane shift (multi-month) | Focus unchanged unless it leaves rendered range; then focus equivalent day in nearest rendered month |
+| prev/next navigation (month view) | Same month in new year; if `autoSkipEmptyPeriods=true` and landing period is empty, apply the §12.6 skip rule |
+| prev/next navigation (year view) | Same year-of-decade in new decade page |
+| Pane shift (multi-month, programmatic / click) | Focus unchanged unless it leaves rendered range; then focus equivalent day in nearest rendered month — see §17.4 for arrow-driven shifts |
 | Programmatic `writeValue` | See §17.3 |
-| Constraint change | If focus becomes disabled, focus nearest enabled date in same month; if whole month disabled, navigate to next month with enabled dates |
-| Mode change | Focus resets to first enabled cell of current month (value cleared per §11.2) |
+| Constraint change | If focus becomes disabled, focus nearest enabled date in same month; if whole month disabled, navigate to next month with enabled dates within `navigationBoundaryLookahead`; if exhausted, focus remains and empty-state template takes over |
+| Mode change | Focus resets to first enabled cell of current month (value cleared per §11.2). Mode-change focus reset takes **precedence** over the `writeValue` cascade that §11.2 implies — the cascade is suppressed. |
+| Locale / `firstDayOfWeek` / RTL flip | Focus preserved on the same date if still rendered |
+| Adapter swap (dev-only; §11.7) | Dev-mode error; production undefined |
 | Responsive reflow | Focus preserved on the same date if still rendered |
 
 ### 17.3 Focus after programmatic `writeValue`
@@ -933,6 +1041,10 @@ Focus is re-resolved on:
 - `[REQ]` `[MUST]` If the written value is **within the currently displayed month(s)**, focus does **not** move.
 - `[REQ]` `[MUST]` If the written value is **outside** the displayed range and the overlay is **open**, the calendar navigates to the written value's month and focuses it.
 - `[REQ]` `[MUST]` If the overlay is **closed**, no focus change; the new displayed month applies on next open.
+- `[REQ]` `[MUST]` `writeValue` **during SELECTING**: draft is discarded (per §11.1); focus moves to the written value (if within displayed range) or the committed value's month (if outside and overlay is open). `selectionCleared({reason: 'programmatic'})` fires before focus moves.
+- `[REQ]` `[MUST]` `writeValue` to a **disabled date**: focus moves to the nearest enabled date in the same month per the constraint-change row of §17.2.
+- `[REQ]` `[MUST]` `writeValue(null)`: focus moves to first enabled cell of currently displayed month (same algorithm as `clear()`).
+- `[REQ]` `[MUST]` `writeValue` during `opening` / `closing` overlay transitions: the write is queued and applied after the phase completes (at which point the rules above apply to the stable phase).
 
 ### 17.4 Multi-month arrow behavior at pane edges
 
@@ -962,29 +1074,32 @@ Focus is re-resolved on:
 ### 18.1 Touch gestures
 
 - `[REQ]` `[MUST]` Tap on cell = select.
-- `[REC]` Horizontal swipe between months in day view.
+- `[REC]` Horizontal swipe between months in day view. During range SELECTING, swipe changes the pane; the draft `start` is preserved and the hover preview continues in the new pane.
 - `[REC]` Vertical swipe to dismiss overlay.
+- `[REQ]` `[MUST]` Long-press is a no-op in v1 (reserved for future affordances). Long-press on a disabled cell is also a no-op.
 - `[REQ]` `[MUST]` No dependence on hover.
 
 ### 18.2 Event model
 
 - `[REQ]` `[MUST]` Pointer Events API; fallback to touch + mouse.
-- `[REQ]` `[MUST]` `touch-action` CSS prevents unwanted scroll during grid interaction.
+- `[REQ]` `[MUST]` `touch-action: pan-y` on the grid element — allows vertical page scroll, blocks the browser's default horizontal gesture so horizontal-swipe pane navigation has exclusive control.
 
 ### 18.3 Touch targets
 
-- `[REQ]` `[MUST]` Cells ≥ 24×24 CSS px (WCAG 2.2 AA).
-- `[REC]` Cells ≥ 44×44 CSS px on small viewports.
+- `[REQ]` `[MUST]` Cells ≥ 24×24 CSS px (WCAG 2.2 AA, SC 2.5.8).
+- `[REC]` Cells ≥ 44×44 CSS px on small viewports (`< 600px`; same breakpoint as §18.5 and WCAG 2.2 AAA SC 2.5.5).
 
 ### 18.4 Range selection on mobile
 
 - `[REQ]` `[MUST]` After first tap, show persistent hint ("Select end date") until second tap or close.
 - `[REC]` Default to two-pane layout on mobile for range mode.
+- `[REQ]` `[MUST]` If the user closes the overlay/sheet without a second tap, the first-tap draft is discarded per `persistPartialRange` (default discard); no event is emitted beyond the standard §13.5 `closed` + `selectionCleared({reason: 'user'})` (if the draft existed).
 
 ### 18.5 Responsive full-screen mode
 
-- `[REQ]` `[SHOULD]` Ship responsive full-screen presentation in v1. Input: `mobileMode: 'overlay' | 'fullscreen' | 'bottom-sheet' | 'auto'`. Default: `'auto'`.
-- `[REQ]` `[MUST]` `'auto'` behavior: viewport width `< 600px` at overlay-open time → render as `fullscreen`; otherwise render as standard positioned `overlay`. Breakpoint is measured once per open (no layout thrash mid-open).
+- `[REQ]` `[MUST]` Ship responsive full-screen presentation in v1. Input: `mobileMode: 'overlay' | 'fullscreen' | 'bottom-sheet' | 'auto'`. Default: `'auto'` (per §43 resolved decision).
+- `[REQ]` `[MUST]` `'auto'` behavior: viewport width `< 600px` (measured via `matchMedia('(max-width: 600px)')`) at overlay-open time → render as `fullscreen` by default on mobile OS / `bottom-sheet` where a sheet is conventional; otherwise render as standard positioned `overlay`. Breakpoint is measured once per open (no layout thrash mid-open).
+- `[REQ]` `[MUST]` SSR: `'auto'` always resolves to `overlay` on the server; mobile presentation is a client-only decision made post-hydration (see §14.3, §31.2).
 - `[REQ]` `[MUST]` `'fullscreen'` and `'bottom-sheet'` variants keep the §13 overlay lifecycle (`opening` → `open` → `closing` → `closed`) and the §15.4 dialog a11y contract (`role="dialog"`, `aria-modal="true"`, focus trap, focus return). Only the positioning strategy differs.
 - `[REQ]` `[MUST]` `'fullscreen'` composes with §18.6 iOS safe-area insets and §9.5 virtual-keyboard suppression.
 - `[REQ]` `[MUST]` Each `mobileMode` value covered by §35.2 a11y and §35.5 visual-regression suites.
@@ -1007,20 +1122,30 @@ Focus is re-resolved on:
 ### 19.2 First day of week
 
 - `[REQ]` `[MUST]` Locale-derived default, overridable per instance.
+- `[REQ]` `[MUST]` Fallback when `LOCALE_ID` is unresolvable or unknown to `Intl.Locale`: Monday (`1`); logs a dev-mode warning.
 
 ### 19.3 RTL
 
 - `[REQ]` `[MUST]` Full RTL via CSS logical properties.
-- `[REQ]` `[MUST]` Prev/next buttons swap visually; arrow keys map to logical prev/next, not visual.
+- `[REQ]` `[MUST]` Prev/next buttons swap visually; arrow keys map to logical prev/next, not visual (see §16.1 RTL note).
+- `[REQ]` `[MUST]` Range hover preview in RTL follows the same logical semantics — a "later" date is always to the logical end of the start (visually to the left in RTL).
 
 ### 19.4 CalendarIntl service
 
-- `[REQ]` `[MUST]` All user-visible strings exposed via injectable `CalendarIntl`:
-  - Labels: today, clear, prev month, next month, prev year, next year, choose date, open calendar.
-  - ARIA announcements: "Start date selected", "X days selected".
-  - Plural rules via ICU `plural`.
+- `[REQ]` `[MUST]` All user-visible strings exposed via injectable `CalendarIntl`. Required fields (`CalendarIntlKeys` union):
+  - **Button labels:** today, clear, prev month, next month, prev year, next year, prev decade, next decade, choose date, open calendar, apply (if footer).
+  - **View labels:** month label, year label, decade label (e.g., "2020–2029"), year-view month header a11y name.
+  - **Weekday / month names:** overrides for `Intl.DateTimeFormat` defaults (optional per locale).
+  - **Accessible cell-name template:** `cellAccessibleName(ctx: DayCellContext<D>) => string` (§15.6).
+  - **ARIA announcements:** "Start date selected", "End date selected", "No date selected", "X days selected" (plural), "Selecting — now select end date", "Skipped {N} periods to {destination}" (auto-skip).
+  - **Error messages (§28):** per `CalendarErrorCode`, a consumer-facing message template (optional fallback).
+  - **Parse-error messages:** parse failure for single/multiple/range inputs.
+  - **Keyboard help text (§16.4):** multi-line description of the keyboard contract.
+  - **In-progress template:** "Selecting X, now select end" shown in the live region.
+- `[REQ]` `[MUST]` Fields using ICU `plural`: `"X days selected"`, `"X dates selected"` (multiple mode), `"Skipped {N} periods"`. These are the only plural-marked fields in v1.
+- `[REQ]` `[MUST]` Override semantics: consumers replace **per-field** via merge (not full-bag replacement). Partial overrides inherit the default `CalendarIntl` for unspecified fields.
 - `[REQ]` `[MUST]` Override at any injector level.
-- `[REC]` Ship defaults for English + 5 other major locales (de, fr, es, pt, ja).
+- `[REC]` Ship defaults for English + 5 other major locales (de, fr, es, pt, ja) — per §43 resolved decision.
 
 ### 19.5 Non-Gregorian calendars
 
@@ -1041,32 +1166,52 @@ Focus is re-resolved on:
 
 ```
 today(): D
-create(year: number, month: number, day: number): D
-parse(value: unknown, formats: string[]): D | null
+create(year: number, month: number, day: number): D    // month is 1-based (January = 1)
+parse(value: unknown, formats: string[]): D | null     // returns null on every failure (not an invalid() sentinel)
 format(date: D, format: string): string
-invalid(): D
+invalid(): D                                           // internal sentinel; never surfaced through parse
 isValid(date: D): boolean
-startOfDay(date: D): D                 // normalization for time-aware adapters
+startOfDay(date: D): D                                 // normalization for time-aware adapters
 
 getYear / getMonth / getDate / getDayOfWeek(date: D): number
+// getMonth returns 1-based month number (January = 1)
+// getDayOfWeek returns 0 = Sunday ... 6 = Saturday (ISO day-of-week is NOT used)
+
 getFirstDayOfWeek(): number
 getNumDaysInMonth(date: D): number
 getDaysInWeek(): number
 getDateNames / getMonthNames / getDayOfWeekNames(style): string[]
 
-addYears / addMonths / addDays(date: D, n: number): D
+addYears / addMonths / addDays / addHours / addMinutes(date: D, n: number): D
 compare(a: D, b: D): number
 sameDate / sameMonth / sameYear(a: D, b: D): boolean
+startOfWeek(date: D, firstDayOfWeek?: number): D       // required for Home key in day view
+endOfWeek(date: D, firstDayOfWeek?: number): D         // required for End key in day view
 clone(date: D): D
 
-toIso(date: D): string                 // serialization helper (§7.5)
+// TZ-aware methods (optional; only TZ-aware adapters must implement)
+getTimezone(): string | null                           // IANA zone, or null for floating adapters
+withTimezone(date: D, tz: string): D
+isDST(date: D): boolean
+resolveAmbiguous(date: D, prefer: 'earlier' | 'later'): D
+
+// Serialization helpers (§7.5)
+toIso(date: D): string
 fromIso(iso: string): D | null
 ```
+
+**Conventions pinned:**
+
+- `create(year, month, day)` uses **1-based month** (January = 1). This is the #1 divergence between `Date` (0-based) and Luxon (1-based) adapters; all shipped adapters conform to 1-based.
+- `getDayOfWeek()` returns `0 = Sunday` through `6 = Saturday`. Adapters whose native type uses ISO day-of-week (Monday = 1 … Sunday = 7) must convert.
+- Floating (wall-clock) adapters return `null` from `getTimezone()` and implement TZ-aware methods as no-ops that return the input unchanged. `TZ_OVERRIDE` is ignored (§4.3).
+- `NativeDateAdapter` DST edge: for a skipped-hour date (e.g., 2:30 AM spring-forward), `startOfDay` returns the next valid wall-clock moment (typically 01:00 or the DST transition hour). Tests cover this explicitly (§35.3).
 
 ### 20.3 DateFormats contract
 
 - `[REQ]` `[MUST]` `DateFormats` DI token defines format strings for:
-  - `input`, `display`, `monthLabel`, `yearLabel`, `a11yLabel`, `monthA11yLabel`, `dayA11yLabel`.
+  - `input`, `display`, `monthLabel`, `yearLabel`, `decadeLabel` (e.g., "2020–2029"), `a11yLabel`, `monthA11yLabel`, `dayA11yLabel`, `yearViewMonthA11yLabel`.
+- `[REQ]` `[MUST]` `DateFormats` can be provided two ways — via the DI token OR via the `dateFormats` component input. Input precedence: **component input overrides DI-provided default** for that instance; unspecified fields inherit from DI.
 
 ### 20.4 Shipped adapters
 
@@ -1094,14 +1239,25 @@ Adapters ship as independent secondary entry points so importing one does not pu
         │  EMPTY   │ ─────────▶ │ SELECTING  │ ─────────▶ │ COMPLETE │
         └──────────┘            └────────────┘            └──────────┘
              ▲                         │                        │
-             │     clear / reset       │                        │
-             └─────────────────────────┴────────────────────────┘
-                                          3rd click
+             │   clear() / reset() /   │                        │
+             │   Escape / writeValue   │                        │
+             └─────────────────────────┘                        │
+             ▲                                                  │
+             │                  clear() / reset()               │
+             └──────────────────────────────────────────────────┘
+             ▲                                                  │
+             │                  3rd click (rangeClickBehavior)  │
+             └──────────────────────────────────────────────────┘
 ```
 
 - `[REQ]` `[MUST]` EMPTY: `{ start: null, end: null }`.
 - `[REQ]` `[MUST]` SELECTING: `internalDraftValue = { start: A }`; `externalValue` unchanged.
 - `[REQ]` `[MUST]` COMPLETE: `{ start: A, end: B }`.
+- `[REQ]` `[MUST]` **Complete input set for state transitions** (authoritative; see §8.3 for the fully-ordered table with events):
+  - From EMPTY: click A (→ SELECTING), programmatic `writeValue(complete)` (→ COMPLETE), preset selected (→ COMPLETE), disabled-cell click (no-op), outside click / Escape (no state change).
+  - From SELECTING: click B (→ COMPLETE per happy path); hover (→ SELECTING); Escape (→ EMPTY, discard draft); `clear()` / `reset()` (→ EMPTY); programmatic `writeValue(null)` (→ EMPTY); programmatic `writeValue(complete)` (→ COMPLETE, draft discarded); outside click (→ per `persistPartialRange`: EMPTY with discard, or SELECTING retained); `mode` change / `disabled=true` (→ EMPTY).
+  - From COMPLETE: click C (→ SELECTING or COMPLETE, depending on `rangeClickBehavior` — §21.3); `clear()` / `reset()` (→ EMPTY); programmatic `writeValue(null)` (→ EMPTY); preset selected (→ COMPLETE); mode change (→ EMPTY).
+- `[REQ]` `[MUST]` `rangePreview` fires on BOTH pointer hover AND keyboard arrow-key focus movement during SELECTING. Keyboard navigation through cells produces `rangePreview` events identical to pointer hover.
 
 ### 21.2 Happy path
 
@@ -1155,14 +1311,16 @@ See §30 for full ordering. Transitions emit:
 | Transition | Event | Payload |
 |---|---|---|
 | EMPTY → SELECTING | `selectionStart` | `{ start: D }` |
-| SELECTING hover/focus | `rangePreview` | `{ start: D, tentativeEnd: D }` |
-| SELECTING → COMPLETE | `selectionComplete` | `{ start: D, end: D }` |
-| **Any → SELECTING with a new `start`, while a prior `start` or COMPLETE range existed** | `selectionRestart` | `{ start: D }` |
-| COMPLETE → COMPLETE via `nearest-edge` (one-click endpoint swap) | `selectionComplete` | `{ start: D, end: D }` |
-| any → EMPTY | `selectionCleared` | `void` |
+| SELECTING hover/focus | `rangePreview` | `{ tentativeRange: { start: D, end: D }, invalidPreview: boolean }` (normalized so `start ≤ end` regardless of hover direction; `invalidPreview: true` when the preview crosses a disabled cell and `disableRangesCrossingDisabledDates=true`, or violates length constraints) |
+| SELECTING → COMPLETE | `selectionComplete` | `{ value: { start: D, end: D }, reason: 'commit' \| 'auto-swap' }` |
+| **Any → SELECTING with a new `start`, while a prior `start` or COMPLETE range existed** | `selectionRestart` | `{ start: D }` — `start` is the **newly-clicked** date (new draft start) |
+| COMPLETE → COMPLETE via `nearest-edge` (one-click endpoint swap) | `selectionComplete` | `{ value: { start: D, end: D }, reason: 'nearest-edge' }` |
+| any → EMPTY | `selectionCleared` | `{ reason: 'user' \| 'programmatic' \| 'mode-change' \| 'reset' \| 'disabled' }` |
 | any state change | `valueChange` | `CalendarValue<M, D>` |
 
 `selectionRestart` applies to both **COMPLETE → SELECTING** (3rd-click restart with `rangeClickBehavior='restart'`) and **SELECTING → SELECTING** (backward click with `allowBackwardRange=false`). The common semantic: a previous start/range is being abandoned in favor of a new start. Consumers distinguish the two cases by reading `selectionState` at emission time if needed.
+
+**Auto-swap path does NOT emit `selectionRestart`.** A backward click with `allowBackwardRange=true` goes directly SELECTING → COMPLETE with a swapped payload; the event is `selectionComplete` (not `selectionRestart`). Consumers reading `reason: 'auto-swap'` can detect this path.
 
 ### 21.6 Visual cell states
 
@@ -1191,7 +1349,7 @@ See §30 for full ordering. Transitions emit:
 ### 22.1 Selection and view are orthogonal
 
 - `[REQ]` `[MUST]` View state is independent of selection state.
-- `[REQ]` `[MUST]` Switching views **never** mutates `externalValue` (exception: `rangeGranularity` ≠ 'day', §22.5).
+- `[REQ]` `[MUST]` Switching views **never** mutates `externalValue`. The only path that mutates value from within a non-day view is a **click** on a month/year cell under `rangeGranularity` ≠ `'day'` — that is a click commit, not a view switch (see §22.4/§22.5 for the (granularity × view × state) matrix).
 
 ### 22.2 Mid-SELECTING view switch
 
@@ -1206,15 +1364,25 @@ See §30 for full ordering. Transitions emit:
   - Target month between `start` and `end` → focus day 1.
   - Target month before `start` or after `end` → focus day 1.
   - No selection → focus `adapter.today()` if in month, else day 1.
-- `[REQ]` `[MUST]` **Disabled-date fallback:** after applying the rule above, if the resolved target date is disabled, apply §17.2 row 9 semantics — focus the nearest enabled date in the same month. If the entire month is disabled, §12.6 empty-state rules apply.
+- `[REQ]` `[MUST]` **Disabled-date fallback:** after applying the rule above, if the resolved target date is disabled, apply the §17.2 **"Constraint change"** row semantics — focus the nearest enabled date in the same month. If the entire month is disabled, §12.6 empty-state rules apply.
 
 ### 22.4 Month-view click during SELECTING
 
-- `[REQ]` `[MUST]` Always navigation (drill-down), never commit — unless §22.5.
+- `[REQ]` `[MUST]` The action is determined by the **(granularity × view × state)** matrix:
+
+| `rangeGranularity` | View | State | Month-cell click |
+|---|---|---|---|
+| `'day'` | month | any | Drill-down (navigate to day view of that month) |
+| `'month'` | month | EMPTY | Commit first click (→ SELECTING) |
+| `'month'` | month | SELECTING | Commit second click (→ COMPLETE) |
+| `'month'` | month | COMPLETE | Per `rangeClickBehavior` (restart / nearest-edge / require-clear) |
+| `'year'` | month | any | Drill-down (navigate to day view of that month) — year granularity commits at year view |
+| `'day'` | year | any | Drill-down to month view of that year |
+| `'year'` | year | EMPTY / SELECTING / COMPLETE | Commit per state (analogous to month-level commit row) |
 
 ### 22.5 Granularity-based selection
 
-- `[REQ]` `[SHOULD]` `rangeGranularity: 'day' | 'month' | 'year'`.
+- `[REQ]` `[SHOULD]` `rangeGranularity: 'day' | 'month' | 'year'`. Mixed-granularity composites (e.g., month start + day end) are NOT supported in v1.
 - `[REQ]` `[MUST]` At `month`: month clicks commit; range snaps to first-of-month-A → last-of-month-B.
 - `[REQ]` `[MUST]` At `year`: year clicks commit; range snaps to full years.
 - `[REQ]` `[MUST]` `startView` defaults to match granularity.
@@ -1237,18 +1405,22 @@ See §30 for full ordering. Transitions emit:
 ### 23.2 Navigation models
 
 - `[REQ]` `[MUST]` Linked panes (default): panes consecutive; next/prev shifts all.
-- `[REC]` `[COULD]` Independent panes: opt-in via `independentMonthNavigation: true`.
+- `[REC]` `[COULD]` Independent panes: opt-in via `independentMonthNavigation: boolean`. Default `false`.
 
 ### 23.3 Navigation step
 
-- `[REQ]` `[MUST]` `navigationStep: 'single' | 'page'`.
-- `[REC]` Default: `'single'`.
+- `[REQ]` `[MUST]` `navigationStep: 'single' | 'page'`. Default: `'single'`.
+- `[REQ]` `[MUST]` Semantics:
+  - `'single'` + linked panes: advance by **1 period** (e.g., Jan/Feb/Mar → Feb/Mar/Apr).
+  - `'single'` + independent panes: advance **the focused pane** by 1; other panes unchanged.
+  - `'page'` + linked panes: advance by **`numberOfMonths` periods** (Jan/Feb/Mar → Apr/May/Jun).
+  - `'page'` + independent panes: advance the focused pane by `numberOfMonths` periods.
 
 ### 23.4 Year view (12-month)
 
 - `[REQ]` `[MUST]` Supported via `numberOfMonths: 12, monthLayout: 'grid'`.
 - `[REQ]` `[MUST]` `monthPaneDensity: 'full' | 'compact' | 'name-only'`.
-- `[REQ]` `[MUST]` `full` density at 12 panes uses virtual rendering.
+- `[REQ]` `[MUST]` `full` density at 12 panes renders all 12 panes as independent OnPush change-detection islands (each pane only dirties when its own inputs change). CDK virtual scroll is **not** used — see §32.3 for the rationale. "Virtualization" in this context means per-pane CD isolation, not windowed DOM rendering.
 
 ### 23.5 Responsive
 
@@ -1283,11 +1455,14 @@ type DayCellContext<D, T = unknown> = {
   isRangeEnd: boolean;
   isInRange: boolean;
   isInRangePreview: boolean;
+  isRangePreviewStart: boolean;
+  isRangePreviewEnd: boolean;
   isInvalidPreview: boolean;
   isDisabled: boolean;
   isOutOfMonth: boolean;
   isFocused: boolean;
   isWeekend: boolean;
+  badge: BadgeConfig | null;
   data?: T;
 };
 ```
@@ -1296,13 +1471,14 @@ type DayCellContext<D, T = unknown> = {
 
 - `[REQ]` `[MUST]` `dayData: Map<string, T>` keyed by ISO date.
 - `[REQ]` `[MUST]` `dayDataFn: (date: D) => T | undefined` alternative.
+- `[REQ]` `[MUST]` **Precedence when both are supplied:** `dayData` map takes precedence for any date it contains a key for; `dayDataFn` is the fallback for unmapped dates.
 - `[REQ]` `[MUST]` Indexed once per data change.
 
 ### 24.3 Customization layers
 
 **Layer 1 — Badges**
 - `[REQ]` `[MUST]` `dayBadge: (date: D, data?: T) => BadgeConfig | null`.
-- `[REQ]` `[MUST]` `BadgeConfig: { count?: number; dot?: boolean; color?: string; label?: string }` — label is **text only**.
+- `[REQ]` `[MUST]` `BadgeConfig: { count?: number; dot?: boolean; color?: TwColor; label?: string }` — label is **text only**. `color` is a semantic token name (`'info' | 'success' | 'warning' | 'error' | 'primary' | 'secondary' | 'accent' | 'neutral'`), not a raw Tailwind palette color or arbitrary CSS color. See `ngx-tw/core` `TwColor` for the union.
 - `[REQ]` `[MUST]` Rendered in conventional position; consumer-themeable.
 
 **Layer 2 — Cell template**
@@ -1331,29 +1507,50 @@ type CalendarPreset<D> = {
   label: string;
   value: CalendarRangeValue<D> | (() => CalendarRangeValue<D>);
   group?: string;
-  disabled?: boolean | ((ctx: { minDate?: D; maxDate?: D }) => boolean);
+  disabled?: boolean | ((ctx: PresetDisabledContext<D>) => boolean);
+};
+
+type PresetDisabledContext<D> = {
+  minDate: D | null;
+  maxDate: D | null;
+  disabledDates: D[] | DateFilterFn<D> | null;
+  disabledDaysOfWeek: number[];
+  dateFilter: DateFilterFn<D> | null;
+  adapter: DateAdapter<D>;
 };
 
 type PresetGroup = { id: string; label: string };
 ```
 
+- `[REQ]` `[MUST]` `PresetDisabledContext` exposes the full constraint surface so a predicate can decide independently whether its computed range is reachable. The `adapter` handle is provided so the predicate can use `sameDate` / `compare` / `addDays` without hard-coding `Date` arithmetic.
+- `[REQ]` `[MUST]` `PresetGroup` has no generic parameter — it carries no date-typed fields. (Corrected from earlier drafts that declared `PresetGroup<D>`.)
+
 ### 25.2 Behavior
 
 - `[REQ]` `[MUST]` Preset selection writes directly to COMPLETE; bypasses click flow.
 - `[REQ]` `[MUST]` Overlay closes (overlay mode) unless `closeOnPresetSelect: false`.
-- `[REQ]` `[MUST]` Calendar scrolls/navigates to show preset range after selection.
-- `[REQ]` `[MUST]` Presets honor `minDate`/`maxDate`/`disabledDates` per `presetViolationBehavior`.
+- `[REQ]` `[MUST]` When `closeOnPresetSelect: false` and the user makes a subsequent manual selection (day/month cell click), `selectedPresetId` is cleared (emits `presetChange(null)` per §8.3). The manually-selected value takes precedence.
+- `[REQ]` `[MUST]` **Post-selection navigation:**
+  - Single-pane layout: navigate so the month containing `preset.value.start` is displayed.
+  - Multi-month linked layout: navigate so `preset.value.start` lands in the **first** rendered pane; subsequent panes follow the linked-sequence (`start`, `start+1 month`, …). If the preset's `end` falls past the last rendered pane, no additional navigation happens — the user scrolls / navigates from there.
+  - Multi-month independent layout (`independentMonthNavigation: true`): only the focused pane navigates; others are left unchanged.
+  - `monthChange` (or the view-appropriate equivalent) fires exactly once per navigation, after `valueChange` and before the overlay-close sequence.
+- `[REQ]` `[MUST]` Presets honor `minDate`/`maxDate`/`disabledDates`/`disabledDaysOfWeek`/`dateFilter` per `presetViolationBehavior: 'disable' | 'hide' | 'warn'`.
+  - `'disable'` — the preset is rendered but non-interactive; attributed `data-state-preset-invalid`; `aria-disabled="true"`.
+  - `'hide'` — the preset is removed from the list; no ARIA exposure.
+  - `'warn'` — the preset is rendered as interactive; clicking it commits the (still-invalid) value and marks the control invalid per §10.2; a dev-mode warning logs once per preset per constraint change.
 - `[REC]` Default: `'disable'`.
+- `[REQ]` `[MUST]` In v1, presets are **range-only** — `CalendarPreset<D>` carries a `CalendarRangeValue<D>`. Consumers using presets in `single` or `multiple` mode get a dev-mode warning; presets are not rendered.
 
 ### 25.3 Accessibility
 
-- `[REQ]` `[MUST]` `role="list"` or `role="menu"`.
+- `[REQ]` `[MUST]` `role="listbox"` with single-select semantics (`aria-activedescendant`-free roving-tabindex model matching the grid pattern).
 - `[REQ]` `[MUST]` Keyboard: Tab in, Arrow within, Enter to select.
 - `[REQ]` `[MUST]` Accessible name includes computed range ("Last 7 days, April 17 to April 24").
 
 ### 25.4 Custom preset option
 
-- `[REC]` Convention: `'custom'`-flagged preset focuses the calendar grid rather than writing a value.
+- `[REC]` Convention: `'custom'`-flagged preset focuses the calendar grid rather than writing a value. Focus target resolves to `adapter.today()` if within constraints, else the first enabled date in the current view.
 
 ### 25.5 Layout
 
@@ -1378,6 +1575,8 @@ type PresetGroup = { id: string; label: string };
   - `calendarCrossFieldRange(startCtrl, endCtrl)`: enforces end ≥ start at parent group level.
   - `calendarCrossFieldRangeLength(startCtrl, endCtrl, min, max)`.
 - `[REC]` Recipe documented for FormGroup and Signal Forms.
+
+> **Note on state semantics.** The §21 SELECTING state machine is a single-control concept. When range selection is split across two independent `FormControl`s, there is no SELECTING state at the form level — each control is updated independently. Cross-field validators run after each individual commit, and invalid-intermediate states (e.g., only `startDate` filled) surface as validator errors on the parent group rather than as calendar-internal state.
 
 ### 26.2 Single range value in a FormGroup
 
@@ -1412,6 +1611,7 @@ type PresetGroup = { id: string; label: string };
 
 - `[REQ]` `[MUST]` No inline styles injected by JS; no `eval`; no `new Function`.
 - `[REQ]` `[MUST]` Compatible with `style-src 'self'` and `script-src 'self'`.
+- `[REQ]` `[MUST]` Reference policy tested in CI: `default-src 'self'; style-src 'self'; script-src 'self'; img-src 'self' data:; font-src 'self'`. Nonce-based policies (`style-src 'nonce-XYZ'`) are supported — the component does not inject any `<style>` elements at runtime.
 
 ### 27.4 Data boundaries
 
@@ -1436,7 +1636,10 @@ Forms vary radically in how they present errors (inline below field, tooltip, su
 ### 28.3 Information exposed for consumer error UI
 
 - `[REQ]` `[MUST]` Typed error codes with structured payloads (§10.2).
-- `[REQ]` `[MUST]` `aria-invalid="true"` on trigger/grid root when invalid.
+- `[REQ]` `[MUST]` `aria-invalid="true"` is applied when the control is invalid. The host for the attribute depends on `interaction`:
+  - `interaction: 'overlay'` → on the trigger element (button/input bound via `CalendarInputDirective`).
+  - `interaction: 'inline'` → on the grid root (`role="grid"` element).
+  - When both a text input (via `CalendarInputDirective`) and an inline calendar share a `CalendarCoordinator` (§9.1), both elements receive `aria-invalid="true"` so screen readers reading either context announce the invalid state.
 - `[REQ]` `[MUST]` `errorAriaDescribedBy: string` input links to a consumer-provided error element via `aria-describedby`.
 - `[REQ]` `[MUST]` Error codes stable and documented so consumers can i18n them.
 - `[REQ]` `[MUST]` `aria-describedby` composition: when both `errorAriaDescribedBy` and the component's own keyboard-help element (§16.4) produce IDs, the component composes them as a space-separated list (`aria-describedby="keyboardHelpId errorId"`). Consumer-provided IDs always come last so they override in announcement order.
@@ -1464,13 +1667,25 @@ These are **presentational affordances** for the active interaction, not validat
 
 ### 29.1 Dev-mode warnings
 
-- `[REQ]` `[MUST]` Emit `console.warn` for:
+- `[REQ]` `[MUST]` Emit `console.warn` for (non-exhaustive — additional conditions are called out inline at their source section):
   - `minDate > maxDate`.
   - `value` shape mismatched with `mode`.
   - `numberOfMonths < 1`.
   - `maxRangeLength < minRangeLength`.
   - `disabledDaysOfWeek` invalid values.
   - Unknown `rangeClickBehavior` string.
+  - `LOCALE_ID` unresolvable / unknown to `Intl.Locale` (§19.2; falls back to Monday).
+  - `TZ_OVERRIDE` token or `timezone` input set on a floating adapter (§4.3).
+  - `stateId` collision within the same `CalendarCoordinator` scope (§8.6; second instance wins).
+  - Consumer predicate (`dateFilter`, `dayDataFn`, `dayBadge`, cell disabled predicate) throws — fail-safe disables the cell (§27.2).
+  - Consumer predicate exceeds the 200 µs / cell P95 threshold on Moto G4 (§32.5), logged once per render pass.
+  - Full render pass exceeds §32.2 budget by ≥ 50% (§32.5).
+  - Presets supplied in `single` / `multiple` mode (§25.2) — presets are range-only in v1.
+  - `valueTransformer.toForm` or `fromForm` throws (§7.6).
+  - `presetViolationBehavior: 'warn'` — one log per preset per constraint change (§25.2).
+  - Runtime `interaction` mode change when the implementation does not support it (§11.8).
+  - Runtime adapter change attempted (§11.7).
+  - Deprecated-symbol usage (§38.2, once per session).
 
 ### 29.2 Production behavior
 
@@ -1501,10 +1716,11 @@ Events fire in a specified order for each user action. Consumers may rely on thi
 
 **Single mode — click date**
 ```
-activeDateChange (if focus moved)
+activeDateChange (always emitted when click resolves to a cell, even if the clicked cell is already active)
 → valueChange
 → selectionComplete
 → (closed, if overlay + closeOnSelect)
+→ (onTouched, if overlay + closeOnSelect + user-initiated)
 ```
 
 **Multiple mode — click date to add**
@@ -1536,9 +1752,20 @@ rangePreview
 ```
 activeDateChange
 → valueChange
-→ selectionComplete
+→ selectionComplete ({reason: 'commit'})
 → (closed, if overlay + closeOnSelect)
+→ (onTouched, if overlay + closeOnSelect + user-initiated)
 ```
+
+**Range mode — backward click with auto-swap (SELECTING → COMPLETE)**
+```
+activeDateChange
+→ valueChange
+→ selectionComplete ({reason: 'auto-swap'})
+→ (closed, if overlay + closeOnSelect)
+→ (onTouched, if overlay + closeOnSelect + user-initiated)
+```
+(No `selectionRestart` fires on the auto-swap path. Consumers detecting swap use the `reason` field on `selectionComplete`.)
 
 **Range mode — third click, restart (COMPLETE → SELECTING)**
 ```
@@ -1555,8 +1782,29 @@ opened
 
 **Overlay close via Escape / outside click, draft discarded**
 ```
-(selectionCleared, if discarding a SELECTING draft)
+(selectionCleared ({reason: 'user'}), if discarding a SELECTING draft)
 → closed
+→ onTouched
+```
+
+**Overlay close via `disabled=true` flip**
+```
+(selectionCleared ({reason: 'disabled'}), if was SELECTING)
+→ closed
+```
+(No `onTouched`. Programmatic trigger — per §13.6.)
+
+**Overlay close via form reset (§6.5)**
+```
+(selectionCleared ({reason: 'reset'}), if had value)
+→ closed
+```
+(No `onTouched`. No component-emitted `valueChange` — the form owns the write.)
+
+**Programmatic `writeValue` from form during SELECTING (§11.1)**
+```
+selectionCleared ({reason: 'programmatic'})
+→ (form's valueChanges propagates the new value)
 ```
 
 **Programmatic `writeValue` from form**
@@ -1581,8 +1829,8 @@ monthChange
 ### 30.3 Form-level ordering
 
 - `[REQ]` `[MUST]` `valueChange` fires **before** `selectionComplete`, so consumers subscribing to either see consistent state.
-- `[REQ]` `[MUST]` `(ngModelChange)` / `FormControl.valueChanges` fire **after** `valueChange` in the same microtask (native Angular form propagation).
-- `[REQ]` `[MUST]` `touched` emission at overlay close or blur, never interleaved with `valueChange`.
+- `[REQ]` `[MUST]` `(ngModelChange)` / `FormControl.valueChanges` / Signal Forms `field.value()` updates all fire **after** the component's `valueChange` output, in the same microtask (native Angular form propagation). The three form strategies are observationally identical in ordering.
+- `[REQ]` `[MUST]` `touched` / `onTouched` emission at overlay close or blur, never interleaved with `valueChange`. Specifically: in any sequence ending in `closed` due to a user action, `onTouched` fires **after** `closed` (see §13.4 step 11). `onTouched` is suppressed for programmatic closes, `disabled=true` flips, form resets, adapter changes, and trigger unmounts (§13.5).
 
 ### 30.4 Coalescing
 
@@ -1600,9 +1848,9 @@ monthChange
 
 ### 31.2 Hydration
 
-- `[REQ]` `[MUST]` No DOM mismatch warnings when server TZ differs from client.
-- `[REQ]` `[MUST]` "Today" marker may re-render after hydration if client differs; no warning.
-- `[REQ]` `[MUST]` Overlay closed by default on hydration regardless of server-rendered state.
+- `[REQ]` `[MUST]` No DOM mismatch warnings when server TZ differs from client. Achieved by rendering every cell's text content as the date label (`1`, `2`, ...) — never "today" — so server and client DOM text is identical regardless of `adapter.today()`.
+- `[REQ]` `[MUST]` "Today" marker (CSS class + `aria-current="date"`) re-evaluated in an `afterNextRender` hook; if the client-side result differs from the server snapshot, the decoration is swapped silently (no event, no full re-render). See §4.3.
+- `[REQ]` `[MUST]` Overlay DOM is **not** rendered on the server regardless of consumer binding. `overlayState` signal defaults to `'closed'` on server; any `open=true` binding is honored only client-side post-hydration to avoid state-shape mismatch.
 
 ### 31.3 Focus management
 
@@ -1619,18 +1867,22 @@ monthChange
 
 ### 32.1 Bundle size budgets (enforced at build)
 
-- `[REQ]` `[MUST]` Core + `NativeDateAdapter`, gzipped: ≤ **35 KB**.
+- `[REQ]` `[MUST]` Core + `NativeDateAdapter`, gzipped: ≤ **35 KB** (also measured as brotli: ≤ **30 KB** — reported alongside gzip).
 - `[REQ]` `[MUST]` Core without adapter, gzipped: ≤ **25 KB**.
 - `[REQ]` `[MUST]` Tree-shakable: importing the component must not pull Luxon/date-fns adapters.
+- `[REQ]` `[MUST]` Measurement tooling: `@angular/build` `--stats-json` post-processed by `source-map-explorer`; CI gate compares against the last release baseline. Brotli figures from `brotli -q 11`.
 
 ### 32.2 Runtime budgets (mid-range mobile, Moto G4-class)
 
+- `[REQ]` `[MUST]` Measurement methodology: Chrome DevTools **4× CPU throttle**, **Fast 3G** network throttle, Lighthouse-equivalent rendering pipeline. All budgets are **P95** over 20 sequential renders with cache warm.
 - `[REQ]` `[MUST]` First render single-month day view: ≤ **50 ms** (P95).
 - `[REQ]` `[MUST]` First render 12-pane year view: ≤ **200 ms** (P95).
 - `[REQ]` `[MUST]` Cell click → visual feedback: ≤ **16 ms** (1 frame).
 - `[REQ]` `[MUST]` Hover preview update: ≤ **16 ms**.
 - `[REQ]` `[MUST]` Programmatic value change → DOM update: ≤ **50 ms**.
 - `[REQ]` `[MUST]` `dayData` update re-render: ≤ **50 ms** (1 month), ≤ **200 ms** (12 months).
+- `[REQ]` `[MUST]` Constraint change (minDate / maxDate / disabledDates / dateFilter reference update) → revalidation + cell re-style + focus re-resolution: ≤ **50 ms** (1 month), ≤ **200 ms** (12 months).
+- `[REQ]` `[MUST]` `disabled=true` flip with open overlay → overlay force-close + draft discard + event emit: ≤ **32 ms** (2 frames).
 
 ### 32.3 Implementation requirements
 
@@ -1639,13 +1891,14 @@ monthChange
 - `[REQ]` `[MUST]` Each month pane is an OnPush child; updating one pane does not dirty others.
 - `[REQ]` `[MUST]` Month matrices memoized by `(year, month, firstDayOfWeek, locale)`.
 - `[REQ]` `[MUST]` `dayData` indexed by ISO-date key once per data change.
-- `[REQ]` `[MUST]` 12-pane year view at `full` density uses CDK virtual scroll.
+- `[REQ]` `[MUST]` 12-pane year view at `full` density renders all 12 panes with OnPush children (each pane is its own CD island); this is what §23.4 refers to as "virtual rendering" — isolation of change detection, not windowed DOM rendering. CDK virtual scroll is **not** used — the grid is small enough that windowed virtualization would add overhead without benefit. Larger custom grids (e.g., multi-year agendas built on top of the adapter) may add their own virtualization.
 - `[REQ]` `[MUST]` No `setInterval` for "today" refresh.
 
 ### 32.4 Measurement
 
 - `[REQ]` `[MUST]` Budgets enforced in CI via automated benchmarks.
 - `[REQ]` `[MUST]` Regressions block merge.
+- `[REQ]` `[MUST]` Benchmark methodology documented in §39.1 so consumers can reproduce.
 
 ### 32.5 Dynamic data & consumer predicate performance
 
@@ -1653,7 +1906,7 @@ monthChange
 - `[REQ]` `[MUST]` Internal memoization by (date, predicate reference identity) — stable predicate references yield cache hits across re-renders.
 - `[REQ]` `[MUST]` `dayData` map read once per render pass; O(1) lookup by ISO-date key.
 - `[REC]` Consumers pass stable predicate references (avoid inline arrow functions). Documented with `computed()` example in Signals.
-- `[REQ]` `[MUST]` Dev-mode warning: if a single predicate call exceeds **1 ms**, log once per render pass with predicate name and cell count.
+- `[REQ]` `[MUST]` Dev-mode warning: if a single predicate call exceeds **200 µs** at P95 on Moto G4, log once per render pass with predicate source-snippet and cell count. (Rationale: with ≈42 cells × 4 predicates = 168 slots per render, 1 ms/slot would blow the 50 ms first-render budget many times over. 200 µs leaves headroom.)
 - `[REQ]` `[MUST]` Dev-mode warning: if a full render pass exceeds §32.2 budget by 50%, log with diagnostic breakdown (time per predicate, per pane, per phase).
 
 ---
@@ -1665,6 +1918,8 @@ All inputs use `input()` / `input.required()` (Angular 17.2+). All outputs use `
 ### 33.1 Inputs
 
 Every input lists its TypeScript type and default value. `D` is the adapter date type. `M` is the mode generic.
+
+> **Scope note.** Most rows below apply to `CalendarComponent`. The "Text input" table and rows explicitly labeled so (e.g., `virtualKeyboard`) apply to `CalendarInputDirective` instead — they are valid only when the directive is used to compose a text input with the calendar (§9.1, §9.5). Rows without a scope hint apply to the component.
 
 **Selection**
 | Input | Type | Default |
@@ -1682,7 +1937,7 @@ Every input lists its TypeScript type and default value. `D` is the adapter date
 | `minRangeLength` | `number` | `1` |
 | `maxRangeLength` | `number` | `Infinity` |
 | `disableRangesCrossingDisabledDates` | `boolean` | `false` |
-| `blockInvalidRangeCommit` | `boolean` | `false` |
+| `blockInvalidRangeCommit` | `boolean` | `false` · `[REC] [COULD]` v1.1 (per §43 resolved decision #5) |
 | `rangeGranularity` | `RangeGranularity` | `'day'` |
 
 **Constraints**
@@ -1713,15 +1968,15 @@ Every input lists its TypeScript type and default value. `D` is the adapter date
 | `yearsPerPage` | `number` | `20` |
 | `showTodayButton` | `boolean` | `false` |
 | `showClearButton` | `boolean` | `false` |
-| `navigationBoundaryLookahead` | `number` | `24` |
-| `autoSkipEmptyPeriods` | `boolean` | `false` |
+| `navigationBoundaryLookahead` | `number` | `24` · resolved per §43 decision #7 |
+| `autoSkipEmptyPeriods` | `boolean` | `false` · `[REC]`, resolved per §43 decision #6 |
 
 **Presets**
 | Input | Type | Default |
 |---|---|---|
 | `presets` | `CalendarPreset<D>[]` | `[]` |
 | `presetGroups` | `PresetGroup[]` | `[]` |
-| `presetViolationBehavior` | `'disable' \| 'truncate' \| 'allow'` | `'disable'` |
+| `presetViolationBehavior` | `'disable' \| 'hide' \| 'warn'` | `'disable'` · semantics per §25.2 |
 | `closeOnPresetSelect` | `boolean` | `true` |
 
 **Behavior**
@@ -1733,8 +1988,12 @@ Every input lists its TypeScript type and default value. `D` is the adapter date
 | `closeOnSelect` | `boolean` | `true` |
 | `closeOnModeChange` | `boolean` | `true` |
 | `appendTo` | `'host' \| 'body' \| ElementRef` | `'body'` |
-| `mobileMode` | `MobileMode` | `'auto'` |
+| `mobileMode` | `MobileMode` | `'auto'` · `[REQ] [MUST]` v1 (§14.3, §18.5) |
 | `resetBehavior` | `ResetBehavior` | `'full'` |
+| `interaction` | `'inline' \| 'overlay'` | `'overlay'` · runtime change per §11.8 |
+| `multipleSeparator` | `string` | `','` · separator for multi-mode text input (§9.2.1) |
+| `rangeSeparator` | `string` | `' – '` · separator for single-input range text entry (§9.2.1); whitespace trimmed around each endpoint on parse |
+| `timezone` | `string \| null` | `null` · per-instance TZ override (TZ-aware adapters only; §4.2, §4.3). Overrides the `TZ_OVERRIDE` DI token for this component instance. |
 
 Where `MobileMode = 'overlay' \| 'fullscreen' \| 'bottom-sheet' \| 'auto'` and `ResetBehavior = 'full' \| 'value-only'`.
 
@@ -1746,12 +2005,14 @@ Where `MobileMode = 'overlay' \| 'fullscreen' \| 'bottom-sheet' \| 'auto'` and `
 **Persistence & Serialization**
 | Input | Type | Default |
 |---|---|---|
-| `valueTransformer` | `CalendarValueTransformer<M, D, any> \| null` | `null` (identity, D ↔ D) |
-| `stateId` | `string \| null` | `null` |
+| `valueTransformer` | `CalendarValueTransformer<M, D, TOut> \| null` | `null` (identity, D ↔ D) · `[REQ] [SHOULD]` v1; `[MUST]`-promotion tracked as §43 open decision #2 |
+| `stateId` | `string \| null` | `null` · `[REC] [COULD]` (§8.6) |
 
-*Note on `valueTransformer` generics:* The component itself is declared `CalendarComponent<M extends CalendarMode = 'single', D = Date>`. The transformer's output type (`TOut`) is inferred from the bound transformer instance, not added as a third component generic. Signal Forms directives (§7.3) expose `TOut` as a directive generic.
+*Note on `valueTransformer` generics:* The component is declared `CalendarComponent<M extends CalendarMode = 'single', D = Date, TOut = CalendarValue<M, D>>` (§7.3). `TOut` is exposed as the third generic so Signal Forms directives can reparameterize `Field<TOut>` when a transformer is present. The public `valueChange` output always emits `CalendarValue<M, D>` — see §7.6 for the transformer's role at the CVA boundary.
 
 *Note on `persistentStateId`:* the `localStorage`-backed counterpart of `stateId` is **not** part of the v1 input surface. Deferred to v1.1+ per §8.6 and §42.2. Consumers needing cross-session persistence in v1 must serialize `externalValue` themselves at the form boundary.
+
+*Note on `adapter`:* the `DateAdapter` is **not a component input**. Provide it via DI at the injector scope (`{ provide: DateAdapter, useClass: LuxonDateAdapter }`), typically at app or route level. This keeps the adapter constant for the component's lifetime (§11.7).
 
 **Accessibility**
 | Input | Type | Default |
@@ -1762,8 +2023,8 @@ Where `MobileMode = 'overlay' \| 'fullscreen' \| 'bottom-sheet' \| 'auto'` and `
 | Input | Type | Default |
 |---|---|---|
 | `locale` | `string` | `LOCALE_ID` |
-| `intl` | `Partial<CalendarIntl>` | `{}` |
-| `dateFormats` | `Partial<DateFormats>` | `{}` |
+| `intl` | `Partial<CalendarIntl>` | `{}` · per-field merge override; unspecified fields inherit the DI-provided defaults (§19.4) |
+| `dateFormats` | `Partial<DateFormats>` | `{}` · component input overrides DI-provided `DateFormats` token for that instance; unspecified fields inherit from DI (§20.3) |
 
 **Customization**
 | Input | Type | Default |
@@ -1791,20 +2052,20 @@ All outputs use `output<T>()` returning `OutputEmitterRef<T>`. Consumers subscri
 
 | Output | Payload type |
 |---|---|
-| `valueChange` | `CalendarValue<M, D>` (or `TOut` when `valueTransformer` set) |
+| `valueChange` | `CalendarValue<M, D>` — always untransformed (see §7.6 for transformer contract) |
 | `selectionStart` | `{ start: D }` |
-| `rangePreview` | `{ start: D; tentativeEnd: D }` |
-| `selectionComplete` | `CalendarValue<M, D>` |
-| `selectionRestart` | `{ start: D }` |
-| `selectionCleared` | `void` |
+| `rangePreview` | `{ tentativeRange: { start: D; end: D }; invalidPreview: boolean }` |
+| `selectionComplete` | `{ value: CalendarValue<M, D>; reason: 'commit' \| 'auto-swap' \| 'nearest-edge' \| 'preset' }` |
+| `selectionRestart` | `{ start: D }` — `start` is the newly-clicked date |
+| `selectionCleared` | `{ reason: 'user' \| 'programmatic' \| 'mode-change' \| 'reset' \| 'disabled' }` |
 | `selectionLimitReached` | `{ limit: number; attempted: D }` |
+| `presetChange` | `string \| null` — fires whenever `selectedPresetId` changes |
 | `viewChange` | `{ from: CalendarViewState; to: CalendarViewState; reason: 'user' \| 'programmatic' \| 'drill-down' \| 'drill-up' }` |
 | `activeDateChange` | `D` |
 | `monthChange` | `{ year: number; month: number }` |
 | `yearChange` | `{ year: number }` |
 | `opened` | `void` |
 | `closed` | `void` |
-| `overlayStateChange` | `CalendarOverlayState` |
 | `cellClick` | `{ date: D; event: PointerEvent }` — analytics only |
 | `cellHover` | `{ date: D }` — analytics only |
 | `renderedMonthsCount` | `number` |
@@ -1812,9 +2073,12 @@ All outputs use `output<T>()` returning `OutputEmitterRef<T>`. Consumers subscri
 
 **Naming convention:**
 - Internal selection clicks do not emit `cellClick`. `cellClick` is analytics only.
-- `activeDateChange` is the single source of truth for focus movement. `cellFocus` does not exist.
+- `activeDateChange` is the single source of truth for focus movement. `cellFocus` does not exist. `activeDateChange` fires whenever the active-cell target resolves to a new cell, including first click on an already-focused cell (semantic "activate", not a signal-equality check).
 - `monthChange` / `yearChange` fire only when the displayed period changes, not on view drill.
-- `selectedPresetId` is **not** an output — it is a readonly signal (§33.3). Consumers read it reactively.
+- `selectedPresetId` is exposed both as a **readonly signal** (§33.3) for reactive reads AND as a `presetChange` output for imperative consumers.
+- `overlayStateChange` output is **NOT** provided. Consumers observe the `overlayState` signal (§33.3) via `effect()` or template binding — signals are the canonical Angular v21 pattern and exposing both would duplicate the emission surface.
+- `onTouched` is the CVA callback (registered via `registerOnTouched`), not a public output. Consumers observing touched state use the form control's `touched` signal (Signal Forms) or `AbstractControl.touched` (Reactive / Template-driven).
+- Parse errors are surfaced through the form control's `errors` object (`calendarParseError`), not a dedicated output.
 
 ### 33.3 Readonly signals (public)
 
@@ -1822,12 +2086,13 @@ Exposed as component properties for direct reactive consumption (templates, `com
 
 | Signal | Type |
 |---|---|
-| `overlayState` | `Signal<CalendarOverlayState>` |
+| `overlayState` | `Signal<CalendarOverlayState \| null>` — `null` in inline mode (§14.1); one of `'closed' \| 'opening' \| 'open' \| 'closing'` in overlay mode |
 | `selectionState` | `Signal<CalendarSelectionState>` |
-| `activeDate` | `Signal<D>` |
+| `activeDate` | `Signal<D \| null>` — `null` when no cell has roving focus (overlay closed and no inline focus, or programmatic focus has not yet been established). §8.5 invariant: `overlayState === 'open' ⟹ activeDate !== null`. |
 | `selectedPresetId` | `Signal<string \| null>` |
 | `viewState` | `Signal<CalendarViewState>` |
 | `displayedMonths` | `Signal<{ year: number; month: number }[]>` — the months currently rendered |
+| `lastInvalidFormValue` | `Signal<unknown>` — the raw `TOut` held on `fromForm` transformer failure (§7.6); `null` when transformer is absent or last write succeeded |
 
 ### 33.4 Public methods
 
@@ -1836,12 +2101,17 @@ Exposed as component properties for direct reactive consumption (templates, `com
 | `open` | `() => void` |
 | `close` | `() => void` |
 | `toggle` | `() => void` |
-| `focusDate` | `(date: D) => void` |
+| `focusDate` | `(date: D, opts?: { navigate?: boolean }) => void` — when `navigate: true` (default `false`), navigates the view so `date` is rendered before focusing |
 | `setView` | `(view: CalendarViewState) => void` |
 | `goToDate` | `(date: D) => void` |
 | `goToToday` | `() => void` |
-| `clear` | `() => void` |
+| `clear` | `() => void` — alias: `clearSelection` (exported for discoverability; same implementation) |
 | `reset` | `() => void` |
+| `revalidate` | `() => void` — forces re-evaluation of all constraints, cell filters, and preset validity; useful when consumer predicate references change without re-rendering |
+
+Also exported from `ngx-tw/calendar` (standalone helpers, not component methods):
+
+- `[REQ]` `[MUST]` `serializeCalendarValue<M, D>(value, adapter)` — see §7.5. Shipped in v1; listed in the public API surface.
 
 ### 33.5 Output API style (binding rule)
 
@@ -1852,20 +2122,33 @@ Exposed as component properties for direct reactive consumption (templates, `com
 
 ## 34. Theming & Customization
 
-### 34.1 CSS custom properties
+### 34.1 Tailwind v4 semantic tokens
 
-- `[REQ]` `[MUST]` Every color, spacing, radius, font size exposed as CSS custom property.
-- `[REQ]` `[MUST]` Documented theme tokens reference.
-- `[REQ]` `[MUST]` No hard-coded colors in component stylesheet.
+The calendar is built on the ngx-tw semantic-token system. Styling is applied via Tailwind v4 utility classes in the component template; consumers customize by overriding semantic tokens in their own `@theme` block (no component CSS files, no hard-coded palette values).
+
+- `[REQ]` `[MUST]` All color application uses semantic tokens defined in `projects/ngx-tw/theme/`:
+  - **Surface/fg/border tokens** for structural styling (backgrounds, text, borders, dividers).
+  - **Role-colored tokens** (`info`, `success`, `warning`, `error`, `primary`, `secondary`, `accent`, `neutral`) for selection states, range highlights, and badges.
+  - No raw Tailwind palette colors (`blue-*`, `red-*`, etc.) appear anywhere in the component.
+- `[REQ]` `[MUST]` Consumers re-theme the calendar by overriding semantic tokens via `@theme` in their own CSS — no component inputs needed for color:
+  ```css
+  @import 'ngx-tw/theme/default.css';
+  @theme {
+    --color-primary-500: oklch(0.55 0.2 260); /* rebrand primary to indigo */
+    --color-info-50:     var(--color-sky-50);  /* remap info to sky */
+  }
+  ```
+- `[REQ]` `[MUST]` Spacing, border-radius, typography, and shadow tokens come from the CLAUDE.md visual design system: `rounded-md` for interactive cells, `rounded-lg` for the grid container, focus rings `focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500`, transitions `transition-colors duration-200 motion-reduce:transition-none`, etc. The calendar adheres to the library-wide scale — it does not define its own.
+- `[REQ]` `[MUST]` Documented theme reference lists every semantic token the component consumes (surface/fg/border + all role colors + shade stops used).
 
 ### 34.2 Dark mode
 
-- `[REQ]` `[MUST]` Automatic via `color-scheme` + `prefers-color-scheme` + token overrides.
-- `[REQ]` `[MUST]` No theme input required.
+- `[REQ]` `[MUST]` Automatic via the theme's `_dark.css` layer (surface/fg/border tokens swap; role-colored tokens swap per `@media (prefers-color-scheme: dark)`).
+- `[REQ]` `[MUST]` No theme input required — inherits from whatever the consumer's theme declares for dark mode.
 
 ### 34.3 Forced-colors mode
 
-- `[REQ]` `[MUST]` Full support: state indicators use `outline`/`border`, not only backgrounds.
+- `[REQ]` `[MUST]` Full support: state indicators use `outline`/`border`, not only backgrounds. Matches the theme's `_high-contrast.css` layer.
 
 ### 34.4 Template hooks
 
@@ -1873,12 +2156,31 @@ Exposed as component properties for direct reactive consumption (templates, `com
 
 ### 34.5 Styling hooks
 
-- `[REQ]` `[MUST]` `data-state-*` attributes on every stateful element.
-- `[REC]` All styles scoped via `:host`.
+- `[REQ]` `[MUST]` `data-state-*` attributes are the primary styling hook. Canonical attribute reference:
 
-### 34.6 Framework-agnostic
+| Attribute | Element | Set when |
+|---|---|---|
+| `data-state-today` | grid cell | cell's date equals `adapter.today()` |
+| `data-state-selected` | grid cell | cell is the committed selection (single / element of multiple / range endpoint or in-range) |
+| `data-state-range-start` | grid cell | cell equals `range.start` |
+| `data-state-range-end` | grid cell | cell equals `range.end` |
+| `data-state-in-range` | grid cell | cell is strictly between `start` and `end` |
+| `data-state-range-preview-start` / `-end` | grid cell | preview-boundary during SELECTING hover |
+| `data-state-in-range-preview` | grid cell | preview interior |
+| `data-state-invalid-preview` | grid cell | preview violates constraints or crosses disabled |
+| `data-state-invalid-flash` | grid cell | momentary feedback for rejected interaction (disabled click, single-day-disallowed click) |
+| `data-state-disabled` | grid cell | cell fails any constraint |
+| `data-state-focused` | grid cell | cell is `activeDate` |
+| `data-state-out-of-month` | grid cell | adjacent-month cell in day view |
+| `data-state-weekend` | grid cell | Saturday or Sunday |
+| `data-state-preset-invalid` | preset list item | preset's range no longer satisfies constraints (§25.6) |
+| `data-state-overlay-opening` / `-open` / `-closing` | overlay panel root | mirrors `overlayState` signal |
 
-- `[REQ]` `[MUST]` No dependency on Tailwind, Bootstrap, or Material theming.
+- `[REC]` Tailwind is the expected consumer layer. Scope overrides via CSS selectors targeting these attributes.
+
+### 34.6 Tailwind v4 requirement
+
+- `[REQ]` `[MUST]` The component is built exclusively for Tailwind CSS v4+. Consumers must have Tailwind v4 installed (peer dependency declared in §3). Consumer-level `@theme` overrides are the supported customization surface.
 
 ---
 
@@ -1888,13 +2190,17 @@ Exposed as component properties for direct reactive consumption (templates, `com
 
 - `[REQ]` `[MUST]` Unit tests per mode, per adapter, per validator.
 - `[REQ]` `[MUST]` State machine tests: every transition in §8.3 and §21 in every relevant configuration.
-- `[REQ]` `[MUST]` Event ordering tests per §30.2.
-- `[REQ]` `[MUST]` Focus resolution tests per §17.2 — every row of the table.
-- `[REQ]` `[MUST]` Overlay lifecycle tests: every row of the close-reason table (§13.5).
-- `[REQ]` `[MUST]` View switching tests: selection persistence across every view transition.
-- `[REQ]` `[MUST]` Multi-month tests: linked nav, responsive collapse, hover preview spanning panes, keyboard edge navigation.
-- `[REQ]` `[MUST]` Integration tests per forms paradigm (Reactive, Template-driven, Signal Forms).
-- `[REQ]` `[MUST]` Signal Forms typing test covering the `FieldTree<Date, string>` case.
+- `[REQ]` `[MUST]` Event ordering tests per §30.2 — every sequence, including the new `disabled=true`, auto-swap, form-reset, and writeValue-during-SELECTING sequences.
+- `[REQ]` `[MUST]` Focus resolution tests per §17.2 — every row of the table, including mode-change-wins-over-writeValue-cascade, disabled-cell roving focus, writeValue-during-opening/closing.
+- `[REQ]` `[MUST]` Overlay lifecycle tests: every row of the close-reason table (§13.5) — including scroll, focus loss, form reset, adapter change, constraint-tightening, mobile back-button, trigger unmount.
+- `[REQ]` `[MUST]` View switching tests: every (granularity × view × state) cell from §22.4, selection persistence across every view transition, focus landing per §22.3 (including disabled-date fallback).
+- `[REQ]` `[MUST]` Multi-month tests: linked nav, responsive collapse, hover preview spanning panes, keyboard edge navigation, cross-pane endpoints commit.
+- `[REQ]` `[MUST]` Integration tests per forms paradigm (Reactive, Template-driven, Signal Forms) — validated observationally identical per §6.4, §30.3.
+- `[REQ]` `[MUST]` Signal Forms typing test covering the `FieldTree<Date, string>` case and the `TOut` generic with `valueTransformer`.
+- `[REQ]` `[MUST]` **Security coverage (§27):** dev-mode predicate try/catch fallback to disabled; CSP compatibility with the reference policy; consumer-template sanitization not bypassed.
+- `[REQ]` `[MUST]` **Error handling coverage (§29):** every dev-mode warning condition; adapter parse failure surface; template-throw fallback.
+- `[REQ]` `[MUST]` **Error display coverage (§28):** `errorAriaDescribedBy` composition with keyboard-help ID; `aria-invalid` toggling.
+- `[REQ]` `[MUST]` **Transformer coverage (§7.6):** `isoStringTransformer` + `timestampTransformer` for each mode; `toForm` and `fromForm` error paths; `lastInvalidFormValue` signal; public `valueChange` emits untransformed `CalendarValue<M, D>` regardless of transformer.
 
 ### 35.2 Accessibility tests
 
@@ -1938,9 +2244,9 @@ Real apps have rapid or overlapping interactions. These must be exercised direct
 - `[REQ]` `[MUST]` **Window resize during multi-month display**: responsive reflow preserves focus (§17.2) without flicker or focus-trap drop.
 - `[REQ]` `[MUST]` **Held arrow key**: throttled to key-repeat rate; no event pile-up.
 - `[REQ]` `[MUST]` **Overlay reopen during closing animation**: debounced per §13.7.
-- `[REQ]` `[MUST]` **Constraint flip during SELECTING**: `disabledDates` changes mid-interaction; active focus moves per §17.2 row 9 (Constraint change); draft preserved if still valid, discarded with `selectionCleared` otherwise.
+- `[REQ]` `[MUST]` **Constraint flip during SELECTING**: `disabledDates` changes mid-interaction; active focus moves per the §17.2 **"Constraint change"** row; draft preserved if still valid, discarded with `selectionCleared` otherwise.
 - `[REQ]` `[MUST]` **Mode flip during open overlay**: overlay closes per §11.2; no orphaned events.
-- `[REQ]` `[MUST]` Each scenario runs 100× in CI with jitter injection; failure if any run diverges.
+- `[REQ]` `[MUST]` Each scenario runs 100× in CI with **jitter injection** — a uniform random delay in `[0, 16]ms` inserted between simulated user actions, seeded per test run for reproducibility (seed logged on failure). Failure if any run diverges from the canonical event sequence.
 
 ---
 
@@ -1949,14 +2255,17 @@ Real apps have rapid or overlapping interactions. These must be exercised direct
 ### 36.1 Harness
 
 - `[REQ]` `[MUST]` Ship `CalendarHarness` built on Angular CDK `ComponentHarness`.
-- `[REQ]` `[MUST]` API:
+- `[REQ]` `[MUST]` Core API:
   - `open()`, `close()`, `isOpen()`
-  - `getOverlayState()`
-  - `selectDate(date)`, `selectRange(start, end)`
-  - `getSelectedValue()`, `getFocusedDate()`
+  - `getOverlayState()`, `getOverlayPhase()` — phase returns the 4-value `CalendarOverlayState`; `getOverlayState()` is kept as a shorter alias returning the same value
+  - `selectDate(date)`, `selectRange(start, end)`, `hover(date)` — simulate pointer hover for range preview testing
+  - `getSelectedValue()`, `getFocusedDate()`, `getBadge(date)`
   - `getCell(date)`, `getCells(predicate)`
-  - `nextMonth()`, `prevMonth()`, `setView(view)`
+  - `nextMonth()`, `prevMonth()`, `setView(view)`, `goToToday()`, `focusDate(date)`
+  - `clearSelection()`, `setDisabled(disabled)`
   - `getPresets()`, `selectPreset(id)`
+  - `isInvalid()`, `getErrors()` — form-level validation surface
+- `[REQ]` `[MUST]` **Event-observation API:** `eventsFor(name): Observable<T>` — consumers subscribe to any public output (`valueChange`, `selectionComplete`, `rangePreview`, `selectionLimitReached`, `viewChange`, `modeChange`, `presetChange`, `selectionRestart`, `selectionCleared`) for assertions.
 
 ### 36.2 Usage pattern
 
@@ -1972,12 +2281,12 @@ Real apps have rapid or overlapping interactions. These must be exercised direct
 
 ### 37.1 Schematics
 
-- `[REC]` `ng add @your-org/calendar` — adds package, imports in `app.config`, registers default date adapter.
-- `[REC]` `ng generate @your-org/calendar:integration` — scaffolds a working form (Reactive, Signal Forms variants).
+- `[REC]` `[COULD]` v1.1 — `ng add @your-org/calendar` — adds package, imports in `app.config`, registers default date adapter. Deferred from v1 per §43 resolved decision #3.
+- `[REC]` `[COULD]` v1.1 — `ng generate @your-org/calendar:integration` — scaffolds a working form (Reactive, Signal Forms variants).
 
 ### 37.2 Debug mode
 
-- `[REC]` `[debug]="true"` logs state transitions, validation, view changes to console in dev mode.
+- `[REC]` `debug: boolean | (msg: DebugEvent) => void` input. When `true`, state transitions / validation / view changes are logged via `console.debug` in dev mode only. When a function, the function is called instead — useful for redirecting to a custom logger in tests.
 
 ### 37.3 Integration notes
 
@@ -1999,11 +2308,17 @@ Real apps have rapid or overlapping interactions. These must be exercised direct
 - `[REQ]` `[MUST]` Adding optional input = minor.
 - `[REQ]` `[MUST]` Renaming/removing documented export = major.
 - `[REQ]` `[MUST]` Changing event ordering (§30) = breaking.
+- `[REQ]` `[MUST]` **Changing `DateAdapter` method signature** (add required method, change parameter type, change return type) = breaking. Adding a new optional method = minor.
+- `[REQ]` `[MUST]` **Event payload shape changes:** adding an optional field = minor. Renaming or removing a field, or narrowing a union variant = breaking.
+- `[REQ]` `[MUST]` **Semantic token renames / removals** (§34.1) = breaking — consumer themes depend on token names. Adding a new token shade or role = minor.
+- `[REQ]` `[MUST]` **`data-state-*` attribute changes** (§34.5 table) = breaking — consumer CSS depends on attribute names. Adding a new `data-state-*` attribute = minor.
 
 ### 38.2 Deprecation policy
 
 - `[REQ]` `[MUST]` Deprecations for ≥ 2 major versions before removal.
 - `[REQ]` `[MUST]` `@deprecated` JSDoc and TypeScript pragma.
+- `[REQ]` `[MUST]` Deprecated symbols emit a `console.warn` once per session in dev mode (stripped in production). Warning text includes the migration target.
+- `[REQ]` `[MUST]` Minimum **6-month** calendar-time window between deprecation announcement and removal, regardless of major-release cadence — gives consumers at least two quarters to migrate.
 
 ### 38.3 Migration tooling
 
@@ -2023,11 +2338,12 @@ Real apps have rapid or overlapping interactions. These must be exercised direct
 - `[REQ]` `[MUST]` Multi-month layout guide.
 - `[REQ]` `[MUST]` Customization cookbook: badges, cell templates, presets, text input composition.
 - `[REQ]` `[MUST]` Accessibility statement mapping features to WCAG criteria.
-- `[REQ]` `[MUST]` Theming / CSS token reference.
-- `[REQ]` `[MUST]` Signal Forms typing troubleshooting page.
+- `[REQ]` `[MUST]` Theming reference: semantic-token list (§34.1), `data-state-*` attribute reference (§34.5).
+- `[REQ]` `[MUST]` Signal Forms typing troubleshooting page (including `TOut` transformer generic).
 - `[REQ]` `[MUST]` Cross-field composition recipes.
 - `[REQ]` `[MUST]` Event ordering reference (§30) for consumers writing reactive code.
 - `[REQ]` `[MUST]` Error display recipes for Reactive and Signal Forms (§28.5).
+- `[REQ]` `[MUST]` **Performance benchmark methodology** — how `[§32](#32-performance)` budgets are measured (CPU throttle, network throttle, P95 sampling), so consumers can reproduce.
 - `[REQ]` `[MUST]` Migration guide between major versions.
 
 ### 39.2 Live examples
@@ -2041,7 +2357,7 @@ Real apps have rapid or overlapping interactions. These must be exercised direct
 - `[REQ]` `[MUST]` Semantic versioning (§38).
 - `[REQ]` `[MUST]` Source maps shipped.
 - `[REQ]` `[MUST]` No `any` types in public API.
-- `[REQ]` `[MUST]` License: MIT (recommended — confirm §43).
+- `[REQ]` `[MUST]` License: **MIT** (resolved per §43; LICENSE file committed to repo).
 - `[REQ]` `[MUST]` Public changelog (Keep-a-Changelog format).
 - `[REQ]` `[MUST]` Internals prefixed `_` or isolated in non-exported modules.
 
@@ -2067,7 +2383,7 @@ Real apps have rapid or overlapping interactions. These must be exercised direct
 
 **Given** SELECTING with draft start = Apr 15, `allowBackwardRange = true`
 **When** user clicks April 10
-**Then** COMPLETE, `externalValue = { start: Apr 10, end: Apr 15 }` (auto-swap).
+**Then** COMPLETE, `externalValue = { start: Apr 10, end: Apr 15 }` (auto-swap). `selectionComplete` fires with `{ start, end, reason: 'auto-swap' }`; **`selectionRestart` does NOT fire** on the auto-swap path (contrast §41.3).
 
 ### 41.3 Range — third-click restart
 
@@ -2119,7 +2435,7 @@ Real apps have rapid or overlapping interactions. These must be exercised direct
 
 **Given** `mobileMode = 'auto'`, viewport width = 375 px, trigger focused
 **When** user opens the overlay
-**Then** overlay renders full-screen (covers viewport, respects `env(safe-area-inset-*)` per §18.6), `role="dialog"` + `aria-modal="true"` applied, focus trapped inside the dialog, `opening` → `open` sequence unchanged (§13.2), `onTouched` fires per §13.6.
+**Then** overlay renders full-screen (covers viewport, respects `env(safe-area-inset-*)` per §18.6), `role="dialog"` + `aria-modal="true"` applied, focus trapped inside the dialog. Events in order: `opened` → `activeDateChange` (initial focus resolution, §13.2 / §30.2) → `overlayState = 'open'`. On close, `onTouched` fires per §13.6.
 
 **Given** same component, viewport resized to 900 px, overlay closed
 **When** user reopens the overlay
@@ -2166,31 +2482,34 @@ Resolved in v2.4 and moved into the spec body (see `docs/calendar-plan_decisions
 - Non-Gregorian adapters deferred to v2+ → §19.5, §42.2.
 - Event / schedule Layer 3 deferred to v2 sibling → §24.3, §42.1.
 
+Resolved in v2.6 (internal-consistency audit reconciliation pass):
+- **`presetViolationBehavior` union**: **`'disable' | 'hide' | 'warn'`** (not `'disable' | 'truncate' | 'allow'`) — see §25.2, §33.1.
+- **Mode-change emit order**: `selectionCleared → presetChange → modeChange → valueChange` (§11.2 aligned with §8.3).
+- **`overlayState` signal type**: `Signal<CalendarOverlayState | null>`, `null` in inline mode (§14.1, §33.3).
+- **`activeDate` signal type**: `Signal<D | null>` (§33.3).
+- **Year-view "virtual rendering"**: per-pane OnPush CD islands, not CDK virtual scroll (§23.4, §32.3).
+- **`virtualKeyboard: 'auto'` semantics**: pointer-type based — suppress + auto-open on touch, show on pointer/keyboard (§9.5).
+- **`rangeSeparator` default**: `' – '` (space, en-dash, space) (§9.2.1, §33.1).
+- **`PresetGroup` generic**: `<D>` dropped (no date-typed fields) (§7.4, §25.1, §33.1).
+- **`selectionComplete` payload shape**: `{ value, reason }` instead of the unspreadable `{ ...value, reason }` (§33.2, §21.5).
+- **Initial-focus auto-skip**: gated on `autoSkipEmptyPeriods=true` (§13.3).
+- **`timezone` input vs `TZ_OVERRIDE` token precedence**: per-instance input wins (§4.3, §33.1).
+- **`selectionCleared.reason` mapping**: every §13.5 close-path now names a concrete reason value from the §33.2 union.
+
+Resolved in v2.5 (parallel-audit reconciliation pass):
+- **Input masking default**: **off** by default, opt-in per instance → §9.3.
+- **License**: **MIT** → §40.
+- **Schematics & `ng add`**: deferred to **v1.1**; core ships first → §37.1.
+- **Shipped locale defaults for `CalendarIntl`**: English + **de, fr, es, pt, ja** in v1 → §19.4.
+- **`blockInvalidRangeCommit`**: deferred to **v1.1** (`[REC] [COULD]`) — v1 behavior is "allow commit, mark invalid" → §10.4, §33.1.
+- **`autoSkipEmptyPeriods` default**: **`false`** (explicit no-op; silent skip leapfrogs unexpectedly) → §12.6, §33.1.
+- **`navigationBoundaryLookahead` default**: **24** periods (2 years in day view); referenced consistently across §12.6 and §13.3 → §33.1.
+- **`mobileMode: 'auto'` normative weight**: promoted from `[REQ] [SHOULD]` to `[REQ] [MUST]` — aligns §18.5 with §33.1 and the v2.4 resolution → §14.3, §18.5.
+
 The following decisions remain open:
 
-1. **Input masking default**: on or off?
-   *Recommendation: off by default, opt-in per instance.*
-
-2. **License**: MIT?
-   *Recommendation: confirm MIT.*
-
-3. **Schematics & `ng add`**: v1 or v1.1?
-   *Recommendation: v1.1. Ship core first.*
-
-4. **Shipped locale defaults for `CalendarIntl`**: which locales beyond English in v1?
-   *Recommendation: de, fr, es, pt, ja.*
-
-5. **`blockInvalidRangeCommit`**: ship in v1 or v1.1?
-   *Recommendation: v1.1. Default behavior (allow commit, mark invalid) covers most consumers.*
-
-6. **`selectedPresetId` signal semantics**: track only first-time preset selection, or continuously re-compute if current value matches a preset's computed range?
+1. **`selectedPresetId` signal semantics**: track only first-time preset selection, or continuously re-compute if current value matches a preset's computed range?
    *Recommendation: track only explicit selection (consumer sets a preset); don't auto-match. Auto-matching is brittle (preset values drift with "today").*
 
-7. **`valueTransformer` as v1 requirement**: ship in v1 or v1.1?
-   *Recommendation: v1 `SHOULD`. Ship the API and the two built-in transformers (`isoStringTransformer`, `timestampTransformer`). Real form integrations hit this constraint within the first day. `DATE_SERIALIZATION` token can follow in v1.1.*
-
-8. **`autoSkipEmptyPeriods` default**: false (explicit no-op) or true (silent skip)?
-   *Recommendation: `false`. Silent skip can leapfrog past months the user expected to see, which is more confusing than a disabled button.*
-
-9. **`navigationBoundaryLookahead` default**: 24 periods is pragmatic but arbitrary.
-   *Recommendation: 24 periods (2 years in day view) based on the 24-month search limit already established in §13.3. Keeps the numbers consistent.*
+2. **`valueTransformer` final status**: ship as `[REQ] [SHOULD]` v1 (current position) or promote to `[REQ] [MUST]` v1?
+   *Recommendation: keep `[REQ] [SHOULD]` for v1. Ship the API and the two built-in transformers (`isoStringTransformer`, `timestampTransformer`) in v1; the `DATE_SERIALIZATION` global token can follow in v1.1.*
