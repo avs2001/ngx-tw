@@ -1,0 +1,392 @@
+@if (shouldRender()) {
+  <div [class]="innerClasses()">
+    @if (isEmpty()) {
+      <!-- Empty state -->
+      @if (emptyDirective(); as emptyDir) {
+        <ng-container
+          [ngTemplateOutlet]="emptyDir.templateRef"
+          [ngTemplateOutletContext]="labelContext()"
+        />
+      } @else {
+        <span [class]="emptyStateClasses()">{{ resolvedLabels().empty }}</span>
+      }
+    } @else {
+      <!-- Page-size selector region -->
+      @if (showPageSizeSelector() && pageSizeOptions().length > 0) {
+        <div [class]="pageSizeGroupClasses()">
+          <label
+            [attr.for]="pageSizeSelectId"
+            [class]="pageSizeLabelClasses()"
+          >
+            @if (labelTemplateFor('pageSizeLabel'); as tmpl) {
+              <ng-container
+                [ngTemplateOutlet]="tmpl"
+                [ngTemplateOutletContext]="labelContext()"
+              />
+            } @else {
+              {{ resolvedLabels().pageSizeLabel }}
+            }
+          </label>
+
+          @if (pageSizeSelectorDirective(); as dir) {
+            <ng-container
+              [ngTemplateOutlet]="dir.templateRef"
+              [ngTemplateOutletContext]="pageSizeContext()"
+            />
+          } @else {
+            <select
+              [id]="pageSizeSelectId"
+              [class]="pageSizeSelectClasses()"
+              [disabled]="disabled()"
+              [value]="effectivePageSize()"
+              (change)="onPageSizeSelectChange($event)"
+            >
+              @for (opt of pageSizeOptions(); track opt) {
+                <option [value]="opt">{{ opt }}</option>
+              }
+            </select>
+          }
+        </div>
+      }
+
+      <!-- Page info region -->
+      @if (showPageInfo()) {
+        <div [class]="pageInfoClasses()">
+          @if (labelTemplateFor('pageInfo'); as tmpl) {
+            <ng-container
+              [ngTemplateOutlet]="tmpl"
+              [ngTemplateOutletContext]="labelContext()"
+            />
+          } @else {
+            {{ formattedPageInfo() }}
+          }
+        </div>
+      }
+
+      <!-- Nav buttons region -->
+      <div
+        #navGroup
+        [class]="navGroupClasses()"
+        (keydown)="onKeydown($event)"
+      >
+        <!-- First -->
+        @if (showFirstLastButtons()) {
+          @let firstDisabled = disabled() || isAtFirstPage();
+          @if (linkFactory()) {
+            <a
+              data-tw-paginator-focusable
+              data-tw-paginator-nav="first"
+              [class]="navButtonClasses()"
+              [attr.href]="firstDisabled ? null : hrefFor(1)"
+              [attr.aria-disabled]="firstDisabled ? 'true' : null"
+              [attr.tabindex]="firstDisabled ? -1 : 0"
+              [attr.aria-label]="resolvedLabels().first"
+              (click)="onLinkClick($event, 1, firstDisabled, 'click')"
+            >
+              @if (labelTemplateFor('first'); as tmpl) {
+                <ng-container
+                  [ngTemplateOutlet]="tmpl"
+                  [ngTemplateOutletContext]="labelContext()"
+                />
+              } @else {
+                <svg
+                  [class]="iconClasses()"
+                  viewBox="0 0 20 20"
+                  fill="currentColor"
+                  aria-hidden="true"
+                >
+                  <path
+                    fill-rule="evenodd"
+                    d="M10.78 4.22a.75.75 0 0 1 0 1.06L6.06 10l4.72 4.72a.75.75 0 0 1-1.06 1.06l-5.25-5.25a.75.75 0 0 1 0-1.06l5.25-5.25a.75.75 0 0 1 1.06 0Zm6 0a.75.75 0 0 1 0 1.06L12.06 10l4.72 4.72a.75.75 0 1 1-1.06 1.06l-5.25-5.25a.75.75 0 0 1 0-1.06l5.25-5.25a.75.75 0 0 1 1.06 0Z"
+                    clip-rule="evenodd"
+                  />
+                </svg>
+              }
+            </a>
+          } @else {
+            <button
+              type="button"
+              data-tw-paginator-focusable
+              data-tw-paginator-nav="first"
+              [class]="navButtonClasses()"
+              [disabled]="firstDisabled"
+              [attr.aria-label]="resolvedLabels().first"
+              (click)="goTo(1, 'click')"
+            >
+              @if (labelTemplateFor('first'); as tmpl) {
+                <ng-container
+                  [ngTemplateOutlet]="tmpl"
+                  [ngTemplateOutletContext]="labelContext()"
+                />
+              } @else {
+                <svg
+                  [class]="iconClasses()"
+                  viewBox="0 0 20 20"
+                  fill="currentColor"
+                  aria-hidden="true"
+                >
+                  <path
+                    fill-rule="evenodd"
+                    d="M10.78 4.22a.75.75 0 0 1 0 1.06L6.06 10l4.72 4.72a.75.75 0 0 1-1.06 1.06l-5.25-5.25a.75.75 0 0 1 0-1.06l5.25-5.25a.75.75 0 0 1 1.06 0Zm6 0a.75.75 0 0 1 0 1.06L12.06 10l4.72 4.72a.75.75 0 1 1-1.06 1.06l-5.25-5.25a.75.75 0 0 1 0-1.06l5.25-5.25a.75.75 0 0 1 1.06 0Z"
+                    clip-rule="evenodd"
+                  />
+                </svg>
+              }
+            </button>
+          }
+        }
+
+        <!-- Previous -->
+        @let prevDisabled = disabled() || isAtFirstPage();
+        @let prevTarget = previousTarget();
+        @if (linkFactory()) {
+          <a
+            data-tw-paginator-focusable
+            data-tw-paginator-nav="prev"
+            [class]="navButtonClasses()"
+            [attr.href]="prevDisabled ? null : hrefFor(prevTarget)"
+            [attr.aria-disabled]="prevDisabled ? 'true' : null"
+            [attr.tabindex]="prevDisabled ? -1 : 0"
+            [attr.aria-label]="resolvedLabels().previous"
+            (click)="onLinkClick($event, prevTarget, prevDisabled, 'click')"
+          >
+            @if (labelTemplateFor('previous'); as tmpl) {
+              <ng-container
+                [ngTemplateOutlet]="tmpl"
+                [ngTemplateOutletContext]="labelContext()"
+              />
+            } @else {
+              <svg
+                [class]="iconClasses()"
+                viewBox="0 0 20 20"
+                fill="currentColor"
+                aria-hidden="true"
+              >
+                <path
+                  fill-rule="evenodd"
+                  d="M12.78 5.22a.75.75 0 0 1 0 1.06L9.06 10l3.72 3.72a.75.75 0 1 1-1.06 1.06l-4.25-4.25a.75.75 0 0 1 0-1.06l4.25-4.25a.75.75 0 0 1 1.06 0Z"
+                  clip-rule="evenodd"
+                />
+              </svg>
+            }
+          </a>
+        } @else {
+          <button
+            type="button"
+            data-tw-paginator-focusable
+            data-tw-paginator-nav="prev"
+            [class]="navButtonClasses()"
+            [disabled]="prevDisabled"
+            [attr.aria-label]="resolvedLabels().previous"
+            (click)="goTo(prevTarget, 'click')"
+          >
+            @if (labelTemplateFor('previous'); as tmpl) {
+              <ng-container
+                [ngTemplateOutlet]="tmpl"
+                [ngTemplateOutletContext]="labelContext()"
+              />
+            } @else {
+              <svg
+                [class]="iconClasses()"
+                viewBox="0 0 20 20"
+                fill="currentColor"
+                aria-hidden="true"
+              >
+                <path
+                  fill-rule="evenodd"
+                  d="M12.78 5.22a.75.75 0 0 1 0 1.06L9.06 10l3.72 3.72a.75.75 0 1 1-1.06 1.06l-4.25-4.25a.75.75 0 0 1 0-1.06l4.25-4.25a.75.75 0 0 1 1.06 0Z"
+                  clip-rule="evenodd"
+                />
+              </svg>
+            }
+          </button>
+        }
+
+        <!-- Numbered page list -->
+        @if (type() === 'numbered') {
+          <div [class]="pageListClasses()">
+            @for (item of range(); track $index) {
+              @if (item === 'ellipsis-left' || item === 'ellipsis-right') {
+                <span
+                  [class]="ellipsisClasses()"
+                  [attr.aria-label]="resolvedLabels().ellipsis"
+                >
+                  <span aria-hidden="true">&hellip;</span>
+                </span>
+              } @else {
+                @let pageNumber = item;
+                @let isActive = pageNumber === clampedPage();
+                @let pageDisabled = disabled();
+                @if (linkFactory()) {
+                  <a
+                    data-tw-paginator-focusable
+                    data-tw-paginator-nav="page"
+                    [class]="pageButtonClasses(isActive)"
+                    [attr.href]="pageDisabled ? null : hrefFor(pageNumber)"
+                    [attr.aria-disabled]="pageDisabled ? 'true' : null"
+                    [attr.tabindex]="pageDisabled ? -1 : 0"
+                    [attr.aria-current]="isActive ? 'page' : null"
+                    [attr.aria-label]="
+                      isActive
+                        ? formatCurrentPageLabel(pageNumber)
+                        : formatPageButtonLabel(pageNumber)
+                    "
+                    (click)="onLinkClick($event, pageNumber, pageDisabled, 'click')"
+                  >{{ pageNumber }}</a>
+                } @else {
+                  <button
+                    type="button"
+                    data-tw-paginator-focusable
+                    data-tw-paginator-nav="page"
+                    [class]="pageButtonClasses(isActive)"
+                    [disabled]="pageDisabled"
+                    [attr.aria-current]="isActive ? 'page' : null"
+                    [attr.aria-label]="
+                      isActive
+                        ? formatCurrentPageLabel(pageNumber)
+                        : formatPageButtonLabel(pageNumber)
+                    "
+                    (click)="goTo(pageNumber, 'click')"
+                  >{{ pageNumber }}</button>
+                }
+              }
+            }
+          </div>
+        }
+
+        <!-- Next -->
+        @let nextDisabled = disabled() || isAtLastPage();
+        @let nextTargetPage = nextTarget();
+        @if (linkFactory()) {
+          <a
+            data-tw-paginator-focusable
+            data-tw-paginator-nav="next"
+            [class]="navButtonClasses()"
+            [attr.href]="nextDisabled ? null : hrefFor(nextTargetPage)"
+            [attr.aria-disabled]="nextDisabled ? 'true' : null"
+            [attr.tabindex]="nextDisabled ? -1 : 0"
+            [attr.aria-label]="resolvedLabels().next"
+            (click)="onLinkClick($event, nextTargetPage, nextDisabled, 'click')"
+          >
+            @if (labelTemplateFor('next'); as tmpl) {
+              <ng-container
+                [ngTemplateOutlet]="tmpl"
+                [ngTemplateOutletContext]="labelContext()"
+              />
+            } @else {
+              <svg
+                [class]="iconClasses()"
+                viewBox="0 0 20 20"
+                fill="currentColor"
+                aria-hidden="true"
+              >
+                <path
+                  fill-rule="evenodd"
+                  d="M7.22 14.78a.75.75 0 0 1 0-1.06L10.94 10 7.22 6.28a.75.75 0 0 1 1.06-1.06l4.25 4.25a.75.75 0 0 1 0 1.06l-4.25 4.25a.75.75 0 0 1-1.06 0Z"
+                  clip-rule="evenodd"
+                />
+              </svg>
+            }
+          </a>
+        } @else {
+          <button
+            type="button"
+            data-tw-paginator-focusable
+            data-tw-paginator-nav="next"
+            [class]="navButtonClasses()"
+            [disabled]="nextDisabled"
+            [attr.aria-label]="resolvedLabels().next"
+            (click)="goTo(nextTargetPage, 'click')"
+          >
+            @if (labelTemplateFor('next'); as tmpl) {
+              <ng-container
+                [ngTemplateOutlet]="tmpl"
+                [ngTemplateOutletContext]="labelContext()"
+              />
+            } @else {
+              <svg
+                [class]="iconClasses()"
+                viewBox="0 0 20 20"
+                fill="currentColor"
+                aria-hidden="true"
+              >
+                <path
+                  fill-rule="evenodd"
+                  d="M7.22 14.78a.75.75 0 0 1 0-1.06L10.94 10 7.22 6.28a.75.75 0 0 1 1.06-1.06l4.25 4.25a.75.75 0 0 1 0 1.06l-4.25 4.25a.75.75 0 0 1-1.06 0Z"
+                  clip-rule="evenodd"
+                />
+              </svg>
+            }
+          </button>
+        }
+
+        <!-- Last -->
+        @if (showFirstLastButtons()) {
+          @let lastDisabled = disabled() || isAtLastPage();
+          @if (linkFactory()) {
+            <a
+              data-tw-paginator-focusable
+              data-tw-paginator-nav="last"
+              [class]="navButtonClasses()"
+              [attr.href]="lastDisabled ? null : hrefFor(totalPages())"
+              [attr.aria-disabled]="lastDisabled ? 'true' : null"
+              [attr.tabindex]="lastDisabled ? -1 : 0"
+              [attr.aria-label]="resolvedLabels().last"
+              (click)="onLinkClick($event, totalPages(), lastDisabled, 'click')"
+            >
+              @if (labelTemplateFor('last'); as tmpl) {
+                <ng-container
+                  [ngTemplateOutlet]="tmpl"
+                  [ngTemplateOutletContext]="labelContext()"
+                />
+              } @else {
+                <svg
+                  [class]="iconClasses()"
+                  viewBox="0 0 20 20"
+                  fill="currentColor"
+                  aria-hidden="true"
+                >
+                  <path
+                    fill-rule="evenodd"
+                    d="M3.22 4.22a.75.75 0 0 1 1.06 0l5.25 5.25a.75.75 0 0 1 0 1.06l-5.25 5.25a.75.75 0 0 1-1.06-1.06L7.94 10 3.22 5.28a.75.75 0 0 1 0-1.06Zm6 0a.75.75 0 0 1 1.06 0l5.25 5.25a.75.75 0 0 1 0 1.06l-5.25 5.25a.75.75 0 1 1-1.06-1.06L13.94 10 9.22 5.28a.75.75 0 0 1 0-1.06Z"
+                    clip-rule="evenodd"
+                  />
+                </svg>
+              }
+            </a>
+          } @else {
+            <button
+              type="button"
+              data-tw-paginator-focusable
+              data-tw-paginator-nav="last"
+              [class]="navButtonClasses()"
+              [disabled]="lastDisabled"
+              [attr.aria-label]="resolvedLabels().last"
+              (click)="goTo(totalPages(), 'click')"
+            >
+              @if (labelTemplateFor('last'); as tmpl) {
+                <ng-container
+                  [ngTemplateOutlet]="tmpl"
+                  [ngTemplateOutletContext]="labelContext()"
+                />
+              } @else {
+                <svg
+                  [class]="iconClasses()"
+                  viewBox="0 0 20 20"
+                  fill="currentColor"
+                  aria-hidden="true"
+                >
+                  <path
+                    fill-rule="evenodd"
+                    d="M3.22 4.22a.75.75 0 0 1 1.06 0l5.25 5.25a.75.75 0 0 1 0 1.06l-5.25 5.25a.75.75 0 0 1-1.06-1.06L7.94 10 3.22 5.28a.75.75 0 0 1 0-1.06Zm6 0a.75.75 0 0 1 1.06 0l5.25 5.25a.75.75 0 0 1 0 1.06l-5.25 5.25a.75.75 0 1 1-1.06-1.06L13.94 10 9.22 5.28a.75.75 0 0 1 0-1.06Z"
+                    clip-rule="evenodd"
+                  />
+                </svg>
+              }
+            </button>
+          }
+        }
+      </div>
+    }
+  </div>
+}

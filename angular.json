@@ -2,7 +2,11 @@
   "$schema": "./node_modules/@angular/cli/lib/config/schema.json",
   "version": 1,
   "cli": {
-    "packageManager": "npm"
+    "packageManager": "npm",
+    "schematicCollections": [
+      "@schematics/angular",
+      "playwright-ng-schematics"
+    ]
   },
   "newProjectRoot": "projects",
   "projects": {
@@ -66,6 +70,17 @@
         },
         "test": {
           "builder": "@angular/build:unit-test"
+        },
+        "e2e": {
+          "builder": "playwright-ng-schematics:playwright",
+          "options": {
+            "devServerTarget": "demo:serve"
+          },
+          "configurations": {
+            "production": {
+              "devServerTarget": "demo:serve:production"
+            }
+          }
         }
       }
     },
@@ -91,9 +106,52 @@
           "builder": "@angular/build:unit-test",
           "options": {
             "tsConfig": "projects/ngx-tw/tsconfig.spec.json",
+            "setupFiles": [
+              "projects/ngx-tw/test-setup.ts"
+            ],
             "include": [
               "src/**/*.spec.ts",
-              "../theme/**/*.spec.ts"
+              "../theme/**/*.spec.ts",
+              "../badge/**/*.spec.ts",
+              "../button/**/*.spec.ts",
+              "../card/**/*.spec.ts",
+              "../flip-card/**/*.spec.ts",
+              "../core/**/*.spec.ts",
+              "../alert/**/*.spec.ts",
+              "../tabs/**/*.spec.ts",
+              "../tab-nav/**/*.spec.ts",
+              "../separator/**/*.spec.ts",
+              "../tooltip/**/*.spec.ts",
+              "../code-block/**/*.spec.ts",
+              "../segmented-control/**/*.spec.ts",
+              "../avatar/**/*.spec.ts",
+              "../icon/**/*.spec.ts",
+              "../menu/**/*.spec.ts",
+              "../popover/**/*.spec.ts",
+              "../dialog/**/*.spec.ts",
+              "../command-palette/**/*.spec.ts",
+              "../toast/**/*.spec.ts",
+              "../collapsible/**/*.spec.ts",
+              "../accordion/**/*.spec.ts",
+              "../form-field/**/*.spec.ts",
+              "../switch/**/*.spec.ts",
+              "../checkbox/**/*.spec.ts",
+              "../radio/**/*.spec.ts",
+              "../select/**/*.spec.ts",
+              "../input/**/*.spec.ts",
+              "../spinner/**/*.spec.ts",
+              "../progress-bar/**/*.spec.ts",
+              "../skeleton/**/*.spec.ts",
+              "../slider/**/*.spec.ts",
+              "../stepper/**/*.spec.ts",
+              "../paginator/**/*.spec.ts",
+              "../sort/**/*.spec.ts",
+              "../table/**/*.spec.ts",
+              "../calendar/**/*.spec.ts",
+              "../date-picker/**/*.spec.ts",
+              "../date-range-picker/**/*.spec.ts",
+              "../time-picker/**/*.spec.ts",
+              "../item/**/*.spec.ts"
             ]
           }
         }

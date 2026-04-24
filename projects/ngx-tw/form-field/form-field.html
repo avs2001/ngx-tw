@@ -1,0 +1,23 @@
+<div [class]="controlWrapperClasses()">
+  <ng-content select="[slot=prefix]" />
+  <div #infix [class]="infixClasses()">
+    <ng-content />
+  </div>
+  <ng-content select="[slot=suffix]" />
+  @if (hasLabel()) {
+    <div [class]="labelWrapperClasses()" [style.left]="labelLeft()">
+      <ng-content select="[twLabel]" />
+      @if (!hideRequiredMarker() && isRequired()) {
+        <span [class]="requiredMarkerClasses()" aria-hidden="true">*</span>
+      }
+    </div>
+  }
+</div>
+
+<div [class]="subscriptWrapperClasses()">
+  @if (subscriptMode() === 'error') {
+    <ng-content select="[twError]" />
+  } @else {
+    <ng-content select="[twHint]" />
+  }
+</div>

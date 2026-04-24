@@ -1,0 +1,110 @@
+<!-- Tablist container -->
+<div
+  [class]="tablistClasses()"
+  role="tablist"
+  [attr.aria-orientation]="orientation()"
+  (keydown)="onKeydown($event)"
+>
+  <!-- Scroll start button (horizontal only) -->
+  @if (orientation() === 'horizontal' && (canScrollStart() || canScrollEnd())) {
+    <button
+      type="button"
+      tabindex="-1"
+      aria-hidden="true"
+      [class]="scrollButtonClasses()"
+      [disabled]="!canScrollStart()"
+      (click)="scrollStart()"
+    >
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" class="size-4 shrink-0">
+        <path fill-rule="evenodd" d="M9.78 4.22a.75.75 0 0 1 0 1.06L7.06 8l2.72 2.72a.75.75 0 1 1-1.06 1.06L5.47 8.53a.75.75 0 0 1 0-1.06l3.25-3.25a.75.75 0 0 1 1.06 0Z" clip-rule="evenodd" />
+      </svg>
+    </button>
+  }
+
+  <!-- Scrollable trigger strip -->
+  <div #tablistInner [class]="tablistInnerClasses()" style="scrollbar-width: none">
+    @for (tab of tabs(); track tab.value()) {
+      <button
+        type="button"
+        role="tab"
+        twTabTriggerElement
+        [isActive]="isTabActive(tab.value())"
+        [isDisabled]="tab.disabled()"
+        [id]="getTabId(tab.value())"
+        [attr.aria-selected]="isTabActive(tab.value())"
+        [attr.aria-controls]="getPanelId(tab.value())"
+        [attr.aria-disabled]="tab.disabled() || null"
+        [class]="getTriggerClasses(tab.value(), isTabActive(tab.value()))"
+        [class.opacity-50]="tab.disabled()"
+        [class.pointer-events-none]="tab.disabled()"
+        (click)="selectTab(tab)"
+      >
+        <!-- Custom trigger template or default label -->
+        @if (tab.triggerTemplate(); as triggerDir) {
+          <ng-container
+            [ngTemplateOutlet]="triggerDir.templateRef"
+            [ngTemplateOutletContext]="{ $implicit: { active: isTabActive(tab.value()), disabled: tab.disabled(), value: tab.value() } }"
+          />
+        } @else {
+          {{ tab.label() }}
+        }
+
+        <!-- Close button -->
+        @if (tab.closable() && !tab.disabled()) {
+          <button
+            type="button"
+            [attr.aria-label]="'Close ' + (tab.label() || tab.value())"
+            [class]="closeButtonClasses()"
+            tabindex="-1"
+            (click)="closeTab(tab, $event)"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" class="size-full">
+              <path d="M5.28 4.22a.75.75 0 0 0-1.06 1.06L6.94 8l-2.72 2.72a.75.75 0 1 0 1.06 1.06L8 9.06l2.72 2.72a.75.75 0 1 0 1.06-1.06L9.06 8l2.72-2.72a.75.75 0 0 0-1.06-1.06L8 6.94 5.28 4.22Z"/>
+            </svg>
+          </button>
+        }
+      </button>
+    }
+  </div>
+
+  <!-- Scroll end button (horizontal only) -->
+  @if (orientation() === 'horizontal' && (canScrollStart() || canScrollEnd())) {
+    <button
+      type="button"
+      tabindex="-1"
+      aria-hidden="true"
+      [class]="scrollButtonClasses()"
+      [disabled]="!canScrollEnd()"
+      (click)="scrollEnd()"
+    >
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" class="size-4 shrink-0">
+        <path fill-rule="evenodd" d="M6.22 4.22a.75.75 0 0 1 1.06 0l3.25 3.25a.75.75 0 0 1 0 1.06l-3.25 3.25a.75.75 0 0 1-1.06-1.06L8.94 8 6.22 5.28a.75.75 0 0 1 0-1.06Z" clip-rule="evenodd" />
+      </svg>
+    </button>
+  }
+</div>
+
+<!-- Tab panels -->
+@for (tab of tabs(); track tab.value()) {
+  @if (shouldRenderPanel(tab)) {
+    <div
+      role="tabpanel"
+      [id]="getPanelId(tab.value())"
+      [attr.aria-labelledby]="getTabId(tab.value())"
+      [class]="panelClasses()"
+      [hidden]="!isTabActive(tab.value())"
+      tabindex="0"
+    >
+      @if (tab.contentTemplate(); as contentDir) {
+        <ng-container [ngTemplateOutlet]="contentDir.templateRef" />
+      } @else if (tab.implicitContentTemplate(); as implicitTpl) {
+        <ng-container [ngTemplateOutlet]="implicitTpl" />
+      }
+    </div>
+  }
+}
+
+<!-- Hidden projection slot for tw-tab children -->
+<div style="display: none">
+  <ng-content />
+</div>

@@ -1,0 +1,157 @@
+<!-- Header strip + inline panels (vertical) / header-only (horizontal) -->
+<div
+  [class]="headerClasses()"
+  role="tablist"
+  [attr.aria-orientation]="orientationValue()"
+  (keydown)="_onKeydown($event)"
+>
+  @for (step of twSteps; track $index; let i = $index; let last = $last) {
+    <div [class]="stepItemClasses()">
+      <!-- Step header button -->
+      <button
+        type="button"
+        cdkStepHeader
+        role="tab"
+        [class]="stepHeaderClasses()"
+        [class.pointer-events-none]="!headerInteractive() || !step.isNavigable()"
+        [class.opacity-60]="!step.isNavigable()"
+        [id]="_getStepLabelId(i)"
+        [attr.aria-controls]="_getStepContentId(i)"
+        [attr.aria-selected]="selectedIndexValue() === i"
+        [attr.aria-current]="selectedIndexValue() === i ? 'step' : null"
+        [attr.aria-disabled]="!step.isNavigable() || null"
+        [attr.aria-invalid]="shouldRenderError(step) || null"
+        [attr.aria-label]="step.ariaLabel || null"
+        [attr.aria-labelledby]="step.ariaLabelledby || null"
+        (click)="onHeaderClick(step, i)"
+      >
+        <!-- Indicator (number / icon / dot) -->
+        <span [class]="getIndicatorClass(step, i)">
+          @let indicatorType = getIndicatorType(step);
+          @let customIcon = resolveIconTemplate(step, indicatorType);
+
+          @if (customIcon) {
+            <span [class]="stepIconSlotClasses()">
+              <ng-container
+                [ngTemplateOutlet]="customIcon"
+                [ngTemplateOutletContext]="iconContext(i)"
+              />
+            </span>
+          } @else {
+            @switch (indicatorType) {
+              @case ('number') {
+                <span [class]="stepNumberClasses()">{{ i + 1 }}</span>
+              }
+              @case ('done') {
+                <span [class]="stepIconSlotClasses()">
+                  <svg
+                    class="size-3/5 shrink-0"
+                    viewBox="0 0 20 20"
+                    fill="currentColor"
+                    aria-hidden="true"
+                  >
+                    <path
+                      fill-rule="evenodd"
+                      d="M16.704 4.153a.75.75 0 0 1 .143 1.052l-8 10.5a.75.75 0 0 1-1.127.075l-4.5-4.5a.75.75 0 0 1 1.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 0 1 1.05-.143Z"
+                      clip-rule="evenodd"
+                    />
+                  </svg>
+                </span>
+              }
+              @case ('edit') {
+                <span [class]="stepIconSlotClasses()">
+                  <svg
+                    class="size-3/5 shrink-0"
+                    viewBox="0 0 20 20"
+                    fill="currentColor"
+                    aria-hidden="true"
+                  >
+                    <path
+                      d="M13.586 3.586a2 2 0 1 1 2.828 2.828l-.793.793-2.828-2.828.793-.793Zm-2.207 2.207 2.828 2.828-7.07 7.071a2 2 0 0 1-.83.5l-3.086.926a.5.5 0 0 1-.62-.621l.926-3.086a2 2 0 0 1 .5-.83l7.352-7.788Z"
+                    />
+                  </svg>
+                </span>
+              }
+              @case ('error') {
+                <span [class]="stepIconSlotClasses()">
+                  <svg
+                    class="size-3/5 shrink-0"
+                    viewBox="0 0 20 20"
+                    fill="currentColor"
+                    aria-hidden="true"
+                  >
+                    <path
+                      fill-rule="evenodd"
+                      d="M10 18a8 8 0 1 0 0-16 8 8 0 0 0 0 16Zm.75-11.25a.75.75 0 0 0-1.5 0v4.5a.75.75 0 0 0 1.5 0v-4.5ZM10 15a1 1 0 1 0 0-2 1 1 0 0 0 0 2Z"
+                      clip-rule="evenodd"
+                    />
+                  </svg>
+                </span>
+              }
+            }
+          }
+        </span>
+
+        <!-- Label + description -->
+        <span [class]="stepLabelWrapperClasses()">
+          <span [class]="getLabelClass(step, i)">
+            @if (step.stepLabel) {
+              <ng-container [ngTemplateOutlet]="step.stepLabel.template" />
+            } @else {
+              {{ step.label }}
+            }
+            @if (step.optional && !step.completed) {
+              <span [class]="stepOptionalHintClasses()">(Optional)</span>
+            }
+          </span>
+
+          @if (step.description() && variant() === 'default') {
+            <span [class]="stepDescriptionClasses()">{{ step.description() }}</span>
+          }
+
+          @if (shouldRenderError(step) && step.errorMessage) {
+            <span class="sr-only">{{ step.errorMessage }}</span>
+          }
+        </span>
+      </button>
+
+      <!-- Connector (between step i and i+1) -->
+      @if (!last) {
+        <span
+          [class]="getConnectorClass(step, i)"
+          aria-hidden="true"
+        ></span>
+      }
+
+      <!-- Vertical: panel is rendered inline under each selected step -->
+      @if (orientationValue() === 'vertical' && selectedIndexValue() === i && step.content) {
+        <div
+          role="tabpanel"
+          [id]="_getStepContentId(i)"
+          [attr.aria-labelledby]="_getStepLabelId(i)"
+          [class]="stepPanelClasses()"
+          tabindex="0"
+        >
+          <ng-container [ngTemplateOutlet]="step.content" />
+        </div>
+      }
+    </div>
+  }
+</div>
+
+<!-- Horizontal: single panel rendered below the strip -->
+@if (orientationValue() === 'horizontal') {
+  @let activeStep = twSteps[selectedIndexValue()];
+  @if (activeStep && activeStep.content) {
+    <div
+      role="tabpanel"
+      [id]="_getStepContentId(selectedIndexValue())"
+      [attr.aria-labelledby]="_getStepLabelId(selectedIndexValue())"
+      [class]="stepPanelClasses()"
+      [animate.enter]="panelAnimationClass()"
+      tabindex="0"
+    >
+      <ng-container [ngTemplateOutlet]="activeStep.content" />
+    </div>
+  }
+}

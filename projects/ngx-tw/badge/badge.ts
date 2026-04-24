@@ -1,0 +1,242 @@
+import {
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  contentChild,
+  input,
+  output,
+} from '@angular/core';
+import { tv } from 'tailwind-variants';
+import type { TwColor, TwSize } from 'ngx-tw/core';
+import { AvatarComponent } from 'ngx-tw/avatar';
+import { IconComponent } from 'ngx-tw/icon';
+
+/** Visual style of the badge. */
+export type BadgeVariant = 'solid' | 'outline' | 'soft';
+
+const badgeVariants = tv({
+  slots: {
+    root: 'inline-flex items-center font-medium w-fit',
+    content: 'inline-flex items-center',
+    dismiss:
+      'inline-flex items-center justify-center rounded-md cursor-pointer hover:bg-surface-muted transition-colors duration-200 motion-reduce:transition-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500',
+    dot: 'rounded-full shrink-0',
+    leadingAvatar: 'inline-flex shrink-0 rounded-full overflow-hidden [&>tw-avatar]:size-full',
+    leadingIcon: 'inline-flex shrink-0 [&>tw-icon]:size-full',
+  },
+  variants: {
+    variant: {
+      solid: { root: '' },
+      outline: { root: 'border' },
+      soft: { root: '' },
+    },
+    color: {
+      primary: {},
+      secondary: {},
+      accent: {},
+      neutral: {},
+      info: {},
+      success: {},
+      warning: {},
+      error: {},
+    },
+    size: {
+      xs: {
+        root: 'px-1.5 py-0.5 text-xs gap-1',
+        dismiss: 'size-4',
+        dot: 'size-1.5',
+        leadingAvatar: 'size-4',
+        leadingIcon: 'size-3',
+      },
+      sm: {
+        root: 'px-2 py-0.5 text-xs gap-1',
+        dismiss: 'size-4',
+        dot: 'size-1.5',
+        leadingAvatar: 'size-4',
+        leadingIcon: 'size-3',
+      },
+      md: {
+        root: 'px-2 py-1 text-xs gap-1.5',
+        dismiss: 'size-4',
+        dot: 'size-2',
+        leadingAvatar: 'size-5',
+        leadingIcon: 'size-3.5',
+      },
+      lg: {
+        root: 'px-3 py-1.5 text-sm gap-1.5',
+        dismiss: 'size-5',
+        dot: 'size-2',
+        leadingAvatar: 'size-5',
+        leadingIcon: 'size-4',
+      },
+      xl: {
+        root: 'px-3 py-1.5 text-sm gap-1.5',
+        dismiss: 'size-5',
+        dot: 'size-2',
+        leadingAvatar: 'size-6',
+        leadingIcon: 'size-4',
+      },
+    },
+    pill: {
+      true: { root: 'rounded-full' },
+      false: { root: 'rounded-md' },
+    },
+    isDot: {
+      true: { root: 'p-0 size-2' },
+      false: {},
+    },
+    hasAvatar: {
+      true: {},
+      false: {},
+    },
+  },
+  compoundVariants: [
+    // ===== Primary =====
+    { variant: 'solid', color: 'primary', class: { root: 'bg-primary-600 text-white', dot: 'bg-primary-500' } },
+    { variant: 'outline', color: 'primary', class: { root: 'border-primary-300 text-primary-700', dot: 'bg-primary-500' } },
+    { variant: 'soft', color: 'primary', class: { root: 'bg-primary-50 text-primary-800', dot: 'bg-primary-500' } },
+
+    // ===== Secondary =====
+    { variant: 'solid', color: 'secondary', class: { root: 'bg-secondary-600 text-white', dot: 'bg-secondary-500' } },
+    { variant: 'outline', color: 'secondary', class: { root: 'border-secondary-300 text-secondary-700', dot: 'bg-secondary-500' } },
+    { variant: 'soft', color: 'secondary', class: { root: 'bg-secondary-50 text-secondary-800', dot: 'bg-secondary-500' } },
+
+    // ===== Accent =====
+    { variant: 'solid', color: 'accent', class: { root: 'bg-accent-600 text-white', dot: 'bg-accent-500' } },
+    { variant: 'outline', color: 'accent', class: { root: 'border-accent-300 text-accent-700', dot: 'bg-accent-500' } },
+    { variant: 'soft', color: 'accent', class: { root: 'bg-accent-50 text-accent-800', dot: 'bg-accent-500' } },
+
+    // ===== Neutral =====
+    { variant: 'solid', color: 'neutral', class: { root: 'bg-surface-muted text-fg', dot: 'bg-fg-muted' } },
+    { variant: 'outline', color: 'neutral', class: { root: 'border-border text-fg', dot: 'bg-fg-muted' } },
+    { variant: 'soft', color: 'neutral', class: { root: 'bg-surface-muted text-fg-muted', dot: 'bg-fg-muted' } },
+
+    // ===== Info =====
+    { variant: 'solid', color: 'info', class: { root: 'bg-info-600 text-white', dot: 'bg-info-500' } },
+    { variant: 'outline', color: 'info', class: { root: 'border-info-300 text-info-700', dot: 'bg-info-500' } },
+    { variant: 'soft', color: 'info', class: { root: 'bg-info-50 text-info-800', dot: 'bg-info-500' } },
+
+    // ===== Success =====
+    { variant: 'solid', color: 'success', class: { root: 'bg-success-600 text-white', dot: 'bg-success-500' } },
+    { variant: 'outline', color: 'success', class: { root: 'border-success-300 text-success-700', dot: 'bg-success-500' } },
+    { variant: 'soft', color: 'success', class: { root: 'bg-success-50 text-success-800', dot: 'bg-success-500' } },
+
+    // ===== Warning =====
+    { variant: 'solid', color: 'warning', class: { root: 'bg-warning-500 text-black', dot: 'bg-warning-500' } },
+    { variant: 'outline', color: 'warning', class: { root: 'border-warning-300 text-warning-700', dot: 'bg-warning-500' } },
+    { variant: 'soft', color: 'warning', class: { root: 'bg-warning-50 text-warning-800', dot: 'bg-warning-500' } },
+
+    // ===== Error =====
+    { variant: 'solid', color: 'error', class: { root: 'bg-error-600 text-white', dot: 'bg-error-500' } },
+    { variant: 'outline', color: 'error', class: { root: 'border-error-300 text-error-700', dot: 'bg-error-500' } },
+    { variant: 'soft', color: 'error', class: { root: 'bg-error-50 text-error-800', dot: 'bg-error-500' } },
+
+    // ===== Dot size overrides per size =====
+    { isDot: true, size: 'xs', class: { root: 'size-1.5' } },
+    { isDot: true, size: 'sm', class: { root: 'size-1.5' } },
+    { isDot: true, size: 'md', class: { root: 'size-2' } },
+    { isDot: true, size: 'lg', class: { root: 'size-2.5' } },
+    { isDot: true, size: 'xl', class: { root: 'size-2.5' } },
+
+    // ===== Reduced left padding when avatar is present =====
+    { hasAvatar: true, size: 'xs', class: { root: 'pl-0.5' } },
+    { hasAvatar: true, size: 'sm', class: { root: 'pl-1' } },
+    { hasAvatar: true, size: 'md', class: { root: 'pl-1' } },
+    { hasAvatar: true, size: 'lg', class: { root: 'pl-1.5' } },
+    { hasAvatar: true, size: 'xl', class: { root: 'pl-1.5' } },
+  ],
+  defaultVariants: {
+    variant: 'soft',
+    color: 'neutral',
+    size: 'md',
+    pill: false,
+    isDot: false,
+    hasAvatar: false,
+  },
+}, {
+  twMerge: true,
+});
+
+@Component({
+  selector: '[twBadge]',
+  exportAs: 'twBadge',
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  host: {
+    role: 'status',
+    '[class]': 'rootClasses()',
+  },
+  template: `
+    @if (dot()) {
+      <span [class]="dotClasses()"></span>
+    } @else {
+      @if (hasLeadingAvatar()) {
+        <span [class]="leadingAvatarClasses()"><ng-content select="tw-avatar" /></span>
+      }
+      @if (hasLeadingIcon() && !hasLeadingAvatar()) {
+        <span [class]="leadingIconClasses()"><ng-content select="tw-icon" /></span>
+      }
+      <span [class]="contentClasses()"><ng-content /></span>
+      @if (dismissible()) {
+        <button
+          type="button"
+          aria-label="Dismiss"
+          [class]="dismissClasses()"
+          (click)="dismissed.emit()"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" class="size-full">
+            <path d="M5.28 4.22a.75.75 0 0 0-1.06 1.06L6.94 8l-2.72 2.72a.75.75 0 1 0 1.06 1.06L8 9.06l2.72 2.72a.75.75 0 1 0 1.06-1.06L9.06 8l2.72-2.72a.75.75 0 0 0-1.06-1.06L8 6.94 5.28 4.22Z"/>
+          </svg>
+        </button>
+      }
+    }
+  `,
+})
+export class BadgeComponent {
+  /** Sets the semantic color palette. Defaults to `'neutral'`. */
+  readonly color = input<TwColor>('neutral');
+
+  /** Controls the visual style. Defaults to `'soft'`. */
+  readonly variant = input<BadgeVariant>('soft');
+
+  /** Controls badge size (padding, font, icon size). Defaults to `'md'`. */
+  readonly size = input<TwSize>('md');
+
+  /** When true, uses fully rounded corners instead of default `rounded-md`. Defaults to `false`. */
+  readonly pill = input(false);
+
+  /** When true, renders a dismiss button inside the badge. Defaults to `false`. */
+  readonly dismissible = input(false);
+
+  /** When true, renders a small colored dot with no text content. Defaults to `false`. */
+  readonly dot = input(false);
+
+  /** Fires when the dismiss button is clicked. */
+  readonly dismissed = output<void>();
+
+  /** @internal */
+  readonly avatarChild = contentChild(AvatarComponent);
+
+  /** @internal */
+  readonly iconChild = contentChild(IconComponent);
+
+  readonly hasLeadingAvatar = computed(() => !!this.avatarChild());
+  readonly hasLeadingIcon = computed(() => !!this.iconChild());
+
+  private readonly variantResult = computed(() =>
+    badgeVariants({
+      variant: this.variant(),
+      color: this.color(),
+      size: this.size(),
+      pill: this.pill(),
+      isDot: this.dot(),
+      hasAvatar: this.hasLeadingAvatar(),
+    }),
+  );
+
+  readonly rootClasses = computed(() => this.variantResult().root());
+  readonly contentClasses = computed(() => this.variantResult().content());
+  readonly dismissClasses = computed(() => this.variantResult().dismiss());
+  readonly dotClasses = computed(() => this.variantResult().dot());
+  readonly leadingAvatarClasses = computed(() => this.variantResult().leadingAvatar());
+  readonly leadingIconClasses = computed(() => this.variantResult().leadingIcon());
+}

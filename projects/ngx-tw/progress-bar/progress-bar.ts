@@ -1,0 +1,300 @@
+/**
+ * `tw-progress-bar` — visualises measurable progress.
+ *
+ * Composition usecases:
+ * - Upload progress (determinate linear with `valueFormatter` → `"3.2 MB / 10 MB"`).
+ * - Multi-step wizard (segmented variant, `segments` = step count).
+ * - Skill / rating display (static determinate linear).
+ * - Inline list-row progress (compact `size="sm"`, constrained width via host class).
+ * - Card-footer task completion (`showValue=true`, `color` switches to `success`/`error`).
+ * - Indeterminate loading before first byte (omit `value` — the bar sweeps).
+ *
+ * For unknown-duration operations with no measurable progress, use `tw-spinner` instead.
+ */
+import {
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  effect,
+  input,
+  isDevMode,
+} from '@angular/core';
+import { tv } from 'tailwind-variants';
+import type { TwColor } from 'ngx-tw/core';
+
+/** Visual style of the progress bar. */
+export type ProgressBarVariant = 'linear' | 'segmented';
+
+/** Size scale specific to progress bars (bar thickness). */
+export type ProgressBarSize = 'sm' | 'md' | 'lg';
+
+/** Function signature for formatting the visible / announced progress value. */
+export type ProgressBarValueFormatter = (value: number, max: number, min: number) => string;
+
+// ── Static fill-color lookup (Tailwind v4 scans class strings statically) ──
+
+const FILL_COLORS: Record<TwColor, string> = {
+  primary: 'bg-primary-500',
+  secondary: 'bg-secondary-500',
+  accent: 'bg-accent-500',
+  neutral: 'bg-fg',
+  info: 'bg-info-500',
+  success: 'bg-success-500',
+  warning: 'bg-warning-500',
+  error: 'bg-error-500',
+};
+
+// ── tv() config ──
+
+const progressBarVariants = tv({
+  slots: {
+    root: 'flex flex-col w-full',
+    header: 'flex items-center justify-between gap-3',
+    label: 'text-xs text-fg-muted',
+    valueText: 'text-xs text-fg-muted font-medium tabular-nums',
+    rail: 'relative w-full overflow-hidden rounded-full bg-surface-muted',
+    fill: 'absolute inset-y-0 left-0 rounded-full',
+    segmentList: 'flex w-full gap-1',
+    segment: 'flex-1 rounded-full',
+  },
+  variants: {
+    size: {
+      sm: { rail: 'h-1', segment: 'h-1' },
+      md: { rail: 'h-2', segment: 'h-2' },
+      lg: { rail: 'h-3', segment: 'h-3' },
+    },
+    variant: {
+      linear: { segmentList: 'hidden' },
+      segmented: { rail: 'hidden' },
+    },
+    isIndeterminate: {
+      true: { fill: 'w-[30%] animate-progress-bar-indeterminate' },
+      false: { fill: 'transition-[width] duration-200 motion-reduce:transition-none' },
+    },
+    hasHeader: {
+      true: { root: 'gap-1.5' },
+      false: { root: 'gap-0' },
+    },
+  },
+  defaultVariants: {
+    size: 'md',
+    variant: 'linear',
+    isIndeterminate: false,
+    hasHeader: false,
+  },
+}, {
+  twMerge: true,
+});
+
+let nextId = 0;
+
+const DEFAULT_FORMATTER: ProgressBarValueFormatter = (value, max, min) => {
+  const range = max - min;
+  if (range <= 0) return '0%';
+  return `${Math.round(((value - min) / range) * 100)}%`;
+};
+
+/**
+ * Indicates progress toward the completion of a task.
+ *
+ * @example
+ * ```html
+ * <tw-progress-bar [value]="40" />
+ * <tw-progress-bar label="Fetching records" />
+ * <tw-progress-bar variant="segmented" [segments]="4" [value]="step() * 25" />
+ * ```
+ */
+@Component({
+  selector: 'tw-progress-bar',
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  host: {
+    '[class]': 'rootClasses()',
+  },
+  template: `
+    @if (hasHeader()) {
+      <div [class]="headerClasses()">
+        @if (label(); as lbl) {
+          <span [id]="labelId" [class]="labelClasses()">{{ lbl }}</span>
+        } @else {
+          <span></span>
+        }
+        @if (showValue() && !isIndeterminate()) {
+          <span [class]="valueTextClasses()">{{ formattedValue() }}</span>
+        }
+      </div>
+    }
+
+    @if (variant() === 'linear') {
+      <div
+        [class]="railClasses()"
+        role="progressbar"
+        [attr.aria-valuemin]="min()"
+        [attr.aria-valuemax]="max()"
+        [attr.aria-valuenow]="isIndeterminate() ? null : clampedValue()"
+        [attr.aria-valuetext]="isIndeterminate() ? null : formattedValue()"
+        [attr.aria-busy]="isIndeterminate() ? true : null"
+        [attr.aria-label]="resolvedAriaLabel()"
+        [attr.aria-labelledby]="resolvedAriaLabelledby()"
+      >
+        @if (isIndeterminate()) {
+          <span [class]="fillClasses()"></span>
+        } @else {
+          <span [class]="fillClasses()" [style.width.%]="progressRatio() * 100"></span>
+        }
+      </div>
+    } @else {
+      <div
+        [class]="segmentListClasses()"
+        role="progressbar"
+        [attr.aria-valuemin]="min()"
+        [attr.aria-valuemax]="max()"
+        [attr.aria-valuenow]="isIndeterminate() ? null : clampedValue()"
+        [attr.aria-valuetext]="isIndeterminate() ? null : formattedValue()"
+        [attr.aria-busy]="isIndeterminate() ? true : null"
+        [attr.aria-label]="resolvedAriaLabel()"
+        [attr.aria-labelledby]="resolvedAriaLabelledby()"
+      >
+        @for (i of segmentIndices(); track i) {
+          <span [class]="segmentClassFor(i)"></span>
+        }
+      </div>
+    }
+  `,
+})
+export class ProgressBarComponent {
+  /** Current progress value. When null or undefined, the bar renders indeterminate. Values outside `[min, max]` are clamped. */
+  readonly value = input<number | null | undefined>(null);
+
+  /** Lower bound of the value range. Defaults to `0`. */
+  readonly min = input(0);
+
+  /** Upper bound of the value range. Defaults to `100`. */
+  readonly max = input(100);
+
+  /** Visual style of the bar. `'linear'` renders a single fill; `'segmented'` splits the rail into discrete steps. Defaults to `'linear'`. */
+  readonly variant = input<ProgressBarVariant>('linear');
+
+  /** Semantic color of the filled portion. Defaults to `'primary'`. Use status colors (`success`/`warning`/`error`) to reflect task outcome. */
+  readonly color = input<TwColor>('primary');
+
+  /** Bar thickness. `'sm'` = h-1, `'md'` = h-2, `'lg'` = h-3. Defaults to `'md'`. */
+  readonly size = input<ProgressBarSize>('md');
+
+  /** Number of equal cells when `variant` is `'segmented'`. Ignored for `'linear'`. Defaults to `5`. */
+  readonly segments = input(5);
+
+  /** Visible label rendered above the bar. When set, the bar is wired to the label via `aria-labelledby`. */
+  readonly label = input<string | undefined>(undefined);
+
+  /** When true, renders the formatted progress value next to the label. Defaults to `false`. */
+  readonly showValue = input(false);
+
+  /** Custom formatter for the displayed and announced value. Defaults to an integer percentage, e.g. `'42%'`. */
+  readonly valueFormatter = input<ProgressBarValueFormatter | undefined>(undefined);
+
+  /** Accessible name when no visible label is provided. Mirrored to `aria-label` on the progressbar element. */
+  readonly ariaLabel = input<string | undefined>(undefined);
+
+  /** ID of an external element that labels the progress bar. Mirrored to `aria-labelledby`. */
+  readonly ariaLabelledby = input<string | undefined>(undefined);
+
+  /** @internal */
+  readonly labelId = `tw-progress-bar-${nextId++}-label`;
+
+  /** @internal */
+  readonly isIndeterminate = computed(() => {
+    const v = this.value();
+    return v === null || v === undefined;
+  });
+
+  /** @internal */
+  readonly clampedValue = computed(() => {
+    const v = this.value();
+    if (v === null || v === undefined) return this.min();
+    const lo = this.min();
+    const hi = this.max();
+    if (v < lo) return lo;
+    if (v > hi) return hi;
+    return v;
+  });
+
+  /** @internal */
+  readonly progressRatio = computed(() => {
+    if (this.isIndeterminate()) return 0;
+    const range = this.max() - this.min();
+    if (range <= 0) return 0;
+    return (this.clampedValue() - this.min()) / range;
+  });
+
+  /** @internal */
+  readonly formattedValue = computed(() => {
+    if (this.isIndeterminate()) return '';
+    const fmt = this.valueFormatter() ?? DEFAULT_FORMATTER;
+    return fmt(this.clampedValue(), this.max(), this.min());
+  });
+
+  /** @internal */
+  readonly hasHeader = computed(() => !!this.label() || this.showValue());
+
+  /** @internal */
+  readonly segmentIndices = computed(() => {
+    const n = Math.max(1, Math.floor(this.segments()));
+    return Array.from({ length: n }, (_, i) => i);
+  });
+
+  /** @internal */
+  readonly resolvedAriaLabel = computed(() => {
+    if (this.label()) return null;
+    if (this.ariaLabelledby()) return null;
+    return this.ariaLabel() ?? null;
+  });
+
+  /** @internal */
+  readonly resolvedAriaLabelledby = computed(() => {
+    if (this.label()) return this.labelId;
+    return this.ariaLabelledby() ?? null;
+  });
+
+  // ── tv() slot computeds ──
+
+  private readonly variantResult = computed(() =>
+    progressBarVariants({
+      size: this.size(),
+      variant: this.variant(),
+      isIndeterminate: this.isIndeterminate(),
+      hasHeader: this.hasHeader(),
+    }),
+  );
+
+  readonly rootClasses = computed(() => this.variantResult().root());
+  readonly headerClasses = computed(() => this.variantResult().header());
+  readonly labelClasses = computed(() => this.variantResult().label());
+  readonly valueTextClasses = computed(() => this.variantResult().valueText());
+  readonly railClasses = computed(() => this.variantResult().rail());
+  readonly fillClasses = computed(() => `${this.variantResult().fill()} ${FILL_COLORS[this.color()]}`);
+  readonly segmentListClasses = computed(() => this.variantResult().segmentList());
+  private readonly segmentBaseClasses = computed(() => this.variantResult().segment());
+
+  /** @internal */
+  segmentClassFor(index: number): string {
+    const base = this.segmentBaseClasses();
+    const filled = (index + 1) / this.segmentIndices().length <= this.progressRatio();
+    const bg = filled ? FILL_COLORS[this.color()] : 'bg-surface-muted';
+    return `${base} ${bg}`;
+  }
+
+  // ── Dev-mode accessible-name warning (fires once per instance) ──
+
+  constructor() {
+    if (!isDevMode()) return;
+    let warned = false;
+    effect(() => {
+      if (warned) return;
+      if (this.label() || this.ariaLabel() || this.ariaLabelledby()) return;
+      warned = true;
+      console.warn(
+        'tw-progress-bar: no accessible name provided. Supply one of `label`, `ariaLabel`, or `ariaLabelledby`.',
+      );
+    });
+  }
+}

@@ -1,0 +1,493 @@
+import {
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  contentChildren,
+  DestroyRef,
+  Directive,
+  inject,
+  input,
+  signal,
+  TemplateRef,
+  type AfterViewInit,
+  type Provider,
+} from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { NgTemplateOutlet } from '@angular/common';
+import { LiveAnnouncer } from '@angular/cdk/a11y';
+import {
+  CdkStep,
+  CdkStepHeader,
+  CdkStepLabel,
+  CdkStepper,
+  CdkStepperNext,
+  CdkStepperPrevious,
+  STEP_STATE,
+  STEPPER_GLOBAL_OPTIONS,
+  type StepperOptions,
+  type StepperOrientation,
+  type StepperSelectionEvent,
+  type StepState,
+} from '@angular/cdk/stepper';
+import { tv } from 'tailwind-variants';
+import type { TwColor, TwSize } from 'ngx-tw/core';
+
+/** Visual style of the step indicator strip. */
+export type StepperVariant = 'default' | 'dot' | 'simple';
+
+/** Context passed to custom `*twStepperIcon` templates. */
+export interface StepperIconContext {
+  $implicit: { index: number; active: boolean };
+}
+
+// ── tv() config ──
+
+const stepperVariants = tv(
+  {
+    slots: {
+      root: 'flex',
+      header: 'flex',
+      stepItem: 'flex',
+      stepHeader:
+        'group inline-flex items-center gap-2 cursor-pointer transition-colors duration-200 motion-reduce:transition-none rounded-md focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500 disabled:cursor-not-allowed',
+      stepIndicator:
+        'inline-flex items-center justify-center shrink-0 rounded-full font-medium transition-[color,background-color,border-color,box-shadow] duration-200 motion-reduce:transition-none',
+      stepNumber: 'leading-none',
+      stepIconSlot: 'inline-flex items-center justify-center',
+      stepLabelWrapper: 'flex flex-col min-w-0 text-left',
+      stepLabel: 'leading-tight',
+      stepDescription: 'text-xs text-fg-muted leading-tight mt-0.5',
+      stepOptionalHint: 'text-xs text-fg-subtle ml-1 font-normal',
+      stepConnector:
+        'shrink-0 transition-colors duration-200 motion-reduce:transition-none',
+      stepPanel: 'min-w-0',
+    },
+    variants: {
+      variant: {
+        default: {},
+        dot: {
+          stepNumber: 'hidden',
+          stepIconSlot: 'hidden',
+        },
+        simple: {
+          stepLabelWrapper: 'sr-only',
+        },
+      },
+      size: {
+        xs: {
+          stepIndicator: 'size-6 text-xs',
+          stepLabel: 'text-xs',
+        },
+        sm: {
+          stepIndicator: 'size-7 text-xs',
+          stepLabel: 'text-sm',
+        },
+        md: {
+          stepIndicator: 'size-8 text-sm',
+          stepLabel: 'text-sm',
+        },
+        lg: {
+          stepIndicator: 'size-10 text-base',
+          stepLabel: 'text-base',
+        },
+        xl: {
+          stepIndicator: 'size-12 text-base',
+          stepLabel: 'text-base',
+        },
+      },
+      orientation: {
+        horizontal: {
+          root: 'flex-col w-full',
+          header: 'flex-row items-center w-full',
+          stepItem: 'flex-row items-center flex-1 last:flex-none',
+          stepConnector: 'flex-1 h-px mx-2',
+          stepLabelWrapper: 'ml-2',
+          stepPanel: 'mt-4 outline-none',
+        },
+        vertical: {
+          root: 'flex-col',
+          header: 'flex-col items-stretch',
+          stepItem: 'flex-col items-start w-full',
+          stepConnector: 'w-px min-h-6 ml-4 my-1 flex-1',
+          stepLabelWrapper: 'ml-3',
+          stepPanel: 'ml-11 mt-2 mb-4 outline-none',
+        },
+      },
+    },
+    compoundVariants: [
+      // Dot variant indicator sizing
+      { variant: 'dot', size: 'xs', class: { stepIndicator: 'size-2' } },
+      { variant: 'dot', size: 'sm', class: { stepIndicator: 'size-2.5' } },
+      { variant: 'dot', size: 'md', class: { stepIndicator: 'size-2.5' } },
+      { variant: 'dot', size: 'lg', class: { stepIndicator: 'size-3' } },
+      { variant: 'dot', size: 'xl', class: { stepIndicator: 'size-3' } },
+
+      // Thicker connectors for lg / xl
+      {
+        orientation: 'horizontal',
+        size: 'lg',
+        class: { stepConnector: 'h-0.5' },
+      },
+      {
+        orientation: 'horizontal',
+        size: 'xl',
+        class: { stepConnector: 'h-0.5' },
+      },
+      { orientation: 'vertical', size: 'lg', class: { stepConnector: 'w-0.5' } },
+      { orientation: 'vertical', size: 'xl', class: { stepConnector: 'w-0.5' } },
+    ],
+    defaultVariants: {
+      variant: 'default',
+      size: 'md',
+      orientation: 'horizontal',
+    },
+  },
+  { twMerge: true },
+);
+
+// ── Static class lookups (Tailwind v4 requires statically-written class strings) ──
+
+type StepStyleState = 'pending' | 'active' | 'completed' | 'error' | 'disabled';
+
+const INDICATOR_PENDING =
+  'bg-surface-muted text-fg-muted border border-border';
+const INDICATOR_DISABLED =
+  'bg-surface-muted text-fg-subtle border border-border opacity-60';
+const INDICATOR_ERROR =
+  'bg-error-500 text-white border border-error-500';
+
+const INDICATOR_ACTIVE: Record<TwColor, string> = {
+  primary:
+    'bg-primary-500 text-white border border-primary-500 ring-4 ring-primary-100 dark:ring-primary-950',
+  secondary:
+    'bg-secondary-500 text-white border border-secondary-500 ring-4 ring-secondary-100 dark:ring-secondary-950',
+  accent:
+    'bg-accent-500 text-white border border-accent-500 ring-4 ring-accent-100 dark:ring-accent-950',
+  neutral: 'bg-fg text-surface border border-fg ring-4 ring-surface-muted',
+  info: 'bg-info-500 text-white border border-info-500 ring-4 ring-info-100 dark:ring-info-950',
+  success:
+    'bg-success-500 text-white border border-success-500 ring-4 ring-success-100 dark:ring-success-950',
+  warning:
+    'bg-warning-500 text-white border border-warning-500 ring-4 ring-warning-100 dark:ring-warning-950',
+  error:
+    'bg-error-500 text-white border border-error-500 ring-4 ring-error-100 dark:ring-error-950',
+};
+
+const INDICATOR_COMPLETED: Record<TwColor, string> = {
+  primary: 'bg-primary-500 text-white border border-primary-500',
+  secondary: 'bg-secondary-500 text-white border border-secondary-500',
+  accent: 'bg-accent-500 text-white border border-accent-500',
+  neutral: 'bg-fg text-surface border border-fg',
+  info: 'bg-info-500 text-white border border-info-500',
+  success: 'bg-success-500 text-white border border-success-500',
+  warning: 'bg-warning-500 text-white border border-warning-500',
+  error: 'bg-error-500 text-white border border-error-500',
+};
+
+const LABEL_PENDING = 'text-fg-muted';
+const LABEL_COMPLETED = 'text-fg';
+const LABEL_DISABLED = 'text-fg-subtle';
+const LABEL_ERROR = 'text-error-700 dark:text-error-300 font-semibold';
+
+const LABEL_ACTIVE: Record<TwColor, string> = {
+  primary: 'text-primary-700 dark:text-primary-300 font-semibold',
+  secondary: 'text-secondary-700 dark:text-secondary-300 font-semibold',
+  accent: 'text-accent-700 dark:text-accent-300 font-semibold',
+  neutral: 'text-fg font-semibold',
+  info: 'text-info-700 dark:text-info-300 font-semibold',
+  success: 'text-success-700 dark:text-success-300 font-semibold',
+  warning: 'text-warning-700 dark:text-warning-300 font-semibold',
+  error: 'text-error-700 dark:text-error-300 font-semibold',
+};
+
+const CONNECTOR_DEFAULT = 'bg-border';
+const CONNECTOR_ERROR = 'bg-error-500';
+const CONNECTOR_REACHED: Record<TwColor, string> = {
+  primary: 'bg-primary-500',
+  secondary: 'bg-secondary-500',
+  accent: 'bg-accent-500',
+  neutral: 'bg-fg',
+  info: 'bg-info-500',
+  success: 'bg-success-500',
+  warning: 'bg-warning-500',
+  error: 'bg-error-500',
+};
+
+function resolveIndicatorClasses(state: StepStyleState, color: TwColor): string {
+  switch (state) {
+    case 'pending':
+      return INDICATOR_PENDING;
+    case 'disabled':
+      return INDICATOR_DISABLED;
+    case 'error':
+      return INDICATOR_ERROR;
+    case 'active':
+      return INDICATOR_ACTIVE[color];
+    case 'completed':
+      return INDICATOR_COMPLETED[color];
+  }
+}
+
+function resolveLabelClasses(state: StepStyleState, color: TwColor): string {
+  switch (state) {
+    case 'pending':
+      return LABEL_PENDING;
+    case 'completed':
+      return LABEL_COMPLETED;
+    case 'disabled':
+      return LABEL_DISABLED;
+    case 'error':
+      return LABEL_ERROR;
+    case 'active':
+      return LABEL_ACTIVE[color];
+  }
+}
+
+function resolveConnectorClasses(state: StepStyleState, color: TwColor): string {
+  if (state === 'error') return CONNECTOR_ERROR;
+  if (state === 'completed' || state === 'active') return CONNECTOR_REACHED[color];
+  return CONNECTOR_DEFAULT;
+}
+
+// ── StepperIconDirective ──
+
+/**
+ * Structural-style directive on an `<ng-template>` that replaces the default
+ * indicator icon for a given step state.
+ */
+@Directive({
+  selector: 'ng-template[twStepperIcon]',
+})
+export class StepperIconDirective {
+  /** Step state this template overrides. Matches CDK's `StepState` values (`'number' | 'edit' | 'done' | 'error'`). */
+  readonly state = input<StepState | undefined>(undefined);
+
+  /** @internal */
+  readonly templateRef = inject(TemplateRef<StepperIconContext>);
+}
+
+// ── StepLabelDirective ──
+
+/**
+ * Structural-style directive on an `<ng-template>` used as a custom step header
+ * label. Consumers write `<ng-template twStepLabel>…</ng-template>` inside `<tw-step>`.
+ */
+@Directive({
+  selector: 'ng-template[twStepLabel]',
+  providers: [{ provide: CdkStepLabel, useExisting: StepLabelDirective }],
+})
+export class StepLabelDirective extends CdkStepLabel {}
+
+// ── StepComponent ──
+
+@Component({
+  selector: 'tw-step',
+  template: '<ng-template><ng-content/></ng-template>',
+  exportAs: 'twStep',
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  providers: [{ provide: CdkStep, useExisting: StepComponent }],
+})
+export class StepComponent extends CdkStep {
+  /** Optional descriptive text shown under the step label in the `'default'` variant. */
+  readonly description = input('');
+
+  /** @internal Custom indicator icon templates (one per state) projected into this step. */
+  readonly iconTemplates = contentChildren(StepperIconDirective);
+}
+
+// ── StepperComponent ──
+
+@Component({
+  selector: 'tw-stepper',
+  templateUrl: './stepper.html',
+  exportAs: 'twStepper',
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  imports: [NgTemplateOutlet, CdkStepHeader],
+  providers: [{ provide: CdkStepper, useExisting: StepperComponent }],
+  host: {
+    '[class]': 'rootClasses()',
+  },
+})
+export class StepperComponent extends CdkStepper implements AfterViewInit {
+  /** Visual style of the indicator strip. `'default'` = numbered circles, `'dot'` = compact filled dots, `'simple'` = indicators only (labels hidden visually). Defaults to `'default'`. */
+  readonly variant = input<StepperVariant>('default');
+
+  /** Semantic color for active and completed indicators and connectors. Defaults to `'primary'`. */
+  readonly color = input<TwColor>('primary');
+
+  /** Controls indicator size and label typography. Defaults to `'md'`. */
+  readonly size = input<TwSize>('md');
+
+  /** When true, steps with `hasError` render error styling, icon, and `aria-invalid`. Defaults to `true`. */
+  readonly showError = input(true);
+
+  /** When true, clicking a navigable step header selects it. Set to `false` to only allow advancement via `twStepperNext` / `twStepperPrevious`. Defaults to `true`. */
+  readonly headerInteractive = input(true);
+
+  private readonly _liveAnnouncer = inject(LiveAnnouncer);
+  private readonly _destroyRef = inject(DestroyRef);
+  private readonly _globalOptions = inject(STEPPER_GLOBAL_OPTIONS, { optional: true });
+
+  private readonly _orientationSignal = signal<StepperOrientation>('horizontal');
+  private readonly _selectedIndexSignal = signal(0);
+  private readonly _previousIndexSignal = signal(0);
+
+  /** @internal Reactive mirror of CDK's `orientation` input. */
+  readonly orientationValue = this._orientationSignal.asReadonly();
+
+  /** @internal Reactive mirror of CDK's `selectedIndex`. */
+  readonly selectedIndexValue = this._selectedIndexSignal.asReadonly();
+
+  override set orientation(value: StepperOrientation) {
+    super.orientation = value;
+    this._orientationSignal.set(value);
+  }
+  override get orientation(): StepperOrientation {
+    return super.orientation;
+  }
+
+  private readonly _variantResult = computed(() =>
+    stepperVariants({
+      variant: this.variant(),
+      size: this.size(),
+      orientation: this._orientationSignal(),
+    }),
+  );
+
+  readonly rootClasses = computed(() => this._variantResult().root());
+  readonly headerClasses = computed(() => this._variantResult().header());
+  readonly stepItemClasses = computed(() => this._variantResult().stepItem());
+  readonly stepHeaderClasses = computed(() => this._variantResult().stepHeader());
+  readonly stepIndicatorBaseClasses = computed(() => this._variantResult().stepIndicator());
+  readonly stepNumberClasses = computed(() => this._variantResult().stepNumber());
+  readonly stepIconSlotClasses = computed(() => this._variantResult().stepIconSlot());
+  readonly stepLabelWrapperClasses = computed(() => this._variantResult().stepLabelWrapper());
+  readonly stepLabelBaseClasses = computed(() => this._variantResult().stepLabel());
+  readonly stepDescriptionClasses = computed(() => this._variantResult().stepDescription());
+  readonly stepOptionalHintClasses = computed(() => this._variantResult().stepOptionalHint());
+  readonly stepConnectorBaseClasses = computed(() => this._variantResult().stepConnector());
+  readonly stepPanelClasses = computed(() => this._variantResult().stepPanel());
+
+  readonly panelAnimationClass = computed(() => {
+    if (this._orientationSignal() === 'vertical') return null;
+    return this._selectedIndexSignal() >= this._previousIndexSignal()
+      ? 'step-panel-enter-forward'
+      : 'step-panel-enter-backward';
+  });
+
+  override ngAfterViewInit(): void {
+    super.ngAfterViewInit();
+    this._orientationSignal.set(this.orientation);
+    this._selectedIndexSignal.set(this.selectedIndex);
+    this._previousIndexSignal.set(this.selectedIndex);
+
+    this.selectionChange
+      .pipe(takeUntilDestroyed(this._destroyRef))
+      .subscribe((event: StepperSelectionEvent) => {
+        this._previousIndexSignal.set(event.previouslySelectedIndex);
+        this._selectedIndexSignal.set(event.selectedIndex);
+        this._orientationSignal.set(this.orientation);
+
+        const total = this.steps.length;
+        const label =
+          event.selectedStep.label || `Step ${event.selectedIndex + 1}`;
+        this._liveAnnouncer.announce(
+          `${label}, step ${event.selectedIndex + 1} of ${total}`,
+        );
+      });
+  }
+
+  /** @internal Typed view of projected steps. */
+  get twSteps(): readonly StepComponent[] {
+    return this.steps.toArray() as StepComponent[];
+  }
+
+  /** @internal Resolves the visual state of a step for color/theming purposes. */
+  getStepStyleState(step: StepComponent, index: number): StepStyleState {
+    if (this.shouldRenderError(step)) return 'error';
+    if (index === this._selectedIndexSignal()) return 'active';
+    const itype = step.indicatorType();
+    if (itype === STEP_STATE.DONE || itype === STEP_STATE.EDIT) return 'completed';
+    if (this.linear && !step.isNavigable()) return 'disabled';
+    return 'pending';
+  }
+
+  /** @internal */
+  getIndicatorClass(step: StepComponent, index: number): string {
+    const state = this.getStepStyleState(step, index);
+    return `${this.stepIndicatorBaseClasses()} ${resolveIndicatorClasses(state, this.color())}`;
+  }
+
+  /** @internal */
+  getLabelClass(step: StepComponent, index: number): string {
+    const state = this.getStepStyleState(step, index);
+    return `${this.stepLabelBaseClasses()} ${resolveLabelClasses(state, this.color())}`;
+  }
+
+  /** @internal */
+  getConnectorClass(step: StepComponent, index: number): string {
+    const state = this.getStepStyleState(step, index);
+    return `${this.stepConnectorBaseClasses()} ${resolveConnectorClasses(state, this.color())}`;
+  }
+
+  /** @internal Resolves which indicator glyph to render for a step. */
+  getIndicatorType(step: StepComponent): StepState {
+    if (this.shouldRenderError(step)) return STEP_STATE.ERROR as StepState;
+    return step.indicatorType() as StepState;
+  }
+
+  /** @internal Looks up a consumer-supplied custom template for a given indicator state. */
+  resolveIconTemplate(
+    step: StepComponent,
+    state: StepState,
+  ): TemplateRef<StepperIconContext> | null {
+    const templates = step.iconTemplates();
+    const match = templates.find((t) => t.state() === state);
+    return match ? match.templateRef : null;
+  }
+
+  /** @internal Context supplied to custom icon templates. */
+  iconContext(index: number): StepperIconContext {
+    return {
+      $implicit: {
+        index,
+        active: index === this._selectedIndexSignal(),
+      },
+    };
+  }
+
+  /** @internal Click handler for the step header button. */
+  onHeaderClick(step: StepComponent, index: number): void {
+    if (!this.headerInteractive()) return;
+    if (!step.isNavigable()) return;
+    this.selectedIndex = index;
+  }
+
+  /** @internal Whether the stepper should render the error state for a step. */
+  shouldRenderError(step: StepComponent): boolean {
+    if (!this.showError()) return false;
+    if (this._globalOptions?.showError === false) return false;
+    return step.hasError;
+  }
+}
+
+// ── Next / Previous directives (hostDirectives over CDK) ──
+
+@Directive({
+  selector: 'button[twStepperNext]',
+  hostDirectives: [{ directive: CdkStepperNext, inputs: ['type'] }],
+})
+export class StepperNextDirective {}
+
+@Directive({
+  selector: 'button[twStepperPrevious]',
+  hostDirectives: [{ directive: CdkStepperPrevious, inputs: ['type'] }],
+})
+export class StepperPreviousDirective {}
+
+// ── Provider helper ──
+
+/** Provides app-wide stepper defaults via `STEPPER_GLOBAL_OPTIONS`. */
+export function provideTwStepperOptions(options: StepperOptions): Provider[] {
+  return [{ provide: STEPPER_GLOBAL_OPTIONS, useValue: options }];
+}

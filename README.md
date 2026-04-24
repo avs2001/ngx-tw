@@ -1,59 +1,75 @@
-# NgxTw
+# ngx-tw
 
-This project was generated using [Angular CLI](https://github.com/angular/angular-cli) version 21.0.1.
+Angular component library for applications built with **Tailwind CSS v4** and
+**Angular CDK**. Quality bar: Angular Material — accessible, composable,
+well-tested — styled with Tailwind utilities instead of Material Design tokens.
 
-## Development server
+This repo is the monorepo that produces the `ngx-tw` npm package. Consumers
+only need the published package; this README documents the repo layout and the
+local development workflow.
 
-To start a local development server, run:
+> For install and usage, see the library README:
+> [`projects/ngx-tw/README.md`](./projects/ngx-tw/README.md).
 
-```bash
-ng serve
-```
+## What's here
 
-Once the server is running, open your browser and navigate to `http://localhost:4200/`. The application will automatically reload whenever you modify any of the source files.
+| Path                           | Purpose                                                               |
+|--------------------------------|-----------------------------------------------------------------------|
+| `projects/ngx-tw/`             | The publishable library. Each component is its own secondary entry point (e.g. `ngx-tw/button`). |
+| `projects/ngx-tw/theme/`       | Default semantic theme CSS — ships as an asset, not an entry point.  |
+| `projects/ngx-tw/core/`        | Shared types (`TwColor`, `TwSize`) and utilities.                     |
+| `projects/demo/`               | Demo application with an overview / examples / API page per component.|
+| `e2e/`                         | Playwright end-to-end harness (scaffold — specs to be filled in).     |
+| `docs/`                        | Long-form notes and component specs.                                  |
 
-## Code scaffolding
+## Tech stack
 
-Angular CLI includes powerful code scaffolding tools. To generate a new component, run:
+- **Angular `^21.2.0`** — standalone, signal-based APIs, `OnPush` everywhere.
+- **`@angular/cdk ^21.0.0`** — focus management, overlays, a11y, collections.
+- **Tailwind CSS `^4.0.0`** — utility-first styling; no component CSS files.
+- **tailwind-variants** — variant-driven class composition with `twMerge`.
+- **Vitest** — unit test runner (Angular v21 default).
+- **Playwright** — e2e runner.
+- **ESLint** (flat config) with `angular-eslint` + `typescript-eslint`.
+- **Prettier** — shared formatting config in `package.json`.
 
-```bash
-ng generate component component-name
-```
-
-For a complete list of available schematics (such as `components`, `directives`, or `pipes`), run:
-
-```bash
-ng generate --help
-```
-
-## Building
-
-To build the project run:
-
-```bash
-ng build
-```
-
-This will compile your project and store the build artifacts in the `dist/` directory. By default, the production build optimizes your application for performance and speed.
-
-## Running unit tests
-
-To execute unit tests with the [Vitest](https://vitest.dev/) test runner, use the following command:
+## Getting started
 
 ```bash
-ng test
+npm install
+npm start               # runs the demo app on http://localhost:4600
 ```
 
-## Running end-to-end tests
+## Common scripts
 
-For end-to-end (e2e) testing, run:
+| Script             | What it does                                        |
+|--------------------|-----------------------------------------------------|
+| `npm start`        | Serve the demo app (port 4600)                      |
+| `npm run build`    | Build the demo app                                  |
+| `npm run build:lib`| Build the publishable library into `dist/ngx-tw`    |
+| `npm run watch:lib`| Rebuild the library on change                       |
+| `npm test`         | Run unit tests (Vitest)                             |
+| `npm run e2e`      | Run Playwright e2e tests                            |
+| `npm run lint`     | Lint TypeScript and templates                       |
+| `npm run lint:fix` | Lint with auto-fix                                  |
+
+## Publishing the library
 
 ```bash
-ng e2e
+npm run build:lib
+cd dist/ngx-tw
+npm publish
 ```
 
-Angular CLI does not come with an end-to-end testing framework by default. You can choose one that suits your needs.
+See [`CHANGELOG.md`](./CHANGELOG.md) for version history and
+[`projects/ngx-tw/README.md`](./projects/ngx-tw/README.md) for consumer docs.
 
-## Additional Resources
+## Contributing
 
-For more information on using the Angular CLI, including detailed command references, visit the [Angular CLI Overview and Command Reference](https://angular.dev/tools/cli) page.
+Architectural conventions, styling tokens, and the component quality checklist
+live in [`.claude/CLAUDE.md`](./.claude/CLAUDE.md). Please read it before adding
+or modifying components.
+
+## License
+
+[MIT](./LICENSE) © Iuga Ciprian

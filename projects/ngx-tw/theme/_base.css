@@ -7,6 +7,294 @@
 }
 
 body {
-  background-color: var(--color-bg-default);
-  color: var(--color-text-primary);
+  background-color: var(--color-surface);
+  color: var(--color-fg);
+}
+
+/* ── Animation keyframes ── */
+
+@keyframes fade-out {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+.fade-out {
+  animation: fade-out 150ms ease-out;
+}
+
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+.fade-in {
+  animation: fade-in 150ms ease-in;
+}
+
+@keyframes scale-in {
+  from { opacity: 0; transform: scale(0.95); }
+  to { opacity: 1; transform: scale(1); }
+}
+.scale-in {
+  animation: scale-in 150ms ease-out;
+}
+
+@keyframes scale-out {
+  from { opacity: 1; transform: scale(1); }
+  to { opacity: 0; transform: scale(0.95); }
+}
+.scale-out {
+  animation: scale-out 150ms ease-in;
+}
+
+@keyframes collapsible-enter {
+  from { opacity: 0; max-height: 0; }
+  to { opacity: 1; max-height: var(--collapsible-max-height, 500px); }
+}
+.collapsible-enter {
+  animation: collapsible-enter 150ms ease-out;
+}
+
+@keyframes collapsible-leave {
+  from { opacity: 1; max-height: var(--collapsible-max-height, 500px); }
+  to { opacity: 0; max-height: 0; }
+}
+.collapsible-leave {
+  animation: collapsible-leave 150ms ease-in;
+}
+
+/* Check / indeterminate glyph enter — combined scale + opacity pop for a tactile feel. */
+@keyframes check-in {
+  from { opacity: 0; transform: scale(0.6); }
+  to   { opacity: 1; transform: scale(1); }
+}
+.check-in {
+  animation: check-in 150ms cubic-bezier(0.2, 0.9, 0.3, 1.2);
+  transform-origin: center;
+}
+
+/* keepAlive mode: CSS transitions for grid-based height animation */
+.collapsible-keep-alive {
+  display: grid;
+  grid-template-rows: 1fr;
+  opacity: 1;
+  transition: grid-template-rows 150ms ease, opacity 150ms ease;
+}
+.collapsible-keep-alive[data-open="false"] {
+  grid-template-rows: 0fr;
+  opacity: 0;
+}
+
+/* Dialog backdrop fades in/out with CDK's backdrop-showing class. */
+.tw-dialog-backdrop {
+  background-color: rgb(0 0 0 / 0.5);
+  opacity: 0;
+  transition: opacity 150ms ease-out;
+}
+.tw-dialog-backdrop.cdk-overlay-backdrop-showing {
+  opacity: 1;
+}
+
+/* ── Spinner — dots variant ── */
+
+@keyframes tw-spinner-dots-bounce {
+  0%, 80%, 100% { transform: scale(0.3); opacity: 0.4; }
+  40%           { transform: scale(1);   opacity: 1; }
+}
+.tw-spinner-dot {
+  display: inline-block;
+  width: 25%;
+  height: 25%;
+  background: currentColor;
+  border-radius: 9999px;
+  animation: tw-spinner-dots-bounce 1.2s ease-in-out infinite both;
+}
+
+/* ── Spinner — bars variant ── */
+
+@keyframes tw-spinner-bars-stretch {
+  0%, 40%, 100% { transform: scaleY(0.4); }
+  20%           { transform: scaleY(1);   }
+}
+.tw-spinner-bar {
+  display: inline-block;
+  width: 15%;
+  height: 100%;
+  background: currentColor;
+  border-radius: 2px;
+  transform-origin: center;
+  animation: tw-spinner-bars-stretch 1s ease-in-out infinite;
+}
+
+/* ── Skeleton ── */
+
+/* Pulse: gentle opacity fade. Theme-friendly; works on any background color. */
+@keyframes tw-skeleton-pulse {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.5; }
+}
+.skeleton-pulse {
+  animation: tw-skeleton-pulse 1.6s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+/* Wave: shimmer band sweeps left-to-right via an absolutely-positioned
+   gradient pseudo-element. Requires the host to be position: relative;
+   overflow: hidden; (already on the .skeleton base classes). */
+@keyframes tw-skeleton-wave {
+  0%   { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+.skeleton-wave::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgb(255 255 255 / 0.08) 50%,
+    transparent 100%
+  );
+  animation: tw-skeleton-wave 1.6s linear infinite;
+}
+
+/* ── Progress bar — indeterminate sweep ── */
+
+@keyframes progress-bar-indeterminate {
+  0%   { transform: translateX(-100%); }
+  100% { transform: translateX(400%); }
+}
+.animate-progress-bar-indeterminate {
+  animation: progress-bar-indeterminate 1.5s linear infinite;
+}
+
+/* ── Stepper — panel transitions ── */
+
+@keyframes step-panel-enter-forward {
+  from { opacity: 0; transform: translateX(12px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+.step-panel-enter-forward {
+  animation: step-panel-enter-forward 150ms ease-out;
+}
+
+@keyframes step-panel-enter-backward {
+  from { opacity: 0; transform: translateX(-12px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+.step-panel-enter-backward {
+  animation: step-panel-enter-backward 150ms ease-out;
+}
+
+/* ── Flip card — 3D transform primitives ── */
+
+.tw-flip-perspective {
+  perspective: 1000px;
+}
+
+.tw-flip-inner {
+  transform-style: preserve-3d;
+}
+
+.tw-flip-face {
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+
+.tw-flip-axis-y.tw-flip-rotated {
+  transform: rotateY(180deg);
+}
+.tw-flip-back-y {
+  transform: rotateY(180deg);
+}
+
+.tw-flip-axis-x.tw-flip-rotated {
+  transform: rotateX(180deg);
+}
+.tw-flip-back-x {
+  transform: rotateX(180deg);
+}
+
+/* ── Toast / snackbar ── */
+
+/* The overlay pane lets clicks fall through between stacked toasts; each toast
+   re-enables pointer events on itself. */
+.tw-toast-overlay {
+  pointer-events: none;
+  padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+}
+
+@keyframes toast-slide-in-right {
+  from { opacity: 0; transform: translate3d(100%, 0, 0); }
+  to   { opacity: 1; transform: translate3d(0, 0, 0); }
+}
+@keyframes toast-slide-out-right {
+  from { opacity: 1; transform: translate3d(0, 0, 0); }
+  to   { opacity: 0; transform: translate3d(100%, 0, 0); }
+}
+@keyframes toast-slide-in-left {
+  from { opacity: 0; transform: translate3d(-100%, 0, 0); }
+  to   { opacity: 1; transform: translate3d(0, 0, 0); }
+}
+@keyframes toast-slide-out-left {
+  from { opacity: 1; transform: translate3d(0, 0, 0); }
+  to   { opacity: 0; transform: translate3d(-100%, 0, 0); }
+}
+@keyframes toast-slide-in-top {
+  from { opacity: 0; transform: translate3d(0, -100%, 0); }
+  to   { opacity: 1; transform: translate3d(0, 0, 0); }
+}
+@keyframes toast-slide-out-top {
+  from { opacity: 1; transform: translate3d(0, 0, 0); }
+  to   { opacity: 0; transform: translate3d(0, -100%, 0); }
+}
+@keyframes toast-slide-in-bottom {
+  from { opacity: 0; transform: translate3d(0, 100%, 0); }
+  to   { opacity: 1; transform: translate3d(0, 0, 0); }
+}
+@keyframes toast-slide-out-bottom {
+  from { opacity: 1; transform: translate3d(0, 0, 0); }
+  to   { opacity: 0; transform: translate3d(0, 100%, 0); }
+}
+
+.toast-enter-right  { animation: toast-slide-in-right  150ms ease-out; }
+.toast-leave-right  { animation: toast-slide-out-right 150ms ease-in; }
+.toast-enter-left   { animation: toast-slide-in-left   150ms ease-out; }
+.toast-leave-left   { animation: toast-slide-out-left  150ms ease-in; }
+.toast-enter-top    { animation: toast-slide-in-top    150ms ease-out; }
+.toast-leave-top    { animation: toast-slide-out-top   150ms ease-in; }
+.toast-enter-bottom { animation: toast-slide-in-bottom 150ms ease-out; }
+.toast-leave-bottom { animation: toast-slide-out-bottom 150ms ease-in; }
+
+@media (prefers-reduced-motion: reduce) {
+  .toast-enter-right, .toast-leave-right,
+  .toast-enter-left,  .toast-leave-left,
+  .toast-enter-top,   .toast-leave-top,
+  .toast-enter-bottom, .toast-leave-bottom {
+    animation-duration: 0ms;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fade-out { animation-duration: 0ms; }
+  .fade-in { animation-duration: 0ms; }
+  .scale-in { animation-duration: 0ms; }
+  .scale-out { animation-duration: 0ms; }
+  .collapsible-enter { animation-duration: 0ms; }
+  .collapsible-leave { animation-duration: 0ms; }
+  .collapsible-keep-alive { transition-duration: 0ms; }
+  .check-in { animation-duration: 0ms; }
+  .step-panel-enter-forward,
+  .step-panel-enter-backward { animation-duration: 0ms; }
+  .tw-dialog-backdrop { transition-duration: 0ms; }
+  .tw-spinner-dot,
+  .tw-spinner-bar { animation-duration: 0ms; animation-iteration-count: 1; }
+  .tw-flip-inner { transition-duration: 0ms; }
+  .animate-progress-bar-indeterminate {
+    animation-duration: 0ms;
+    transform: translateX(35%);
+  }
+  .skeleton-pulse,
+  .skeleton-wave::after {
+    animation-duration: 0ms;
+    animation-iteration-count: 1;
+  }
 }

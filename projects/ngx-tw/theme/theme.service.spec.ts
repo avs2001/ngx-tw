@@ -36,7 +36,7 @@ describe('ThemeService', () => {
     });
 
     // Mock matchMedia
-    const listeners: Array<(e: MediaQueryListEvent) => void> = [];
+    const listeners: ((e: MediaQueryListEvent) => void)[] = [];
     vi.stubGlobal('matchMedia', vi.fn(() => ({
       matches: prefersDark,
       media: '(prefers-color-scheme: dark)',

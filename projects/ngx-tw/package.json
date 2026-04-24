@@ -1,14 +1,41 @@
 {
   "name": "ngx-tw",
-  "version": "0.0.1",
+  "version": "0.1.0",
+  "description": "Angular component library for Tailwind CSS v4 — accessible, signal-based, built on Angular CDK.",
+  "keywords": [
+    "angular",
+    "tailwindcss",
+    "tailwind",
+    "components",
+    "ui",
+    "cdk",
+    "a11y",
+    "signals",
+    "standalone",
+    "ngx-tw"
+  ],
+  "author": "Iuga Ciprian",
+  "license": "MIT",
+  "homepage": "https://github.com/kebormed/ngx-tw#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kebormed/ngx-tw.git"
+  },
+  "bugs": {
+    "url": "https://github.com/kebormed/ngx-tw/issues"
+  },
   "peerDependencies": {
     "@angular/common": "^21.2.0",
     "@angular/core": "^21.2.0",
     "@angular/cdk": "^21.0.0",
-    "tailwindcss": "^4.0.0"
+    "tailwindcss": "^4.0.0",
+    "tailwind-variants": "^0.3.0"
   },
   "dependencies": {
     "tslib": "^2.3.0"
   },
-  "sideEffects": false
+  "sideEffects": false,
+  "publishConfig": {
+    "access": "public"
+  }
 }

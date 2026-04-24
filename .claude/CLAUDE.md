@@ -204,6 +204,7 @@ Do not use `gap-0.5`, `gap-4`, `gap-5`, or larger. If a layout needs more separa
 | Subtitles, descriptions | `text-sm` | normal + `text-neutral-500` |
 | Interactive triggers (tabs, buttons) | `text-sm` (md), scale with size | `font-medium` (500) |
 | Captions, metadata, footers | `text-xs` | normal |
+| xs-density secondary text (xs descriptions, xs meridiem buttons, kbd hints) | `text-2xs` | normal |
 | Monospace content | `font-mono text-sm` | normal |
 
 **Trigger font size scale** (for tabs, segmented controls, button groups):
@@ -214,7 +215,9 @@ Do not use `gap-0.5`, `gap-4`, `gap-5`, or larger. If a layout needs more separa
 | `sm`–`md` | `text-sm` |
 | `lg`–`xl` | `text-base` |
 
-Do not use `text-lg`, `text-xl`, or larger in library components. Headings inside projected content are the consumer's responsibility.
+`text-2xs` (defined in `theme/_semantic.css` as `0.6875rem` / 11px) is the smallest permitted step and should only be reached for when xs density text genuinely needs to sit below `text-xs`. Do not use `text-lg`, `text-xl`, or larger in library components. Headings inside projected content are the consumer's responsibility.
+
+Never use arbitrary font-size values like `text-[11px]` or `text-[0.6875rem]` — use `text-2xs` instead.
 
 #### Shadows
 
