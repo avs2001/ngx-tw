@@ -72,7 +72,7 @@ export class YearsViewComponent<D> extends CalendarViewBase<D> {
     const years: CalendarCell<D>[] = [];
     for (let i = 0; i < YEARS_PER_PAGE; i++) {
       const year = start + i;
-      const date = this.dateAdapter.createDate(year, 0, 1);
+      const date = this.dateAdapter.create(year, 1, 1);
       const label = this.dateAdapter.getYearName(date);
       const cell = createCalendarCell<D>({
         value: date,
@@ -111,41 +111,41 @@ export class YearsViewComponent<D> extends CalendarViewBase<D> {
     switch (event.direction) {
       case 'left':
         if (currentYear > start) {
-          newDate = this.dateAdapter.addCalendarYears(event.cell.value, -1);
+          newDate = this.dateAdapter.addYears(event.cell.value, -1);
           this.focusCell(currentYear - 1);
         }
         break;
       case 'right':
         if (currentYear < end) {
-          newDate = this.dateAdapter.addCalendarYears(event.cell.value, 1);
+          newDate = this.dateAdapter.addYears(event.cell.value, 1);
           this.focusCell(currentYear + 1);
         }
         break;
       case 'up':
         if (indexInPage >= YEARS_PER_ROW) {
-          newDate = this.dateAdapter.addCalendarYears(event.cell.value, -YEARS_PER_ROW);
+          newDate = this.dateAdapter.addYears(event.cell.value, -YEARS_PER_ROW);
           this.focusCell(currentYear - YEARS_PER_ROW);
         }
         break;
       case 'down':
         if (indexInPage < YEARS_PER_PAGE - YEARS_PER_ROW) {
-          newDate = this.dateAdapter.addCalendarYears(event.cell.value, YEARS_PER_ROW);
+          newDate = this.dateAdapter.addYears(event.cell.value, YEARS_PER_ROW);
           this.focusCell(currentYear + YEARS_PER_ROW);
         }
         break;
       case 'home':
-        newDate = this.dateAdapter.createDate(start, 0, 1);
+        newDate = this.dateAdapter.create(start, 1, 1);
         this.focusCell(start);
         break;
       case 'end':
-        newDate = this.dateAdapter.createDate(end, 0, 1);
+        newDate = this.dateAdapter.create(end, 1, 1);
         this.focusCell(end);
         break;
       case 'pageUp':
-        newDate = this.dateAdapter.addCalendarYears(event.cell.value, -YEARS_PER_PAGE);
+        newDate = this.dateAdapter.addYears(event.cell.value, -YEARS_PER_PAGE);
         break;
       case 'pageDown':
-        newDate = this.dateAdapter.addCalendarYears(event.cell.value, YEARS_PER_PAGE);
+        newDate = this.dateAdapter.addYears(event.cell.value, YEARS_PER_PAGE);
         break;
     }
     if (newDate) this.activeDateChange.emit(newDate);

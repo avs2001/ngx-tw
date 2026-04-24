@@ -97,7 +97,7 @@ export class MonthViewComponent<D> extends CalendarViewBase<D> {
     const firstDayOfWeek = this.firstDayOfWeek();
     const firstDayOfMonthWeekday = this.dateAdapter.getDayOfWeek(firstOfMonth);
     const offset = (firstDayOfMonthWeekday - firstDayOfWeek + DAYS_PER_WEEK) % DAYS_PER_WEEK;
-    const startDate = this.dateAdapter.addCalendarDays(firstOfMonth, -offset);
+    const startDate = this.dateAdapter.addDays(firstOfMonth, -offset);
 
     const today = this.today();
     const minDate = this.minDate();
@@ -107,7 +107,7 @@ export class MonthViewComponent<D> extends CalendarViewBase<D> {
 
     const days: CalendarCell<D>[] = [];
     for (let i = 0; i < TOTAL_CELLS; i++) {
-      const date = this.dateAdapter.addCalendarDays(startDate, i);
+      const date = this.dateAdapter.addDays(startDate, i);
       const dayOfMonth = this.dateAdapter.getDate(date);
       const cellMonth = this.dateAdapter.getMonth(date);
       const cellYear = this.dateAdapter.getYear(date);
@@ -158,36 +158,36 @@ export class MonthViewComponent<D> extends CalendarViewBase<D> {
 
     switch (event.direction) {
       case 'left':
-        newDate = this.dateAdapter.addCalendarDays(currentDate, -1);
+        newDate = this.dateAdapter.addDays(currentDate, -1);
         break;
       case 'right':
-        newDate = this.dateAdapter.addCalendarDays(currentDate, 1);
+        newDate = this.dateAdapter.addDays(currentDate, 1);
         break;
       case 'up':
-        newDate = this.dateAdapter.addCalendarDays(currentDate, -DAYS_PER_WEEK);
+        newDate = this.dateAdapter.addDays(currentDate, -DAYS_PER_WEEK);
         break;
       case 'down':
-        newDate = this.dateAdapter.addCalendarDays(currentDate, DAYS_PER_WEEK);
+        newDate = this.dateAdapter.addDays(currentDate, DAYS_PER_WEEK);
         break;
       case 'home': {
         const dow = this.dateAdapter.getDayOfWeek(currentDate);
         const first = this.firstDayOfWeek();
         const diff = (dow - first + DAYS_PER_WEEK) % DAYS_PER_WEEK;
-        newDate = this.dateAdapter.addCalendarDays(currentDate, -diff);
+        newDate = this.dateAdapter.addDays(currentDate, -diff);
         break;
       }
       case 'end': {
         const dow = this.dateAdapter.getDayOfWeek(currentDate);
         const first = this.firstDayOfWeek();
         const daysUntilEnd = (6 - dow + first + DAYS_PER_WEEK) % DAYS_PER_WEEK;
-        newDate = this.dateAdapter.addCalendarDays(currentDate, daysUntilEnd);
+        newDate = this.dateAdapter.addDays(currentDate, daysUntilEnd);
         break;
       }
       case 'pageUp':
-        newDate = this.dateAdapter.addCalendarMonths(currentDate, -1);
+        newDate = this.dateAdapter.addMonths(currentDate, -1);
         break;
       case 'pageDown':
-        newDate = this.dateAdapter.addCalendarMonths(currentDate, 1);
+        newDate = this.dateAdapter.addMonths(currentDate, 1);
         break;
     }
 

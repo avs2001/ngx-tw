@@ -26,7 +26,7 @@ export class RangeSelectionStrategy<D> extends CalendarSelectionStrategy<D, Date
     const start = current.start!;
     let rangeStart: D;
     let rangeEnd: D;
-    if (this.dateAdapter.compareDate(date, start) < 0) {
+    if (this.dateAdapter.compare(date, start) < 0) {
       rangeStart = date;
       rangeEnd = start;
     } else {
@@ -39,7 +39,7 @@ export class RangeSelectionStrategy<D> extends CalendarSelectionStrategy<D, Date
   createPreview(active: D | null, current: DateRange<D> | null): DateRange<D> | null {
     if (!active || !current?.start || current.end) return null;
     const s = current.start;
-    if (this.dateAdapter.compareDate(active, s) < 0) {
+    if (this.dateAdapter.compare(active, s) < 0) {
       return { start: active, end: s };
     }
     return { start: s, end: active };

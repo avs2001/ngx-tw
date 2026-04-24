@@ -1,4 +1,9 @@
-import { Injectable, type EnvironmentProviders, type Provider, makeEnvironmentProviders } from '@angular/core';
+import {
+  Injectable,
+  type EnvironmentProviders,
+  type Provider,
+  makeEnvironmentProviders,
+} from '@angular/core';
 import { DateAdapter, DATE_ADAPTER, type TwDateNameStyle } from './date-adapter';
 
 /** Display-format descriptor used by `NativeDateAdapter.format()`. */
@@ -7,18 +12,39 @@ export interface TwNativeDateFormat {
   readonly dateTimeFormat?: Intl.DateTimeFormatOptions;
 }
 
+const MS_PER_MINUTE = 60_000;
+
 /** `Intl`-driven `Date` adapter. Zero runtime dependencies. */
 @Injectable()
 export class NativeDateAdapter extends DateAdapter<Date> {
-  private locale = typeof navigator !== 'undefined' ? navigator.language : 'en-US';
+  /**
+   * Locale is resolved lazily on first read so the constructor stays
+   * SSR-safe (no `navigator` access at class-construction time — §31.1).
+   */
+  private _locale: string | null = null;
+
+  private get locale(): string {
+    if (this._locale !== null) return this._locale;
+    this._locale =
+      typeof navigator !== 'undefined' && typeof navigator.language === 'string'
+        ? navigator.language
+        : 'en-US';
+    return this._locale;
+  }
 
   today(): Date {
     const now = new Date();
     return new Date(now.getFullYear(), now.getMonth(), now.getDate());
   }
 
-  createDate(year: number, month: number, day: number): Date {
-    const d = new Date(year, month, day);
+  /**
+   * Constructs a `Date`. **`month` is 1-based** — `create(2026, 1, 1)` yields
+   * January 1, 2026.
+   */
+  create(year: number, month: number, day: number): Date {
+    const d = new Date(year, month - 1, day);
+    // `new Date(year, ...)` on two-digit years maps to 19xx by convention;
+    // re-anchor explicitly so consumers can construct years < 100.
     if (year >= 0 && year < 100) {
       d.setFullYear(year);
     }
@@ -30,7 +56,7 @@ export class NativeDateAdapter extends DateAdapter<Date> {
   }
 
   setLocale(locale: string): void {
-    this.locale = locale;
+    this._locale = locale;
   }
 
   getLocale(): string {
@@ -89,6 +115,11 @@ export class NativeDateAdapter extends DateAdapter<Date> {
     return Array.from({ length: 7 }, (_, i) => fmt.format(new Date(Date.UTC(2017, 0, i + 1))));
   }
 
+  override getDateNames(style: TwDateNameStyle = 'short'): string[] {
+    const fmt = new Intl.DateTimeFormat(this.locale, { day: style === 'narrow' ? 'numeric' : 'numeric', timeZone: 'UTC' });
+    return Array.from({ length: 31 }, (_, i) => fmt.format(new Date(Date.UTC(2017, 0, i + 1))));
+  }
+
   getYearName(date: Date): string {
     return new Intl.DateTimeFormat(this.locale, { year: 'numeric', timeZone: 'UTC' }).format(
       new Date(Date.UTC(date.getFullYear(), 0, 1)),
@@ -105,21 +136,32 @@ export class NativeDateAdapter extends DateAdapter<Date> {
     return new Intl.DateTimeFormat(this.locale, fmt).format(date);
   }
 
-  addCalendarYears(date: Date, years: number): Date {
-    return this.addCalendarMonths(date, years * 12);
+  addYears(date: Date, years: number): Date {
+    return this.addMonths(date, years * 12);
   }
 
-  addCalendarMonths(date: Date, months: number): Date {
+  addMonths(date: Date, months: number): Date {
     const d = new Date(date.getFullYear(), date.getMonth() + months, 1);
-    const targetDay = Math.min(date.getDate(), new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate());
+    const targetDay = Math.min(
+      date.getDate(),
+      new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate(),
+    );
     return new Date(d.getFullYear(), d.getMonth(), targetDay);
   }
 
-  addCalendarDays(date: Date, days: number): Date {
+  addDays(date: Date, days: number): Date {
     return new Date(date.getFullYear(), date.getMonth(), date.getDate() + days);
   }
 
-  compareDate(first: Date, second: Date): number {
+  override addMinutes(date: Date, minutes: number): Date {
+    return new Date(date.getTime() + minutes * MS_PER_MINUTE);
+  }
+
+  override addHours(date: Date, hours: number): Date {
+    return new Date(date.getTime() + hours * 60 * MS_PER_MINUTE);
+  }
+
+  compare(first: Date, second: Date): number {
     return (
       this.getYear(first) - this.getYear(second) ||
       this.getMonth(first) - this.getMonth(second) ||
@@ -131,10 +173,24 @@ export class NativeDateAdapter extends DateAdapter<Date> {
     if (first && second) {
       const f = this.isValid(first);
       const s = this.isValid(second);
-      if (f && s) return this.compareDate(first, second) === 0;
+      if (f && s) return this.compare(first, second) === 0;
       return f === s;
     }
     return first === second;
+  }
+
+  /**
+   * Start-of-day normalization. Rebuilds the date at `00:00:00.000` local time.
+   * On DST spring-forward days where midnight is valid, this is a no-op beyond
+   * zeroing h/m/s/ms. On DST fall-back days the repeated-01:00 hour does not
+   * affect `00:00`, so this is also safe.
+   *
+   * The edge case of an entire DST-skipped midnight (rare — exists in some
+   * historical zones) is resolved by `new Date(year, month, day)` selecting the
+   * next valid instant forward.
+   */
+  startOfDay(date: Date): Date {
+    return new Date(date.getFullYear(), date.getMonth(), date.getDate());
   }
 
   isValid(date: Date): boolean {
@@ -164,7 +220,7 @@ export class NativeDateAdapter extends DateAdapter<Date> {
     return this.invalid();
   }
 
-  toIso8601(date: Date): string {
+  toIso(date: Date): string {
     return [
       String(date.getFullYear()).padStart(4, '0'),
       String(date.getMonth() + 1).padStart(2, '0'),

@@ -68,7 +68,7 @@ export class YearViewComponent<D> extends CalendarViewBase<D> {
 
     const months: CalendarCell<D>[] = [];
     for (let m = 0; m < MONTHS_PER_YEAR; m++) {
-      const date = this.dateAdapter.createDate(year, m, 1);
+      const date = this.dateAdapter.create(year, m + 1, 1);
       const name = monthNames[m] ?? '';
       const cell = createCalendarCell<D>({
         value: date,
@@ -105,41 +105,41 @@ export class YearViewComponent<D> extends CalendarViewBase<D> {
     switch (event.direction) {
       case 'left':
         if (currentMonth > 0) {
-          newDate = this.dateAdapter.addCalendarMonths(event.cell.value, -1);
+          newDate = this.dateAdapter.addMonths(event.cell.value, -1);
           this.focusCell(currentMonth - 1);
         }
         break;
       case 'right':
         if (currentMonth < 11) {
-          newDate = this.dateAdapter.addCalendarMonths(event.cell.value, 1);
+          newDate = this.dateAdapter.addMonths(event.cell.value, 1);
           this.focusCell(currentMonth + 1);
         }
         break;
       case 'up':
         if (currentMonth >= MONTHS_PER_ROW) {
-          newDate = this.dateAdapter.addCalendarMonths(event.cell.value, -MONTHS_PER_ROW);
+          newDate = this.dateAdapter.addMonths(event.cell.value, -MONTHS_PER_ROW);
           this.focusCell(currentMonth - MONTHS_PER_ROW);
         }
         break;
       case 'down':
         if (currentMonth < MONTHS_PER_YEAR - MONTHS_PER_ROW) {
-          newDate = this.dateAdapter.addCalendarMonths(event.cell.value, MONTHS_PER_ROW);
+          newDate = this.dateAdapter.addMonths(event.cell.value, MONTHS_PER_ROW);
           this.focusCell(currentMonth + MONTHS_PER_ROW);
         }
         break;
       case 'home':
-        newDate = this.dateAdapter.createDate(year, 0, 1);
+        newDate = this.dateAdapter.create(year, 1, 1);
         this.focusCell(0);
         break;
       case 'end':
-        newDate = this.dateAdapter.createDate(year, 11, 1);
+        newDate = this.dateAdapter.create(year, 12, 1);
         this.focusCell(11);
         break;
       case 'pageUp':
-        newDate = this.dateAdapter.addCalendarYears(event.cell.value, -1);
+        newDate = this.dateAdapter.addYears(event.cell.value, -1);
         break;
       case 'pageDown':
-        newDate = this.dateAdapter.addCalendarYears(event.cell.value, 1);
+        newDate = this.dateAdapter.addYears(event.cell.value, 1);
         break;
     }
     if (newDate) this.activeDateChange.emit(newDate);
@@ -181,20 +181,20 @@ export class YearViewComponent<D> extends CalendarViewBase<D> {
   private isMonthRangeMiddle(year: number, month: number): boolean {
     const sel = this.selected();
     if (!sel || !this.isDateRange(sel) || !sel.start || !sel.end) return false;
-    const monthDate = this.dateAdapter.createDate(year, month, 1);
-    const startMonth = this.dateAdapter.createDate(
+    const monthDate = this.dateAdapter.create(year, month + 1, 1);
+    const startMonth = this.dateAdapter.create(
       this.dateAdapter.getYear(sel.start),
-      this.dateAdapter.getMonth(sel.start),
+      this.dateAdapter.getMonth(sel.start) + 1,
       1,
     );
-    const endMonth = this.dateAdapter.createDate(
+    const endMonth = this.dateAdapter.create(
       this.dateAdapter.getYear(sel.end),
-      this.dateAdapter.getMonth(sel.end),
+      this.dateAdapter.getMonth(sel.end) + 1,
       1,
     );
     return (
-      this.dateAdapter.compareDate(monthDate, startMonth) > 0 &&
-      this.dateAdapter.compareDate(monthDate, endMonth) < 0
+      this.dateAdapter.compare(monthDate, startMonth) > 0 &&
+      this.dateAdapter.compare(monthDate, endMonth) < 0
     );
   }
 
@@ -214,20 +214,20 @@ export class YearViewComponent<D> extends CalendarViewBase<D> {
     const s = this.previewStart();
     const e = this.previewEnd();
     if (!s || !e) return false;
-    const monthDate = this.dateAdapter.createDate(year, month, 1);
-    const startMonth = this.dateAdapter.createDate(
+    const monthDate = this.dateAdapter.create(year, month + 1, 1);
+    const startMonth = this.dateAdapter.create(
       this.dateAdapter.getYear(s),
-      this.dateAdapter.getMonth(s),
+      this.dateAdapter.getMonth(s) + 1,
       1,
     );
-    const endMonth = this.dateAdapter.createDate(
+    const endMonth = this.dateAdapter.create(
       this.dateAdapter.getYear(e),
-      this.dateAdapter.getMonth(e),
+      this.dateAdapter.getMonth(e) + 1,
       1,
     );
     return (
-      this.dateAdapter.compareDate(monthDate, startMonth) > 0 &&
-      this.dateAdapter.compareDate(monthDate, endMonth) < 0
+      this.dateAdapter.compare(monthDate, startMonth) > 0 &&
+      this.dateAdapter.compare(monthDate, endMonth) < 0
     );
   }
 }

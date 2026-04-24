@@ -68,8 +68,16 @@ export {
 } from './calendar.utils';
 export type { WeekdayHeader } from './calendar.utils';
 
-export { DateAdapter, DATE_ADAPTER } from './date-adapter';
-export type { TwDateNameStyle } from './date-adapter';
+export {
+  DateAdapter,
+  DATE_ADAPTER,
+  DATE_FORMATS,
+  TZ_OVERRIDE,
+  DATE_SERIALIZATION,
+} from './date-adapter';
+export type { TwDateNameStyle, DateFormats } from './date-adapter';
+
+export { serializeCalendarValue } from './serialize-calendar-value';
 
 export {
   NativeDateAdapter,

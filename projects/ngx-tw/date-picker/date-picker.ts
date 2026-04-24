@@ -964,9 +964,9 @@ export class DatePickerComponent<D = Date>
 
   private isInRange(d: D): boolean {
     const min = this.minDate();
-    if (min && this.adapter.compareDate(d, min) < 0) return false;
+    if (min && this.adapter.compare(d, min) < 0) return false;
     const max = this.maxDate();
-    if (max && this.adapter.compareDate(d, max) > 0) return false;
+    if (max && this.adapter.compare(d, max) > 0) return false;
     const filter = this.dateFilter();
     if (filter && !filter(d)) return false;
     if (this.withTime() && !this.isTimeInRange(d)) return false;

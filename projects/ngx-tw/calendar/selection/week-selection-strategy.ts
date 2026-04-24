@@ -55,8 +55,8 @@ export class WeekSelectionStrategy<D> extends CalendarSelectionStrategy<D, DateR
     const dow = this.dateAdapter.getDayOfWeek(date);
     const first = this.dateAdapter.getFirstDayOfWeek();
     const daysToSubtract = (dow - first + 7) % 7;
-    const start = this.dateAdapter.addCalendarDays(date, -daysToSubtract);
-    const end = this.dateAdapter.addCalendarDays(start, 6);
+    const start = this.dateAdapter.addDays(date, -daysToSubtract);
+    const end = this.dateAdapter.addDays(start, 6);
     return { start, end };
   }
 }

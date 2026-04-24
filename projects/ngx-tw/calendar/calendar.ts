@@ -428,7 +428,7 @@ export class CalendarComponent<
       month: this.dateAdapter.getMonth(active),
     };
     if (this.effectiveMonthColumns() < 2) return [primary];
-    const secondary = this.dateAdapter.addCalendarMonths(active, 1);
+    const secondary = this.dateAdapter.addMonths(active, 1);
     return [
       primary,
       {
@@ -520,7 +520,7 @@ export class CalendarComponent<
   /** Secondary anchor for the right-hand grid in multi-column mode. */
   readonly secondaryActiveDate: Signal<D | null> = computed(() => {
     if (this.effectiveMonthColumns() < 2) return null;
-    return this.dateAdapter.addCalendarMonths(this._activeDate(), 1);
+    return this.dateAdapter.addMonths(this._activeDate(), 1);
   });
 
   /**
@@ -793,13 +793,13 @@ export class CalendarComponent<
     let next: D;
     switch (view) {
       case 'day':
-        next = this.dateAdapter.addCalendarMonths(date, -1);
+        next = this.dateAdapter.addMonths(date, -1);
         break;
       case 'month':
-        next = this.dateAdapter.addCalendarYears(date, -1);
+        next = this.dateAdapter.addYears(date, -1);
         break;
       case 'year':
-        next = this.dateAdapter.addCalendarYears(date, -YEARS_PER_PAGE);
+        next = this.dateAdapter.addYears(date, -YEARS_PER_PAGE);
         break;
     }
     this._activeDate.set(next);
@@ -817,13 +817,13 @@ export class CalendarComponent<
     let next: D;
     switch (view) {
       case 'day':
-        next = this.dateAdapter.addCalendarMonths(date, 1);
+        next = this.dateAdapter.addMonths(date, 1);
         break;
       case 'month':
-        next = this.dateAdapter.addCalendarYears(date, 1);
+        next = this.dateAdapter.addYears(date, 1);
         break;
       case 'year':
-        next = this.dateAdapter.addCalendarYears(date, YEARS_PER_PAGE);
+        next = this.dateAdapter.addYears(date, YEARS_PER_PAGE);
         break;
     }
     this._activeDate.set(next);
@@ -950,7 +950,7 @@ export class CalendarComponent<
 
     // 2nd click (SELECTING + draft): commit the range. Auto-swap on backward.
     const start = draft.start;
-    const cmp = this.dateAdapter.compareDate(date, start);
+    const cmp = this.dateAdapter.compare(date, start);
     let rangeStart: D;
     let rangeEnd: D;
     let reason: SelectionCompleteEvent<M, D>['reason'] = 'commit';

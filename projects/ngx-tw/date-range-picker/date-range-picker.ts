@@ -983,8 +983,8 @@ export class DateRangePickerComponent<D = Date>
     const endpoints = [range.start, range.end].filter((d): d is D => d !== null);
     for (const d of endpoints) {
       if (!this.adapter.isValid(d)) return false;
-      if (min && this.adapter.compareDate(d, min) < 0) return false;
-      if (max && this.adapter.compareDate(d, max) > 0) return false;
+      if (min && this.adapter.compare(d, min) < 0) return false;
+      if (max && this.adapter.compare(d, max) > 0) return false;
       if (filter && !filter(d)) return false;
     }
     // Same-day ranges with time mode: end time must not be earlier than start time.
@@ -993,7 +993,7 @@ export class DateRangePickerComponent<D = Date>
       range.start !== null &&
       range.end !== null &&
       this.adapter.sameDate(range.start, range.end) &&
-      this.adapter.compareDate(range.start, range.end) > 0
+      this.adapter.compare(range.start, range.end) > 0
     ) {
       return false;
     }

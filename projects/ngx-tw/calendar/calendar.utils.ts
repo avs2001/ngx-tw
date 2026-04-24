@@ -67,13 +67,13 @@ export function isDateDisabled<D>(
   dateFilter: ((d: D) => boolean) | null,
   adapter: DateAdapter<D>,
 ): boolean {
-  if (minDate && adapter.compareDate(date, minDate) < 0) return true;
-  if (maxDate && adapter.compareDate(date, maxDate) > 0) return true;
+  if (minDate && adapter.compare(date, minDate) < 0) return true;
+  if (maxDate && adapter.compare(date, maxDate) > 0) return true;
   if (dateFilter && !dateFilter(date)) return true;
   return false;
 }
 
-/** True when the whole month falls outside `[minDate, maxDate]`. */
+/** True when the whole month falls outside `[minDate, maxDate]`. `month` is 0-based (matches `adapter.getMonth`). */
 export function isMonthDisabled<D>(
   year: number,
   month: number,
@@ -81,10 +81,10 @@ export function isMonthDisabled<D>(
   maxDate: D | null,
   adapter: DateAdapter<D>,
 ): boolean {
-  const firstOfMonth = adapter.createDate(year, month, 1);
-  const lastOfMonth = adapter.createDate(year, month, adapter.getNumDaysInMonth(firstOfMonth));
-  if (minDate && adapter.compareDate(lastOfMonth, minDate) < 0) return true;
-  if (maxDate && adapter.compareDate(firstOfMonth, maxDate) > 0) return true;
+  const firstOfMonth = adapter.create(year, month + 1, 1);
+  const lastOfMonth = adapter.create(year, month + 1, adapter.getNumDaysInMonth(firstOfMonth));
+  if (minDate && adapter.compare(lastOfMonth, minDate) < 0) return true;
+  if (maxDate && adapter.compare(firstOfMonth, maxDate) > 0) return true;
   return false;
 }
 
@@ -95,10 +95,10 @@ export function isYearDisabled<D>(
   maxDate: D | null,
   adapter: DateAdapter<D>,
 ): boolean {
-  const firstOfYear = adapter.createDate(year, 0, 1);
-  const lastOfYear = adapter.createDate(year, 11, 31);
-  if (minDate && adapter.compareDate(lastOfYear, minDate) < 0) return true;
-  if (maxDate && adapter.compareDate(firstOfYear, maxDate) > 0) return true;
+  const firstOfYear = adapter.create(year, 1, 1);
+  const lastOfYear = adapter.create(year, 12, 31);
+  if (minDate && adapter.compare(lastOfYear, minDate) < 0) return true;
+  if (maxDate && adapter.compare(firstOfYear, maxDate) > 0) return true;
   return false;
 }
 
@@ -115,10 +115,10 @@ export function isDateInRange<D>(
   adapter: DateAdapter<D>,
 ): boolean {
   if (!start || !end) return false;
-  return adapter.compareDate(date, start) >= 0 && adapter.compareDate(date, end) <= 0;
+  return adapter.compare(date, start) >= 0 && adapter.compare(date, end) <= 0;
 }
 
 /** Returns the first day of the month for `date`. */
 export function getFirstDayOfMonth<D>(date: D, adapter: DateAdapter<D>): D {
-  return adapter.createDate(adapter.getYear(date), adapter.getMonth(date), 1);
+  return adapter.create(adapter.getYear(date), adapter.getMonth(date) + 1, 1);
 }
