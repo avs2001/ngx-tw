@@ -1,5 +1,18 @@
 export { CalendarComponent } from './calendar';
 
+export {
+  CalendarSingleDirective,
+  CalendarMultipleDirective,
+  CalendarRangeDirective,
+} from './calendar-form-directives';
+
+export {
+  calendarValidator,
+  calendarRequiredValidator,
+  isCalendarValueEmpty,
+} from './calendar-validators';
+export type { CalendarValidatorContext } from './calendar-validators';
+
 export { TwCalendarPresets } from './calendar-presets';
 
 export { CalendarHeaderComponent } from './calendar-header';

@@ -1,7 +1,15 @@
 import { ChangeDetectionStrategy, Component, computed, signal } from '@angular/core';
-import { FormControl, FormsModule, ReactiveFormsModule } from '@angular/forms';
+import {
+  FormControl,
+  FormGroup,
+  FormsModule,
+  ReactiveFormsModule,
+  Validators,
+} from '@angular/forms';
+import { form, FormField, required } from '@angular/forms/signals';
 import {
   CalendarComponent,
+  CalendarSingleDirective,
   TwCalendarPresets,
   type CalendarRangeValue,
   type DateFilterFn,
@@ -20,11 +28,13 @@ function fmt(d: Date | null | undefined): string {
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
     CalendarComponent,
+    CalendarSingleDirective,
     TwCalendarPresets,
     ButtonDirective,
     CodeBlockComponent,
     ReactiveFormsModule,
     FormsModule,
+    FormField,
   ],
   template: `
     <section class="mb-10">
@@ -140,26 +150,59 @@ function fmt(d: Date | null | undefined): string {
     <section class="mb-10">
       <h2 class="text-sm font-semibold mb-3">Reactive forms</h2>
       <p class="text-sm text-fg-muted leading-relaxed max-w-2xl mb-4">
-        The calendar implements <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">ControlValueAccessor</code>,
+        The calendar implements <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">ControlValueAccessor</code>
+        and <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">Validator</code>,
         so a <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">FormControl</code>
-        drives the value directly. Phase 3 lands the full Validator + reset contract per §6.
+        drives the value directly. The required validator surfaces
+        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">calendarRequired</code>
+        whenever the control is empty, and <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">FormGroup.reset()</code>
+        restores the displayed month per §6.5.
       </p>
-      <div class="rounded-lg border border-border p-6 bg-surface-raised mb-4 flex flex-col items-center gap-3">
-        <tw-calendar aria-label="Reactive" [formControl]="reactiveControl" [startAt]="fixedDate" />
-        <p class="text-xs text-fg-muted mt-2 font-mono">value = {{ reactiveValueLabel() }}</p>
-        <button twButton size="sm" variant="outline" type="button" (click)="toggleReactiveDisabled()">
-          Toggle disabled
-        </button>
+      <div class="rounded-lg border border-border p-6 bg-surface-raised mb-4 flex flex-col gap-3" [formGroup]="reactiveForm">
+        <tw-calendar aria-label="Reactive" formControlName="date" [startAt]="fixedDate" />
+        <div class="flex flex-wrap items-center gap-3 text-xs font-mono">
+          <span class="text-fg-muted">value = {{ reactiveValueLabel() }}</span>
+          <span class="text-fg-muted">errors = {{ reactiveErrorsLabel() }}</span>
+          <span class="text-fg-muted">touched = {{ reactiveTouchedLabel() }}</span>
+        </div>
+        <div class="flex flex-wrap gap-2">
+          <button twButton size="sm" variant="outline" type="button" (click)="toggleReactiveDisabled()">
+            Toggle disabled
+          </button>
+          <button twButton size="sm" variant="outline" type="button" (click)="resetReactive()">
+            Reset form
+          </button>
+          <button twButton size="sm" variant="outline" type="button" (click)="setReactiveToday()">
+            Write today
+          </button>
+          <button twButton size="sm" variant="outline" type="button" (click)="writeWrongShape()">
+            Write wrong shape
+          </button>
+        </div>
       </div>
     </section>
 
     <section class="mb-10">
       <h2 class="text-sm font-semibold mb-3">Signal Forms</h2>
       <p class="text-sm text-fg-muted leading-relaxed max-w-2xl mb-4">
-        Signal Forms integration (<code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">FormValueControl&lt;T&gt;</code>)
-        lands in Phase 3 per §6.3 and §7.3 of the requirements spec, along with the three
-        mode-specific directives that give Signal Forms a typed <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">Field&lt;T&gt;</code>.
+        Binding <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">[formField]</code> to
+        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">form(signal&lt;Date | null&gt;).date</code>
+        drives the calendar through the <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">CalendarSingleDirective</code>
+        — a typed <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">FormValueControl&lt;Date | null&gt;</code>
+        per §7.3. Disabled / readonly / required flags propagate from the field to the calendar automatically.
       </p>
+      <div class="rounded-lg border border-border p-6 bg-surface-raised mb-4 flex flex-col gap-3">
+        <tw-calendar
+          aria-label="Signal Forms"
+          mode="single"
+          [startAt]="fixedDate"
+          [formField]="signalForm.date"
+        />
+        <div class="flex flex-wrap items-center gap-3 text-xs font-mono">
+          <span class="text-fg-muted">value = {{ signalValueLabel() }}</span>
+          <span class="text-fg-muted">valid = {{ signalValidLabel() }}</span>
+        </div>
+      </div>
     </section>
   `,
 })
@@ -231,12 +274,54 @@ export class CalendarExamples {
   }
 
   // Reactive
-  protected readonly reactiveControl = new FormControl<Date | null>(null);
-  protected readonly reactiveValueLabel = computed(() => fmt(this.reactiveControl.value));
-  protected toggleReactiveDisabled(): void {
-    if (this.reactiveControl.disabled) this.reactiveControl.enable();
-    else this.reactiveControl.disable();
+  protected readonly reactiveForm = new FormGroup({
+    date: new FormControl<Date | null>(null, { validators: [Validators.required] }),
+  });
+  private readonly reactiveRev = signal(0);
+  protected readonly reactiveValueLabel = computed(() => {
+    this.reactiveRev();
+    return fmt(this.reactiveForm.controls.date.value);
+  });
+  protected readonly reactiveErrorsLabel = computed(() => {
+    this.reactiveRev();
+    const errs = this.reactiveForm.controls.date.errors;
+    if (!errs) return 'none';
+    return Object.keys(errs).join(', ');
+  });
+  protected readonly reactiveTouchedLabel = computed(() => {
+    this.reactiveRev();
+    return this.reactiveForm.controls.date.touched ? 'true' : 'false';
+  });
+  constructor() {
+    this.reactiveForm.controls.date.events.subscribe(() => this.reactiveRev.update((n) => n + 1));
   }
+  protected toggleReactiveDisabled(): void {
+    const ctrl = this.reactiveForm.controls.date;
+    if (ctrl.disabled) ctrl.enable();
+    else ctrl.disable();
+  }
+  protected resetReactive(): void {
+    this.reactiveForm.reset();
+  }
+  protected setReactiveToday(): void {
+    this.reactiveForm.controls.date.setValue(new Date());
+  }
+  protected writeWrongShape(): void {
+    // Deliberately violate the mode shape — single mode expects `Date | null`,
+    // not an array. Phase 3 defensive `writeValue` preserves the prior value
+    // and marks the control with `calendarInvalidValue` instead of throwing.
+    this.reactiveForm.controls.date.setValue([new Date()] as unknown as Date);
+  }
+
+  // Signal Forms
+  protected readonly signalModel = signal<{ date: Date | null }>({ date: null });
+  protected readonly signalForm = form(this.signalModel, (p) => {
+    required(p.date);
+  });
+  protected readonly signalValueLabel = computed(() => fmt(this.signalModel().date));
+  protected readonly signalValidLabel = computed(() =>
+    this.signalForm().valid() ? 'true' : 'false',
+  );
 
   // Snippets
   protected readonly singleSnippet = `<tw-calendar aria-label="Pick a date" [(value)]="value" />`;

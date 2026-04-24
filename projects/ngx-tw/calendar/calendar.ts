@@ -2,14 +2,17 @@ import {
   ChangeDetectionStrategy,
   Component,
   computed,
+  DestroyRef,
   effect,
   ElementRef,
   forwardRef,
   inject,
   Injector,
   input,
+  isDevMode,
   linkedSignal,
   model,
+  type OnInit,
   output,
   runInInjectionContext,
   signal,
@@ -22,7 +25,17 @@ import {
   type TemplateRef,
   type WritableSignal,
 } from '@angular/core';
-import { type ControlValueAccessor, NG_VALUE_ACCESSOR } from '@angular/forms';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import {
+  type AbstractControl,
+  type ControlValueAccessor,
+  FormResetEvent,
+  NgControl,
+  NG_VALIDATORS,
+  NG_VALUE_ACCESSOR,
+  type ValidationErrors,
+  type Validator,
+} from '@angular/forms';
 import { tv } from 'tailwind-variants';
 import { CalendarHeaderComponent } from './calendar-header';
 import type {
@@ -37,11 +50,13 @@ import type {
   DateRange,
   ModeChangeEvent,
   RangePreviewEvent,
+  ResetBehavior,
   SelectionClearedEvent,
   SelectionCompleteEvent,
   ViewChangeEvent,
 } from './calendar.types';
 import { emptyCalendarValue, YEARS_PER_PAGE } from './calendar.types';
+import { calendarValidator } from './calendar-validators';
 import { DateAdapter, DATE_ADAPTER } from './date-adapter';
 import { MonthViewComponent } from './month-view';
 import { YearViewComponent } from './year-view';
@@ -104,9 +119,19 @@ const calendarVariants = tv(
       useExisting: forwardRef(() => CalendarComponent),
       multi: true,
     },
+    {
+      provide: NG_VALIDATORS,
+      useExisting: forwardRef(() => CalendarComponent),
+      multi: true,
+    },
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
-  host: { class: 'block' },
+  host: {
+    class: 'block',
+    '[attr.aria-disabled]': 'effectiveDisabled() || null',
+    '[attr.aria-readonly]': 'effectiveReadonly() || null',
+    '(focusout)': 'onBlur($event)',
+  },
   template: `
     <div
       [class]="rootClasses()"
@@ -213,10 +238,12 @@ export class CalendarComponent<
   // identity and `TOut` defaults to `CalendarValue<M, D>`.
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   TOut = CalendarValue<M, D>,
-> implements ControlValueAccessor {
+> implements ControlValueAccessor, Validator, OnInit {
   private readonly dateAdapter: DateAdapter<D> = inject(DATE_ADAPTER) as DateAdapter<D>;
   private readonly elementRef = inject(ElementRef<HTMLElement>);
   private readonly injector = inject(Injector);
+  private readonly destroyRef = inject(DestroyRef);
+  private readonly ngControl = inject(NgControl, { self: true, optional: true });
 
   private readonly injectedStrategy = inject(CALENDAR_SELECTION_STRATEGY, {
     optional: true,
@@ -285,8 +312,14 @@ export class CalendarComponent<
    */
   readonly monthColumns: InputSignal<number> = input<number>(1);
 
-  /** Disabled state. */
+  /** Disabled state. Merged with any `setDisabledState` call from a bound form control via `effectiveDisabled`. */
   readonly disabled: InputSignal<boolean> = input<boolean>(false);
+
+  /** Read-only state (§33.1). When `true`, focus and keyboard navigation still work but selections cannot be committed. */
+  readonly readonly: InputSignal<boolean> = input<boolean>(false);
+
+  /** How a form reset restores internal state (§6.5). `'full'` (default) also restores view + active-date; `'value-only'` clears the draft but leaves navigation where the user left it. */
+  readonly resetBehavior: InputSignal<ResetBehavior> = input<ResetBehavior>('full');
 
   /** Optional cell-content template. */
   readonly cellTemplate: InputSignal<TemplateRef<{ $implicit: CalendarCell<D> }> | null> =
@@ -442,11 +475,41 @@ export class CalendarComponent<
   readonly lastInvalidFormValue: Signal<unknown> = computed(() => this._lastInvalidFormValue());
 
   // ---------------------------------------------------------------------------
-  // ControlValueAccessor (expanded in Phase 3)
+  // ControlValueAccessor + Validator (Phase 3)
   // ---------------------------------------------------------------------------
 
   private cvaOnChange: (value: unknown) => void = () => {};
   private cvaOnTouched: () => void = () => {};
+  private validatorOnChange: () => void = () => {};
+
+  /**
+   * @internal Disabled state set by `ControlValueAccessor.setDisabledState` and
+   * by the Signal Forms mode directives. OR-merged with the public `disabled`
+   * input into `effectiveDisabled`.
+   */
+  readonly cvaDisabled: WritableSignal<boolean> = signal(false);
+
+  /**
+   * @internal Read-only state set by the Signal Forms mode directives. OR-merged
+   * with the public `readonly` input into `effectiveReadonly`.
+   */
+  readonly cvaReadonly: WritableSignal<boolean> = signal(false);
+
+  /** Effective disabled state — public `disabled` input OR any form-bound disabled flip. Drives `aria-disabled`. */
+  readonly effectiveDisabled: Signal<boolean> = computed(
+    () => this.disabled() || this.cvaDisabled(),
+  );
+
+  /** Effective read-only state — public `readonly` input OR any form-bound readonly flip. Drives `aria-readonly`. */
+  readonly effectiveReadonly: Signal<boolean> = computed(
+    () => this.readonly() || this.cvaReadonly(),
+  );
+
+  /** @internal Dev-mode warning guard so each mismatched write warns only once per instance. */
+  private _warnedShapeMismatch = false;
+
+  /** @internal Set by `writeValue`; read by the `FormResetEvent` handler so it can emit `selectionCleared({reason: 'reset'})` only when a non-empty value was on the control before the reset cleared it. */
+  private _hadValueBeforeLastWrite = false;
 
   constructor() {
     // Runtime `mode` changes clear state and emit the canonical event order
@@ -461,17 +524,72 @@ export class CalendarComponent<
       previousMode = current;
       untracked(() => this.onModeChanged(from, current));
     });
+
+    // Re-run validation whenever mode or the rejected-write marker changes so
+    // the `calendarRequired` / `calendarInvalidValue` codes stay in sync.
+    effect(() => {
+      this.mode();
+      this._lastInvalidFormValue();
+      untracked(() => this.validatorOnChange());
+    });
   }
 
-  /** @internal `ControlValueAccessor` — writes a value from a reactive / template-driven form. */
-  writeValue(incoming: CalendarValue<M, D> | null | undefined): void {
-    const normalized =
-      incoming === undefined
-        ? (emptyCalendarValue<M, D>(this.mode() as M))
-        : (incoming as CalendarValue<M, D>);
+  ngOnInit(): void {
+    // Reset detection per §6.5 — `FormControl.reset()` emits a dedicated
+    // `FormResetEvent` on its events stream (and parent `FormGroup.reset()`
+    // cascades via each child's `reset()`). Subscribing here is stable across
+    // Reactive, Template-driven, and Signal Forms since they all flow through
+    // the same `NgControl` wrapper.
+    const ctrl = this.ngControl?.control;
+    if (ctrl) {
+      ctrl.events.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((event) => {
+        if (event instanceof FormResetEvent) {
+          this.handleFormReset();
+        }
+      });
+    }
+  }
+
+  /** @internal `ControlValueAccessor` — writes a value from a reactive / template-driven form. Wrong-shape writes preserve the prior value per §7.2. */
+  writeValue(incoming: unknown): void {
+    this._hadValueBeforeLastWrite = !this.isEmpty(this.value());
+    const mode = this.mode() as M;
+
+    if (incoming === null || incoming === undefined) {
+      const empty = emptyCalendarValue<M, D>(mode);
+      this.value.set(empty);
+      this._selectionState.set('EMPTY');
+      this.internalDraftValue.set(null);
+      if (this._lastInvalidFormValue() !== null) {
+        this._lastInvalidFormValue.set(null);
+        this.validatorOnChange();
+      }
+      return;
+    }
+
+    if (!this.matchesModeShape(mode, incoming)) {
+      if (isDevMode() && !this._warnedShapeMismatch) {
+        this._warnedShapeMismatch = true;
+        console.warn(
+          `[tw-calendar] writeValue received a value whose shape does not match mode="${mode}". ` +
+            `Preserving the prior value; the form control will report calendarInvalidValue. ` +
+            `Received:`,
+          incoming,
+        );
+      }
+      this._lastInvalidFormValue.set(incoming);
+      this.validatorOnChange();
+      return;
+    }
+
+    const normalized = incoming as CalendarValue<M, D>;
     this.value.set(normalized);
     this._selectionState.set(this.deriveSelectionState(normalized));
     this.internalDraftValue.set(null);
+    if (this._lastInvalidFormValue() !== null) {
+      this._lastInvalidFormValue.set(null);
+      this.validatorOnChange();
+    }
   }
 
   /** @internal `ControlValueAccessor` — registers the on-change callback. */
@@ -482,6 +600,56 @@ export class CalendarComponent<
   /** @internal `ControlValueAccessor` — registers the touched callback. */
   registerOnTouched(fn: () => void): void {
     this.cvaOnTouched = fn;
+  }
+
+  /** @internal `ControlValueAccessor` — reflects the form control's disabled state through `effectiveDisabled` / `aria-disabled`. */
+  setDisabledState(isDisabled: boolean): void {
+    this.cvaDisabled.set(isDisabled);
+  }
+
+  /** @internal `Validator` — runs the Phase 3 validator (§10.2 codes: `calendarRequired`, `calendarInvalidValue`). Phase 4 extends with constraint codes. */
+  validate(control: AbstractControl): ValidationErrors | null {
+    const ctx = {
+      mode: this.mode() as M,
+      lastInvalidFormValue: this._lastInvalidFormValue(),
+    };
+    return calendarValidator<M, D>(ctx)(control);
+  }
+
+  /** @internal `Validator` — registers the change callback so the form re-runs validation when internal state changes. */
+  registerOnValidatorChange(fn: () => void): void {
+    this.validatorOnChange = fn;
+  }
+
+  /** @internal Host `(focusout)` handler — fires `onTouched` when focus leaves the component (§13.6 inline path). Overlay-mode wiring is Phase 10. */
+  onBlur(event: FocusEvent): void {
+    const host = this.elementRef.nativeElement;
+    const related = event.relatedTarget as Node | null;
+    // Only fire when focus actually leaves the component tree. Focus moves
+    // between cells (roving tabindex) stay inside the host and must not mark
+    // the control touched.
+    if (related && host.contains(related)) return;
+    this.cvaOnTouched();
+  }
+
+  /** `true` when `value` matches the shape expected for `mode`. `null` / `undefined` is handled upstream. */
+  private matchesModeShape(mode: CalendarMode, value: unknown): boolean {
+    if (mode === 'single') {
+      if (Array.isArray(value)) return false;
+      if (typeof value === 'object' && value !== null) {
+        const r = value as Record<string, unknown>;
+        if ('start' in r && 'end' in r) return false;
+      }
+      return true;
+    }
+    if (mode === 'multiple') {
+      return Array.isArray(value);
+    }
+    // range
+    if (typeof value !== 'object' || value === null) return false;
+    if (Array.isArray(value)) return false;
+    const range = value as Record<string, unknown>;
+    return 'start' in range && 'end' in range;
   }
 
   // ---------------------------------------------------------------------------
@@ -722,6 +890,7 @@ export class CalendarComponent<
 
   /** Clears the current selection. Alias: `clearSelection`. */
   clear(): void {
+    if (this.effectiveReadonly()) return;
     const had = !this.isEmpty(this.value());
     const empty = emptyCalendarValue<M, D>(this.mode() as M);
     const hadPreset = this._selectedPresetId() !== null;
@@ -847,7 +1016,13 @@ export class CalendarComponent<
 
   /** @internal — day-grid cell activation. */
   onDateSelected(date: D): void {
-    if (this.disabled()) return;
+    if (this.effectiveDisabled()) return;
+    // Read-only: keep focus + navigation but skip every commit path.
+    if (this.effectiveReadonly()) {
+      this._activeDate.set(date);
+      this.activeDateChange.emit(date);
+      return;
+    }
     this._activeDate.set(date);
     this.activeDateChange.emit(date);
 
@@ -979,6 +1154,51 @@ export class CalendarComponent<
     this.cvaOnTouched();
     this.valueChange.emit(newValue);
     this.selectionComplete.emit({ value: newValue, reason });
+  }
+
+  // ---------------------------------------------------------------------------
+  // Form reset handling (§6.5)
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Handles a form-owned reset. Triggered when the bound `NgControl` flips
+   * `pristine` back to `true` (via `FormControl.reset()` / `FormGroup.reset()`).
+   * Per §6.5 the form owns the value write, so this path does NOT emit
+   * `valueChange` and does NOT call `onTouched`. It emits `selectionCleared`
+   * when a value was previously committed and restores UI state per
+   * `resetBehavior`.
+   */
+  private handleFormReset(): void {
+    // `writeValue` fires before `FormResetEvent`, so by the time we reach this
+    // handler `this.value()` is already the reset value (typically empty).
+    // `_hadValueBeforeLastWrite` is the snapshot captured at the start of
+    // the preceding `writeValue` and is the correct signal for "was there
+    // anything to clear?" per §6.5.
+    const hadValue = this._hadValueBeforeLastWrite;
+    this._hadValueBeforeLastWrite = false;
+    const hadPreset = this._selectedPresetId() !== null;
+
+    // Always clear draft / hovered / preset regardless of resetBehavior.
+    this.internalDraftValue.set(null);
+    this._hoveredDate.set(null);
+
+    if (this.isEmpty(this.value())) {
+      this._selectionState.set('EMPTY');
+    }
+
+    if (this.resetBehavior() === 'full') {
+      this._viewState.set(this.startView());
+      this._activeDate.set(this.startAt() ?? this.dateAdapter.today());
+    }
+
+    if (hadPreset) {
+      this._selectedPresetId.set(null);
+      this.presetChange.emit(null);
+    }
+
+    if (hadValue) {
+      this.selectionCleared.emit({ reason: 'reset' });
+    }
   }
 
   // ---------------------------------------------------------------------------
