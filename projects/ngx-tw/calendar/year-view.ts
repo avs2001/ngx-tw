@@ -6,7 +6,7 @@ import {
   type Signal,
 } from '@angular/core';
 import { CalendarCellComponent, type CalendarCellKeyNavEvent } from './calendar-cell';
-import type { CalendarCell, CalendarView } from './calendar.types';
+import type { CalendarCell, CalendarViewState } from './calendar.types';
 import { MONTHS_PER_ROW, createCalendarCell } from './calendar.types';
 import { createGrid, isMonthDisabled } from './calendar.utils';
 import { CalendarViewBase } from './calendar-view-base';
@@ -47,7 +47,7 @@ const MONTHS_PER_YEAR = 12;
   `,
 })
 export class YearViewComponent<D> extends CalendarViewBase<D> {
-  protected readonly view: CalendarView = 'year';
+  protected readonly view: CalendarViewState = 'month';
 
   protected readonly cellComponents: Signal<readonly CalendarCellComponent<D>[]> =
     viewChildren<CalendarCellComponent<D>>(CalendarCellComponent);

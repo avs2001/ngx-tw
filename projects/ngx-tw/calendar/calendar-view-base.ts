@@ -13,7 +13,13 @@ import {
   type WritableSignal,
 } from '@angular/core';
 import type { CalendarCellComponent } from './calendar-cell';
-import type { CalendarCell, CalendarView, DateClassFn, DateFilterFn, DateRange } from './calendar.types';
+import type {
+  CalendarCell,
+  CalendarViewState,
+  DateClassFn,
+  DateFilterFn,
+  DateRange,
+} from './calendar.types';
 import { DateAdapter, DATE_ADAPTER } from './date-adapter';
 import { isDateInRange } from './calendar.utils';
 
@@ -64,7 +70,7 @@ export abstract class CalendarViewBase<D> {
   readonly previewChange: OutputEmitterRef<D | null> = output<D | null>();
 
   /** Subclass declares which view it represents. */
-  protected abstract readonly view: CalendarView;
+  protected abstract readonly view: CalendarViewState;
 
   /** Subclass exposes its cell components for focus management. */
   protected abstract readonly cellComponents: Signal<readonly CalendarCellComponent<D>[]>;

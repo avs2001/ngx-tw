@@ -1,5 +1,4 @@
 export { CalendarComponent } from './calendar';
-export type { TwCalendarSelectionMode } from './calendar';
 
 export { TwCalendarPresets } from './calendar-presets';
 
@@ -11,11 +10,32 @@ export type { CalendarCellKeyNavEvent } from './calendar-cell';
 export { CalendarViewBase } from './calendar-view-base';
 export { MonthViewComponent } from './month-view';
 export { YearViewComponent } from './year-view';
-export { MultiYearViewComponent, yearsPerPage } from './multi-year-view';
+export { YearsViewComponent, yearsPerPage } from './multi-year-view';
 
+// Spec-canonical types (§7.1, §7.4, §8, §10.2, §22.5, §33)
 export type {
+  CalendarMode,
+  CalendarSingleValue,
+  CalendarMultipleValue,
+  CalendarRangeValue,
+  CalendarValue,
+  CalendarSelectionState,
+  CalendarViewState,
+  CalendarOverlayState,
+  CalendarErrorCode,
+  CalendarValidationErrors,
+  RangeClickBehavior,
+  RangeGranularity,
+  MaxSelectionBehavior,
+  ResetBehavior,
+  MobileMode,
+  SelectionCompleteEvent,
+  SelectionClearedEvent,
+  RangePreviewEvent,
+  ViewChangeEvent,
+  ModeChangeEvent,
+  // Legacy types kept stable until later phases migrate them.
   DateRange,
-  CalendarView,
   CalendarCellState,
   CalendarCell,
   CalendarCellConfig,
@@ -23,7 +43,9 @@ export type {
   DateFilterFn,
   DateClassFn,
 } from './calendar.types';
+
 export {
+  emptyCalendarValue,
   createDateRange,
   createCalendarCell,
   DAYS_PER_WEEK,
@@ -61,11 +83,18 @@ export type { TwDateRangeInput } from './date-range';
 
 export * from './selection';
 
-/** @deprecated Alias for `CalendarView`. */
-export type { CalendarView as TwCalendarView } from './calendar.types';
+// -----------------------------------------------------------------------------
+// Deprecated type aliases. Retained through the refactor so downstream
+// consumers in the same workspace (date-picker, date-range-picker) keep
+// building. Phase 10 replaces the pickers with a `[calendarTrigger]` overlay
+// composition and these aliases can be removed.
+// -----------------------------------------------------------------------------
 
-/** @deprecated Alias for `DateFilterFn<D>`. */
+/** @deprecated Use `CalendarViewState`. */
+export type { CalendarViewState as CalendarView } from './calendar.types';
+/** @deprecated Use `CalendarViewState`. */
+export type { CalendarViewState as TwCalendarView } from './calendar.types';
+/** @deprecated Use `DateFilterFn<D>`. */
 export type { DateFilterFn as TwDateFilter } from './calendar.types';
-
-/** @deprecated Alias for `DateClassFn<D>`. */
+/** @deprecated Use `DateClassFn<D>`. */
 export type { DateClassFn as TwCalendarCellClassFn } from './calendar.types';

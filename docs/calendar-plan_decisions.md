@@ -90,3 +90,83 @@ Sources: `docs/open_decisions.md`, `docs/requirements/calendar-component-require
 | 5 | Non-Gregorian adapters | Defer to v2+ | **Accept (defer)** | §12.2, §19.4, §19.5, §20.1, §20.2, §35.3, §42.2 |
 | 6 | Luxon / date-fns / Temporal in v1 | (none) → §43: native + Luxon | **Accept (native + Luxon v1; date-fns + Temporal v1.1)** | §3, §7.5, §20.4, §32.1, §35.1, §35.3, §39.1 |
 | 7 | Event/schedule-mode cell layer | Defer to v2 sibling | **Accept (defer)** | §2, §24.1, §24.3, §33.1, §42.1 |
+
+---
+
+# Phase 0 — Refactoring-Plan Migration Shape
+
+Source: `docs/calendar-refactoring-plan.md` §4 Phase 0. These six resolutions unblock the Phase 1 breaking cutover. Section numbers continue to refer to `docs/requirements/calendar-component-requirements.md` (v2.6) unless noted.
+
+## 8. Back-compat inputs — remove vs. `@deprecated` no-ops
+
+- **Candidates:** `withTime`, `timeFormat`, `showSeconds`, `hourStep`, `minuteStep`, `secondStep`, `minTime`, `maxTime`, `color`, `size`, `headerless`, `startAt`, `numberOfMonths` (as alias for `monthColumns`).
+- **Default recommendation:** Remove outright.
+- **Decision:** **Accept — remove all back-compat inputs at the Phase 1 cutover.**
+- **Rationale:** The library is pre-1.0 and has no published `ngx-tw/calendar` consumers outside this repo. Keeping these as `@deprecated` no-ops would bloat the API surface, confuse JSDoc-driven Compodoc output, and create `[input() && no-op]` smells that consumers will file bugs against. Removing them costs one line in the Phase 1 migration note. Time-of-day (`withTime` and its eight dependants) is explicitly out of scope per §42.2; `color` / `size` / `headerless` were never wired to the variant system; `startAt` collapses into `activeDate` per §33.3; `numberOfMonths` is superseded by Phase 9's first-class multi-month surface. Clean break.
+- **Sections affected:** §33.1 (input table loses twelve entries), §42.2 (time-of-day stays WONT), §43 decision rows that reference `startAt`.
+
+## 9. Single `value` model vs. dual `selected` + `value`
+
+- **Default recommendation:** Collapse to a single `value: ModelSignal<CalendarValue<M, D>>`.
+- **Decision:** **Accept — single `value` model; drop `selected` and the `effect()`-driven mirror.**
+- **Rationale:** The current component maintains two `model()` signals kept in lockstep by two `effect()`s writing each other — a textbook source of write feedback loops and one of the reasons `writeValue` has to poke both. §7.3 mandates `value` as the canonical consumer-facing contract, and the Signal Forms directives (§6.3) bind exactly to `value`. The `selected` alias was a legacy Material-picker convention; with no external consumers there is nothing to preserve. Collapsing removes ~40 lines of sync plumbing, guarantees the write order in §30.2 is observable from a single signal, and unblocks the `CalendarValue<M, D>` typing in Phase 1.
+- **Sections affected:** §7.3 (typing resolution), §7.6 (`valueTransformer` applies at the `value` boundary), §8.3 (state table reads from a single source), §30.2 (emit order), §33.3 (public signal surface).
+
+## 10. `selectionMode` → `mode`, `'multi'` → `'multiple'`, drop `'week'` from the surface
+
+- **Default recommendation:** Follow the spec.
+- **Decision:** **Accept — rename to `mode`, rename `'multi'` → `'multiple'`, drop `'week'` from the `mode` union. `WeekSelectionStrategy` stays available via DI.**
+- **Rationale:** §5 is unambiguous: the union is `'single' | 'multiple' | 'range'`. `'week'` is explicitly `[WONT] v1` (§42.2), but the existing `WeekSelectionStrategy` + `provideWeekSelectionStrategy()` have a clean DI-based extension story and no incremental maintenance cost beyond what the strategy interface already carries — keeping them as a non-`MUST` advanced affordance lets us discharge the "extension point" use case without enlarging the `mode` surface. The rename is consistent with the rest of ngx-tw (`TwCalendarSelectionMode` becomes `CalendarMode`, colocated in `core/` so it does not force a calendar import on consumers who only want the shared color/size tokens).
+- **Sections affected:** §5 (mode union), §7.1 (signature), §33.1 (`mode` input), §42.2 (week-as-unit stays WONT from the primary surface), §43 cross-refs.
+
+## 11. `DateAdapter` method names — spec surface + 1-based month
+
+- **Default recommendation:** Commit to spec names; switch `createDate` to a 1-based month contract.
+- **Decision:** **Accept — rename in Phase 2; all internal call sites migrate in the same commit.**
+- **Mapping:**
+  - `addCalendarYears` → `addYears`
+  - `addCalendarMonths` → `addMonths`
+  - `addCalendarDays` → `addDays`
+  - (new) `addHours`, `addMinutes`
+  - `compareDate` → `compare`
+  - `createDate(year, zeroBasedMonth, day)` → `create(year, oneBasedMonth, day)`
+  - `toIso8601` → `toIso`; add `fromIso`
+  - Add `startOfWeek`, `endOfWeek`, `startOfDay`, `getDaysInWeek`, `getDateNames(style)`
+  - Add optional TZ virtuals: `getTimezone`, `withTimezone`, `isDST`, `resolveAmbiguous`
+  - Remove `withTime` from the adapter (time-of-day is out of scope per §42.2).
+- **Rationale:** §20.2 freezes the public adapter shape a downstream Luxon / Temporal / date-fns adapter author must implement. Spec-shaped method names make those adapters drop-in. The 1-based-month switch is the single riskiest rename because it is silent at compile time — Phase 2's acceptance test (`create(2026, 1, 1)` equals the old `createDate(2026, 0, 1)` for the same DOM output) catches it. Because there are no external `DateAdapter` implementations yet, this is a one-time cost localized to `NativeDateAdapter`. TZ hooks ship as **optional virtuals** (default to floating / pass-through behavior) so the native adapter does not take on timezone scope it does not implement.
+- **Sections affected:** §4.1–§4.3 (TZ contract surface), §20.1 (adapter contract), §20.2 (required methods), §20.4 (third-party adapters — Luxon implements the full surface including TZ virtuals), §35.3 (DST matrix).
+
+## 12. View naming — spec `'day' | 'month' | 'year'` replaces impl `'month' | 'year' | 'multi-year'`
+
+- **Default recommendation:** Adopt spec names. The existing `month` view becomes `day`; `multi-year` becomes `year`; the current `year` view becomes `month`.
+- **Decision:** **Accept — rename in Phase 1 as part of the public-API cutover.**
+- **Rename map:**
+  - Impl `CalendarView = 'month' | 'year' | 'multi-year'` → spec `CalendarViewState = 'day' | 'month' | 'year'`.
+  - Impl `MonthViewComponent` (7×6 day grid) → keeps file/class name; selector stays `tw-calendar-month-view`; it is now the `'day'` view. *Note: the class name is deliberately kept — the component renders a calendar **month**, so `MonthViewComponent` remains the correct name; only the view-state token it answers to changes. This keeps the view-component naming convention consistent with Material's `MatMonthView`.*
+  - Impl `YearViewComponent` (4×3 month grid) → keeps file/class name; it is now the `'month'` view (user is picking a month).
+  - Impl `MultiYearViewComponent` (4×6 year grid) → renamed to `YearsViewComponent` (plural) for the `'year'` view. *Rationale for renaming this one specifically: the component name "`MultiYear`" is a spec-impl leak — the spec treats it as the `year` picker regardless of page size. Keeping `MultiYearViewComponent` would invert the impl/spec semantics on the one place they now align.*
+  - `yearsPerPage` input (default 20 per §33.1, not 24) gates the page size shown by `YearsViewComponent` — this replaces the current hardcoded `YEARS_PER_PAGE = 24` constant (see Phase 7 deliverable).
+- **Rationale:** The spec's `'day' | 'month' | 'year'` convention is what consumers will read in `viewState`, `startView`, `viewChange.from|to`, and `rangeGranularity`. Every reference in the spec uses those tokens. Keeping the impl's `multi-year` creates a permanent vocabulary mismatch between the code and every demo page, every API table, and the migration guide. The rename is localized to one `type` export and three template `@switch` arms, so the diff stays small.
+- **Sections affected:** §7.4 (view type), §22.4 (granularity × view matrix uses `'day' | 'month' | 'year'`), §22.6 (`viewChange` payload), §33.1 (`startView`, `rangeGranularity`), §33.3 (`viewState`).
+
+## 13. Dropping `'week'` from the `mode` surface — clarification
+
+This is covered by Decision #10 above but warrants a separate line for the `WeekSelectionStrategy` extension point:
+
+- **`CalendarSelectionStrategy<D, S>` abstract class and `CALENDAR_SELECTION_STRATEGY` DI token remain public** as a non-`[MUST]` advanced affordance. Documented as "custom non-range selection patterns" — week-of-month, multi-interval, business-day patterns.
+- **`SingleSelectionStrategy` / `MultipleSelectionStrategy` / `RangeSelectionStrategy` become internal** after Phase 6 (§6.6 in the plan's open-decisions block says "Recommend: keep as advanced extension" — we are keeping only the abstract surface public, not the three built-ins, because Phase 6 migrates range-state ownership into the orchestrator).
+- **`WeekSelectionStrategy` and `provideWeekSelectionStrategy()` stay exported** as the one ready-made example of a custom strategy. Renaming to match the new internal naming (if any) happens during Phase 6.
+
+## Phase 0 summary
+
+| # | Topic | Decision | Land in phase |
+|---|---|---|---|
+| 8 | Remove back-compat inputs | **Accept — remove** | 1 |
+| 9 | Single `value` model | **Accept — drop `selected` alias** | 1 |
+| 10 | `selectionMode`→`mode`; `'multi'`→`'multiple'`; drop `'week'` from surface | **Accept** | 1 |
+| 11 | `DateAdapter` spec-shape rename + 1-based month + TZ virtuals | **Accept** | 2 |
+| 12 | View naming `'day' \| 'month' \| 'year'` | **Accept** | 1 |
+| 13 | `WeekSelectionStrategy` stays as advanced DI-only affordance | **Accept** | 1 (surface), 6 (internals) |
+
+No ambiguity remains for Phase 1 / Phase 2 to execute against.

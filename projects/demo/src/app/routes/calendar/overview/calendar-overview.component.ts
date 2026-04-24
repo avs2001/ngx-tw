@@ -85,8 +85,8 @@ import { CodeBlockComponent } from 'ngx-tw/code-block';
       <div class="rounded-lg border border-border p-6 bg-surface-raised mb-4 flex flex-col items-center gap-3">
         <tw-calendar
           aria-label="Basic calendar"
-          [selected]="basicValue()"
-          (selectedChange)="onBasicSelected($event)"
+          [value]="basicValue()"
+          (valueChange)="onBasicSelected($event)"
         />
         <p class="text-xs text-fg-muted mt-4 font-mono">
           selected = {{ basicValueLabel() }}
@@ -203,7 +203,7 @@ export class CalendarOverview {
     return v ? v.toDateString() : '—';
   });
 
-  protected readonly basicUsageSnippet = `<tw-calendar aria-label="Pick a date" [(selected)]="value" />`;
+  protected readonly basicUsageSnippet = `<tw-calendar aria-label="Pick a date" [(value)]="value" />`;
 
   protected readonly importSnippet = `import { CalendarComponent, provideNativeDateAdapter } from 'ngx-tw/calendar';
 

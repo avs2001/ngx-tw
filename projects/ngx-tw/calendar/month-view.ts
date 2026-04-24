@@ -8,7 +8,7 @@ import {
   type Signal,
 } from '@angular/core';
 import { CalendarCellComponent, type CalendarCellKeyNavEvent } from './calendar-cell';
-import type { CalendarCell, CalendarView } from './calendar.types';
+import type { CalendarCell, CalendarViewState } from './calendar.types';
 import { DAYS_PER_WEEK, WEEKS_PER_MONTH, createCalendarCell } from './calendar.types';
 import {
   createGrid,
@@ -68,7 +68,7 @@ const TOTAL_CELLS = DAYS_PER_WEEK * WEEKS_PER_MONTH;
   `,
 })
 export class MonthViewComponent<D> extends CalendarViewBase<D> {
-  protected readonly view: CalendarView = 'month';
+  protected readonly view: CalendarViewState = 'day';
 
   protected readonly cellComponents: Signal<readonly CalendarCellComponent<D>[]> =
     viewChildren<CalendarCellComponent<D>>(CalendarCellComponent);

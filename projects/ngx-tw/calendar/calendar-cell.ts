@@ -13,7 +13,7 @@ import {
 } from '@angular/core';
 import { NgTemplateOutlet } from '@angular/common';
 import { tv } from 'tailwind-variants';
-import type { CalendarCell, CalendarCellState, CalendarView } from './calendar.types';
+import type { CalendarCell, CalendarCellState, CalendarViewState } from './calendar.types';
 
 /** Emitted on keyboard navigation keys (arrows, Home/End, PageUp/PageDown). */
 export interface CalendarCellKeyNavEvent<D> {
@@ -30,9 +30,9 @@ const cellVariants = tv(
     },
     variants: {
       view: {
-        month: { button: 'h-9 w-9 text-sm rounded-full' },
-        year: { button: 'h-10 w-16 text-sm rounded-md' },
-        'multi-year': { button: 'h-10 w-14 text-sm rounded-md' },
+        day: { button: 'h-9 w-9 text-sm rounded-full' },
+        month: { button: 'h-10 w-16 text-sm rounded-md' },
+        year: { button: 'h-10 w-14 text-sm rounded-md' },
       },
       state: {
         default: { button: 'text-fg hover:bg-surface-muted' },
@@ -85,7 +85,7 @@ const cellVariants = tv(
       { state: 'disabled', outside: true, class: { button: 'text-fg-subtle' } },
       { state: 'selected', class: { button: 'ring-0' } },
     ],
-    defaultVariants: { view: 'month', state: 'default', outside: false, range: 'none' },
+    defaultVariants: { view: 'day', state: 'default', outside: false, range: 'none' },
   },
   { twMerge: true },
 );
@@ -141,7 +141,7 @@ export class CalendarCellComponent<D> {
   readonly cell: InputSignal<CalendarCell<D>> = input.required<CalendarCell<D>>();
 
   /** The active calendar view — drives cell dimensions and radius. */
-  readonly view: InputSignal<CalendarView> = input<CalendarView>('month');
+  readonly view: InputSignal<CalendarViewState> = input<CalendarViewState>('day');
 
   /** `true` when the cell's date is outside the currently displayed month. */
   readonly outside: InputSignal<boolean> = input<boolean>(false);

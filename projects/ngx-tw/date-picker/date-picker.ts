@@ -356,8 +356,8 @@ export class DatePickerComponent<D = Date>
   /** Per-date predicate — return `false` to disable. Applied in both the calendar and the text-parse path. */
   readonly dateFilter = input<TwDateFilter<D> | null>(null);
 
-  /** Which calendar view opens first — `'month'`, `'year'`, or `'multi-year'`. Defaults to `'month'`. */
-  readonly startView = input<TwCalendarView>('month');
+  /** Which calendar view opens first — `'day'`, `'month'`, or `'year'`. Defaults to `'day'`. */
+  readonly startView = input<TwCalendarView>('day');
 
   /** Date to focus when the calendar opens with no selection. Falls back to today. */
   readonly startAt = input<D | null>(null);

@@ -373,8 +373,8 @@ export class DateRangePickerComponent<D = Date>
   /** Per-date predicate — return `false` to disable. Applied in both calendars. Presets that fall on a filtered date are skipped. */
   readonly dateFilter = input<TwDateFilter<D> | null>(null);
 
-  /** Which calendar view opens first — `'month'`, `'year'`, or `'multi-year'`. Defaults to `'month'`. */
-  readonly startView = input<TwCalendarView>('month');
+  /** Which calendar view opens first — `'day'`, `'month'`, or `'year'`. Defaults to `'day'`. */
+  readonly startView = input<TwCalendarView>('day');
 
   /** Date the left calendar focuses on when opened with no value. Falls back to today. Ignored when a value is already set. */
   readonly startAt = input<D | null>(null);
@@ -550,7 +550,7 @@ export class DateRangePickerComponent<D = Date>
   private readonly closingSignal = signal(false);
   private readonly lastValueBeforeOpen = signal<TwDateRange<D> | null>(null);
   private readonly pendingRange = signal<TwDateRange<D> | null>(null);
-  private readonly currentView = signal<TwCalendarView>('month');
+  private readonly currentView = signal<TwCalendarView>('day');
   private readonly _ngControlRev = signal(0);
   private readonly _formSubmitRev = signal(0);
 

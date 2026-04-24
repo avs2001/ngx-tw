@@ -45,14 +45,14 @@ import {
       #calendar
       class="!block !rounded-none !border-0 !bg-transparent !p-2"
       [bordered]="false"
-      [selected]="pendingValue()"
-      [activeDate]="startAt() ?? undefined"
+      [value]="pendingValue()"
+      [startAt]="startAt()"
       [startView]="startView()"
       [minDate]="minDate()"
       [maxDate]="maxDate()"
       [dateFilter]="dateFilter()"
       aria-label="Calendar"
-      (selectedChange)="onCalendarDateSelected($event)"
+      (valueChange)="onCalendarDateSelected($event)"
     />
 
     @if (withTime()) {
@@ -103,7 +103,7 @@ import {
 })
 export class DatePickerOverlayComponent<D = unknown> {
   private readonly elementRef = inject(ElementRef<HTMLElement>);
-  private readonly calendarRef = viewChild<CalendarComponent<D>>('calendar');
+  private readonly calendarRef = viewChild<CalendarComponent<'single', D>>('calendar');
 
   // ── Config signals set by the parent component ──
 
@@ -118,7 +118,7 @@ export class DatePickerOverlayComponent<D = unknown> {
   /** @internal */
   readonly dateFilter = signal<TwDateFilter<D> | null>(null);
   /** @internal */
-  readonly startView = signal<TwCalendarView>('month');
+  readonly startView = signal<TwCalendarView>('day');
   /** @internal */
   readonly startAt = signal<D | null>(null);
   /** @internal Current committed-or-pending value shown as selected in the calendar. */

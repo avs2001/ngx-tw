@@ -15,6 +15,7 @@ import {
   type TwCalendarView,
   type TwDateFilter,
   TwDateRange,
+  type ViewChangeEvent,
 } from 'ngx-tw/calendar';
 import { ButtonDirective } from 'ngx-tw/button';
 import {
@@ -72,17 +73,18 @@ import type { DateRangePickerMonths, DateRangePreset } from './date-range-picker
     <div class="flex flex-col flex-1">
       <tw-calendar
         #calendar
+        mode="range"
         class="!rounded-none !border-0 !bg-transparent !p-2"
         [bordered]="false"
-        [selected]="pendingRange()"
+        [value]="$any(pendingRangeAsRange())"
         [startView]="startView()"
         [monthColumns]="numberOfMonths()"
         [minDate]="minDate()"
         [maxDate]="maxDate()"
         [dateFilter]="dateFilter()"
         [attr.aria-label]="calendarAriaLabel()"
-        (selectedChange)="onCalendarRangeSelected($event)"
-        (viewChanged)="onViewChanged($event)"
+        (valueChange)="onCalendarRangeSelected($event)"
+        (viewChange)="onViewChanged($event)"
       />
 
       @if (showTime() && hasTimeablePending()) {
@@ -154,7 +156,7 @@ import type { DateRangePickerMonths, DateRangePreset } from './date-range-picker
 })
 export class DateRangePickerOverlayComponent<D = unknown> {
   private readonly elementRef = inject(ElementRef<HTMLElement>);
-  private readonly calendarRef = viewChild<CalendarComponent<D>>('calendar');
+  private readonly calendarRef = viewChild<CalendarComponent<'range', D>>('calendar');
 
   // ── Config signals set by the parent ──
 
@@ -169,13 +171,13 @@ export class DateRangePickerOverlayComponent<D = unknown> {
   /** @internal */
   readonly dateFilter = signal<TwDateFilter<D> | null>(null);
   /** @internal */
-  readonly startView = signal<TwCalendarView>('month');
+  readonly startView = signal<TwCalendarView>('day');
   /** @internal */
   readonly numberOfMonths = signal<DateRangePickerMonths>(2);
   /** @internal Current pending range shown as selected in the calendar. */
   readonly pendingRange = signal<TwDateRange<D> | null>(null);
   /** @internal */
-  readonly currentView = signal<TwCalendarView>('month');
+  readonly currentView = signal<TwCalendarView>('day');
   /** @internal */
   readonly presets = signal<readonly DateRangePreset<D>[]>([]);
   /** @internal */
@@ -255,6 +257,12 @@ export class DateRangePickerOverlayComponent<D = unknown> {
     return v !== null && v.start !== null && v.end !== null;
   });
 
+  /** @internal Adapts `TwDateRange<D> | null` to the `CalendarRangeValue<D>` shape the calendar's `value` input expects. */
+  readonly pendingRangeAsRange = computed<{ start: D | null; end: D | null }>(() => {
+    const v = this.pendingRange();
+    return v ? { start: v.start, end: v.end } : { start: null, end: null };
+  });
+
   // ── Template handlers ──
 
   /** @internal */
@@ -278,9 +286,9 @@ export class DateRangePickerOverlayComponent<D = unknown> {
   }
 
   /** @internal */
-  onViewChanged(view: TwCalendarView): void {
-    this.currentView.set(view);
-    this.onViewChange()(view);
+  onViewChanged(event: ViewChangeEvent): void {
+    this.currentView.set(event.to);
+    this.onViewChange()(event.to);
   }
 
   /** @internal */

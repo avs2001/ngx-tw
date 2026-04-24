@@ -6,20 +6,21 @@ import {
   type Signal,
 } from '@angular/core';
 import { CalendarCellComponent, type CalendarCellKeyNavEvent } from './calendar-cell';
-import type { CalendarCell, CalendarView } from './calendar.types';
+import type { CalendarCell, CalendarViewState } from './calendar.types';
 import { YEARS_PER_PAGE, YEARS_PER_ROW, createCalendarCell } from './calendar.types';
 import { createGrid, getMultiYearStartingYear, isYearDisabled } from './calendar.utils';
 import { CalendarViewBase } from './calendar-view-base';
 
-/** Number of years per page in the multi-year view (re-exported for consumers). */
+/** Default years per page — kept until Phase 7 introduces the `yearsPerPage` input. */
 export const yearsPerPage = YEARS_PER_PAGE;
 
 /**
- * Multi-year view — 4×6 grid (24 years). Allows picking a year to drill into
- * the year view.
+ * Year view — 4×6 grid (24 years by default). A user clicks a year to drill
+ * down to the month-of-year view. In the spec vocabulary this is the
+ * `'year'` view state (§7.4, §22).
  */
 @Component({
-  selector: 'tw-calendar-multi-year-view',
+  selector: 'tw-calendar-years-view',
   imports: [CalendarCellComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: { class: 'block' },
@@ -48,8 +49,8 @@ export const yearsPerPage = YEARS_PER_PAGE;
     </div>
   `,
 })
-export class MultiYearViewComponent<D> extends CalendarViewBase<D> {
-  protected readonly view: CalendarView = 'multi-year';
+export class YearsViewComponent<D> extends CalendarViewBase<D> {
+  protected readonly view: CalendarViewState = 'year';
 
   protected readonly cellComponents: Signal<readonly CalendarCellComponent<D>[]> =
     viewChildren<CalendarCellComponent<D>>(CalendarCellComponent);
