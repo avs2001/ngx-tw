@@ -146,6 +146,7 @@
               "../stepper/**/*.spec.ts",
               "../paginator/**/*.spec.ts",
               "../sort/**/*.spec.ts",
+              "../split/**/*.spec.ts",
               "../table/**/*.spec.ts",
               "../calendar/**/*.spec.ts",
               "../date-picker/**/*.spec.ts",

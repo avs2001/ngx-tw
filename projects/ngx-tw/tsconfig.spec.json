@@ -50,6 +50,7 @@
     "stepper/**/*.spec.ts",
     "paginator/**/*.spec.ts",
     "sort/**/*.spec.ts",
+    "split/**/*.spec.ts",
     "table/**/*.spec.ts",
     "time-picker/**/*.spec.ts",
     "item/**/*.spec.ts"

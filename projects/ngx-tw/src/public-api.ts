@@ -43,5 +43,6 @@ export * from 'ngx-tw/slider';
 export * from 'ngx-tw/stepper';
 export * from 'ngx-tw/paginator';
 export * from 'ngx-tw/sort';
+export * from 'ngx-tw/split';
 export * from 'ngx-tw/table';
 export * from 'ngx-tw/item';
