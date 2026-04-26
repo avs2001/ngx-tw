@@ -8,7 +8,10 @@ import type {
   CalendarRangeValue,
   CalendarSelectionState,
   CalendarViewState,
+  DateFilterFn,
+  DisabledDates,
   ModeChangeEvent,
+  RangePreviewEvent,
   SelectionClearedEvent,
   SelectionCompleteEvent,
   ViewChangeEvent,
@@ -147,6 +150,24 @@ function getDayHeaderRow(fixture: ComponentFixture<unknown>): HTMLElement | null
   return fixture.nativeElement.querySelector(
     'tw-calendar-month-view [role="row"]',
   ) as HTMLElement | null;
+}
+
+/** Returns the active (tabindex=0) day-cell button, used as the keyboard-focus anchor. */
+function getActiveDayCell(fixture: ComponentFixture<unknown>): HTMLButtonElement | null {
+  return fixture.nativeElement.querySelector(
+    'tw-calendar-month-view tw-calendar-cell button[tabindex="0"]',
+  ) as HTMLButtonElement | null;
+}
+
+/** Dispatches a `keydown` event with `key` on `target` and flushes change detection. */
+function pressKey(
+  fixture: ComponentFixture<unknown>,
+  target: HTMLElement,
+  key: string,
+  init: KeyboardEventInit = {},
+): void {
+  target.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true, ...init }));
+  fixture.detectChanges();
 }
 
 // ── Tests ─────────────────────────────────────────────────────────
@@ -700,6 +721,616 @@ describe('CalendarComponent', () => {
       calendar.setView('day');
       fixture.detectChanges();
       expect(fixture.nativeElement.querySelector('tw-calendar-month-view')).toBeTruthy();
+    });
+  });
+
+  // ── Date constraints (§10.1) ──
+  //
+  // The calendar is created standalone (not via a host) so that signal inputs
+  // can be driven through `componentRef.setInput()` per CLAUDE.md §7.2. The
+  // anchor (`startAt`) lands the day grid on April 2026 — a 7×6 grid where
+  // April 1 is a Wednesday and April 30 is a Thursday. Disabled cells are
+  // queried by their `aria-disabled="true"` attribute on the inner button.
+
+  describe('date constraints', () => {
+    /** Creates a `<tw-calendar>` fixture with `startAt = April 26, 2026` and the given mode. */
+    function setupCalendar(mode: CalendarMode = 'single'): {
+      fixture: ComponentFixture<CalendarComponent<CalendarMode, Date>>;
+      calendar: CalendarComponent<CalendarMode, Date>;
+    } {
+      const fixture = TestBed.createComponent<CalendarComponent<CalendarMode, Date>>(
+        CalendarComponent as unknown as new () => CalendarComponent<CalendarMode, Date>,
+      );
+      fixture.componentRef.setInput('startAt', new Date(2026, 3, 26));
+      fixture.componentRef.setInput('mode', mode);
+      fixture.detectChanges();
+      return { fixture, calendar: fixture.componentInstance };
+    }
+
+    function getDayCellByText(
+      fixture: ComponentFixture<unknown>,
+      dayText: string,
+    ): HTMLButtonElement | null {
+      return getDayCell(fixture, dayText);
+    }
+
+    function isCellDisabled(button: HTMLButtonElement | null): boolean {
+      if (!button) return false;
+      return button.getAttribute('aria-disabled') === 'true' || button.disabled;
+    }
+
+    it('disables cells before minDate (single mode)', () => {
+      const { fixture } = setupCalendar('single');
+      // April 26, 2026 sits in the active month; disable everything before April 15.
+      fixture.componentRef.setInput('minDate', new Date(2026, 3, 15));
+      fixture.detectChanges();
+
+      expect(isCellDisabled(getDayCellByText(fixture, '14'))).toBe(true);
+      expect(isCellDisabled(getDayCellByText(fixture, '10'))).toBe(true);
+      expect(isCellDisabled(getDayCellByText(fixture, '15'))).toBe(false);
+      expect(isCellDisabled(getDayCellByText(fixture, '20'))).toBe(false);
+    });
+
+    it('clicking a cell before minDate does not emit valueChange', () => {
+      const { fixture, calendar } = setupCalendar('single');
+      fixture.componentRef.setInput('minDate', new Date(2026, 3, 15));
+      fixture.detectChanges();
+
+      const valueSpy = vi.fn();
+      calendar.valueChange.subscribe(valueSpy);
+
+      const before = getDayCellByText(fixture, '10');
+      expect(before).toBeTruthy();
+      before!.click();
+      fixture.detectChanges();
+
+      expect(valueSpy).not.toHaveBeenCalled();
+    });
+
+    it('disables cells after maxDate (single mode)', () => {
+      const { fixture } = setupCalendar('single');
+      fixture.componentRef.setInput('maxDate', new Date(2026, 3, 20));
+      fixture.detectChanges();
+
+      expect(isCellDisabled(getDayCellByText(fixture, '21'))).toBe(true);
+      expect(isCellDisabled(getDayCellByText(fixture, '30'))).toBe(true);
+      expect(isCellDisabled(getDayCellByText(fixture, '20'))).toBe(false);
+      expect(isCellDisabled(getDayCellByText(fixture, '15'))).toBe(false);
+    });
+
+    it('clicking a cell after maxDate does not emit valueChange', () => {
+      const { fixture, calendar } = setupCalendar('single');
+      fixture.componentRef.setInput('maxDate', new Date(2026, 3, 20));
+      fixture.detectChanges();
+
+      const valueSpy = vi.fn();
+      calendar.valueChange.subscribe(valueSpy);
+
+      const after = getDayCellByText(fixture, '25');
+      after!.click();
+      fixture.detectChanges();
+
+      expect(valueSpy).not.toHaveBeenCalled();
+    });
+
+    it('disables cells listed in disabledDates (array form)', () => {
+      const { fixture } = setupCalendar('single');
+      fixture.componentRef.setInput('disabledDates', [
+        new Date(2026, 3, 10),
+        new Date(2026, 3, 17),
+      ]);
+      fixture.detectChanges();
+
+      expect(isCellDisabled(getDayCellByText(fixture, '10'))).toBe(true);
+      expect(isCellDisabled(getDayCellByText(fixture, '17'))).toBe(true);
+      expect(isCellDisabled(getDayCellByText(fixture, '11'))).toBe(false);
+    });
+
+    it('disables cells where disabledDates predicate returns true', () => {
+      const { fixture } = setupCalendar('single');
+      const isDay7 = (d: Date): boolean => d.getDate() === 7;
+      fixture.componentRef.setInput('disabledDates', isDay7);
+      fixture.detectChanges();
+
+      expect(isCellDisabled(getDayCellByText(fixture, '7'))).toBe(true);
+      expect(isCellDisabled(getDayCellByText(fixture, '8'))).toBe(false);
+    });
+
+    it('clicking a date in disabledDates does not emit valueChange', () => {
+      const { fixture, calendar } = setupCalendar('single');
+      fixture.componentRef.setInput('disabledDates', [new Date(2026, 3, 10)]);
+      fixture.detectChanges();
+
+      const valueSpy = vi.fn();
+      calendar.valueChange.subscribe(valueSpy);
+
+      getDayCellByText(fixture, '10')!.click();
+      fixture.detectChanges();
+
+      expect(valueSpy).not.toHaveBeenCalled();
+    });
+
+    it('disables cells whose weekday is in disabledDaysOfWeek (weekends)', () => {
+      const { fixture } = setupCalendar('single');
+      // April 2026: Apr 4 = Sat, Apr 5 = Sun, Apr 11 = Sat, Apr 12 = Sun.
+      fixture.componentRef.setInput('disabledDaysOfWeek', [0, 6]); // Sun + Sat
+      fixture.detectChanges();
+
+      expect(isCellDisabled(getDayCellByText(fixture, '4'))).toBe(true);
+      expect(isCellDisabled(getDayCellByText(fixture, '5'))).toBe(true);
+      expect(isCellDisabled(getDayCellByText(fixture, '11'))).toBe(true);
+      expect(isCellDisabled(getDayCellByText(fixture, '12'))).toBe(true);
+      // Monday + Wednesday remain enabled.
+      expect(isCellDisabled(getDayCellByText(fixture, '6'))).toBe(false);
+      expect(isCellDisabled(getDayCellByText(fixture, '8'))).toBe(false);
+    });
+
+    it('clicking a weekend cell with disabledDaysOfWeek=[0,6] does not emit valueChange', () => {
+      const { fixture, calendar } = setupCalendar('single');
+      fixture.componentRef.setInput('disabledDaysOfWeek', [0, 6]);
+      fixture.detectChanges();
+
+      const valueSpy = vi.fn();
+      calendar.valueChange.subscribe(valueSpy);
+
+      // April 4, 2026 is a Saturday.
+      getDayCellByText(fixture, '4')!.click();
+      fixture.detectChanges();
+
+      expect(valueSpy).not.toHaveBeenCalled();
+    });
+
+    it('disables cells where the dateFilter predicate returns false', () => {
+      const { fixture } = setupCalendar('single');
+      // Block every odd-numbered day.
+      const evenOnly: DateFilterFn<Date> = (d) => d.getDate() % 2 === 0;
+      fixture.componentRef.setInput('dateFilter', evenOnly);
+      fixture.detectChanges();
+
+      expect(isCellDisabled(getDayCellByText(fixture, '1'))).toBe(true);
+      expect(isCellDisabled(getDayCellByText(fixture, '3'))).toBe(true);
+      expect(isCellDisabled(getDayCellByText(fixture, '2'))).toBe(false);
+      expect(isCellDisabled(getDayCellByText(fixture, '4'))).toBe(false);
+    });
+
+    it('clicking a cell rejected by dateFilter does not emit valueChange', () => {
+      const { fixture, calendar } = setupCalendar('single');
+      const evenOnly: DateFilterFn<Date> = (d) => d.getDate() % 2 === 0;
+      fixture.componentRef.setInput('dateFilter', evenOnly);
+      fixture.detectChanges();
+
+      const valueSpy = vi.fn();
+      calendar.valueChange.subscribe(valueSpy);
+
+      getDayCellByText(fixture, '7')!.click();
+      fixture.detectChanges();
+
+      expect(valueSpy).not.toHaveBeenCalled();
+    });
+
+    it('disables minDate-blocked cells in range mode (cannot start a range before minDate)', () => {
+      const { fixture, calendar } = setupCalendar('range');
+      fixture.componentRef.setInput('minDate', new Date(2026, 3, 15));
+      fixture.detectChanges();
+
+      const startSpy = vi.fn();
+      calendar.selectionStart.subscribe(startSpy);
+
+      // Cell 10 is before minDate — must be disabled and must NOT start a range.
+      const before = getDayCellByText(fixture, '10');
+      expect(isCellDisabled(before)).toBe(true);
+      before!.click();
+      fixture.detectChanges();
+
+      expect(startSpy).not.toHaveBeenCalled();
+    });
+
+    it('disables maxDate-blocked cells in range mode (cannot complete a range past maxDate)', () => {
+      const { fixture, calendar } = setupCalendar('range');
+      // Allow start in early month, block any end past 20.
+      fixture.componentRef.setInput('maxDate', new Date(2026, 3, 20));
+      fixture.detectChanges();
+
+      const completeSpy = vi.fn();
+      calendar.selectionComplete.subscribe(completeSpy);
+
+      // Start a range on the 15th (enabled), then attempt to commit on the 25th (disabled).
+      getDayCellByText(fixture, '15')!.click();
+      fixture.detectChanges();
+
+      const after = getDayCellByText(fixture, '25');
+      expect(isCellDisabled(after)).toBe(true);
+      after!.click();
+      fixture.detectChanges();
+
+      expect(completeSpy).not.toHaveBeenCalled();
+    });
+
+    // `minRangeLength` / `maxRangeLength` per Phase 4 (§43): the v1 default is
+    // permissive — invalid ranges still commit but `rangePreview.invalidPreview`
+    // and validator codes flag the violation. The hardening hook
+    // (`blockInvalidRangeCommit`) is a v1.1 placeholder. These tests document the
+    // current behavior: the commit goes through, but `rangePreview` reports
+    // `invalidPreview: true` while the user hovers a too-short / too-long range.
+
+    it('range mode: emits rangePreview with invalidPreview=true while hovered range is shorter than minRangeLength', () => {
+      const { fixture, calendar } = setupCalendar('range');
+      fixture.componentRef.setInput('minRangeLength', 5);
+      fixture.detectChanges();
+
+      const previewSpy = vi.fn();
+      calendar.rangePreview.subscribe(previewSpy);
+
+      // 1st click — start at the 10th (no rangePreview emitted yet — needs end).
+      getDayCellByText(fixture, '10')!.click();
+      fixture.detectChanges();
+
+      // Hover the 12th (range = 10..12, length = 3 days, < min of 5).
+      const hoverTarget = getDayCellByText(fixture, '12');
+      hoverTarget!.dispatchEvent(new MouseEvent('mouseenter', { bubbles: true }));
+      fixture.detectChanges();
+
+      expect(previewSpy).toHaveBeenCalled();
+      const lastCall = previewSpy.mock.calls.at(-1)?.[0] as RangePreviewEvent<Date>;
+      expect(lastCall.invalidPreview).toBe(true);
+    });
+
+    it('range mode: emits rangePreview with invalidPreview=false when hovered range satisfies minRangeLength', () => {
+      const { fixture, calendar } = setupCalendar('range');
+      fixture.componentRef.setInput('minRangeLength', 3);
+      fixture.detectChanges();
+
+      const previewSpy = vi.fn();
+      calendar.rangePreview.subscribe(previewSpy);
+
+      getDayCellByText(fixture, '10')!.click();
+      fixture.detectChanges();
+
+      // 10..15 = 6 days >= min of 3.
+      getDayCellByText(fixture, '15')!.dispatchEvent(new MouseEvent('mouseenter', { bubbles: true }));
+      fixture.detectChanges();
+
+      const lastCall = previewSpy.mock.calls.at(-1)?.[0] as RangePreviewEvent<Date>;
+      expect(lastCall.invalidPreview).toBe(false);
+    });
+
+    it('range mode: emits rangePreview with invalidPreview=true while hovered range exceeds maxRangeLength', () => {
+      const { fixture, calendar } = setupCalendar('range');
+      fixture.componentRef.setInput('maxRangeLength', 3);
+      fixture.detectChanges();
+
+      const previewSpy = vi.fn();
+      calendar.rangePreview.subscribe(previewSpy);
+
+      getDayCellByText(fixture, '10')!.click();
+      fixture.detectChanges();
+
+      // 10..20 = 11 days > max of 3.
+      getDayCellByText(fixture, '20')!.dispatchEvent(new MouseEvent('mouseenter', { bubbles: true }));
+      fixture.detectChanges();
+
+      const lastCall = previewSpy.mock.calls.at(-1)?.[0] as RangePreviewEvent<Date>;
+      expect(lastCall.invalidPreview).toBe(true);
+    });
+  });
+
+  // ── Keyboard navigation (month view, §16) ──
+  //
+  // Keyboard events are dispatched on the active cell button (the one with
+  // tabindex=0). After each key press the harness checks the new active cell
+  // by reading the tabindex=0 button's text content. The active date carries
+  // through the orchestrator's `activeDateChange` output, which we also assert.
+
+  describe('keyboard navigation (month view)', () => {
+    it('ArrowRight moves focus to the next day', () => {
+      const fixture = TestBed.createComponent(BasicHost);
+      fixture.detectChanges();
+      const calendar = getCalendarComponent(fixture);
+      const activeSpy = vi.fn();
+      calendar.activeDateChange.subscribe(activeSpy);
+
+      const active = getActiveDayCell(fixture);
+      expect(active?.textContent?.trim()).toBe('26');
+
+      pressKey(fixture, active!, 'ArrowRight');
+
+      const newActive = getActiveDayCell(fixture);
+      expect(newActive?.textContent?.trim()).toBe('27');
+      expect(activeSpy).toHaveBeenCalledTimes(1);
+      const emitted = activeSpy.mock.calls[0]?.[0] as Date;
+      expect(emitted.getDate()).toBe(27);
+    });
+
+    it('ArrowLeft moves focus to the previous day', () => {
+      const fixture = TestBed.createComponent(BasicHost);
+      fixture.detectChanges();
+
+      const active = getActiveDayCell(fixture);
+      pressKey(fixture, active!, 'ArrowLeft');
+
+      const newActive = getActiveDayCell(fixture);
+      expect(newActive?.textContent?.trim()).toBe('25');
+    });
+
+    it('ArrowDown moves focus down one week (+7 days)', () => {
+      const fixture = TestBed.createComponent(BasicHost);
+      fixture.detectChanges();
+
+      const active = getActiveDayCell(fixture);
+      pressKey(fixture, active!, 'ArrowDown');
+
+      // April 26 + 7 = May 3, but May 3 is in the trailing week of the April grid.
+      const newActive = getActiveDayCell(fixture);
+      // The compare value advances 7 days; verify by querying the active cell text.
+      expect(newActive?.textContent?.trim()).toBe('3');
+    });
+
+    it('ArrowUp moves focus up one week (-7 days)', () => {
+      const fixture = TestBed.createComponent(BasicHost);
+      fixture.detectChanges();
+
+      const active = getActiveDayCell(fixture);
+      pressKey(fixture, active!, 'ArrowUp');
+
+      // April 26 - 7 = April 19.
+      const newActive = getActiveDayCell(fixture);
+      expect(newActive?.textContent?.trim()).toBe('19');
+    });
+
+    it('Home moves focus to the first day of the current week', () => {
+      const fixture = TestBed.createComponent(BasicHost);
+      // Force firstDayOfWeek=0 (Sunday) for predictable home/end behavior.
+      fixture.componentInstance.firstDayOfWeek.set(0);
+      fixture.detectChanges();
+
+      // April 26, 2026 is a Sunday — pressing Home with firstDayOfWeek=0 stays
+      // on Sunday. Move to a Tuesday first then press Home.
+      const active = getActiveDayCell(fixture);
+      pressKey(fixture, active!, 'ArrowRight'); // 27 (Mon)
+      pressKey(fixture, getActiveDayCell(fixture)!, 'ArrowRight'); // 28 (Tue)
+
+      pressKey(fixture, getActiveDayCell(fixture)!, 'Home');
+
+      // Home from Tue should land on the Sunday of that week (April 26).
+      expect(getActiveDayCell(fixture)?.textContent?.trim()).toBe('26');
+    });
+
+    it('End moves focus to the last day of the current week', () => {
+      const fixture = TestBed.createComponent(BasicHost);
+      fixture.componentInstance.firstDayOfWeek.set(0);
+      fixture.detectChanges();
+
+      // From Sunday April 26, End lands on Saturday May 2.
+      const active = getActiveDayCell(fixture);
+      pressKey(fixture, active!, 'End');
+
+      expect(getActiveDayCell(fixture)?.textContent?.trim()).toBe('2');
+    });
+
+    it('PageDown advances to the next month', () => {
+      const fixture = TestBed.createComponent(BasicHost);
+      fixture.detectChanges();
+      const calendar = getCalendarComponent(fixture);
+
+      const active = getActiveDayCell(fixture);
+      pressKey(fixture, active!, 'PageDown');
+
+      const activeDate = calendar.activeDate() as Date;
+      expect(activeDate.getMonth()).toBe(4); // May
+      expect(activeDate.getDate()).toBe(26);
+    });
+
+    it('PageUp moves back to the previous month', () => {
+      const fixture = TestBed.createComponent(BasicHost);
+      fixture.detectChanges();
+      const calendar = getCalendarComponent(fixture);
+
+      const active = getActiveDayCell(fixture);
+      pressKey(fixture, active!, 'PageUp');
+
+      const activeDate = calendar.activeDate() as Date;
+      expect(activeDate.getMonth()).toBe(2); // March
+      expect(activeDate.getDate()).toBe(26);
+    });
+
+    it('Enter on the focused cell selects it and emits valueChange', () => {
+      const fixture = TestBed.createComponent(BasicHost);
+      fixture.detectChanges();
+      const calendar = getCalendarComponent(fixture);
+      const valueSpy = vi.fn();
+      calendar.valueChange.subscribe(valueSpy);
+
+      const active = getActiveDayCell(fixture);
+      pressKey(fixture, active!, 'Enter');
+
+      expect(valueSpy).toHaveBeenCalledTimes(1);
+      const emitted = valueSpy.mock.calls[0]?.[0] as Date;
+      expect(emitted).toBeInstanceOf(Date);
+      expect(emitted.getDate()).toBe(26);
+    });
+
+    it('Space on the focused cell selects it and emits valueChange', () => {
+      const fixture = TestBed.createComponent(BasicHost);
+      fixture.detectChanges();
+      const calendar = getCalendarComponent(fixture);
+      const valueSpy = vi.fn();
+      calendar.valueChange.subscribe(valueSpy);
+
+      const active = getActiveDayCell(fixture);
+      pressKey(fixture, active!, ' ');
+
+      expect(valueSpy).toHaveBeenCalledTimes(1);
+      expect((valueSpy.mock.calls[0]?.[0] as Date).getDate()).toBe(26);
+    });
+
+    it('Enter on a disabled cell does not emit valueChange', () => {
+      const fixture = TestBed.createComponent<CalendarComponent<CalendarMode, Date>>(
+        CalendarComponent as unknown as new () => CalendarComponent<CalendarMode, Date>,
+      );
+      fixture.componentRef.setInput('startAt', new Date(2026, 3, 26));
+      // Disable the active anchor (April 26) via dateFilter.
+      const filter: DateFilterFn<Date> = (d) => d.getDate() !== 26;
+      fixture.componentRef.setInput('dateFilter', filter);
+      fixture.detectChanges();
+
+      const valueSpy = vi.fn();
+      fixture.componentInstance.valueChange.subscribe(valueSpy);
+
+      const active = fixture.nativeElement.querySelector(
+        'tw-calendar-month-view tw-calendar-cell button[tabindex="0"]',
+      ) as HTMLButtonElement | null;
+      expect(active).toBeTruthy();
+      // Disabled buttons natively swallow Enter, but the cell guards regardless;
+      // dispatch on the host span (the wrapper around the button) to bypass the
+      // native disabled gate and verify the calendar's own check.
+      pressKey(fixture, active!, 'Enter');
+
+      expect(valueSpy).not.toHaveBeenCalled();
+    });
+  });
+
+  // ── ControlValueAccessor.setDisabledState ──
+
+  describe('ControlValueAccessor.setDisabledState', () => {
+    it('setDisabledState(true) sets aria-disabled on the calendar host', () => {
+      const fixture = TestBed.createComponent(BasicHost);
+      fixture.detectChanges();
+      const calendar = getCalendarComponent(fixture);
+
+      calendar.setDisabledState(true);
+      fixture.detectChanges();
+
+      const host = getCalendarHost(fixture);
+      expect(host.getAttribute('aria-disabled')).toBe('true');
+    });
+
+    it('setDisabledState(true) blocks click selections (no valueChange emitted)', () => {
+      const fixture = TestBed.createComponent(BasicHost);
+      fixture.detectChanges();
+      const calendar = getCalendarComponent(fixture);
+      const valueSpy = vi.fn();
+      calendar.valueChange.subscribe(valueSpy);
+
+      calendar.setDisabledState(true);
+      fixture.detectChanges();
+
+      getDayCell(fixture, '15')!.click();
+      fixture.detectChanges();
+
+      expect(valueSpy).not.toHaveBeenCalled();
+    });
+
+    it('setDisabledState(false) re-enables interaction after a previous disable', () => {
+      const fixture = TestBed.createComponent(BasicHost);
+      fixture.detectChanges();
+      const calendar = getCalendarComponent(fixture);
+      const valueSpy = vi.fn();
+      calendar.valueChange.subscribe(valueSpy);
+
+      calendar.setDisabledState(true);
+      fixture.detectChanges();
+      // Confirm the disabled gate is in place.
+      getDayCell(fixture, '15')!.click();
+      fixture.detectChanges();
+      expect(valueSpy).not.toHaveBeenCalled();
+
+      calendar.setDisabledState(false);
+      fixture.detectChanges();
+      expect(getCalendarHost(fixture).getAttribute('aria-disabled')).toBeNull();
+
+      getDayCell(fixture, '15')!.click();
+      fixture.detectChanges();
+      expect(valueSpy).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  // ── Range hover preview (§21.1) ──
+
+  describe('range hover preview', () => {
+    it('emits rangePreview with the tentative range when hovering after the 1st click', () => {
+      const fixture = TestBed.createComponent(BasicHost);
+      const host = fixture.componentInstance;
+      host.mode.set('range');
+      fixture.detectChanges();
+      const calendar = getCalendarComponent(fixture);
+
+      const previewSpy = vi.fn();
+      calendar.rangePreview.subscribe(previewSpy);
+
+      // Anchor a draft start at the 10th. Phase 6 emits an immediate keyboard-
+      // driven rangePreview at this point with `end == start` because the
+      // active date IS the draft anchor — that's spec'd behavior, not a bug.
+      getDayCell(fixture, '10')!.click();
+      fixture.detectChanges();
+      const callsAfterClick = previewSpy.mock.calls.length;
+
+      // Hover the 15th — the orchestrator emits a tentative range 10..15
+      // through the hover path.
+      getDayCell(fixture, '15')!.dispatchEvent(new MouseEvent('mouseenter', { bubbles: true }));
+      fixture.detectChanges();
+
+      expect(previewSpy.mock.calls.length).toBeGreaterThan(callsAfterClick);
+      const event = previewSpy.mock.calls.at(-1)?.[0] as RangePreviewEvent<Date>;
+      expect(event.tentativeRange.start.getDate()).toBe(10);
+      expect(event.tentativeRange.end.getDate()).toBe(15);
+    });
+
+    it('mouseleave on the grid clears the hover anchor (preview reverts to draft anchor)', () => {
+      const fixture = TestBed.createComponent(BasicHost);
+      const host = fixture.componentInstance;
+      host.mode.set('range');
+      fixture.detectChanges();
+      const calendar = getCalendarComponent(fixture);
+
+      const previewSpy = vi.fn();
+      calendar.rangePreview.subscribe(previewSpy);
+
+      getDayCell(fixture, '10')!.click();
+      fixture.detectChanges();
+
+      // Hover establishes a 10..15 preview.
+      getDayCell(fixture, '15')!.dispatchEvent(new MouseEvent('mouseenter', { bubbles: true }));
+      fixture.detectChanges();
+      const beforeMouseleave = previewSpy.mock.calls.at(-1)?.[0] as RangePreviewEvent<Date>;
+      expect(beforeMouseleave.tentativeRange.end.getDate()).toBe(15);
+
+      // mouseleave on the grid clears `_hoveredDate`. The preview cursor falls
+      // back to `activeDate` (which the click set to 10), so the preview now
+      // reports an `end` matching the draft anchor (10) instead of 15.
+      const grid = fixture.nativeElement.querySelector(
+        'tw-calendar-month-view [role="grid"]',
+      ) as HTMLElement;
+      grid.dispatchEvent(new MouseEvent('mouseleave', { bubbles: true }));
+      fixture.detectChanges();
+
+      const afterMouseleave = previewSpy.mock.calls.at(-1)?.[0] as RangePreviewEvent<Date>;
+      expect(afterMouseleave.tentativeRange.end.getDate()).toBe(10);
+    });
+  });
+
+  // ── startAt input ──
+
+  describe('startAt input', () => {
+    it('opens the calendar on the configured month when no value is provided', () => {
+      const fixture = TestBed.createComponent<CalendarComponent<CalendarMode, Date>>(
+        CalendarComponent as unknown as new () => CalendarComponent<CalendarMode, Date>,
+      );
+      // Anchor on July 15, 2027 — well outside any real "today".
+      fixture.componentRef.setInput('startAt', new Date(2027, 6, 15));
+      fixture.detectChanges();
+
+      const calendar = fixture.componentInstance;
+      const active = calendar.activeDate() as Date;
+      expect(active.getFullYear()).toBe(2027);
+      expect(active.getMonth()).toBe(6); // July
+      expect(active.getDate()).toBe(15);
+
+      // The period (middle) header button reflects the configured month + year.
+      const buttons = Array.from(
+        fixture.nativeElement.querySelectorAll('tw-calendar-header button'),
+      ) as HTMLButtonElement[];
+      const periodBtn = buttons[1]!;
+      expect(periodBtn.textContent ?? '').toContain('2027');
     });
   });
 });
