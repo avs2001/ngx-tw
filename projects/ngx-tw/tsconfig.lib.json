@@ -40,6 +40,7 @@
     "separator/**/*.ts",
     "skeleton/**/*.ts",
     "slider/**/*.ts",
+    "split/**/*.ts",
     "sort/**/*.ts",
     "spinner/**/*.ts",
     "stepper/**/*.ts",
