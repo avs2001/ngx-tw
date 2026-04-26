@@ -142,6 +142,8 @@ export class MonthViewComponent<D> extends CalendarViewBase<D> {
       cell.isPreviewMiddle = this.isPreviewMiddle(date);
       cell.isOutOfMonth = cellMonth !== displayedMonth;
       cell.isWeekend = isWeekend(date, this.dateAdapter);
+      const flashDate = this.invalidFlashDate();
+      cell.isInvalidFlash = flashDate !== null && this.dateAdapter.sameDate(date, flashDate);
       days.push(cell);
     }
     return createGrid(days, DAYS_PER_WEEK);

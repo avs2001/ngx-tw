@@ -64,6 +64,9 @@ export abstract class CalendarViewBase<D> {
   /** Hover-preview end. */
   readonly previewEnd: InputSignal<D | null> = input<D | null>(null);
 
+  /** Phase 6 — date that briefly flashes as invalid (rejected commit). Cleared by the orchestrator. */
+  readonly invalidFlashDate: InputSignal<D | null> = input<D | null>(null);
+
   /** Optional cell-content override. */
   readonly cellTemplate: InputSignal<TemplateRef<{ $implicit: CalendarCell<D> }> | null> =
     input<TemplateRef<{ $implicit: CalendarCell<D> }> | null>(null);

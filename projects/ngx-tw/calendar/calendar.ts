@@ -54,6 +54,7 @@ import type {
   DisabledDates,
   MaxSelectionBehavior,
   ModeChangeEvent,
+  RangeClickBehavior,
   RangePreviewEvent,
   ResetBehavior,
   SelectionClearedEvent,
@@ -187,6 +188,7 @@ const calendarVariants = tv(
               [firstDayOfWeek]="computedFirstDayOfWeek()"
               [previewStart]="previewRange()?.start ?? null"
               [previewEnd]="previewRange()?.end ?? null"
+              [invalidFlashDate]="invalidFlashDate()"
               [gridIndex]="0"
               (selectedChange)="onDateSelected($event)"
               (activeDateChange)="onActiveDateChange($event, 0)"
@@ -206,6 +208,7 @@ const calendarVariants = tv(
                 [firstDayOfWeek]="computedFirstDayOfWeek()"
                 [previewStart]="previewRange()?.start ?? null"
                 [previewEnd]="previewRange()?.end ?? null"
+                [invalidFlashDate]="invalidFlashDate()"
                 [gridIndex]="1"
                 (selectedChange)="onDateSelected($event)"
                 (activeDateChange)="onActiveDateChange($event, 1)"
@@ -364,6 +367,44 @@ export class CalendarComponent<
    * actual behavior lands with the §43 v1.1 decision.
    */
   readonly blockInvalidRangeCommit: InputSignal<boolean> = input<boolean>(false);
+
+  /**
+   * How `mode: 'range'` reacts to a click after a complete range (§21.2):
+   * - `'restart'` (default): start a new range with the clicked cell, emit `selectionRestart`.
+   * - `'nearest-edge'`: move the closer endpoint (start vs end) to the clicked date and re-commit (§21.3); emits `selectionComplete({reason: 'nearest-edge'})`.
+   * - `'require-clear'`: ignore the click + flash the cell as invalid (`data-state-invalid-flash`); user must call `clear()` first.
+   */
+  readonly rangeClickBehavior: InputSignal<RangeClickBehavior> =
+    input<RangeClickBehavior>('restart');
+
+  /**
+   * When `true`, `mode: 'range'` accepts ranges with `start > end` and skips
+   * the auto-swap path (§21.5). Default `false` — backward clicks normalize.
+   */
+  readonly allowBackwardRange: InputSignal<boolean> = input<boolean>(false);
+
+  /**
+   * When `true`, clicking the same cell as `draft.start` commits a single-day
+   * range `{ start, end: start }`. When `false`, the click is rejected with
+   * `data-state-invalid-flash`. Default `true`.
+   */
+  readonly allowSingleDayRange: InputSignal<boolean> = input<boolean>(true);
+
+  /**
+   * When `true`, the in-flight range draft (`internalDraftValue`) survives
+   * across view navigation (next/prev month, drill-up/down). When `false`,
+   * navigation during SELECTING discards the draft and emits
+   * `selectionCleared({reason: 'programmatic'})`. Default `true`.
+   */
+  readonly persistPartialRange: InputSignal<boolean> = input<boolean>(true);
+
+  /**
+   * When `true`, a range commit that would span any disabled date in its
+   * interior is rejected with `data-state-invalid-flash`. The committed
+   * value is left unchanged. Default `false`.
+   */
+  readonly disableRangesCrossingDisabledDates: InputSignal<boolean> =
+    input<boolean>(false);
 
   /** Function producing per-cell CSS classes. */
   readonly dateClass: InputSignal<DateClassFn<D> | null> = input<DateClassFn<D> | null>(null);
@@ -645,6 +686,37 @@ export class CalendarComponent<
       const locale = this.effectiveLocale();
       untracked(() => this.dateAdapter.setLocale(locale));
     });
+
+    // Phase 6 — keyboard-driven `rangePreview` emission. While SELECTING, any
+    // change to `previewRange` (which now reacts to `activeDate` via
+    // `previewCursor`) emits the same `rangePreview` payload as a hover (§21.1).
+    // The hover path keeps emitting from `onPreviewChange` directly; this
+    // effect covers arrow-key + Home/End/PageUp/PageDown navigation.
+    let lastEmittedPreviewKey: string | null = null;
+    effect(() => {
+      // Skip when no draft is in-flight (only meaningful during SELECTING).
+      if (this._selectionState() !== 'SELECTING') {
+        lastEmittedPreviewKey = null;
+        return;
+      }
+      const pr = this.previewRange();
+      if (!pr?.start || !pr?.end) return;
+      // Pointer-hover already emits via `onPreviewChange`; only fire here for
+      // keyboard navigation (no hover anchor present).
+      if (this._hoveredDate()) return;
+      const key =
+        this.dateAdapter.toIso(pr.start) + '|' + this.dateAdapter.toIso(pr.end);
+      if (key === lastEmittedPreviewKey) return;
+      lastEmittedPreviewKey = key;
+      const start = pr.start as D;
+      const end = pr.end as D;
+      untracked(() =>
+        this.rangePreview.emit({
+          tentativeRange: { start, end },
+          invalidPreview: this.isPreviewInvalid(start, end),
+        }),
+      );
+    });
   }
 
   ngOnInit(): void {
@@ -663,16 +735,23 @@ export class CalendarComponent<
     }
   }
 
-  /** @internal `ControlValueAccessor` — writes a value from a reactive / template-driven form. Wrong-shape writes preserve the prior value per §7.2. */
+  /** @internal `ControlValueAccessor` — writes a value from a reactive / template-driven form. Wrong-shape writes preserve the prior value per §7.2. Programmatic writes during SELECTING discard the draft per §11.1. */
   writeValue(incoming: unknown): void {
     this._hadValueBeforeLastWrite = !this.isEmpty(this.value());
     const mode = this.mode() as M;
+
+    // Phase 6 — programmatic write during SELECTING discards the in-flight draft.
+    // Detect BEFORE we touch state so we can fire `selectionCleared` exactly once
+    // when the draft existed, regardless of which branch below handles the write.
+    const wasSelecting =
+      this._selectionState() === 'SELECTING' && this.internalDraftValue() !== null;
 
     if (incoming === null || incoming === undefined) {
       const empty = emptyCalendarValue<M, D>(mode);
       this.value.set(empty);
       this._selectionState.set('EMPTY');
       this.internalDraftValue.set(null);
+      if (wasSelecting) this.selectionCleared.emit({ reason: 'programmatic' });
       if (this._lastInvalidFormValue() !== null) {
         this._lastInvalidFormValue.set(null);
         this.validatorOnChange();
@@ -695,10 +774,29 @@ export class CalendarComponent<
       return;
     }
 
+    // Phase 6 — reject SELECTING-shaped programmatic writes (`{ start: D, end: null }`)
+    // for `mode: 'range'`; only EMPTY or COMPLETE shapes are valid form values.
+    if (mode === 'range') {
+      const r = incoming as { start: unknown; end: unknown };
+      if (r.start != null && r.end == null) {
+        if (isDevMode() && !this._warnedShapeMismatch) {
+          this._warnedShapeMismatch = true;
+          console.warn(
+            '[tw-calendar] writeValue received a partial range `{start, end: null}` — only fully committed ranges are valid form values. Preserving the prior value; the form control will report calendarInvalidValue.',
+            incoming,
+          );
+        }
+        this._lastInvalidFormValue.set(incoming);
+        this.validatorOnChange();
+        return;
+      }
+    }
+
     const normalized = incoming as CalendarValue<M, D>;
     this.value.set(normalized);
     this._selectionState.set(this.deriveSelectionState(normalized));
     this.internalDraftValue.set(null);
+    if (wasSelecting) this.selectionCleared.emit({ reason: 'programmatic' });
     if (this._lastInvalidFormValue() !== null) {
       this._lastInvalidFormValue.set(null);
       this.validatorOnChange();
@@ -832,14 +930,27 @@ export class CalendarComponent<
   });
 
   /**
-   * Preview range. Driven by the strategy and either the pointer hover or the in-flight draft.
-   * Phase 4 will extend this with the `invalidPreview` flag.
+   * Phase 6 — preview cursor. Pointer hover wins; falls back to `activeDate`
+   * when SELECTING so keyboard arrow-key moves drive the same preview path
+   * (§21.1, §16.1). `null` when no SELECTING draft is in-flight and pointer
+   * is off-grid.
+   */
+  private readonly previewCursor: Signal<D | null> = computed(() => {
+    const hovered = this._hoveredDate();
+    if (hovered) return hovered;
+    if (this._selectionState() === 'SELECTING') return this._activeDate();
+    return null;
+  });
+
+  /**
+   * Preview range. Driven by the strategy and the `previewCursor` (hover or
+   * keyboard active-date during SELECTING).
    */
   readonly previewRange: Signal<DateRange<D> | null> = computed(() => {
     const strategy = this.selectionStrategy();
-    const hovered = this._hoveredDate();
+    const cursor = this.previewCursor();
     const source = this.strategySelection();
-    return strategy.createPreview(hovered, source);
+    return strategy.createPreview(cursor, source);
   });
 
   /**
@@ -1295,43 +1406,167 @@ export class CalendarComponent<
   }
 
   // ---------------------------------------------------------------------------
-  // Range state machine (orchestrator-owned; Phase 6 refines the full §21 matrix)
+  // Range state machine (§21) — orchestrator-owned. Click matrix:
+  //   EMPTY    + click → SELECTING (selectionStart)
+  //   SELECTING+ click → COMPLETE  (selectionComplete; auto-swap unless allowBackwardRange)
+  //   COMPLETE + click → branches on rangeClickBehavior:
+  //                       'restart'        → SELECTING (selectionRestart)
+  //                       'nearest-edge'   → COMPLETE  (selectionComplete reason='nearest-edge')
+  //                       'require-clear'  → no-op + invalid-flash on the clicked cell
   // ---------------------------------------------------------------------------
+
+  /** @internal Last invalidly-clicked date, cleared after ~200ms — drives `data-state-invalid-flash`. */
+  private readonly _invalidFlashDate: WritableSignal<D | null> = signal<D | null>(null);
+
+  /** Public read of the transient invalid-flash anchor. Views consume this and tag the matching cell. */
+  readonly invalidFlashDate: Signal<D | null> = computed(() => this._invalidFlashDate());
 
   private commitRangeClick(date: D): void {
     const draft = this.internalDraftValue();
     const state = this._selectionState();
 
-    // 1st click in EMPTY or after a COMPLETE (the restart case — default rangeClickBehavior='restart').
-    if (state !== 'SELECTING' || !draft) {
-      this.internalDraftValue.set({ start: date });
-      this._selectionState.set('SELECTING');
-      if (state === 'COMPLETE') {
-        // §8.3 COMPLETE → SELECTING 'restart' row.
-        this.selectionRestart.emit({ start: date });
-      } else {
-        this.selectionStart.emit({ start: date });
+    // ─── COMPLETE state branch — third click after a committed range. ────────
+    if (state === 'COMPLETE') {
+      const behavior = this.rangeClickBehavior();
+      if (behavior === 'require-clear') {
+        this.flashInvalid(date);
+        return;
       }
+      if (behavior === 'nearest-edge') {
+        this.commitNearestEdge(date);
+        return;
+      }
+      // 'restart' (default) → fall through to SELECTING entry.
+      this.enterSelecting(date, /* fromComplete */ true);
       return;
     }
 
-    // 2nd click (SELECTING + draft): commit the range. Auto-swap on backward.
+    // ─── EMPTY → SELECTING ──────────────────────────────────────────────────
+    if (state !== 'SELECTING' || !draft) {
+      this.enterSelecting(date, /* fromComplete */ false);
+      return;
+    }
+
+    // ─── SELECTING → COMPLETE: commit the range. ────────────────────────────
     const start = draft.start;
     const cmp = this.dateAdapter.compare(date, start);
+
+    // `allowSingleDayRange = false` rejects clicking the same cell twice.
+    if (cmp === 0 && !this.allowSingleDayRange()) {
+      this.flashInvalid(date);
+      return;
+    }
+
     let rangeStart: D;
     let rangeEnd: D;
     let reason: SelectionCompleteEvent<M, D>['reason'] = 'commit';
     if (cmp < 0) {
-      rangeStart = date;
-      rangeEnd = start;
-      reason = 'auto-swap';
+      if (this.allowBackwardRange()) {
+        // Preserve user-clicked order; do not normalize.
+        rangeStart = start;
+        rangeEnd = date;
+      } else {
+        // §21.5 silent auto-swap — DO NOT emit selectionRestart.
+        rangeStart = date;
+        rangeEnd = start;
+        reason = 'auto-swap';
+      }
     } else {
       rangeStart = start;
       rangeEnd = date;
     }
+
+    // §21.4 disable-crossing guard: if any interior date is disabled, reject.
+    if (
+      this.disableRangesCrossingDisabledDates() &&
+      rangeCrossesDisabled(
+        rangeStart,
+        rangeEnd,
+        this.constraints(),
+        this.dateAdapter,
+        /* includeEndpoints */ false,
+      )
+    ) {
+      this.flashInvalid(date);
+      return;
+    }
+
     const committed = { start: rangeStart, end: rangeEnd } as unknown as CalendarValue<M, D>;
     this.internalDraftValue.set(null);
     this.commitValue(committed, reason);
+  }
+
+  /** Enters SELECTING with `date` as draft.start. Emits selectionStart or selectionRestart. */
+  private enterSelecting(date: D, fromComplete: boolean): void {
+    this.internalDraftValue.set({ start: date });
+    this._selectionState.set('SELECTING');
+    if (fromComplete) {
+      this.selectionRestart.emit({ start: date });
+    } else {
+      this.selectionStart.emit({ start: date });
+    }
+  }
+
+  /**
+   * `'nearest-edge'` move (§21.3) — drag the closer endpoint of the committed
+   * range to `date`. Emits `selectionComplete({reason: 'nearest-edge'})`.
+   */
+  private commitNearestEdge(date: D): void {
+    const current = this.value() as unknown as { start: D | null; end: D | null } | null;
+    if (!current?.start || !current?.end) {
+      // Defensive — shouldn't reach here in COMPLETE without both endpoints.
+      this.enterSelecting(date, true);
+      return;
+    }
+    const distStart = Math.abs(this.dateAdapter.compare(date, current.start));
+    const distEnd = Math.abs(this.dateAdapter.compare(date, current.end));
+    let nextStart: D;
+    let nextEnd: D;
+    if (distStart <= distEnd) {
+      // Move start; if it crosses the existing end, swap.
+      if (this.dateAdapter.compare(date, current.end) > 0) {
+        nextStart = current.end;
+        nextEnd = date;
+      } else {
+        nextStart = date;
+        nextEnd = current.end;
+      }
+    } else {
+      // Move end; if it crosses the existing start, swap.
+      if (this.dateAdapter.compare(date, current.start) < 0) {
+        nextStart = date;
+        nextEnd = current.start;
+      } else {
+        nextStart = current.start;
+        nextEnd = date;
+      }
+    }
+    if (
+      this.disableRangesCrossingDisabledDates() &&
+      rangeCrossesDisabled(
+        nextStart,
+        nextEnd,
+        this.constraints(),
+        this.dateAdapter,
+        /* includeEndpoints */ false,
+      )
+    ) {
+      this.flashInvalid(date);
+      return;
+    }
+    const committed = { start: nextStart, end: nextEnd } as unknown as CalendarValue<M, D>;
+    this.commitValue(committed, 'nearest-edge');
+  }
+
+  /** Sets the invalid-flash anchor and schedules a clear after 200ms. */
+  private flashInvalid(date: D): void {
+    this._invalidFlashDate.set(date);
+    setTimeout(() => {
+      // Only clear if we're still flashing this exact date (a new flash may have superseded).
+      if (this._invalidFlashDate() === date) {
+        this._invalidFlashDate.set(null);
+      }
+    }, 200);
   }
 
   /** Commits a value into the form + outputs with spec-ordered event emission. */

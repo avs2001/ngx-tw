@@ -105,6 +105,36 @@ import { CodeBlockComponent } from 'ngx-tw/code-block';
               <td class="px-4 py-2 text-fg-muted">IDREF of a consumer-rendered error live region (§28.3) — applied to the host's <code class="font-mono">aria-describedby</code>.</td>
             </tr>
             <tr>
+              <td class="px-4 py-2 font-mono text-xs">rangeClickBehavior</td>
+              <td class="px-4 py-2 font-mono text-xs text-fg-muted">'restart' | 'nearest-edge' | 'require-clear'</td>
+              <td class="px-4 py-2 font-mono text-xs text-fg-muted">'restart'</td>
+              <td class="px-4 py-2 text-fg-muted">3rd-click behavior for <code class="font-mono">mode="range"</code> after a committed range (§21.2). <code class="font-mono">'nearest-edge'</code> drags the closer endpoint; <code class="font-mono">'require-clear'</code> rejects with <code class="font-mono">data-state-invalid-flash</code>.</td>
+            </tr>
+            <tr>
+              <td class="px-4 py-2 font-mono text-xs">allowBackwardRange</td>
+              <td class="px-4 py-2 font-mono text-xs text-fg-muted">boolean</td>
+              <td class="px-4 py-2 font-mono text-xs text-fg-muted">false</td>
+              <td class="px-4 py-2 text-fg-muted">Skip the auto-swap path; commit ranges with <code class="font-mono">start &gt; end</code> as-clicked.</td>
+            </tr>
+            <tr>
+              <td class="px-4 py-2 font-mono text-xs">allowSingleDayRange</td>
+              <td class="px-4 py-2 font-mono text-xs text-fg-muted">boolean</td>
+              <td class="px-4 py-2 font-mono text-xs text-fg-muted">true</td>
+              <td class="px-4 py-2 text-fg-muted">When <code class="font-mono">false</code>, clicking the same date twice flashes invalid instead of committing <code class="font-mono">{start, end: start}</code>.</td>
+            </tr>
+            <tr>
+              <td class="px-4 py-2 font-mono text-xs">persistPartialRange</td>
+              <td class="px-4 py-2 font-mono text-xs text-fg-muted">boolean</td>
+              <td class="px-4 py-2 font-mono text-xs text-fg-muted">true</td>
+              <td class="px-4 py-2 text-fg-muted">Whether the in-flight draft survives view navigation while SELECTING.</td>
+            </tr>
+            <tr>
+              <td class="px-4 py-2 font-mono text-xs">disableRangesCrossingDisabledDates</td>
+              <td class="px-4 py-2 font-mono text-xs text-fg-muted">boolean</td>
+              <td class="px-4 py-2 font-mono text-xs text-fg-muted">false</td>
+              <td class="px-4 py-2 text-fg-muted">Reject committing a range whose interior crosses a disabled date — flashes the second-click cell.</td>
+            </tr>
+            <tr>
               <td class="px-4 py-2 font-mono text-xs">dateClass</td>
               <td class="px-4 py-2 font-mono text-xs text-fg-muted">DateClassFn&lt;D&gt; | null</td>
               <td class="px-4 py-2 font-mono text-xs text-fg-muted">null</td>

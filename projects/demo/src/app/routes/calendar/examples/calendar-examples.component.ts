@@ -154,6 +154,30 @@ function fmt(d: Date | null | undefined): string {
     </section>
 
     <section class="mb-10">
+      <h2 class="text-sm font-semibold mb-3">Range click behavior (§21.2)</h2>
+      <p class="text-sm text-fg-muted leading-relaxed max-w-2xl mb-4">
+        After a complete range, the third click branches on <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">rangeClickBehavior</code>:
+        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">'restart'</code> (default) starts over,
+        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">'nearest-edge'</code> drags the closer endpoint to the click,
+        and <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">'require-clear'</code> rejects the click and
+        flashes the cell as invalid (<code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">data-state-invalid-flash</code>).
+        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">allowBackwardRange</code> skips the auto-swap;
+        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">allowSingleDayRange</code> rejects same-day clicks.
+        Keyboard arrow-key moves during SELECTING drive the <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">rangePreview</code> output,
+        same as hover.
+      </p>
+      <div class="rounded-lg border border-border p-6 bg-surface-raised mb-4 flex flex-col items-center gap-3">
+        <tw-calendar
+          aria-label="Nearest-edge range click"
+          mode="range"
+          rangeClickBehavior="nearest-edge"
+          [startAt]="fixedDate"
+        />
+        <p class="text-xs text-fg-muted mt-2 font-mono">rangeClickBehavior = 'nearest-edge'</p>
+      </div>
+    </section>
+
+    <section class="mb-10">
       <h2 class="text-sm font-semibold mb-3">Presets slot</h2>
       <p class="text-sm text-fg-muted leading-relaxed max-w-2xl mb-4">
         Attach <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">twCalendarPresets</code>
