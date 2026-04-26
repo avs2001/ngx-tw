@@ -454,65 +454,65 @@ export class CalendarComponent<
   // here but wired in later phases per the plan.
   // ---------------------------------------------------------------------------
 
-  /** Fires when the committed value changes. Emits the untransformed `CalendarValue<M, D>` (§7.6). */
+  /** Fires whenever the committed value changes (cell click, keyboard select, preset, mode change, programmatic clear). Payload is the untransformed mode-shaped `CalendarValue<M, D>` — `D | null` for single, `D[]` for multiple, `{ start, end }` for range (§7.6). */
   readonly valueChange: OutputEmitterRef<CalendarValue<M, D>> =
     output<CalendarValue<M, D>>();
 
-  /** Fires on the first click of a range selection (enters SELECTING). */
+  /** Fires on the first click of a range selection (transitions selection state to SELECTING). Payload carries the chosen `start` date. */
   readonly selectionStart: OutputEmitterRef<{ start: D }> = output<{ start: D }>();
 
-  /** Fires as the hover / keyboard cursor moves during range SELECTING. */
+  /** Fires as the hover / keyboard cursor moves during range SELECTING. Payload carries the `tentativeRange` and an `invalidPreview` flag set when the range crosses a disabled date or violates `min`/`maxRangeLength`. */
   readonly rangePreview: OutputEmitterRef<RangePreviewEvent<D>> =
     output<RangePreviewEvent<D>>();
 
-  /** Fires when a selection commits (click, auto-swap, nearest-edge, or preset). */
+  /** Fires after `valueChange` once the selection commits. Payload carries the committed `value` and a `reason` flagging the commit path (`'commit' | 'auto-swap' | 'nearest-edge' | 'preset'`). */
   readonly selectionComplete: OutputEmitterRef<SelectionCompleteEvent<M, D>> =
     output<SelectionCompleteEvent<M, D>>();
 
-  /** Fires when a range selection restarts (e.g., third click with `rangeClickBehavior='restart'`). */
+  /** Fires when a range selection restarts after a complete range (e.g. third click with `rangeClickBehavior='restart'`). Payload carries the new draft `start` date. */
   readonly selectionRestart: OutputEmitterRef<{ start: D }> = output<{ start: D }>();
 
-  /** Fires when the value clears — user, programmatic, mode change, reset, or disabled flip. */
+  /** Fires whenever the value clears. Payload carries a `reason` distinguishing user clear, programmatic, mode change, form reset, or a disabled flip. */
   readonly selectionCleared: OutputEmitterRef<SelectionClearedEvent> =
     output<SelectionClearedEvent>();
 
-  /** Fires when `maxSelections` is reached. Phase 4 wires the payload; declared now for API stability. */
+  /** Fires in `mode: 'multiple'` when the user attempts to select past `maxSelections` (only with `maxSelectionBehavior: 'emit-limit-reached'`). Payload carries the configured `limit` and the rejected `attempted` date. */
   readonly selectionLimitReached: OutputEmitterRef<{ limit: number; attempted: D }> =
     output<{ limit: number; attempted: D }>();
 
-  /** Fires whenever `selectedPresetId` changes. Phase 12 wires it. */
+  /** Fires when the selected preset changes (user click on a preset chip, or programmatic clear). Payload is the new preset id, or `null` when no preset is active. Phase 12 wires it. */
   readonly presetChange: OutputEmitterRef<string | null> = output<string | null>();
 
-  /** Fires on view transitions. `reason` distinguishes drill-down / drill-up / user button / programmatic. */
+  /** Fires on every view transition (day ↔ month ↔ year). Payload carries `from`, `to`, and a `reason` distinguishing drill-down, drill-up, user header click, and programmatic changes. */
   readonly viewChange: OutputEmitterRef<ViewChangeEvent> = output<ViewChangeEvent>();
 
-  /** Fires when keyboard or programmatic navigation moves the active cell. */
+  /** Fires when keyboard navigation, mouse hover, or programmatic action moves the focused (active) cell. Payload is the new active date. */
   readonly activeDateChange: OutputEmitterRef<D> = output<D>();
 
-  /** Fires when the displayed month changes. */
+  /** Fires when the displayed primary month changes (page-nav, drill-up, or programmatic). Payload carries the new `year` and zero-based `month`. */
   readonly monthChange: OutputEmitterRef<{ year: number; month: number }> =
     output<{ year: number; month: number }>();
 
-  /** Fires when the displayed year changes (month/year-view navigation, year-page scroll). */
+  /** Fires when the displayed year changes (month/year-view nav or year-page scroll). Payload carries the new `year`. */
   readonly yearChange: OutputEmitterRef<{ year: number }> = output<{ year: number }>();
 
-  /** Fires when the overlay opens (Phase 10). */
+  /** Fires when the overlay completes its open transition. No payload. (Phase 10 wires the lifecycle; never emits in inline mode.) */
   readonly opened: OutputEmitterRef<void> = output<void>();
 
-  /** Fires when the overlay closes (Phase 10). */
+  /** Fires when the overlay completes its close transition. No payload. (Phase 10 wires the lifecycle; never emits in inline mode.) */
   readonly closed: OutputEmitterRef<void> = output<void>();
 
-  /** Analytics-only cell click event. Does NOT indicate a selection — subscribe to `valueChange` for that. */
+  /** Fires on every pointer click of any cell, including disabled ones — analytics only. Payload carries the clicked `date` and the underlying `PointerEvent`. Does NOT indicate a selection; subscribe to `valueChange` for that. */
   readonly cellClick: OutputEmitterRef<{ date: D; event: PointerEvent }> =
     output<{ date: D; event: PointerEvent }>();
 
-  /** Analytics-only cell hover event. */
+  /** Fires on every pointer hover of any cell — analytics only. Payload carries the hovered `date`. Does NOT indicate a preview; subscribe to `rangePreview` for range-mode hover state. */
   readonly cellHover: OutputEmitterRef<{ date: D }> = output<{ date: D }>();
 
-  /** Fires when the responsive pane count resolves to a new value (Phase 9). */
+  /** Fires when the responsive pane count resolves to a new value (e.g. viewport resize). Payload is the resolved month-pane count currently being rendered. (Phase 9.) */
   readonly renderedMonthsCount: OutputEmitterRef<number> = output<number>();
 
-  /** Fires when `mode` changes at runtime — after `selectionCleared` and before `valueChange` (§11.2). */
+  /** Fires when `mode` changes at runtime, in canonical order `selectionCleared` → `modeChange` → `valueChange` (§11.2). Payload carries `{ from, to }` modes. */
   readonly modeChange: OutputEmitterRef<ModeChangeEvent> = output<ModeChangeEvent>();
 
   // ---------------------------------------------------------------------------

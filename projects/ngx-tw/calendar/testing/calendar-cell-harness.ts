@@ -41,27 +41,34 @@ export class CalendarCellHarness extends ComponentHarness {
 
   /** Whether the cell carries `aria-selected="true"`. */
   async isSelected(): Promise<boolean> {
-    const host = await this.host();
-    return (await host.getAttribute('aria-selected')) === 'true';
+    const btn = await this.button();
+    return (await btn.getAttribute('aria-selected')) === 'true';
   }
 
-  /** Whether the cell's button is disabled. */
+  /** Whether the cell is disabled — true if the button has `disabled` or carries `aria-disabled="true"`. */
   async isDisabled(): Promise<boolean> {
     const btn = await this.button();
-    return btn.getProperty<boolean>('disabled');
+    if (await btn.getProperty<boolean>('disabled')) return true;
+    return (await btn.getAttribute('aria-disabled')) === 'true';
   }
 
-  /** Whether the cell carries the "today" ring styling. */
+  /** Whether the cell represents today's date (`aria-current="date"`). */
   async isToday(): Promise<boolean> {
     const btn = await this.button();
-    const cls = (await btn.getProperty<string>('className')) ?? '';
-    return cls.includes('ring-1');
+    return (await btn.getAttribute('aria-current')) === 'date';
   }
 
   /** Click the cell. */
   async select(): Promise<void> {
     const btn = await this.button();
     return btn.click();
+  }
+
+  /** Dispatches `mouseenter` and `mousemove` on the cell to drive range-hover preview. */
+  async hover(): Promise<void> {
+    const btn = await this.button();
+    await btn.dispatchEvent('mouseenter');
+    await btn.dispatchEvent('mousemove');
   }
 
   /** Programmatically focus the cell. */
@@ -74,5 +81,22 @@ export class CalendarCellHarness extends ComponentHarness {
   async isFocused(): Promise<boolean> {
     const btn = await this.button();
     return btn.isFocused();
+  }
+
+  /** Dispatches a `keydown` for `key` on the cell button (e.g. `'ArrowRight'`, `'Enter'`, `' '`, `'PageUp'`). */
+  async pressKey(
+    key: string,
+    modifiers: { shift?: boolean; meta?: boolean; ctrl?: boolean; alt?: boolean } = {},
+  ): Promise<void> {
+    const btn = await this.button();
+    await btn.dispatchEvent('keydown', {
+      key,
+      bubbles: true,
+      cancelable: true,
+      shiftKey: !!modifiers.shift,
+      metaKey: !!modifiers.meta,
+      ctrlKey: !!modifiers.ctrl,
+      altKey: !!modifiers.alt,
+    });
   }
 }

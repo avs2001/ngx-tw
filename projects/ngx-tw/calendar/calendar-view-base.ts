@@ -71,13 +71,13 @@ export abstract class CalendarViewBase<D> {
   readonly cellTemplate: InputSignal<TemplateRef<{ $implicit: CalendarCell<D> }> | null> =
     input<TemplateRef<{ $implicit: CalendarCell<D> }> | null>(null);
 
-  /** Fires when the user activates a cell. */
+  /** Fires when the user activates an enabled cell (click, Enter, or Space). Payload is the activated cell's date. */
   readonly selectedChange: OutputEmitterRef<D> = output<D>();
 
-  /** Fires when keyboard navigation moves the cursor. */
+  /** Fires when keyboard navigation or programmatic focus moves the roving cursor to a new cell. Payload is the new active date. */
   readonly activeDateChange: OutputEmitterRef<D> = output<D>();
 
-  /** Fires on hover (or `null` when pointer leaves). */
+  /** Fires on pointer hover with the hovered date, and again with `null` when the pointer leaves the grid. The parent orchestrator drives any range-preview state from this stream. */
   readonly previewChange: OutputEmitterRef<D | null> = output<D | null>();
 
   /** Subclass declares which view it represents. */

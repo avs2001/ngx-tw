@@ -1,5 +1,5 @@
 import { ComponentHarness, HarnessPredicate } from '@angular/cdk/testing';
-import type { BaseHarnessFilters } from '@angular/cdk/testing';
+import type { BaseHarnessFilters, TestElement } from '@angular/cdk/testing';
 import { CalendarCellHarness, type CalendarCellHarnessFilters } from './calendar-cell-harness';
 
 /** The available calendar views, mirrored so consumers don't have to import from the library's main entry point. */
@@ -13,6 +13,7 @@ export class CalendarHarness extends ComponentHarness {
   static hostSelector = 'tw-calendar';
 
   private readonly headerNavButtons = this.locatorForAll('tw-calendar-header button');
+  private readonly grid = this.locatorFor('[role="grid"]');
 
   /** Predicate for `locatorFor` / `locatorForAll`. */
   static with(options: CalendarHarnessFilters = {}): HarnessPredicate<CalendarHarness> {
@@ -82,11 +83,55 @@ export class CalendarHarness extends ComponentHarness {
 
   /** Click the cell whose text matches exactly. Throws if no match. */
   async selectCell(text: string): Promise<void> {
-    const cells = await this.getCells({ text });
-    if (cells.length === 0) {
-      throw new Error(`Could not find calendar cell with text "${text}"`);
+    const cell = await this.findCellByText(text);
+    return cell.select();
+  }
+
+  /**
+   * Selects a date range by clicking the cell whose text matches `start`, then
+   * the cell whose text matches `end`. Caller is responsible for ensuring the
+   * calendar is in `mode: 'range'` and that both cells are visible in the
+   * current view.
+   */
+  async selectRange(start: string, end: string): Promise<void> {
+    const startCell = await this.findCellByText(start);
+    await startCell.select();
+    const endCell = await this.findCellByText(end);
+    await endCell.select();
+  }
+
+  /** Hovers the cell whose text matches `text` (dispatches `mouseenter` + `mousemove`). Throws if no match. */
+  async hoverCell(text: string): Promise<void> {
+    const cell = await this.findCellByText(text);
+    return cell.hover();
+  }
+
+  /**
+   * Dispatches a `keydown` for `key` on the currently focused cell — falls back
+   * to the calendar grid host when no cell owns focus. Supports `'ArrowLeft'`,
+   * `'ArrowRight'`, `'ArrowUp'`, `'ArrowDown'`, `'Home'`, `'End'`, `'PageUp'`,
+   * `'PageDown'`, `'Enter'`, and `' '` (Space).
+   */
+  async pressKey(
+    key: string,
+    modifiers: { shift?: boolean; meta?: boolean; ctrl?: boolean; alt?: boolean } = {},
+  ): Promise<void> {
+    const cells = await this.getCells();
+    for (const cell of cells) {
+      if (await cell.isFocused()) {
+        return cell.pressKey(key, modifiers);
+      }
     }
-    return cells[0]!.select();
+    const target: TestElement = await this.grid();
+    await target.dispatchEvent('keydown', {
+      key,
+      bubbles: true,
+      cancelable: true,
+      shiftKey: !!modifiers.shift,
+      metaKey: !!modifiers.meta,
+      ctrlKey: !!modifiers.ctrl,
+      altKey: !!modifiers.alt,
+    });
   }
 
   /** All cells currently rendered with `aria-selected="true"`. */
@@ -108,6 +153,12 @@ export class CalendarHarness extends ComponentHarness {
     return this.getCells({ disabled: true });
   }
 
+  /** Whether the calendar host carries `aria-disabled="true"`. */
+  async isDisabled(): Promise<boolean> {
+    const host = await this.host();
+    return (await host.getAttribute('aria-disabled')) === 'true';
+  }
+
   /** @internal Returns the header buttons in [prev, period, next] order. */
   private async orderedHeaderButtons() {
     const buttons = await this.headerNavButtons();
@@ -115,5 +166,14 @@ export class CalendarHarness extends ComponentHarness {
     // We normalise to [prev, period, next] by treating the first button as "period".
     const [period, prev, next] = buttons;
     return [prev, period, next] as const;
+  }
+
+  /** @internal Resolves the first cell whose text matches `text`. Throws if no match. */
+  private async findCellByText(text: string): Promise<CalendarCellHarness> {
+    const cells = await this.getCells({ text });
+    if (cells.length === 0) {
+      throw new Error(`Could not find calendar cell with text "${text}"`);
+    }
+    return cells[0]!;
   }
 }
