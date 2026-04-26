@@ -1,14 +1,7 @@
 import { TestBed } from '@angular/core/testing';
 import { DateTime } from 'luxon';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-// Import TZ_OVERRIDE from the source file the adapter consumes — importing it
-// via the published `ngx-tw/calendar` entry resolves to the built artifact in
-// `dist/`, which produces a *different* `InjectionToken` instance than the one
-// the source-tree adapter looks up. The DI miss makes `_tzOverride` resolve to
-// `null` even when the testing module provides the override (#TZ_OVERRIDE
-// test-infra bug).
-import { TZ_OVERRIDE } from '../date-adapter';
-import { NativeDateAdapter } from '../native-date-adapter';
+import { NativeDateAdapter, TZ_OVERRIDE } from 'ngx-tw/calendar';
 import { LuxonDateAdapter } from './luxon-date-adapter';
 
 /**

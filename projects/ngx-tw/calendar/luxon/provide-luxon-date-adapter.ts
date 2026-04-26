@@ -1,5 +1,5 @@
 import { type EnvironmentProviders, makeEnvironmentProviders } from '@angular/core';
-import { DATE_ADAPTER } from '../date-adapter';
+import { DATE_ADAPTER } from 'ngx-tw/calendar';
 import { LuxonDateAdapter } from './luxon-date-adapter';
 
 /**
