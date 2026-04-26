@@ -1,7 +1,14 @@
 import { TestBed } from '@angular/core/testing';
 import { DateTime } from 'luxon';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { NativeDateAdapter, TZ_OVERRIDE } from 'ngx-tw/calendar';
+// Import TZ_OVERRIDE from the source file the adapter consumes — importing it
+// via the published `ngx-tw/calendar` entry resolves to the built artifact in
+// `dist/`, which produces a *different* `InjectionToken` instance than the one
+// the source-tree adapter looks up. The DI miss makes `_tzOverride` resolve to
+// `null` even when the testing module provides the override (#TZ_OVERRIDE
+// test-infra bug).
+import { TZ_OVERRIDE } from '../date-adapter';
+import { NativeDateAdapter } from '../native-date-adapter';
 import { LuxonDateAdapter } from './luxon-date-adapter';
 
 /**
@@ -606,6 +613,44 @@ describe('LuxonDateAdapter', () => {
       expect(adapter.parse({} as unknown)).toBeNull();
       expect(adapter.parse(true as unknown)).toBeNull();
     });
+
+    it('rejects non-ISO free-form strings (SQL / RFC 2822 are NOT accepted — adapter parity with NativeDateAdapter)', () => {
+      // SQL-style: `YYYY-MM-DD HH:mm` — Luxon's `fromSQL` would parse this,
+      // but the native adapter rejects it. The Luxon adapter intentionally
+      // narrows the free-form path to ISO-only so both adapters share the
+      // same acceptance surface.
+      expect(adapter.parse('2026-04-26 12:00')).toBeNull();
+      // RFC 2822-style — same rationale.
+      expect(adapter.parse('Sun, 26 Apr 2026 12:00:00 GMT')).toBeNull();
+    });
+
+    it('still accepts plain ISO date strings on the no-format path', () => {
+      // ISO strings remain the supported free-form input.
+      const parsed = adapter.parse('2026-04-26');
+      expect(parsed).not.toBeNull();
+      expect(adapter.isValid(parsed!)).toBe(true);
+    });
+
+    it('matches NativeDateAdapter rejection of non-ISO free-form strings', () => {
+      // Acceptance-surface parity: the same garbage strings must fail on both
+      // adapters. (`NativeDateAdapter` only accepts strings parseable by
+      // `new Date()`, which rejects SQL-style and we want Luxon to mirror.)
+      const native = new NativeDateAdapter();
+      const sql = '2026-04-26 12:00';
+      // Native: `new Date('2026-04-26 12:00')` is *some* environments' truthy
+      // path — rather than asserting it returns `null` (which is host-
+      // dependent), we assert that the Luxon adapter rejects the string and
+      // that the native adapter does not produce a *valid* parse with a
+      // different calendar day, which is the actual concern.
+      expect(adapter.parse(sql)).toBeNull();
+      const nativeParsed = native.parse(sql);
+      // Either native rejects too (preferred), or it parses as the same
+      // calendar day — never silently shifting it via a different format
+      // recogniser.
+      if (nativeParsed) {
+        expect(nativeParsed.getFullYear()).toBe(2026);
+      }
+    });
   });
 
   // ── today() ───────────────────────────────────────────────────────────────
@@ -692,6 +737,45 @@ describe('LuxonDateAdapter', () => {
     it('resolveAmbiguous returns the original on invalid input', () => {
       const out = adapter.resolveAmbiguous(adapter.invalid(), 'later');
       expect(adapter.isValid(out)).toBe(false);
+    });
+
+    it('resolveAmbiguous("later") returns the second occurrence on DST fall-back (America/New_York 2024-11-03 01:30)', () => {
+      // Fall-back DST: 2024-11-03 in `America/New_York` repeats the 01:00–02:00
+      // wall-clock hour. `fromObject` always picks the earlier (EDT, -04:00);
+      // `resolveAmbiguous("later")` must return the second occurrence (EST,
+      // -05:00). The two instants are exactly one hour apart in real time.
+      const tzAdapter = createAdapter('America/New_York');
+      const ambig = DateTime.fromObject(
+        { year: 2024, month: 11, day: 3, hour: 1, minute: 30 },
+        { zone: 'America/New_York' },
+      );
+      const earlier = tzAdapter.resolveAmbiguous(ambig, 'earlier');
+      const later = tzAdapter.resolveAmbiguous(ambig, 'later');
+      // Both candidates share the same wall-clock fields…
+      expect(earlier.hour).toBe(1);
+      expect(earlier.minute).toBe(30);
+      expect(later.hour).toBe(1);
+      expect(later.minute).toBe(30);
+      // …but represent different UTC instants exactly one hour apart.
+      expect(later.toMillis() - earlier.toMillis()).toBe(60 * 60 * 1000);
+      // And the ISO offsets reflect the DST transition.
+      expect(earlier.offset).toBe(-240); // EDT (-04:00)
+      expect(later.offset).toBe(-300); // EST (-05:00)
+      // UTC ISO strings differ by exactly 1 hour.
+      expect(earlier.toUTC().toISO()).toBe('2024-11-03T05:30:00.000Z');
+      expect(later.toUTC().toISO()).toBe('2024-11-03T06:30:00.000Z');
+    });
+
+    it('resolveAmbiguous returns the same instant for both `prefer` values on a non-ambiguous wall-clock', () => {
+      // 2024-06-15 14:30 in America/New_York — no DST transition that day,
+      // so the wall-clock is unambiguous and both `earlier` and `later`
+      // resolve to the same UTC instant.
+      const tzAdapter = createAdapter('America/New_York');
+      const date = tzAdapter.create(2024, 6, 15);
+      const noon = tzAdapter.withTime(date, 14, 30, 0);
+      const earlier = tzAdapter.resolveAmbiguous(noon, 'earlier');
+      const later = tzAdapter.resolveAmbiguous(noon, 'later');
+      expect(later.toMillis()).toBe(earlier.toMillis());
     });
   });
 

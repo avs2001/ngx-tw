@@ -297,7 +297,13 @@ export class LuxonDateAdapter extends DateAdapter<DateTime> {
    * - JS `Date` (re-anchored to the adapter's zone + locale),
    * - number (epoch milliseconds),
    * - string — when `parseFormat` is a Luxon token, uses `fromFormat`;
-   *   otherwise falls back to `fromISO`.
+   *   otherwise parses strict ISO 8601 only.
+   *
+   * The free-form-string path is intentionally narrow: SQL and RFC 2822
+   * fallbacks were dropped so the Luxon adapter's acceptance surface matches
+   * `NativeDateAdapter.parse()` (which only accepts strings parseable by
+   * `new Date(value)`). Callers that need bespoke string formats should pass
+   * an explicit `parseFormat` token.
    *
    * Returns `null` on empty input or unrecognised value types, mirroring the
    * native adapter's contract.
@@ -330,11 +336,7 @@ export class LuxonDateAdapter extends DateAdapter<DateTime> {
         }
       }
       const iso = DateTime.fromISO(value, opts);
-      if (iso.isValid) return iso;
-      const sql = DateTime.fromSQL(value, opts);
-      if (sql.isValid) return sql;
-      const rfc = DateTime.fromRFC2822(value, opts);
-      return rfc.isValid ? rfc : null;
+      return iso.isValid ? iso : null;
     }
     return null;
   }
@@ -394,25 +396,55 @@ export class LuxonDateAdapter extends DateAdapter<DateTime> {
   }
 
   /**
-   * Resolves an ambiguous wall-clock time during DST fall-back. Luxon's
-   * default behaviour selects the first occurrence; `prefer: 'later'` shifts
-   * to the second occurrence by adding one hour and re-anchoring.
+   * Resolves an ambiguous wall-clock time during DST fall-back. On fall-back
+   * days a single wall-clock hour repeats — e.g. 2024-11-03 01:30 in
+   * `America/New_York` happens once at offset -04:00 (EDT) and again at
+   * offset -05:00 (EST). Luxon's `DateTime.fromObject({...}, { zone })` always
+   * returns the **earlier** of the two candidates, so we reconstruct the
+   * "later" occurrence explicitly: rebuild the candidate at the date's
+   * wall-clock fields (anchoring it on the earlier occurrence) and add one
+   * hour to land on the same wall-clock's second occurrence in the
+   * post-fall-back offset.
+   *
+   * Non-ambiguous wall-clocks return unchanged for both `prefer` values:
+   * after `plus({ hour: 1 })` the wall-clock hour increments (no DST
+   * repetition), so the candidate is rejected and we return `date` as-is.
    */
   override resolveAmbiguous(date: DateTime, prefer: 'earlier' | 'later'): DateTime {
     if (!date.isValid) return date;
-    if (prefer === 'earlier') return date;
-    // Try advancing one hour: on a fall-back day this lands on the repeated
-    // wall-clock hour's second occurrence. Outside DST transitions this is a
-    // benign no-op that we revert below.
-    const candidate = date.plus({ hours: 1 });
+    // Re-anchor on the earlier of the two candidates by reconstructing the
+    // wall-clock from `date`'s fields in its current zone. Luxon's
+    // `fromObject` deterministically picks the earlier instant when the
+    // input wall-clock is ambiguous, regardless of which occurrence `date`
+    // happens to represent.
+    const zone = date.zoneName ?? this.zone;
+    const earlier = DateTime.fromObject(
+      {
+        year: date.year,
+        month: date.month,
+        day: date.day,
+        hour: date.hour,
+        minute: date.minute,
+        second: date.second,
+        millisecond: date.millisecond,
+      },
+      { zone, locale: date.locale ?? this.locale },
+    );
+    if (!earlier.isValid) return date;
+    if (prefer === 'earlier') return earlier;
+    // Advancing one hour from the earlier-occurrence instant lands on the
+    // same wall-clock at the post-fall-back offset on ambiguous hours, and
+    // increments the wall-clock by one on non-ambiguous hours. Compare
+    // wall-clock fields to distinguish the two cases.
+    const later = earlier.plus({ hours: 1 });
     if (
-      candidate.hour === date.hour &&
-      candidate.day === date.day &&
-      candidate.month === date.month &&
-      candidate.year === date.year
+      later.hour === earlier.hour &&
+      later.day === earlier.day &&
+      later.month === earlier.month &&
+      later.year === earlier.year
     ) {
-      return candidate;
+      return later;
     }
-    return date;
+    return earlier;
   }
 }
