@@ -42,6 +42,7 @@ import { CalendarHeaderComponent } from './calendar-header';
 import { CalendarIntl } from './calendar-intl';
 import type {
   CalendarCell,
+  CalendarConstraints,
   CalendarMode,
   CalendarOverlayState,
   CalendarSelectionState,
@@ -50,6 +51,8 @@ import type {
   DateClassFn,
   DateFilterFn,
   DateRange,
+  DisabledDates,
+  MaxSelectionBehavior,
   ModeChangeEvent,
   RangePreviewEvent,
   ResetBehavior,
@@ -63,7 +66,15 @@ import { DateAdapter, DATE_ADAPTER } from './date-adapter';
 import { MonthViewComponent } from './month-view';
 import { YearViewComponent } from './year-view';
 import { YearsViewComponent } from './multi-year-view';
-import { getMultiYearStartingYear, isMonthDisabled, isYearDisabled } from './calendar.utils';
+import {
+  getMultiYearStartingYear,
+  isDateInRange,
+  isMonthDisabled,
+  isYearDisabled,
+  rangeCrossesDisabled,
+  rangeLengthDays,
+  resolveDateDisabled,
+} from './calendar.utils';
 import {
   CalendarSelectionStrategy,
   CALENDAR_SELECTION_STRATEGY,
@@ -132,6 +143,7 @@ const calendarVariants = tv(
     class: 'block',
     '[attr.aria-disabled]': 'effectiveDisabled() || null',
     '[attr.aria-readonly]': 'effectiveReadonly() || null',
+    '[attr.aria-describedby]': 'errorAriaDescribedBy() || null',
     '(focusout)': 'onBlur($event)',
   },
   template: `
@@ -168,6 +180,8 @@ const calendarVariants = tv(
               [minDate]="minDate()"
               [maxDate]="maxDate()"
               [dateFilter]="dateFilter()"
+              [disabledDates]="disabledDates()"
+              [disabledDaysOfWeek]="disabledDaysOfWeek()"
               [dateClass]="dateClass()"
               [cellTemplate]="cellTemplate()"
               [firstDayOfWeek]="computedFirstDayOfWeek()"
@@ -185,6 +199,8 @@ const calendarVariants = tv(
                 [minDate]="minDate()"
                 [maxDate]="maxDate()"
                 [dateFilter]="dateFilter()"
+                [disabledDates]="disabledDates()"
+                [disabledDaysOfWeek]="disabledDaysOfWeek()"
                 [dateClass]="dateClass()"
                 [cellTemplate]="cellTemplate()"
                 [firstDayOfWeek]="computedFirstDayOfWeek()"
@@ -306,6 +322,48 @@ export class CalendarComponent<
 
   /** Per-date predicate — return `false` to disable. */
   readonly dateFilter: InputSignal<DateFilterFn<D> | null> = input<DateFilterFn<D> | null>(null);
+
+  /**
+   * Explicitly disabled dates (§10.1). Either an array (each entry compared via
+   * `adapter.sameDate`) or a predicate returning `true` for disabled dates.
+   * OR-combined with `dateFilter`, `disabledDaysOfWeek`, and `[minDate, maxDate]`.
+   */
+  readonly disabledDates: InputSignal<DisabledDates<D> | null> =
+    input<DisabledDates<D> | null>(null);
+
+  /** Days of the week to disable (0=Sun … 6=Sat). Empty array = no day-of-week disabling. */
+  readonly disabledDaysOfWeek: InputSignal<readonly number[]> = input<readonly number[]>([]);
+
+  /** Minimum range length in days, inclusive (`mode: 'range'` only). `null` = no minimum. */
+  readonly minRangeLength: InputSignal<number | null> = input<number | null>(null);
+
+  /** Maximum range length in days, inclusive (`mode: 'range'` only). `null` = no maximum. */
+  readonly maxRangeLength: InputSignal<number | null> = input<number | null>(null);
+
+  /** Maximum number of selections in `mode: 'multiple'`. `null` = unlimited. */
+  readonly maxSelections: InputSignal<number | null> = input<number | null>(null);
+
+  /**
+   * What happens when the user tries to select past `maxSelections` (§10.1).
+   * `'emit-limit-reached'` (default) emits `selectionLimitReached` and ignores
+   * the click; `'replace-oldest'` drops the first entry; `'ignore'` is silent.
+   */
+  readonly maxSelectionBehavior: InputSignal<MaxSelectionBehavior> =
+    input<MaxSelectionBehavior>('emit-limit-reached');
+
+  /**
+   * IDREF list for the form-error live region (§28.3). When set, the calendar
+   * root carries `aria-describedby="<value>"` so screen readers read consumer-
+   * rendered error messages alongside the focused cell announcement.
+   */
+  readonly errorAriaDescribedBy: InputSignal<string | null> = input<string | null>(null);
+
+  /**
+   * `[REC] [COULD]` Phase 4 placeholder: blocks committing a range that violates
+   * `min`/`maxRangeLength`. Currently a no-op + dev warning per the plan; the
+   * actual behavior lands with the §43 v1.1 decision.
+   */
+  readonly blockInvalidRangeCommit: InputSignal<boolean> = input<boolean>(false);
 
   /** Function producing per-cell CSS classes. */
   readonly dateClass: InputSignal<DateClassFn<D> | null> = input<DateClassFn<D> | null>(null);
@@ -549,13 +607,36 @@ export class CalendarComponent<
       untracked(() => this.onModeChanged(from, current));
     });
 
-    // Re-run validation whenever mode or the rejected-write marker changes so
-    // the `calendarRequired` / `calendarInvalidValue` codes stay in sync.
+    // Re-run validation whenever mode, constraints, or the rejected-write
+    // marker changes so the §10.2 codes stay in sync. Constraint change
+    // revalidation per §11.4.
     effect(() => {
       this.mode();
       this._lastInvalidFormValue();
+      this.minDate();
+      this.maxDate();
+      this.dateFilter();
+      this.disabledDates();
+      this.disabledDaysOfWeek();
+      this.minRangeLength();
+      this.maxRangeLength();
+      this.maxSelections();
       untracked(() => this.validatorOnChange());
     });
+
+    // Phase 4 — `blockInvalidRangeCommit` is a v1.1 hook (§43); warn once if a
+    // consumer enables it so they know it's not yet wired.
+    if (isDevMode()) {
+      let warned = false;
+      effect(() => {
+        if (this.blockInvalidRangeCommit() && !warned) {
+          warned = true;
+          console.warn(
+            '[tw-calendar] `blockInvalidRangeCommit` is a v1.1 placeholder and is currently a no-op — invalid ranges still commit. Subscribe to `rangePreview.invalidPreview` and the `calendarRangeTooShort` / `calendarRangeTooLong` validator codes to react to violations in v1.',
+          );
+        }
+      });
+    }
 
     // Push the resolved locale into the date adapter so `Intl.DateTimeFormat`
     // calls (month/weekday names, format()) align with `LOCALE_ID` or the
@@ -639,11 +720,16 @@ export class CalendarComponent<
     this.cvaDisabled.set(isDisabled);
   }
 
-  /** @internal `Validator` — runs the Phase 3 validator (§10.2 codes: `calendarRequired`, `calendarInvalidValue`). Phase 4 extends with constraint codes. */
+  /** @internal `Validator` — runs the §10.2 validator. Phase 3 codes (`calendarRequired`, `calendarInvalidValue`) plus Phase 4 constraint codes (`calendarMinDate`, `calendarMaxDate`, `calendarDisabledDate`, `calendarRangeTooShort`, `calendarRangeTooLong`, `calendarMaxSelections`, `calendarInvalidRange`). */
   validate(control: AbstractControl): ValidationErrors | null {
     const ctx = {
       mode: this.mode() as M,
       lastInvalidFormValue: this._lastInvalidFormValue(),
+      constraints: this.constraints(),
+      adapter: this.dateAdapter,
+      minRangeLength: this.minRangeLength(),
+      maxRangeLength: this.maxRangeLength(),
+      maxSelections: this.maxSelections(),
     };
     return calendarValidator<M, D>(ctx)(control);
   }
@@ -1089,6 +1175,27 @@ export class CalendarComponent<
       return;
     }
 
+    if (mode === 'multiple') {
+      // Phase 4 — enforce maxSelections per maxSelectionBehavior (§10.1, §33.1).
+      const limit = this.maxSelections();
+      const currentArr = (this.value() as unknown as D[]) ?? [];
+      const isAlreadySelected = currentArr.some((d) => this.dateAdapter.sameDate(d, date));
+      if (limit !== null && !isAlreadySelected && currentArr.length >= limit) {
+        const behavior = this.maxSelectionBehavior();
+        if (behavior === 'emit-limit-reached') {
+          this.selectionLimitReached.emit({ limit, attempted: date });
+          return;
+        }
+        if (behavior === 'replace-oldest') {
+          const next = [...currentArr.slice(1), date];
+          this.commitValue(next as unknown as CalendarValue<M, D>, 'commit');
+          return;
+        }
+        // 'ignore' — silently drop the click.
+        return;
+      }
+    }
+
     const strategy = this.selectionStrategy();
     const current = mode === 'multiple' ? ((this.value() as unknown as D[]) ?? []) : this.value();
     const result = strategy.select(date, current);
@@ -1106,10 +1213,38 @@ export class CalendarComponent<
     if (draft && pr?.start && pr.end) {
       this.rangePreview.emit({
         tentativeRange: { start: pr.start, end: pr.end },
-        invalidPreview: false, // Phase 4 will set this from disabled-crossing / length rules.
+        invalidPreview: this.isPreviewInvalid(pr.start, pr.end),
       });
     }
   }
+
+  /**
+   * Phase 4 — `true` when a tentative range hover would commit an invalid value.
+   * Reasons: crosses a disabled date, or length violates `min`/`maxRangeLength`.
+   * The flag is informational — does NOT block the commit on its own (§4 default
+   * is permissive; `blockInvalidRangeCommit` is the v1.1 hardening hook).
+   */
+  private isPreviewInvalid(start: D, end: D): boolean {
+    const constraints = this.constraints();
+    // Endpoints already pass `enabled` check (you can't hover a disabled cell
+    // and produce a preview), so we only need to look at the interior.
+    if (rangeCrossesDisabled(start, end, constraints, this.dateAdapter, false)) return true;
+    const length = rangeLengthDays(start, end, this.dateAdapter);
+    const min = this.minRangeLength();
+    if (min !== null && length < min) return true;
+    const max = this.maxRangeLength();
+    if (max !== null && length > max) return true;
+    return false;
+  }
+
+  /** Aggregated constraint inputs as a single object — passed to the resolver and validator. */
+  private readonly constraints: Signal<CalendarConstraints<D>> = computed(() => ({
+    minDate: this.minDate(),
+    maxDate: this.maxDate(),
+    disabledDates: this.disabledDates(),
+    disabledDaysOfWeek: this.disabledDaysOfWeek(),
+    dateFilter: this.dateFilter(),
+  }));
 
   /** @internal — month-view cell activation (drill-down to day). */
   onMonthSelected(date: D): void {

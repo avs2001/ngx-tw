@@ -19,6 +19,7 @@ import type {
   DateClassFn,
   DateFilterFn,
   DateRange,
+  DisabledDates,
 } from './calendar.types';
 import { DateAdapter, DATE_ADAPTER } from './date-adapter';
 import { isDateInRange } from './calendar.utils';
@@ -47,6 +48,13 @@ export abstract class CalendarViewBase<D> {
 
   /** Per-date predicate — return `false` to disable. */
   readonly dateFilter: InputSignal<DateFilterFn<D> | null> = input<DateFilterFn<D> | null>(null);
+
+  /** Explicitly disabled dates — array (compared via `adapter.sameDate`) or predicate (returns `true` for disabled). */
+  readonly disabledDates: InputSignal<DisabledDates<D> | null> =
+    input<DisabledDates<D> | null>(null);
+
+  /** Days of the week to disable (0=Sun … 6=Sat). Empty array = no day-of-week disabling. */
+  readonly disabledDaysOfWeek: InputSignal<readonly number[]> = input<readonly number[]>([]);
 
   /** Per-cell class override. */
   readonly dateClass: InputSignal<DateClassFn<D> | null> = input<DateClassFn<D> | null>(null);

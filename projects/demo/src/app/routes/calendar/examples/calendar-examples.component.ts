@@ -99,26 +99,57 @@ function fmt(d: Date | null | undefined): string {
     </section>
 
     <section class="mb-10">
-      <h2 class="text-sm font-semibold mb-3">Min / max &amp; date filter</h2>
+      <h2 class="text-sm font-semibold mb-3">Constraints (min / max / disabled dates / disabled weekdays)</h2>
       <p class="text-sm text-fg-muted leading-relaxed max-w-2xl mb-4">
-        Pass <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">minDate</code>,
-        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">maxDate</code>, or a
-        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">dateFilter</code>
-        predicate to disable cells. Phase 4 will add <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">disabledDates</code>
-        and <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">disabledDaysOfWeek</code>
-        as first-class inputs per §10.1.
+        Phase 4 ships the full §10.1 constraint surface. All sources OR-combine — a date is
+        disabled if any of <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">minDate</code>,
+        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">maxDate</code>,
+        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">dateFilter</code>,
+        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">disabledDates</code>, or
+        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">disabledDaysOfWeek</code> flags it.
+        Cells emit <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">data-state-disabled</code>
+        and <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">data-state-weekend</code> for styling.
       </p>
       <div class="rounded-lg border border-border p-6 bg-surface-raised mb-4 flex flex-col items-center gap-3">
         <tw-calendar
-          aria-label="Weekdays only"
+          aria-label="Constrained calendar"
           [startAt]="fixedDate"
           [minDate]="minDate"
           [maxDate]="maxDate"
-          [dateFilter]="weekdayOnly"
+          [disabledDates]="blockedDates"
+          [disabledDaysOfWeek]="weekendDays"
         />
         <p class="text-xs text-fg-muted mt-2 font-mono">
-          min = {{ minDate.toLocaleDateString() }}, max = {{ maxDate.toLocaleDateString() }}
+          min = {{ minDate.toLocaleDateString() }}, max = {{ maxDate.toLocaleDateString() }},
+          blocked = {{ blockedDates.length }}, weekendDays = [0, 6]
         </p>
+      </div>
+    </section>
+
+    <section class="mb-10">
+      <h2 class="text-sm font-semibold mb-3">Range length + max selections</h2>
+      <p class="text-sm text-fg-muted leading-relaxed max-w-2xl mb-4">
+        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">minRangeLength</code> /
+        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">maxRangeLength</code>
+        flag a tentative range as invalid via the
+        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">rangePreview.invalidPreview</code>
+        flag and the form-level <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">calendarRangeTooShort</code>
+        / <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">calendarRangeTooLong</code> codes.
+        For <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">mode="multiple"</code>,
+        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">maxSelections</code> +
+        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">maxSelectionBehavior</code>
+        decide whether a 4th click emits <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">selectionLimitReached</code>,
+        replaces the oldest entry, or is ignored.
+      </p>
+      <div class="rounded-lg border border-border p-6 bg-surface-raised mb-4 flex flex-col items-center gap-3">
+        <tw-calendar
+          aria-label="Range with length cap"
+          mode="range"
+          [startAt]="fixedDate"
+          [minRangeLength]="2"
+          [maxRangeLength]="14"
+        />
+        <p class="text-xs text-fg-muted mt-2 font-mono">minRangeLength = 2, maxRangeLength = 14</p>
       </div>
     </section>
 
@@ -215,6 +246,13 @@ export class CalendarExamples {
 
   protected readonly weekdayOnly: DateFilterFn<Date> = (d: Date): boolean =>
     d.getDay() !== 0 && d.getDay() !== 6;
+
+  // Phase 4 — explicit blocked dates and weekend days for the constraints demo.
+  protected readonly blockedDates: readonly Date[] = [
+    new Date(this.today.getFullYear(), this.today.getMonth(), 11),
+    new Date(this.today.getFullYear(), this.today.getMonth(), 18),
+  ];
+  protected readonly weekendDays: readonly number[] = [0, 6];
 
   // Single
   protected readonly singleValue = signal<Date | null>(null);

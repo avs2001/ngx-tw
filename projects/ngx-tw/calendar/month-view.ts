@@ -15,6 +15,7 @@ import {
   getFirstDayOfMonth,
   getWeekdayHeaders,
   isDateDisabled,
+  isWeekend,
   type WeekdayHeader,
 } from './calendar.utils';
 import { CalendarViewBase } from './calendar-view-base';
@@ -103,7 +104,10 @@ export class MonthViewComponent<D> extends CalendarViewBase<D> {
     const minDate = this.minDate();
     const maxDate = this.maxDate();
     const dateFilter = this.dateFilter();
+    const disabledDates = this.disabledDates();
+    const disabledDaysOfWeek = this.disabledDaysOfWeek();
     const dateClass = this.dateClass();
+    const displayedMonth = this.displayMonth();
 
     const days: CalendarCell<D>[] = [];
     for (let i = 0; i < TOTAL_CELLS; i++) {
@@ -116,7 +120,15 @@ export class MonthViewComponent<D> extends CalendarViewBase<D> {
         value: date,
         displayValue: String(dayOfMonth),
         ariaLabel: this.dateAdapter.format(date, { dateTimeFormat: { dateStyle: 'full' } }),
-        enabled: !isDateDisabled(date, minDate, maxDate, dateFilter, this.dateAdapter),
+        enabled: !isDateDisabled(
+          date,
+          minDate,
+          maxDate,
+          dateFilter,
+          this.dateAdapter,
+          disabledDates,
+          disabledDaysOfWeek,
+        ),
         cssClasses: dateClass ? dateClass(date, this.view) : '',
         compareValue,
       });
@@ -128,6 +140,8 @@ export class MonthViewComponent<D> extends CalendarViewBase<D> {
       cell.isPreviewStart = this.isPreviewStart(date);
       cell.isPreviewEnd = this.isPreviewEnd(date);
       cell.isPreviewMiddle = this.isPreviewMiddle(date);
+      cell.isOutOfMonth = cellMonth !== displayedMonth;
+      cell.isWeekend = isWeekend(date, this.dateAdapter);
       days.push(cell);
     }
     return createGrid(days, DAYS_PER_WEEK);

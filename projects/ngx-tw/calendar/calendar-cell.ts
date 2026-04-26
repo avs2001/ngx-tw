@@ -103,6 +103,23 @@ const cellVariants = tv(
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: {
     role: 'gridcell',
+    // Phase 4 — `data-state-*` styling contract (§34.5). Each attribute is `''`
+    // when its boolean state is true and absent (`null`) otherwise so consumers
+    // can target via `tw-calendar-cell[data-state-today]` selectors.
+    '[attr.data-state-today]': "cell().isToday ? '' : null",
+    '[attr.data-state-selected]': "cell().isSelected && !cell().isRangeStart && !cell().isRangeEnd && !cell().isRangeMiddle ? '' : null",
+    '[attr.data-state-range-start]': "cell().isRangeStart ? '' : null",
+    '[attr.data-state-range-end]': "cell().isRangeEnd ? '' : null",
+    '[attr.data-state-in-range]': "cell().isRangeMiddle ? '' : null",
+    '[attr.data-state-range-preview-start]': "cell().isPreviewStart ? '' : null",
+    '[attr.data-state-range-preview-end]': "cell().isPreviewEnd ? '' : null",
+    '[attr.data-state-in-range-preview]': "cell().isPreviewMiddle ? '' : null",
+    '[attr.data-state-invalid-preview]': "cell().isInvalidPreview ? '' : null",
+    '[attr.data-state-invalid-flash]': "cell().isInvalidFlash ? '' : null",
+    '[attr.data-state-disabled]': "!cell().enabled ? '' : null",
+    '[attr.data-state-out-of-month]': "outside() ? '' : null",
+    '[attr.data-state-weekend]': "cell().isWeekend ? '' : null",
+    '[attr.data-state-focused]': "tabindex() === 0 ? '' : null",
   },
   template: `
     <div [class]="wrapperClasses()">

@@ -206,6 +206,14 @@ export interface CalendarCell<D> {
   isPreviewMiddle: boolean;
   /** True when this cell ends the hover-preview range. */
   isPreviewEnd: boolean;
+  /** True when this cell falls outside the currently displayed month (day view only). */
+  isOutOfMonth: boolean;
+  /** True when this cell is a weekend day (Sat/Sun by default; locale-aware override planned). */
+  isWeekend: boolean;
+  /** True when this cell is part of a tentative range that violates a constraint (e.g., crosses a disabled date or exceeds `maxRangeLength`). */
+  isInvalidPreview: boolean;
+  /** True when the cell briefly flashes to indicate a rejected click (e.g., disabled commit, `rangeClickBehavior: 'require-clear'`). Auto-cleared by the orchestrator. */
+  isInvalidFlash: boolean;
   /** Numeric comparison key used for focus tracking. */
   compareValue: number;
 }
@@ -237,6 +245,10 @@ export function createCalendarCell<D>(config: CalendarCellConfig<D>): CalendarCe
     isPreviewStart: false,
     isPreviewMiddle: false,
     isPreviewEnd: false,
+    isOutOfMonth: false,
+    isWeekend: false,
+    isInvalidPreview: false,
+    isInvalidFlash: false,
   };
 }
 
@@ -256,6 +268,24 @@ export const MONTHS_PER_ROW = 4;
 
 /** Predicate for per-date disabling — return `false` to disable. */
 export type DateFilterFn<D> = (date: D) => boolean;
+
+/**
+ * Source for `disabledDates` (§10.1) — accepts either an explicit array of disabled dates
+ * (compared via `adapter.sameDate`) or a predicate returning `true` for disabled dates.
+ *
+ * Note: this is the inverse of `dateFilter` (which returns `true` for ENABLED dates).
+ * Both inputs are honored — a date is disabled if either source flags it.
+ */
+export type DisabledDates<D> = readonly D[] | ((date: D) => boolean);
+
+/** Aggregated constraint inputs consumed by the constraint resolver. */
+export interface CalendarConstraints<D> {
+  readonly minDate: D | null;
+  readonly maxDate: D | null;
+  readonly disabledDates: DisabledDates<D> | null;
+  readonly disabledDaysOfWeek: readonly number[];
+  readonly dateFilter: DateFilterFn<D> | null;
+}
 
 /** Function producing extra per-cell CSS classes. */
 export type DateClassFn<D> = (date: D, view: CalendarViewState) => string;

@@ -69,6 +69,42 @@ import { CodeBlockComponent } from 'ngx-tw/code-block';
               <td class="px-4 py-2 text-fg-muted">Per-date predicate — return <code class="font-mono">false</code> to disable a cell.</td>
             </tr>
             <tr>
+              <td class="px-4 py-2 font-mono text-xs">disabledDates</td>
+              <td class="px-4 py-2 font-mono text-xs text-fg-muted">DisabledDates&lt;D&gt; | null</td>
+              <td class="px-4 py-2 font-mono text-xs text-fg-muted">null</td>
+              <td class="px-4 py-2 text-fg-muted">Array (compared via <code class="font-mono">adapter.sameDate</code>) or predicate (returns <code class="font-mono">true</code> for disabled). OR-combined with <code class="font-mono">dateFilter</code>.</td>
+            </tr>
+            <tr>
+              <td class="px-4 py-2 font-mono text-xs">disabledDaysOfWeek</td>
+              <td class="px-4 py-2 font-mono text-xs text-fg-muted">readonly number[]</td>
+              <td class="px-4 py-2 font-mono text-xs text-fg-muted">[]</td>
+              <td class="px-4 py-2 text-fg-muted">Days of week to disable (0=Sun … 6=Sat).</td>
+            </tr>
+            <tr>
+              <td class="px-4 py-2 font-mono text-xs">minRangeLength / maxRangeLength</td>
+              <td class="px-4 py-2 font-mono text-xs text-fg-muted">number | null</td>
+              <td class="px-4 py-2 font-mono text-xs text-fg-muted">null</td>
+              <td class="px-4 py-2 text-fg-muted">Range length (days, inclusive) limits — drives <code class="font-mono">rangePreview.invalidPreview</code> and the <code class="font-mono">calendarRangeTooShort</code> / <code class="font-mono">calendarRangeTooLong</code> validation codes.</td>
+            </tr>
+            <tr>
+              <td class="px-4 py-2 font-mono text-xs">maxSelections</td>
+              <td class="px-4 py-2 font-mono text-xs text-fg-muted">number | null</td>
+              <td class="px-4 py-2 font-mono text-xs text-fg-muted">null</td>
+              <td class="px-4 py-2 text-fg-muted">Cap on selections in <code class="font-mono">mode="multiple"</code>. Drives <code class="font-mono">selectionLimitReached</code> and <code class="font-mono">calendarMaxSelections</code>.</td>
+            </tr>
+            <tr>
+              <td class="px-4 py-2 font-mono text-xs">maxSelectionBehavior</td>
+              <td class="px-4 py-2 font-mono text-xs text-fg-muted">'emit-limit-reached' | 'replace-oldest' | 'ignore'</td>
+              <td class="px-4 py-2 font-mono text-xs text-fg-muted">'emit-limit-reached'</td>
+              <td class="px-4 py-2 text-fg-muted">What happens when a click exceeds <code class="font-mono">maxSelections</code>.</td>
+            </tr>
+            <tr>
+              <td class="px-4 py-2 font-mono text-xs">errorAriaDescribedBy</td>
+              <td class="px-4 py-2 font-mono text-xs text-fg-muted">string | null</td>
+              <td class="px-4 py-2 font-mono text-xs text-fg-muted">null</td>
+              <td class="px-4 py-2 text-fg-muted">IDREF of a consumer-rendered error live region (§28.3) — applied to the host's <code class="font-mono">aria-describedby</code>.</td>
+            </tr>
+            <tr>
               <td class="px-4 py-2 font-mono text-xs">dateClass</td>
               <td class="px-4 py-2 font-mono text-xs text-fg-muted">DateClassFn&lt;D&gt; | null</td>
               <td class="px-4 py-2 font-mono text-xs text-fg-muted">null</td>
