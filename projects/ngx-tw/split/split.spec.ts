@@ -1,8 +1,10 @@
-import { Component } from '@angular/core';
+import { Component, DebugElement } from '@angular/core';
 import { type ComponentFixture, TestBed } from '@angular/core/testing';
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { By } from '@angular/platform-browser';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { TwSplit } from './split';
 import { TwSplitPane } from './split-pane';
+import { TwSplitGutterBar } from './split-gutter-bar';
 import {
   resolveInitialSizes,
   redistributeWithConstraints,
@@ -812,6 +814,442 @@ describe('TwSplit (Phase 1 scaffold)', () => {
       const sizesAfterRemove = split._sizes();
       expect(sizesAfterRemove).toHaveLength(2);
       expect(sumIsClose(sizesAfterRemove, 100)).toBe(true);
+    });
+  });
+});
+
+// ── Phase 3: Pointer drag ────────────────────────────────────────────────────
+
+// Helper: create and dispatch a PointerEvent on an element.
+function pointerEvent(
+  type: string,
+  opts: { clientX?: number; clientY?: number; pointerId?: number; button?: number } = {},
+): PointerEvent {
+  return new PointerEvent(type, {
+    bubbles: true,
+    cancelable: true,
+    clientX: opts.clientX ?? 0,
+    clientY: opts.clientY ?? 0,
+    pointerId: opts.pointerId ?? 1,
+    button: opts.button ?? 0,
+    buttons: type === 'pointerup' ? 0 : 1,
+  });
+}
+
+function getGutterBars(fixture: ComponentFixture<unknown>): DebugElement[] {
+  return fixture.debugElement.queryAll(By.directive(TwSplitGutterBar));
+}
+
+function getSplitComp(fixture: ComponentFixture<unknown>): TwSplit {
+  return fixture.debugElement.query(By.directive(TwSplit)).componentInstance as TwSplit;
+}
+
+@Component({
+  imports: [TwSplit, TwSplitPane],
+  template: `
+    <tw-split>
+      <tw-split-pane [defaultSize]="50" [minSize]="10">A</tw-split-pane>
+      <tw-split-pane [defaultSize]="50" [minSize]="10">B</tw-split-pane>
+    </tw-split>
+  `,
+})
+class DragTwoPaneHost {}
+
+@Component({
+  imports: [TwSplit, TwSplitPane],
+  template: `
+    <tw-split>
+      <tw-split-pane [defaultSize]="33" [minSize]="10">A</tw-split-pane>
+      <tw-split-pane [defaultSize]="33" [minSize]="10">B</tw-split-pane>
+      <tw-split-pane [defaultSize]="34" [minSize]="10">C</tw-split-pane>
+    </tw-split>
+  `,
+})
+class DragThreePaneHost {}
+
+describe('TwSplit Phase 3 — Pointer drag', () => {
+  // setPointerCapture / releasePointerCapture are not in jsdom — add stubs.
+  beforeEach(() => {
+    (HTMLElement.prototype as any).setPointerCapture = vi.fn();
+    (HTMLElement.prototype as any).releasePointerCapture = vi.fn();
+  });
+
+  afterEach(() => {
+    delete (HTMLElement.prototype as any).setPointerCapture;
+    delete (HTMLElement.prototype as any).releasePointerCapture;
+    // Clean up any document classes left by drag state.
+    document.documentElement.classList.remove('tw-split-dragging-h', 'tw-split-dragging-v');
+    document.body.style.userSelect = '';
+    // Remove any stray overlays.
+    document.body.querySelectorAll('[data-split-drag-overlay]').forEach(el => el.remove());
+  });
+
+  describe('gutter rendering', () => {
+    it('renders one gutter between two panes', async () => {
+      const fixture = TestBed.createComponent(DragTwoPaneHost);
+      fixture.detectChanges();
+      await fixture.whenStable();
+      fixture.detectChanges();
+
+      const gutters = getGutterBars(fixture);
+      expect(gutters).toHaveLength(1);
+    });
+
+    it('renders two gutters between three panes', async () => {
+      const fixture = TestBed.createComponent(DragThreePaneHost);
+      fixture.detectChanges();
+      await fixture.whenStable();
+      fixture.detectChanges();
+
+      expect(getGutterBars(fixture)).toHaveLength(2);
+    });
+
+    it('renders no gutters for a single pane', async () => {
+      const fixture = TestBed.createComponent(OnePaneHost);
+      fixture.detectChanges();
+      await fixture.whenStable();
+      fixture.detectChanges();
+
+      expect(getGutterBars(fixture)).toHaveLength(0);
+    });
+
+    it('gutter has role="separator"', async () => {
+      const fixture = TestBed.createComponent(DragTwoPaneHost);
+      fixture.detectChanges();
+      await fixture.whenStable();
+      fixture.detectChanges();
+
+      const gutterEl = getGutterBars(fixture)[0].nativeElement as HTMLElement;
+      expect(gutterEl.getAttribute('role')).toBe('separator');
+    });
+
+    it('horizontal split gutter has aria-orientation="vertical"', async () => {
+      const fixture = TestBed.createComponent(DragTwoPaneHost);
+      fixture.detectChanges();
+      await fixture.whenStable();
+      fixture.detectChanges();
+
+      const gutterEl = getGutterBars(fixture)[0].nativeElement as HTMLElement;
+      expect(gutterEl.getAttribute('aria-orientation')).toBe('vertical');
+    });
+  });
+
+  describe('CSS order — panes and gutters interleaved', () => {
+    it('first pane has CSS order 0, gutter has order 1, second pane has order 2', async () => {
+      const fixture = TestBed.createComponent(DragTwoPaneHost);
+      fixture.detectChanges();
+      await fixture.whenStable();
+      fixture.detectChanges();
+
+      const panes = getPanes(fixture);
+      const gutterEl = getGutterBars(fixture)[0].nativeElement as HTMLElement;
+
+      expect(panes[0].style.order).toBe('0');
+      expect(gutterEl.style.order).toBe('1');
+      expect(panes[1].style.order).toBe('2');
+    });
+  });
+
+  describe('full pointer down → move → up sequence', () => {
+    it('updates pane sizes during drag (dragMove applies)', async () => {
+      const fixture = TestBed.createComponent(DragTwoPaneHost);
+      fixture.detectChanges();
+      await fixture.whenStable();
+      fixture.detectChanges();
+
+      const split = getSplitComp(fixture);
+      // Set a known container size so px→% conversion is deterministic.
+      split._onContainerResize(1006); // available = 1000px (minus 1 gutter of 6)
+      fixture.detectChanges();
+
+      const gutterComp = getGutterBars(fixture)[0].componentInstance as TwSplitGutterBar;
+      const gutterEl = getGutterBars(fixture)[0].nativeElement as HTMLElement;
+
+      // Simulate pointerdown at x=500.
+      gutterEl.dispatchEvent(pointerEvent('pointerdown', { clientX: 500 }));
+      fixture.detectChanges();
+
+      // Simulate rAF-coalesced move to x=600 by calling dragMove directly.
+      split._onDragMove({ gutterIndex: 0, beforeSize: 60, afterSize: 40 });
+      fixture.detectChanges();
+
+      const sizes = split._sizes();
+      expect(sizes[0]).toBeCloseTo(60, 1);
+      expect(sizes[1]).toBeCloseTo(40, 1);
+    });
+
+    it('resizeStart fires exactly once on pointerdown', async () => {
+      const fixture = TestBed.createComponent(DragTwoPaneHost);
+      fixture.detectChanges();
+      await fixture.whenStable();
+      fixture.detectChanges();
+
+      const split = getSplitComp(fixture);
+      const events: unknown[] = [];
+      split.resizeStart.subscribe(e => events.push(e));
+
+      const gutterEl = getGutterBars(fixture)[0].nativeElement as HTMLElement;
+      gutterEl.dispatchEvent(pointerEvent('pointerdown', { clientX: 0 }));
+      fixture.detectChanges();
+
+      expect(events).toHaveLength(1);
+    });
+
+    it('sizesChange does NOT fire during dragMove — only at commit', async () => {
+      const fixture = TestBed.createComponent(DragTwoPaneHost);
+      fixture.detectChanges();
+      await fixture.whenStable();
+      fixture.detectChanges();
+
+      const split = getSplitComp(fixture);
+      split._onContainerResize(1006);
+      fixture.detectChanges();
+
+      const sizesChangeEvents: number[][] = [];
+      split.sizesChange.subscribe(s => sizesChangeEvents.push(s));
+
+      const gutterEl = getGutterBars(fixture)[0].nativeElement as HTMLElement;
+      gutterEl.dispatchEvent(pointerEvent('pointerdown', { clientX: 500 }));
+      fixture.detectChanges();
+
+      // Three move events.
+      split._onDragMove({ gutterIndex: 0, beforeSize: 55, afterSize: 45 });
+      split._onDragMove({ gutterIndex: 0, beforeSize: 60, afterSize: 40 });
+      split._onDragMove({ gutterIndex: 0, beforeSize: 65, afterSize: 35 });
+      fixture.detectChanges();
+
+      // No sizesChange yet.
+      expect(sizesChangeEvents).toHaveLength(0);
+
+      // Commit via dragEnd.
+      split._onDragEnd({ gutterIndex: 0, beforeSize: 65, afterSize: 35 });
+      fixture.detectChanges();
+
+      // Exactly one sizesChange on commit.
+      expect(sizesChangeEvents).toHaveLength(1);
+      expect(sizesChangeEvents[0][0]).toBeCloseTo(65, 1);
+      expect(sizesChangeEvents[0][1]).toBeCloseTo(35, 1);
+    });
+
+    it('resizeEnd fires exactly once on dragEnd', async () => {
+      const fixture = TestBed.createComponent(DragTwoPaneHost);
+      fixture.detectChanges();
+      await fixture.whenStable();
+      fixture.detectChanges();
+
+      const split = getSplitComp(fixture);
+      const endEvents: unknown[] = [];
+      split.resizeEnd.subscribe(e => endEvents.push(e));
+
+      const gutterEl = getGutterBars(fixture)[0].nativeElement as HTMLElement;
+      gutterEl.dispatchEvent(pointerEvent('pointerdown', { clientX: 0 }));
+      fixture.detectChanges();
+
+      split._onDragEnd({ gutterIndex: 0, beforeSize: 60, afterSize: 40 });
+      fixture.detectChanges();
+
+      expect(endEvents).toHaveLength(1);
+    });
+
+    it('clamps at minSize — before pane cannot go below minSize', async () => {
+      const fixture = TestBed.createComponent(DragTwoPaneHost);
+      fixture.detectChanges();
+      await fixture.whenStable();
+      fixture.detectChanges();
+
+      const split = getSplitComp(fixture);
+      split._onContainerResize(1006);
+      fixture.detectChanges();
+
+      const gutterEl = getGutterBars(fixture)[0].nativeElement as HTMLElement;
+      gutterEl.dispatchEvent(pointerEvent('pointerdown', { clientX: 500 }));
+      fixture.detectChanges();
+
+      // Move far left — before pane should clamp to minSize=10, after to 90.
+      split._onDragEnd({ gutterIndex: 0, beforeSize: 10, afterSize: 90 });
+      fixture.detectChanges();
+
+      expect(split._sizes()[0]).toBeGreaterThanOrEqual(10 - 0.01);
+    });
+  });
+
+  describe('Escape cancel during drag', () => {
+    it('restores pre-drag sizes on Escape (via dragEnd with startSizes)', async () => {
+      const fixture = TestBed.createComponent(DragTwoPaneHost);
+      fixture.detectChanges();
+      await fixture.whenStable();
+      fixture.detectChanges();
+
+      const split = getSplitComp(fixture);
+      split._onContainerResize(1006);
+      fixture.detectChanges();
+
+      const startSizes = [...split._sizes()]; // [50, 50]
+
+      const gutterEl = getGutterBars(fixture)[0].nativeElement as HTMLElement;
+      gutterEl.dispatchEvent(pointerEvent('pointerdown', { clientX: 500 }));
+      fixture.detectChanges();
+
+      // Move — sizes change.
+      split._onDragMove({ gutterIndex: 0, beforeSize: 70, afterSize: 30 });
+      fixture.detectChanges();
+      expect(split._sizes()[0]).toBeCloseTo(70, 1);
+
+      // Escape cancels: dragEnd emits startSizes.
+      split._onDragEnd({ gutterIndex: 0, beforeSize: startSizes[0], afterSize: startSizes[1] });
+      fixture.detectChanges();
+
+      expect(split._sizes()[0]).toBeCloseTo(startSizes[0], 1);
+      expect(split._sizes()[1]).toBeCloseTo(startSizes[1], 1);
+    });
+
+    it('resizeEnd fires once on cancel', async () => {
+      const fixture = TestBed.createComponent(DragTwoPaneHost);
+      fixture.detectChanges();
+      await fixture.whenStable();
+      fixture.detectChanges();
+
+      const split = getSplitComp(fixture);
+      const endEvents: unknown[] = [];
+      split.resizeEnd.subscribe(e => endEvents.push(e));
+
+      const gutterEl = getGutterBars(fixture)[0].nativeElement as HTMLElement;
+      gutterEl.dispatchEvent(pointerEvent('pointerdown', { clientX: 0 }));
+      fixture.detectChanges();
+
+      // Simulate cancel via dragEnd with start sizes.
+      split._onDragEnd({ gutterIndex: 0, beforeSize: 50, afterSize: 50 });
+      fixture.detectChanges();
+
+      expect(endEvents).toHaveLength(1);
+    });
+  });
+
+  describe('pane list change mid-drag', () => {
+    it('cancels active drag and fires resizeEnd when panes change', async () => {
+      const fixture = TestBed.createComponent(DragTwoPaneHost);
+      fixture.detectChanges();
+      await fixture.whenStable();
+      fixture.detectChanges();
+
+      const split = getSplitComp(fixture);
+      const endEvents: unknown[] = [];
+      const sizesEvents: number[][] = [];
+      split.resizeEnd.subscribe(e => endEvents.push(e));
+      split.sizesChange.subscribe(s => sizesEvents.push(s));
+
+      // Start a drag.
+      split._onDragStart(0);
+
+      // Simulate pane list change mid-drag.
+      const panes = split._panes();
+      split._onPanesChange(panes, split._containerSizePx());
+
+      // resizeEnd + sizesChange should have fired exactly once.
+      expect(endEvents).toHaveLength(1);
+      expect(sizesEvents).toHaveLength(1);
+    });
+  });
+
+  describe('setSizes guard during drag', () => {
+    it('throws in dev mode when setSizes is called during drag', async () => {
+      const fixture = TestBed.createComponent(DragTwoPaneHost);
+      fixture.detectChanges();
+      await fixture.whenStable();
+      fixture.detectChanges();
+
+      const split = getSplitComp(fixture);
+
+      // Simulate active drag by calling _onDragStart directly.
+      split._onDragStart(0);
+
+      // setSizes should throw in dev mode.
+      expect(() => split.setSizes([60, 40])).toThrow();
+    });
+  });
+
+  describe('iframe overlay during drag', () => {
+    it('creates a full-viewport overlay on pointerdown and removes it on dragEnd', async () => {
+      const fixture = TestBed.createComponent(DragTwoPaneHost);
+      fixture.detectChanges();
+      await fixture.whenStable();
+      fixture.detectChanges();
+
+      const gutterEl = getGutterBars(fixture)[0].nativeElement as HTMLElement;
+
+      // No overlay before drag.
+      expect(document.body.querySelectorAll('[data-split-drag-overlay]')).toHaveLength(0);
+
+      gutterEl.dispatchEvent(pointerEvent('pointerdown', { clientX: 0 }));
+      fixture.detectChanges();
+
+      // Overlay created during drag.
+      expect(document.body.querySelectorAll('[data-split-drag-overlay]').length).toBeGreaterThan(0);
+
+      // Release pointer — gutter tears down overlay naturally.
+      gutterEl.dispatchEvent(pointerEvent('pointerup', { clientX: 0 }));
+      fixture.detectChanges();
+
+      expect(document.body.querySelectorAll('[data-split-drag-overlay]')).toHaveLength(0);
+    });
+  });
+
+  describe('document cursor class (§8.4)', () => {
+    it('adds tw-split-dragging-h class on horizontal drag start', async () => {
+      const fixture = TestBed.createComponent(DragTwoPaneHost);
+      fixture.detectChanges();
+      await fixture.whenStable();
+      fixture.detectChanges();
+
+      const gutterEl = getGutterBars(fixture)[0].nativeElement as HTMLElement;
+      gutterEl.dispatchEvent(pointerEvent('pointerdown', { clientX: 0 }));
+      fixture.detectChanges();
+
+      expect(document.documentElement.classList.contains('tw-split-dragging-h')).toBe(true);
+    });
+
+    it('removes tw-split-dragging-h class on drag end', async () => {
+      const fixture = TestBed.createComponent(DragTwoPaneHost);
+      fixture.detectChanges();
+      await fixture.whenStable();
+      fixture.detectChanges();
+
+      const gutterEl = getGutterBars(fixture)[0].nativeElement as HTMLElement;
+      gutterEl.dispatchEvent(pointerEvent('pointerdown', { clientX: 0 }));
+      fixture.detectChanges();
+
+      // Release pointer — gutter restores cursor class naturally.
+      gutterEl.dispatchEvent(pointerEvent('pointerup', { clientX: 0 }));
+      fixture.detectChanges();
+
+      expect(document.documentElement.classList.contains('tw-split-dragging-h')).toBe(false);
+    });
+  });
+
+  describe('aria-valuenow', () => {
+    it('reflects before-pane size on the gutter', async () => {
+      const fixture = TestBed.createComponent(DragTwoPaneHost);
+      fixture.detectChanges();
+      await fixture.whenStable();
+      fixture.detectChanges();
+
+      const gutterEl = getGutterBars(fixture)[0].nativeElement as HTMLElement;
+      // Default 50/50 distribution.
+      expect(gutterEl.getAttribute('aria-valuenow')).toBe('50');
+    });
+
+    it('updates aria-valuenow after drag commit', async () => {
+      const fixture = TestBed.createComponent(DragTwoPaneHost);
+      fixture.detectChanges();
+      await fixture.whenStable();
+      fixture.detectChanges();
+
+      const split = getSplitComp(fixture);
+      split._onDragEnd({ gutterIndex: 0, beforeSize: 30, afterSize: 70 });
+      fixture.detectChanges();
+
+      const gutterEl = getGutterBars(fixture)[0].nativeElement as HTMLElement;
+      expect(gutterEl.getAttribute('aria-valuenow')).toBe('30');
     });
   });
 });

@@ -15,6 +15,7 @@ import {
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: {
     '[style.flex-basis]': '_basis()',
+    '[style.order]': '_order()',
     '[style.min-width]': '"0"',
     '[style.min-height]': '"0"',
     '[attr.data-split-pane-collapsed]': '_collapsed()',
@@ -62,6 +63,14 @@ export class TwSplitPane {
    * Not part of the public API.
    */
   readonly _basis = signal('');
+
+  /**
+   * @internal
+   * CSS flex order index (2*i) so gutters (2*i+1) can be interleaved
+   * between projected panes using the CSS order property.
+   * Not part of the public API.
+   */
+  readonly _order = signal(0);
 
   /**
    * @internal

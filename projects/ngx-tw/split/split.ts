@@ -17,6 +17,7 @@ import {
 } from '@angular/core';
 import type { SplitCollapseEvent, SplitDirection, SplitResizeEvent, SplitUnit } from './split.types';
 import { TwSplitPane } from './split-pane';
+import { TwSplitGutterBar, type GutterDragEvent } from './split-gutter-bar';
 import {
   availableSpace,
   computeBasis,
@@ -28,6 +29,11 @@ import {
   resolveInitialSizes,
   type PaneConstraints,
 } from './split-sizing';
+
+interface ActiveDrag {
+  gutterIndex: number;
+  startSizes: readonly number[];
+}
 
 /**
  * Container component that lays out two or more panes along a single axis and
@@ -44,11 +50,35 @@ import {
 @Component({
   selector: 'tw-split',
   changeDetection: ChangeDetectionStrategy.OnPush,
+  imports: [TwSplitGutterBar],
   host: {
     '[class]': '_hostClass()',
     '[attr.data-split-direction]': 'direction()',
   },
-  template: `<ng-content />`,
+  template: `
+    <ng-content />
+    @for (g of _gutters(); track g.index) {
+      <tw-split-gutter-bar
+        [style.order]="g.order"
+        [direction]="direction()"
+        [unit]="unit()"
+        [gutterSize]="gutterSize()"
+        [gutterIndex]="g.index"
+        [beforeSize]="_sizes()[g.index]"
+        [afterSize]="_sizes()[g.index + 1]"
+        [beforeMinSize]="g.beforeMinSize"
+        [beforeMaxSize]="g.beforeMaxSize"
+        [afterMinSize]="g.afterMinSize"
+        [afterMaxSize]="g.afterMaxSize"
+        [containerSizePx]="_containerSizePx()"
+        [paneCount]="_panes().length"
+        [disabled]="disabled()"
+        (dragStart)="_onDragStart($event)"
+        (dragMove)="_onDragMove($event)"
+        (dragEnd)="_onDragEnd($event)"
+      />
+    }
+  `,
 })
 export class TwSplit {
   /** Axis along which panes are laid out. `'horizontal'` = side-by-side; `'vertical'` = stacked. Defaults to `'horizontal'`. */
@@ -121,9 +151,30 @@ export class TwSplit {
   // not re-run just because we wrote this value.
   private _prevPaneRefs: readonly TwSplitPane[] | null = null;
 
+  // Active drag state — plain field (not a signal) to avoid template reactivity.
+  private _activeDrag: ActiveDrag | null = null;
+
   readonly _hostClass = computed(() =>
     ['flex h-full w-full', this.direction() === 'horizontal' ? 'flex-row' : 'flex-col'].join(' '),
   );
+
+  /**
+   * @internal
+   * Gutter descriptors derived from the pane list.
+   * One gutter between each pair of adjacent panes.
+   * CSS `order` values: pane i → 2*i, gutter i → 2*i+1.
+   */
+  readonly _gutters = computed(() => {
+    const panes = this._panes();
+    return panes.slice(0, -1).map((_, i) => ({
+      index: i,
+      order: 2 * i + 1,
+      beforeMinSize: panes[i].minSize(),
+      beforeMaxSize: panes[i].maxSize(),
+      afterMinSize: panes[i + 1].minSize(),
+      afterMaxSize: panes[i + 1].maxSize(),
+    }));
+  });
 
   constructor() {
     // ResizeObserver — runs outside Angular zone to avoid CD on every resize.
@@ -197,6 +248,23 @@ export class TwSplit {
    * Called by the contentChildren effect when the pane list changes.
    */
   _onPanesChange(panes: readonly TwSplitPane[], containerPx: number): void {
+    // Cancel any active drag before reconciling (§4.4 / §9).
+    if (this._activeDrag !== null) {
+      const { gutterIndex, startSizes } = this._activeDrag;
+      this._activeDrag = null;
+      // Fire resizeEnd with last valid sizes (the drag may have moved sizes).
+      const lastSizes = this._sizes();
+      this.resizeEnd.emit({
+        sizes: [...lastSizes],
+        unit: this.unit(),
+        originPaneIndex: gutterIndex,
+        cause: 'pointer',
+      });
+      this.sizesChange.emit([...lastSizes]);
+      // Suppress unused variable warning.
+      void startSizes;
+    }
+
     const unit = this.unit();
     const gutterSize = this.gutterSize();
     const n = panes.length;
@@ -290,7 +358,64 @@ export class TwSplit {
       const size = sizes[i] ?? 0;
       panes[i]._basis.set(computeBasis(size, unit, numPanes, gutterSize));
       panes[i]._size.set(size);
+      panes[i]._order.set(2 * i);
     }
+  }
+
+  // ── Drag event handlers (called from TwSplitGutterBar outputs) ──────────────
+
+  /**
+   * @internal
+   * Called when a gutter initiates a pointer drag.
+   */
+  _onDragStart(gutterIndex: number): void {
+    this._activeDrag = {
+      gutterIndex,
+      startSizes: [...this._sizes()],
+    };
+    this.resizeStart.emit({
+      sizes: [...this._sizes()],
+      unit: this.unit(),
+      originPaneIndex: gutterIndex,
+      cause: 'pointer',
+    });
+  }
+
+  /**
+   * @internal
+   * Called on each rAF frame during drag. Updates pane sizes without emitting
+   * sizesChange (§5.4 — only fires at commit).
+   */
+  _onDragMove(event: GutterDragEvent): void {
+    const panes = this._panes();
+    const sizes = [...this._sizes()];
+    sizes[event.gutterIndex] = event.beforeSize;
+    sizes[event.gutterIndex + 1] = event.afterSize;
+    this._sizes.set(sizes);
+    this._applyToPanes(panes, sizes, this.unit(), panes.length, this.gutterSize());
+  }
+
+  /**
+   * @internal
+   * Called when a drag ends (commit or cancel). Applies final sizes, emits
+   * resizeEnd and sizesChange exactly once each (§5.4).
+   */
+  _onDragEnd(event: GutterDragEvent): void {
+    this._activeDrag = null;
+    const panes = this._panes();
+    const sizes = [...this._sizes()];
+    sizes[event.gutterIndex] = event.beforeSize;
+    sizes[event.gutterIndex + 1] = event.afterSize;
+    this._sizes.set(sizes);
+    this._applyToPanes(panes, sizes, this.unit(), panes.length, this.gutterSize());
+
+    this.resizeEnd.emit({
+      sizes: [...sizes],
+      unit: this.unit(),
+      originPaneIndex: event.gutterIndex,
+      cause: 'pointer',
+    });
+    this.sizesChange.emit([...sizes]);
   }
 
   // ── Public API ──────────────────────────────────────────────────────────────
@@ -299,8 +424,17 @@ export class TwSplit {
    * Programmatically set all pane sizes.
    * The array length must equal the current pane count and sizes must be
    * compatible with the declared unit. Throws on mismatch.
+   * Throws in dev mode (silently ignores in prod) if called during an active drag.
    */
   setSizes(sizes: number[]): void {
+    if (this._activeDrag !== null) {
+      if (isDevMode()) {
+        throw new Error(
+          'TwSplit.setSizes: cannot set sizes while a pointer drag is in progress.',
+        );
+      }
+      return;
+    }
     const panes = this._panes();
     if (sizes.length !== panes.length) {
       throw new Error(`TwSplit.setSizes: expected ${panes.length} sizes, got ${sizes.length}`);
