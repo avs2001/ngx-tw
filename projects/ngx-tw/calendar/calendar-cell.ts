@@ -49,7 +49,7 @@ const cellVariants = tv(
         },
         'range-middle': {
           button:
-            'bg-primary-100 text-primary-700 dark:bg-primary-900/40 dark:text-primary-200 rounded-none hover:brightness-95',
+            'bg-primary-100 text-primary-700 dark:bg-primary-900/40 dark:text-primary-200 rounded-none hover:bg-primary-200 dark:hover:bg-primary-900/60',
         },
         'range-end': {
           button:

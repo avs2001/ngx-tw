@@ -37,6 +37,7 @@ const TOTAL_CELLS = DAYS_PER_WEEK * WEEKS_PER_MONTH;
       [attr.aria-label]="gridLabel()"
       (mouseleave)="onGridMouseLeave()"
     >
+      <!-- gap-0: weekday headers align column-by-column with the day grid below, which itself must be gap-0 for contiguous range backgrounds. -->
       <div role="row" class="grid grid-cols-7 gap-0">
         @for (header of weekdayHeaders(); track $index) {
           <div
@@ -49,6 +50,7 @@ const TOTAL_CELLS = DAYS_PER_WEEK * WEEKS_PER_MONTH;
         }
       </div>
       @for (row of cells(); track $index) {
+        <!-- gap-0: cells must touch so range-selection wrapper backgrounds (bg-primary-100 + rounded-l/r-full) form a continuous bar across adjacent days. -->
         <div role="row" class="grid grid-cols-7 gap-0">
           @for (cell of row; track cell.compareValue) {
             <tw-calendar-cell

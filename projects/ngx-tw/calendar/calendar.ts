@@ -98,7 +98,7 @@ const calendarVariants = tv(
       },
       columns: {
         1: { months: '' },
-        2: { months: 'flex gap-4' },
+        2: { months: 'flex gap-3' },
       },
     },
     defaultVariants: { bordered: true, columns: 1 },
