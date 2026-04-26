@@ -25,8 +25,10 @@ export interface TwLuxonDateFormat {
  * implements the §20.2 TZ-aware virtuals (`getTimezone`, `withTimezone`,
  * `isDST`, `resolveAmbiguous`).
  *
- * `month` is **1-based** throughout (matches the abstract contract and Luxon's
- * own `DateTime.fromObject({ month })` convention).
+ * `create()` accepts **1-based** months (matching the abstract contract and
+ * Luxon's `DateTime.fromObject({ month })` convention), while `getMonth()`
+ * returns **0-based** months (also per the abstract contract — see
+ * `NativeDateAdapter`).
  */
 @Injectable()
 export class LuxonDateAdapter extends DateAdapter<DateTime> {
@@ -104,9 +106,13 @@ export class LuxonDateAdapter extends DateAdapter<DateTime> {
     return date.year;
   }
 
-  /** Returns the **1-based** month (1 = January, 12 = December). */
+  /**
+   * Returns the **0-based** month (0 = January, 11 = December) to match the
+   * abstract `DateAdapter` contract and the `NativeDateAdapter`. Luxon's
+   * `DateTime.month` is 1-based, so we subtract one.
+   */
   getMonth(date: DateTime): number {
-    return date.month;
+    return date.month - 1;
   }
 
   getDate(date: DateTime): number {
@@ -143,12 +149,28 @@ export class LuxonDateAdapter extends DateAdapter<DateTime> {
   }
 
   /**
-   * Default first day of week — Sunday (`0`), matching the native adapter.
-   * Consumers can override at the calendar component level via the spec's
-   * `firstDayOfWeek` input.
+   * Locale-aware first day of week (§19.2). Mirrors `NativeDateAdapter` —
+   * derives from `Intl.Locale.getWeekInfo()` when available, falling back to
+   * Monday (`1`) when the locale is unknown to ICU. ICU/CLDR returns
+   * `1=Monday … 7=Sunday`; we normalize to the project's `0=Sunday … 6=Saturday`
+   * convention so both adapters report identical values for identical locales.
    */
   getFirstDayOfWeek(): number {
-    return 0;
+    if (typeof Intl !== 'undefined' && typeof Intl.Locale === 'function') {
+      try {
+        const l = new Intl.Locale(this.locale) as Intl.Locale & {
+          getWeekInfo?: () => { firstDay: number };
+          weekInfo?: { firstDay: number };
+        };
+        const info = (l.getWeekInfo?.() ?? l.weekInfo) as { firstDay: number } | undefined;
+        if (info && typeof info.firstDay === 'number') {
+          return info.firstDay === 7 ? 0 : info.firstDay;
+        }
+      } catch {
+        return 1;
+      }
+    }
+    return 1;
   }
 
   getMonthNames(style: TwDateNameStyle): string[] {

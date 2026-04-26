@@ -1,7 +1,7 @@
 import { TestBed } from '@angular/core/testing';
 import { DateTime } from 'luxon';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { TZ_OVERRIDE } from 'ngx-tw/calendar';
+import { NativeDateAdapter, TZ_OVERRIDE } from 'ngx-tw/calendar';
 import { LuxonDateAdapter } from './luxon-date-adapter';
 
 /**
@@ -40,18 +40,15 @@ describe('LuxonDateAdapter', () => {
       const date = adapter.create(2026, 1, 1);
       expect(adapter.getYear(date)).toBe(2026);
       expect(adapter.getDate(date)).toBe(1);
-      // NOTE: `getMonth` on the Luxon adapter currently returns the 1-based
-      // month (Luxon's native convention). The abstract `DateAdapter` contract
-      // documents `month` as zero-based, and the `NativeDateAdapter` returns
-      // zero-based — this is a known parity gap; see source comment in
-      // `luxon-date-adapter.ts`.
-      expect(adapter.getMonth(date)).toBe(1);
+      // `create()` is 1-based; `getMonth()` returns 0-based per the abstract
+      // contract and the `NativeDateAdapter`.
+      expect(adapter.getMonth(date)).toBe(0);
     });
 
     it('treats month=12 as December', () => {
       const date = adapter.create(2026, 12, 31);
       expect(adapter.getYear(date)).toBe(2026);
-      expect(adapter.getMonth(date)).toBe(12);
+      expect(adapter.getMonth(date)).toBe(11);
       expect(adapter.getDate(date)).toBe(31);
     });
 
@@ -129,7 +126,7 @@ describe('LuxonDateAdapter', () => {
       const date = adapter.create(2026, 6, 15);
       const next = adapter.addYears(date, 2);
       expect(adapter.getYear(next)).toBe(2028);
-      expect(adapter.getMonth(next)).toBe(6); // June (1-based)
+      expect(adapter.getMonth(next)).toBe(5); // June (0-based)
       expect(adapter.getDate(next)).toBe(15);
     });
 
@@ -137,35 +134,35 @@ describe('LuxonDateAdapter', () => {
       const date = adapter.create(2026, 11, 10);
       const next = adapter.addMonths(date, 3);
       expect(adapter.getYear(next)).toBe(2027);
-      expect(adapter.getMonth(next)).toBe(2); // February (1-based)
+      expect(adapter.getMonth(next)).toBe(1); // February (0-based)
       expect(adapter.getDate(next)).toBe(10);
     });
 
     it('addMonths clamps day-of-month when target month is shorter (Jan 31 + 1 = Feb 28)', () => {
       const jan31 = adapter.create(2026, 1, 31);
       const feb = adapter.addMonths(jan31, 1);
-      expect(adapter.getMonth(feb)).toBe(2); // February (1-based)
+      expect(adapter.getMonth(feb)).toBe(1); // February (0-based)
       expect(adapter.getDate(feb)).toBe(28);
     });
 
     it('addMonths clamps day-of-month into Feb 29 on leap years', () => {
       const jan31 = adapter.create(2024, 1, 31);
       const feb = adapter.addMonths(jan31, 1);
-      expect(adapter.getMonth(feb)).toBe(2);
+      expect(adapter.getMonth(feb)).toBe(1);
       expect(adapter.getDate(feb)).toBe(29);
     });
 
     it('addDays rolls over month boundaries', () => {
       const date = adapter.create(2026, 1, 30);
       const next = adapter.addDays(date, 5);
-      expect(adapter.getMonth(next)).toBe(2); // February (1-based)
+      expect(adapter.getMonth(next)).toBe(1); // February (0-based)
       expect(adapter.getDate(next)).toBe(4);
     });
 
     it('addDays accepts negative deltas', () => {
       const date = adapter.create(2026, 3, 1);
       const prev = adapter.addDays(date, -1);
-      expect(adapter.getMonth(prev)).toBe(2); // February
+      expect(adapter.getMonth(prev)).toBe(1); // February (0-based)
       expect(adapter.getDate(prev)).toBe(28);
     });
 
@@ -283,7 +280,7 @@ describe('LuxonDateAdapter', () => {
       expect(parsed).not.toBeNull();
       expect(adapter.isValid(parsed!)).toBe(true);
       expect(adapter.getYear(parsed!)).toBe(2026);
-      expect(adapter.getMonth(parsed!)).toBe(4);
+      expect(adapter.getMonth(parsed!)).toBe(3); // April (0-based)
       expect(adapter.getDate(parsed!)).toBe(26);
     });
 
@@ -368,7 +365,7 @@ describe('LuxonDateAdapter', () => {
       const start = tzAdapter.startOfDay(dstAfternoon);
       expect(start.zoneName).toBe('America/New_York');
       expect(tzAdapter.getYear(start)).toBe(2024);
-      expect(tzAdapter.getMonth(start)).toBe(3);
+      expect(tzAdapter.getMonth(start)).toBe(2); // March (0-based)
       expect(tzAdapter.getDate(start)).toBe(10);
       expect(tzAdapter.getHours(start)).toBe(0);
       expect(tzAdapter.getMinutes(start)).toBe(0);
@@ -575,7 +572,7 @@ describe('LuxonDateAdapter', () => {
       const parsed = adapter.parse('2026-04-26');
       expect(parsed).not.toBeNull();
       expect(adapter.getYear(parsed!)).toBe(2026);
-      expect(adapter.getMonth(parsed!)).toBe(4);
+      expect(adapter.getMonth(parsed!)).toBe(3); // April (0-based)
       expect(adapter.getDate(parsed!)).toBe(26);
     });
 
@@ -637,7 +634,7 @@ describe('LuxonDateAdapter', () => {
       const today = tzAdapter.today();
       expect(today.zoneName).toBe('America/New_York');
       expect(tzAdapter.getYear(today)).toBe(2026);
-      expect(tzAdapter.getMonth(today)).toBe(4);
+      expect(tzAdapter.getMonth(today)).toBe(3); // April (0-based)
       expect(tzAdapter.getDate(today)).toBe(25);
     });
   });
@@ -741,8 +738,29 @@ describe('LuxonDateAdapter', () => {
   // ── getFirstDayOfWeek() ───────────────────────────────────────────────────
 
   describe('getFirstDayOfWeek()', () => {
-    it('defaults to Sunday (0) to match the Native adapter', () => {
+    it('returns 0 (Sunday) for en-US', () => {
+      adapter.setLocale('en-US');
       expect(adapter.getFirstDayOfWeek()).toBe(0);
+    });
+
+    it('returns 1 (Monday) for fr-FR', () => {
+      adapter.setLocale('fr-FR');
+      expect(adapter.getFirstDayOfWeek()).toBe(1);
+    });
+
+    it('returns 6 (Saturday) for ar-EG', () => {
+      // Arabic (Egypt) — CLDR firstDay is Saturday.
+      adapter.setLocale('ar-EG');
+      expect(adapter.getFirstDayOfWeek()).toBe(6);
+    });
+
+    it('matches NativeDateAdapter for the same locales', () => {
+      const native = new NativeDateAdapter();
+      for (const loc of ['en-US', 'fr-FR', 'ar-EG', 'de-DE', 'ja-JP']) {
+        adapter.setLocale(loc);
+        native.setLocale(loc);
+        expect(adapter.getFirstDayOfWeek()).toBe(native.getFirstDayOfWeek());
+      }
     });
   });
 });
