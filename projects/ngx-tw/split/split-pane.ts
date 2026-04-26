@@ -65,6 +65,13 @@ export class TwSplitPane {
 
   /**
    * @internal
+   * Current size in the container's unit. Written by the parent TwSplit.
+   * Not part of the public API.
+   */
+  readonly _size = signal(0);
+
+  /**
+   * @internal
    * Written by the parent TwSplit to reflect collapsed state on the host.
    * Not part of the public API.
    */
