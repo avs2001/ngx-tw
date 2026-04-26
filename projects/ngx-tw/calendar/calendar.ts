@@ -62,6 +62,12 @@ import type {
   ViewChangeEvent,
 } from './calendar.types';
 import { emptyCalendarValue, YEARS_PER_PAGE } from './calendar.types';
+import {
+  deriveSelectionStateFromValue,
+  isEmptyCalendarValue,
+  isPartialRangeValue,
+  matchesModeShape,
+} from './calendar-cva-utils';
 import { calendarValidator } from './calendar-validators';
 import { DateAdapter, DATE_ADAPTER } from './date-adapter';
 import { MonthViewComponent } from './month-view';
@@ -746,7 +752,7 @@ export class CalendarComponent<
 
   /** @internal `ControlValueAccessor` — writes a value from a reactive / template-driven form. Wrong-shape writes preserve the prior value per §7.2. Programmatic writes during SELECTING discard the draft per §11.1. */
   writeValue(incoming: unknown): void {
-    this._hadValueBeforeLastWrite = !this.isEmpty(this.value());
+    this._hadValueBeforeLastWrite = !isEmptyCalendarValue(this.value());
     const mode = this.mode() as M;
 
     // Phase 6 — programmatic write during SELECTING discards the in-flight draft.
@@ -768,7 +774,7 @@ export class CalendarComponent<
       return;
     }
 
-    if (!this.matchesModeShape(mode, incoming)) {
+    if (!matchesModeShape(mode, incoming)) {
       if (isDevMode() && !this._warnedShapeMismatch) {
         this._warnedShapeMismatch = true;
         console.warn(
@@ -785,25 +791,22 @@ export class CalendarComponent<
 
     // Phase 6 — reject SELECTING-shaped programmatic writes (`{ start: D, end: null }`)
     // for `mode: 'range'`; only EMPTY or COMPLETE shapes are valid form values.
-    if (mode === 'range') {
-      const r = incoming as { start: unknown; end: unknown };
-      if (r.start != null && r.end == null) {
-        if (isDevMode() && !this._warnedShapeMismatch) {
-          this._warnedShapeMismatch = true;
-          console.warn(
-            '[tw-calendar] writeValue received a partial range `{start, end: null}` — only fully committed ranges are valid form values. Preserving the prior value; the form control will report calendarInvalidValue.',
-            incoming,
-          );
-        }
-        this._lastInvalidFormValue.set(incoming);
-        this.validatorOnChange();
-        return;
+    if (mode === 'range' && isPartialRangeValue(incoming)) {
+      if (isDevMode() && !this._warnedShapeMismatch) {
+        this._warnedShapeMismatch = true;
+        console.warn(
+          '[tw-calendar] writeValue received a partial range `{start, end: null}` — only fully committed ranges are valid form values. Preserving the prior value; the form control will report calendarInvalidValue.',
+          incoming,
+        );
       }
+      this._lastInvalidFormValue.set(incoming);
+      this.validatorOnChange();
+      return;
     }
 
     const normalized = incoming as CalendarValue<M, D>;
     this.value.set(normalized);
-    this._selectionState.set(this.deriveSelectionState(normalized));
+    this._selectionState.set(deriveSelectionStateFromValue<M, D>(normalized));
     this.internalDraftValue.set(null);
     if (wasSelecting) this.selectionCleared.emit({ reason: 'programmatic' });
     if (this._lastInvalidFormValue() !== null) {
@@ -855,26 +858,6 @@ export class CalendarComponent<
     // the control touched.
     if (related && host.contains(related)) return;
     this.cvaOnTouched();
-  }
-
-  /** `true` when `value` matches the shape expected for `mode`. `null` / `undefined` is handled upstream. */
-  private matchesModeShape(mode: CalendarMode, value: unknown): boolean {
-    if (mode === 'single') {
-      if (Array.isArray(value)) return false;
-      if (typeof value === 'object' && value !== null) {
-        const r = value as Record<string, unknown>;
-        if ('start' in r && 'end' in r) return false;
-      }
-      return true;
-    }
-    if (mode === 'multiple') {
-      return Array.isArray(value);
-    }
-    // range
-    if (typeof value !== 'object' || value === null) return false;
-    if (Array.isArray(value)) return false;
-    const range = value as Record<string, unknown>;
-    return 'start' in range && 'end' in range;
   }
 
   // ---------------------------------------------------------------------------
@@ -1154,7 +1137,7 @@ export class CalendarComponent<
   /** Clears the current selection. Alias: `clearSelection`. */
   clear(): void {
     if (this.effectiveReadonly()) return;
-    const had = !this.isEmpty(this.value());
+    const had = !isEmptyCalendarValue(this.value());
     const empty = emptyCalendarValue<M, D>(this.mode() as M);
     const hadPreset = this._selectedPresetId() !== null;
     this.value.set(empty);
@@ -1649,7 +1632,7 @@ export class CalendarComponent<
     this.internalDraftValue.set(null);
     this._hoveredDate.set(null);
 
-    if (this.isEmpty(this.value())) {
+    if (isEmptyCalendarValue(this.value())) {
       this._selectionState.set('EMPTY');
     }
 
@@ -1673,7 +1656,7 @@ export class CalendarComponent<
   // ---------------------------------------------------------------------------
 
   private onModeChanged(from: CalendarMode, to: CalendarMode): void {
-    const hadValue = !this.isEmpty(this.value());
+    const hadValue = !isEmptyCalendarValue(this.value());
     const hadPreset = this._selectedPresetId() !== null;
 
     // Canonical emit order per §11.2:
@@ -1732,20 +1715,4 @@ export class CalendarComponent<
     this.liveAnnouncement.set(intl.navigatedTo(direction, this.periodLabel()));
   }
 
-  /** Derives selection state from a value shape. Used by `writeValue` to reconcile. */
-  private deriveSelectionState(value: CalendarValue<M, D>): CalendarSelectionState {
-    if (this.isEmpty(value)) return 'EMPTY';
-    return 'COMPLETE';
-  }
-
-  /** `true` when `value` is the mode-specific empty. */
-  private isEmpty(value: unknown): boolean {
-    if (value == null) return true;
-    if (Array.isArray(value)) return value.length === 0;
-    if (typeof value === 'object' && 'start' in (value as object) && 'end' in (value as object)) {
-      const r = value as { start: unknown; end: unknown };
-      return r.start == null && r.end == null;
-    }
-    return false;
-  }
 }
