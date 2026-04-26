@@ -1,5 +1,6 @@
 import {
   Injectable,
+  isDevMode,
   type EnvironmentProviders,
   type Provider,
   makeEnvironmentProviders,
@@ -13,6 +14,16 @@ export interface TwNativeDateFormat {
 }
 
 const MS_PER_MINUTE = 60_000;
+
+const warnedLocales = new Set<string>();
+function warnUnresolvableLocaleOnce(locale: string): void {
+  if (!isDevMode() || warnedLocales.has(locale)) return;
+  warnedLocales.add(locale);
+  // eslint-disable-next-line no-console
+  console.warn(
+    `[ngx-tw/calendar] Locale "${locale}" is unknown to Intl.Locale.getWeekInfo(); falling back to Monday (1) as the first day of week (§19.2).`,
+  );
+}
 
 /** `Intl`-driven `Date` adapter. Zero runtime dependencies. */
 @Injectable()
@@ -102,7 +113,27 @@ export class NativeDateAdapter extends DateAdapter<Date> {
   }
 
   getFirstDayOfWeek(): number {
-    return 0;
+    // §19.2: derive from `Intl.Locale.getWeekInfo()` when available; fallback to
+    // Monday (1) and emit a single dev-mode warning when the locale is unknown
+    // to `Intl.Locale`. ICU/CLDR returns 1=Monday … 7=Sunday — we normalize to
+    // the project's 0=Sunday … 6=Saturday convention.
+    if (typeof Intl !== 'undefined' && typeof Intl.Locale === 'function') {
+      try {
+        const l = new Intl.Locale(this.locale) as Intl.Locale & {
+          getWeekInfo?: () => { firstDay: number };
+          weekInfo?: { firstDay: number };
+        };
+        const info = (l.getWeekInfo?.() ?? l.weekInfo) as { firstDay: number } | undefined;
+        if (info && typeof info.firstDay === 'number') {
+          return info.firstDay === 7 ? 0 : info.firstDay;
+        }
+      } catch {
+        warnUnresolvableLocaleOnce(this.locale);
+        return 1;
+      }
+    }
+    warnUnresolvableLocaleOnce(this.locale);
+    return 1;
   }
 
   getMonthNames(style: TwDateNameStyle): string[] {

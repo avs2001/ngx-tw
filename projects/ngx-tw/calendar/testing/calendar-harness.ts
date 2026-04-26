@@ -3,7 +3,7 @@ import type { BaseHarnessFilters } from '@angular/cdk/testing';
 import { CalendarCellHarness, type CalendarCellHarnessFilters } from './calendar-cell-harness';
 
 /** The available calendar views, mirrored so consumers don't have to import from the library's main entry point. */
-export type CalendarHarnessView = 'month' | 'year' | 'multi-year';
+export type CalendarHarnessView = 'day' | 'month' | 'year';
 
 /** Filters accepted by `CalendarHarness.with`. */
 export type CalendarHarnessFilters = BaseHarnessFilters;
@@ -50,7 +50,7 @@ export class CalendarHarness extends ComponentHarness {
   }
 
   /**
-   * Click the period label button to move up one view (`month` → `year` → `multi-year`).
+   * Click the period label button to move up one view (`day` → `month` → `year`).
    * Accepts an optional `target` to call it multiple times until the current view matches.
    */
   async switchView(target?: CalendarHarnessView): Promise<void> {
@@ -68,11 +68,11 @@ export class CalendarHarness extends ComponentHarness {
 
   /** Identify the currently rendered view by inspecting which view component is present. */
   async getCurrentView(): Promise<CalendarHarnessView> {
-    const month = await this.locatorForOptional('tw-calendar-month-view')();
+    const day = await this.locatorForOptional('tw-calendar-month-view')();
+    if (day) return 'day';
+    const month = await this.locatorForOptional('tw-calendar-year-view')();
     if (month) return 'month';
-    const year = await this.locatorForOptional('tw-calendar-year-view')();
-    if (year) return 'year';
-    return 'multi-year';
+    return 'year';
   }
 
   /** All cell harnesses in the currently rendered view. */

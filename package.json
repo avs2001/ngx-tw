@@ -38,12 +38,21 @@
     "rxjs": "~7.8.0",
     "tslib": "^2.3.0"
   },
+  "peerDependencies": {
+    "luxon": "^3.0.0"
+  },
+  "peerDependenciesMeta": {
+    "luxon": {
+      "optional": true
+    }
+  },
   "devDependencies": {
     "@angular/build": "^21.2.7",
     "@angular/cli": "^21.0.1",
     "@angular/compiler-cli": "^21.0.0",
     "@playwright/test": "1.59.1",
     "@tailwindcss/postcss": "^4.1.12",
+    "@types/luxon": "^3.4.2",
     "@typescript-eslint/eslint-plugin": "^8.59.0",
     "@typescript-eslint/parser": "^8.59.0",
     "angular-eslint": "^21.3.1",

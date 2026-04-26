@@ -101,10 +101,10 @@ export class CalendarHeaderComponent {
   readonly periodAriaLabel: InputSignal<string> = input.required<string>();
 
   /** Accessible label for the previous button. */
-  readonly prevAriaLabel: InputSignal<string> = input<string>('Previous');
+  readonly prevAriaLabel: InputSignal<string> = input.required<string>();
 
   /** Accessible label for the next button. */
-  readonly nextAriaLabel: InputSignal<string> = input<string>('Next');
+  readonly nextAriaLabel: InputSignal<string> = input.required<string>();
 
   /** Disables the previous button. */
   readonly prevDisabled: InputSignal<boolean> = input<boolean>(false);

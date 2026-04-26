@@ -1,8 +1,30 @@
 export { CalendarComponent } from './calendar';
 
+export {
+  CalendarSingleDirective,
+  CalendarMultipleDirective,
+  CalendarRangeDirective,
+} from './calendar-form-directives';
+
+export {
+  calendarValidator,
+  calendarRequiredValidator,
+  isCalendarValueEmpty,
+} from './calendar-validators';
+export type { CalendarValidatorContext } from './calendar-validators';
+
 export { TwCalendarPresets } from './calendar-presets';
 
 export { CalendarHeaderComponent } from './calendar-header';
+
+// §19.4 — i18n surface
+export { CalendarIntl, provideCalendarIntl } from './calendar-intl';
+export type { CalendarCellAccessibleNameContext } from './calendar-intl';
+export { de } from './calendar-intl-de';
+export { fr } from './calendar-intl-fr';
+export { es } from './calendar-intl-es';
+export { pt } from './calendar-intl-pt';
+export { ja } from './calendar-intl-ja';
 
 export { CalendarCellComponent } from './calendar-cell';
 export type { CalendarCellKeyNavEvent } from './calendar-cell';
