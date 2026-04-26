@@ -64,6 +64,8 @@ export type {
   NameStyle,
   DateFilterFn,
   DateClassFn,
+  DisabledDates,
+  CalendarConstraints,
 } from './calendar.types';
 
 export {

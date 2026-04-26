@@ -1014,6 +1014,143 @@ describe('CalendarComponent', () => {
     });
   });
 
+  // ── Consolidated `constraints` shorthand (§10.1) ──
+  //
+  // Mirrors the individual-input suite above but feeds every constraint via the
+  // shorthand `constraints` object input. Both forms are first-class — and an
+  // individual input non-null value wins over the same field inside the
+  // shorthand object, so a consumer can pass a base preset and override one
+  // field per call site.
+
+  describe('constraints input (consolidated)', () => {
+    function setupCalendar(mode: CalendarMode = 'single'): {
+      fixture: ComponentFixture<CalendarComponent<CalendarMode, Date>>;
+      calendar: CalendarComponent<CalendarMode, Date>;
+    } {
+      const fixture = TestBed.createComponent<CalendarComponent<CalendarMode, Date>>(
+        CalendarComponent as unknown as new () => CalendarComponent<CalendarMode, Date>,
+      );
+      fixture.componentRef.setInput('startAt', new Date(2026, 3, 26));
+      fixture.componentRef.setInput('mode', mode);
+      fixture.detectChanges();
+      return { fixture, calendar: fixture.componentInstance };
+    }
+
+    function getDayCellByText(
+      fixture: ComponentFixture<unknown>,
+      dayText: string,
+    ): HTMLButtonElement | null {
+      return getDayCell(fixture, dayText);
+    }
+
+    function isCellDisabled(button: HTMLButtonElement | null): boolean {
+      if (!button) return false;
+      return button.getAttribute('aria-disabled') === 'true' || button.disabled;
+    }
+
+    it('disables cells before constraints.minDate', () => {
+      const { fixture } = setupCalendar('single');
+      fixture.componentRef.setInput('constraints', { minDate: new Date(2026, 3, 15) });
+      fixture.detectChanges();
+
+      expect(isCellDisabled(getDayCellByText(fixture, '14'))).toBe(true);
+      expect(isCellDisabled(getDayCellByText(fixture, '10'))).toBe(true);
+      expect(isCellDisabled(getDayCellByText(fixture, '15'))).toBe(false);
+      expect(isCellDisabled(getDayCellByText(fixture, '20'))).toBe(false);
+    });
+
+    it('disables cells after constraints.maxDate', () => {
+      const { fixture } = setupCalendar('single');
+      fixture.componentRef.setInput('constraints', { maxDate: new Date(2026, 3, 20) });
+      fixture.detectChanges();
+
+      expect(isCellDisabled(getDayCellByText(fixture, '21'))).toBe(true);
+      expect(isCellDisabled(getDayCellByText(fixture, '30'))).toBe(true);
+      expect(isCellDisabled(getDayCellByText(fixture, '20'))).toBe(false);
+      expect(isCellDisabled(getDayCellByText(fixture, '15'))).toBe(false);
+    });
+
+    it('disables specific dates when supplied via constraints.disabledDates (array form)', () => {
+      const { fixture } = setupCalendar('single');
+      fixture.componentRef.setInput('constraints', {
+        disabledDates: [new Date(2026, 3, 10), new Date(2026, 3, 17)],
+      });
+      fixture.detectChanges();
+
+      expect(isCellDisabled(getDayCellByText(fixture, '10'))).toBe(true);
+      expect(isCellDisabled(getDayCellByText(fixture, '17'))).toBe(true);
+      expect(isCellDisabled(getDayCellByText(fixture, '11'))).toBe(false);
+    });
+
+    it('disables weekends when supplied via constraints.disabledDaysOfWeek=[0,6]', () => {
+      const { fixture } = setupCalendar('single');
+      fixture.componentRef.setInput('constraints', { disabledDaysOfWeek: [0, 6] });
+      fixture.detectChanges();
+
+      // April 2026: Apr 4 = Sat, Apr 5 = Sun, Apr 11 = Sat, Apr 12 = Sun.
+      expect(isCellDisabled(getDayCellByText(fixture, '4'))).toBe(true);
+      expect(isCellDisabled(getDayCellByText(fixture, '5'))).toBe(true);
+      expect(isCellDisabled(getDayCellByText(fixture, '11'))).toBe(true);
+      expect(isCellDisabled(getDayCellByText(fixture, '12'))).toBe(true);
+      expect(isCellDisabled(getDayCellByText(fixture, '6'))).toBe(false);
+      expect(isCellDisabled(getDayCellByText(fixture, '8'))).toBe(false);
+    });
+
+    it('disables filtered cells when supplied via constraints.dateFilter', () => {
+      const { fixture } = setupCalendar('single');
+      const evenOnly: DateFilterFn<Date> = (d) => d.getDate() % 2 === 0;
+      fixture.componentRef.setInput('constraints', { dateFilter: evenOnly });
+      fixture.detectChanges();
+
+      expect(isCellDisabled(getDayCellByText(fixture, '1'))).toBe(true);
+      expect(isCellDisabled(getDayCellByText(fixture, '3'))).toBe(true);
+      expect(isCellDisabled(getDayCellByText(fixture, '2'))).toBe(false);
+      expect(isCellDisabled(getDayCellByText(fixture, '4'))).toBe(false);
+    });
+
+    it('individual minDate input wins when both [constraints] and [minDate] are set', () => {
+      // `constraints.minDate` would block dates before April 5.
+      // The individual `minDate` input raises the floor to April 20. Cells
+      // between April 5–19 must remain disabled because the individual input wins.
+      const { fixture } = setupCalendar('single');
+      fixture.componentRef.setInput('constraints', { minDate: new Date(2026, 3, 5) });
+      fixture.componentRef.setInput('minDate', new Date(2026, 3, 20));
+      fixture.detectChanges();
+
+      expect(isCellDisabled(getDayCellByText(fixture, '6'))).toBe(true);
+      expect(isCellDisabled(getDayCellByText(fixture, '15'))).toBe(true);
+      expect(isCellDisabled(getDayCellByText(fixture, '19'))).toBe(true);
+      expect(isCellDisabled(getDayCellByText(fixture, '20'))).toBe(false);
+      expect(isCellDisabled(getDayCellByText(fixture, '25'))).toBe(false);
+    });
+
+    it('enforces every field when constraints supplies all five at once', () => {
+      const { fixture } = setupCalendar('single');
+      const evenOnly: DateFilterFn<Date> = (d) => d.getDate() % 2 === 0;
+      fixture.componentRef.setInput('constraints', {
+        minDate: new Date(2026, 3, 2),
+        maxDate: new Date(2026, 3, 28),
+        disabledDates: [new Date(2026, 3, 10)],
+        disabledDaysOfWeek: [0, 6], // Sat + Sun
+        dateFilter: evenOnly, // odd days disabled
+      });
+      fixture.detectChanges();
+
+      // minDate boundary (Apr 1 < 2 is disabled).
+      expect(isCellDisabled(getDayCellByText(fixture, '1'))).toBe(true);
+      // maxDate boundary (Apr 30 > 28 is disabled).
+      expect(isCellDisabled(getDayCellByText(fixture, '30'))).toBe(true);
+      // disabledDates entry.
+      expect(isCellDisabled(getDayCellByText(fixture, '10'))).toBe(true);
+      // disabledDaysOfWeek — Apr 4 is Saturday.
+      expect(isCellDisabled(getDayCellByText(fixture, '4'))).toBe(true);
+      // dateFilter — Apr 7 is odd.
+      expect(isCellDisabled(getDayCellByText(fixture, '7'))).toBe(true);
+      // Apr 8 satisfies every constraint (even, weekday, in range, not disabled).
+      expect(isCellDisabled(getDayCellByText(fixture, '8'))).toBe(false);
+    });
+  });
+
   // ── Keyboard navigation (month view, §16) ──
   //
   // Keyboard events are dispatched on the active cell button (the one with

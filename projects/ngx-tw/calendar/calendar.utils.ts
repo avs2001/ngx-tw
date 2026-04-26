@@ -110,12 +110,12 @@ export function resolveDateDisabled<D>(
 ): boolean {
   return isDateDisabled(
     date,
-    constraints.minDate,
-    constraints.maxDate,
-    constraints.dateFilter,
+    constraints.minDate ?? null,
+    constraints.maxDate ?? null,
+    constraints.dateFilter ?? null,
     adapter,
-    constraints.disabledDates,
-    constraints.disabledDaysOfWeek,
+    constraints.disabledDates ?? null,
+    constraints.disabledDaysOfWeek ?? [],
   );
 }
 

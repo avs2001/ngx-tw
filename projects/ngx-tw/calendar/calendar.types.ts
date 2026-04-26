@@ -278,13 +278,24 @@ export type DateFilterFn<D> = (date: D) => boolean;
  */
 export type DisabledDates<D> = readonly D[] | ((date: D) => boolean);
 
-/** Aggregated constraint inputs consumed by the constraint resolver. */
+/**
+ * Aggregated constraint inputs (§10.1). Doubles as the shorthand object accepted by
+ * `CalendarComponent`'s `constraints` input — every field is optional so consumers can
+ * supply only what they need (e.g. `{ minDate, maxDate }` or `{ dateFilter }`). The
+ * orchestrator's resolver normalizes missing fields to neutral values (`null` /
+ * empty array) before evaluating cell state.
+ *
+ * Resolution rule on the `constraints` input: the individual `minDate` / `maxDate` /
+ * `disabledDates` / `disabledDaysOfWeek` / `dateFilter` inputs win when both are set
+ * non-null. This lets a consumer pass `[constraints]="defaults"` for a base set and
+ * still override one field via the dedicated input.
+ */
 export interface CalendarConstraints<D> {
-  readonly minDate: D | null;
-  readonly maxDate: D | null;
-  readonly disabledDates: DisabledDates<D> | null;
-  readonly disabledDaysOfWeek: readonly number[];
-  readonly dateFilter: DateFilterFn<D> | null;
+  readonly minDate?: D | null;
+  readonly maxDate?: D | null;
+  readonly disabledDates?: DisabledDates<D> | null;
+  readonly disabledDaysOfWeek?: readonly number[] | null;
+  readonly dateFilter?: DateFilterFn<D> | null;
 }
 
 /** Function producing extra per-cell CSS classes. */

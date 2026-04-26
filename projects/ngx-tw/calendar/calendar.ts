@@ -178,11 +178,11 @@ const calendarVariants = tv(
             <tw-calendar-month-view
               [activeDate]="activeDate()!"
               [selected]="legacySelected()"
-              [minDate]="minDate()"
-              [maxDate]="maxDate()"
-              [dateFilter]="dateFilter()"
-              [disabledDates]="disabledDates()"
-              [disabledDaysOfWeek]="disabledDaysOfWeek()"
+              [minDate]="resolvedMinDate()"
+              [maxDate]="resolvedMaxDate()"
+              [dateFilter]="resolvedDateFilter()"
+              [disabledDates]="resolvedDisabledDates()"
+              [disabledDaysOfWeek]="resolvedDisabledDaysOfWeek()"
               [dateClass]="dateClass()"
               [cellTemplate]="cellTemplate()"
               [firstDayOfWeek]="computedFirstDayOfWeek()"
@@ -198,11 +198,11 @@ const calendarVariants = tv(
               <tw-calendar-month-view
                 [activeDate]="secondaryActiveDate()!"
                 [selected]="legacySelected()"
-                [minDate]="minDate()"
-                [maxDate]="maxDate()"
-                [dateFilter]="dateFilter()"
-                [disabledDates]="disabledDates()"
-                [disabledDaysOfWeek]="disabledDaysOfWeek()"
+                [minDate]="resolvedMinDate()"
+                [maxDate]="resolvedMaxDate()"
+                [dateFilter]="resolvedDateFilter()"
+                [disabledDates]="resolvedDisabledDates()"
+                [disabledDaysOfWeek]="resolvedDisabledDaysOfWeek()"
                 [dateClass]="dateClass()"
                 [cellTemplate]="cellTemplate()"
                 [firstDayOfWeek]="computedFirstDayOfWeek()"
@@ -221,8 +221,8 @@ const calendarVariants = tv(
           <tw-calendar-year-view
             [activeDate]="activeDate()!"
             [selected]="legacySelected()"
-            [minDate]="minDate()"
-            [maxDate]="maxDate()"
+            [minDate]="resolvedMinDate()"
+            [maxDate]="resolvedMaxDate()"
             [dateClass]="dateClass()"
             [cellTemplate]="cellTemplate()"
             [previewStart]="previewRange()?.start ?? null"
@@ -236,8 +236,8 @@ const calendarVariants = tv(
           <tw-calendar-years-view
             [activeDate]="activeDate()!"
             [selected]="legacySelected()"
-            [minDate]="minDate()"
-            [maxDate]="maxDate()"
+            [minDate]="resolvedMinDate()"
+            [maxDate]="resolvedMaxDate()"
             [dateClass]="dateClass()"
             [cellTemplate]="cellTemplate()"
             [previewStart]="previewRange()?.start ?? null"
@@ -336,6 +336,17 @@ export class CalendarComponent<
 
   /** Days of the week to disable (0=Sun … 6=Sat). Empty array = no day-of-week disabling. */
   readonly disabledDaysOfWeek: InputSignal<readonly number[]> = input<readonly number[]>([]);
+
+  /**
+   * Bundle of date constraints (§10.1). Lets a consumer pass `minDate`, `maxDate`,
+   * `disabledDates`, `disabledDaysOfWeek`, and `dateFilter` as a single object —
+   * useful for sharing a constraint preset across multiple calendars. Each field is
+   * optional. Individual inputs (`minDate`, `maxDate`, `disabledDates`,
+   * `disabledDaysOfWeek`, `dateFilter`) take precedence over fields here when both
+   * are set non-null.
+   */
+  readonly constraints: InputSignal<CalendarConstraints<D> | null> =
+    input<CalendarConstraints<D> | null>(null);
 
   /** Minimum range length in days, inclusive (`mode: 'range'` only). `null` = no minimum. */
   readonly minRangeLength: InputSignal<number | null> = input<number | null>(null);
@@ -654,11 +665,9 @@ export class CalendarComponent<
     effect(() => {
       this.mode();
       this._lastInvalidFormValue();
-      this.minDate();
-      this.maxDate();
-      this.dateFilter();
-      this.disabledDates();
-      this.disabledDaysOfWeek();
+      // `resolvedConstraints` transitively tracks `minDate`, `maxDate`, `dateFilter`,
+      // `disabledDates`, `disabledDaysOfWeek`, and the shorthand `constraints` input.
+      this.resolvedConstraints();
       this.minRangeLength();
       this.maxRangeLength();
       this.maxSelections();
@@ -823,7 +832,7 @@ export class CalendarComponent<
     const ctx = {
       mode: this.mode() as M,
       lastInvalidFormValue: this._lastInvalidFormValue(),
-      constraints: this.constraints(),
+      constraints: this.resolvedConstraints(),
       adapter: this.dateAdapter,
       minRangeLength: this.minRangeLength(),
       maxRangeLength: this.maxRangeLength(),
@@ -1067,7 +1076,7 @@ export class CalendarComponent<
   /** @internal */
   readonly prevDisabled: Signal<boolean> = computed(() => {
     const date = this._activeDate();
-    const minDate = this.minDate();
+    const minDate = this.resolvedMinDate();
     if (!minDate) return false;
     const view = this._viewState();
     const year = this.dateAdapter.getYear(date);
@@ -1090,7 +1099,7 @@ export class CalendarComponent<
   /** @internal */
   readonly nextDisabled: Signal<boolean> = computed(() => {
     const date = this._activeDate();
-    const maxDate = this.maxDate();
+    const maxDate = this.resolvedMaxDate();
     if (!maxDate) return false;
     const view = this._viewState();
     const year = this.dateAdapter.getYear(date);
@@ -1116,7 +1125,7 @@ export class CalendarComponent<
 
   /** Focuses `date` and optionally navigates the view to render it. */
   focusDate(date: D, opts?: { navigate?: boolean }): void {
-    const clamped = this.dateAdapter.clampDate(date, this.minDate(), this.maxDate());
+    const clamped = this.dateAdapter.clampDate(date, this.resolvedMinDate(), this.resolvedMaxDate());
     if (opts?.navigate) this._activeDate.set(clamped);
     this.activeDateChange.emit(clamped);
     this.focusActiveCell();
@@ -1132,7 +1141,7 @@ export class CalendarComponent<
 
   /** Navigates to a specific date (anchor). Does not emit a selection event. */
   goToDate(date: D): void {
-    const clamped = this.dateAdapter.clampDate(date, this.minDate(), this.maxDate());
+    const clamped = this.dateAdapter.clampDate(date, this.resolvedMinDate(), this.resolvedMaxDate());
     this._activeDate.set(clamped);
     this.activeDateChange.emit(clamped);
   }
@@ -1336,7 +1345,7 @@ export class CalendarComponent<
    * is permissive; `blockInvalidRangeCommit` is the v1.1 hardening hook).
    */
   private isPreviewInvalid(start: D, end: D): boolean {
-    const constraints = this.constraints();
+    const constraints = this.resolvedConstraints();
     // Endpoints already pass `enabled` check (you can't hover a disabled cell
     // and produce a preview), so we only need to look at the interior.
     if (rangeCrossesDisabled(start, end, constraints, this.dateAdapter, false)) return true;
@@ -1348,13 +1357,44 @@ export class CalendarComponent<
     return false;
   }
 
-  /** Aggregated constraint inputs as a single object — passed to the resolver and validator. */
-  private readonly constraints: Signal<CalendarConstraints<D>> = computed(() => ({
-    minDate: this.minDate(),
-    maxDate: this.maxDate(),
-    disabledDates: this.disabledDates(),
-    disabledDaysOfWeek: this.disabledDaysOfWeek(),
-    dateFilter: this.dateFilter(),
+  /**
+   * Resolved `minDate` — individual `minDate` input wins, then `constraints.minDate`,
+   * else `null`. Used by every internal min-date reader so the shorthand input is
+   * transparent to the rest of the component.
+   */
+  readonly resolvedMinDate: Signal<D | null> = computed(
+    () => this.minDate() ?? this.constraints()?.minDate ?? null,
+  );
+
+  /** Resolved `maxDate` — individual input wins, then `constraints.maxDate`, else `null`. */
+  readonly resolvedMaxDate: Signal<D | null> = computed(
+    () => this.maxDate() ?? this.constraints()?.maxDate ?? null,
+  );
+
+  /** Resolved `disabledDates` — individual input wins, then `constraints.disabledDates`, else `null`. */
+  readonly resolvedDisabledDates: Signal<DisabledDates<D> | null> = computed(
+    () => this.disabledDates() ?? this.constraints()?.disabledDates ?? null,
+  );
+
+  /** Resolved `disabledDaysOfWeek` — individual input wins (when non-empty), then `constraints.disabledDaysOfWeek`, else `[]`. */
+  readonly resolvedDisabledDaysOfWeek: Signal<readonly number[]> = computed(() => {
+    const own = this.disabledDaysOfWeek();
+    if (own.length > 0) return own;
+    return this.constraints()?.disabledDaysOfWeek ?? [];
+  });
+
+  /** Resolved `dateFilter` — individual input wins, then `constraints.dateFilter`, else `null`. */
+  readonly resolvedDateFilter: Signal<DateFilterFn<D> | null> = computed(
+    () => this.dateFilter() ?? this.constraints()?.dateFilter ?? null,
+  );
+
+  /** Aggregated, resolved constraint inputs — passed to the resolver and validator. */
+  private readonly resolvedConstraints: Signal<CalendarConstraints<D>> = computed(() => ({
+    minDate: this.resolvedMinDate(),
+    maxDate: this.resolvedMaxDate(),
+    disabledDates: this.resolvedDisabledDates(),
+    disabledDaysOfWeek: this.resolvedDisabledDaysOfWeek(),
+    dateFilter: this.resolvedDateFilter(),
   }));
 
   /** @internal — month-view cell activation (drill-down to day). */
@@ -1482,7 +1522,7 @@ export class CalendarComponent<
       rangeCrossesDisabled(
         rangeStart,
         rangeEnd,
-        this.constraints(),
+        this.resolvedConstraints(),
         this.dateAdapter,
         /* includeEndpoints */ false,
       )
@@ -1546,7 +1586,7 @@ export class CalendarComponent<
       rangeCrossesDisabled(
         nextStart,
         nextEnd,
-        this.constraints(),
+        this.resolvedConstraints(),
         this.dateAdapter,
         /* includeEndpoints */ false,
       )
