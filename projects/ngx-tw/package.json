@@ -29,7 +29,13 @@
     "@angular/core": "^21.2.0",
     "@angular/cdk": "^21.0.0",
     "tailwindcss": "^4.0.0",
-    "tailwind-variants": "^0.3.0"
+    "tailwind-variants": "^0.3.0",
+    "luxon": "^3.0.0"
+  },
+  "peerDependenciesMeta": {
+    "luxon": {
+      "optional": true
+    }
   },
   "dependencies": {
     "tslib": "^2.3.0"
