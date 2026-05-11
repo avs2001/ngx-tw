@@ -19,11 +19,12 @@ export default defineConfig({
   /* Auto-start the demo dev server so `npm run e2e` is self-contained. */
   webServer: {
     command: 'npm start',
-    // Use 127.0.0.1 for the readiness probe — on hosts where `localhost`
-    // resolves to IPv6 (::1) but ng serve binds IPv4, the probe spins to
-    // timeout with ECONNREFUSED. The baseURL under `use` can stay as
-    // `localhost` for ergonomics; they don't need to match.
-    url: 'http://127.0.0.1:4600',
+    // Probe `localhost` rather than a single-family literal so the readiness
+    // check works regardless of which address family `ng serve` binds. On
+    // macOS today the dev server listens on `::1` only; on some CI runners
+    // it has historically bound IPv4 only. Node's `localhost` resolution
+    // tries both families, so this URL works in both directions.
+    url: 'http://localhost:4600',
     reuseExistingServer: !process.env['CI'],
     timeout: 180_000,
   },
