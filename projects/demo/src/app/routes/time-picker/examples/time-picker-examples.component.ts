@@ -188,7 +188,7 @@ function fmt(d: Date | null | undefined): string {
           <p class="text-xs font-medium text-fg-muted mb-2 uppercase tracking-wide">With seconds</p>
           <tw-time-picker format="24h" [showSeconds]="true" [(value)]="formatDemoValue" aria-label="Time with seconds" />
         </div>
-        <p class="text-xs text-fg-muted pt-2 border-t border-border-muted font-mono">
+        <p data-testid="output-format" class="text-xs text-fg-muted pt-2 border-t border-border-muted font-mono">
           value = {{ fmt(formatDemoValue()) }}
         </p>
       </div>
@@ -241,7 +241,7 @@ function fmt(d: Date | null | undefined): string {
           [maxTime]="businessClose"
           aria-label="Meeting time"
         />
-        <p class="text-xs text-fg-muted font-mono">meeting = {{ fmt(businessHours()) }}</p>
+        <p data-testid="output-min-max" class="text-xs text-fg-muted font-mono">meeting = {{ fmt(businessHours()) }}</p>
       </div>
       <tw-code-block [code]="minMaxSnippet" language="html" />
     </section>
@@ -289,7 +289,7 @@ function fmt(d: Date | null | undefined): string {
           <tw-time-picker name="callTime" [(ngModel)]="callTime" format="12h" />
           <span twHint>When we can reach you.</span>
         </tw-form-field>
-        <p class="text-xs text-fg-muted mt-3 font-mono">callTime = {{ fmt(callTime) }}</p>
+        <p data-testid="output-td-forms" class="text-xs text-fg-muted mt-3 font-mono">callTime = {{ fmt(callTime) }}</p>
       </div>
       <div class="space-y-3">
         <tw-code-block [code]="tdTsSnippet" language="ts" />
@@ -333,7 +333,7 @@ function fmt(d: Date | null | undefined): string {
             Clear
           </button>
         </div>
-        <pre class="text-xs font-mono mt-4 text-fg-muted">{{
+        <pre data-testid="output-reactive-forms" class="text-xs font-mono mt-4 text-fg-muted">{{
           { value: alarmCtrl.value, status: alarmCtrl.status, touched: alarmCtrl.touched } | json
         }}</pre>
       </div>
@@ -361,7 +361,7 @@ function fmt(d: Date | null | undefined): string {
           <span twHint>Quarter-hour increments.</span>
           <span twError>Standup time is required.</span>
         </tw-form-field>
-        <p class="text-xs font-mono mt-3 text-fg-muted">
+        <p data-testid="output-signal-forms" class="text-xs font-mono mt-3 text-fg-muted">
           standupAt = {{ fmt(standupModel().standupAt) }} · valid =
           {{ standupForm().valid() }}
         </p>
@@ -464,7 +464,7 @@ function fmt(d: Date | null | undefined): string {
             [(value)]="playValue"
           />
         </div>
-        <p class="text-xs text-fg-muted mt-4 font-mono">value = {{ fmt(playValue()) }}</p>
+        <p data-testid="output-playground" class="text-xs text-fg-muted mt-4 font-mono">value = {{ fmt(playValue()) }}</p>
       </div>
     </section>
   `,

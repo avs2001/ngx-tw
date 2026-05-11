@@ -190,6 +190,11 @@ const NAV: NavGroup[] = [
         { label: 'Examples', path: '/components/spinner/examples' },
         { label: 'API', path: '/components/spinner/api' },
       ]},
+      { label: 'Split', children: [
+        { label: 'Overview', path: '/components/split/overview' },
+        { label: 'Examples', path: '/components/split/examples' },
+        { label: 'API', path: '/components/split/api' },
+      ]},
       { label: 'Stepper', children: [
         { label: 'Overview', path: '/components/stepper/overview' },
         { label: 'Examples', path: '/components/stepper/examples' },
@@ -262,7 +267,7 @@ const PRESETS: ColorPreset[] = [
   template: `
     <div class="flex h-screen bg-surface text-fg">
       <!-- ============== Sidebar ============== -->
-      <aside class="relative w-64 shrink-0 flex flex-col border-r border-border-muted bg-surface overflow-hidden">
+      <aside aria-label="Sidebar" class="relative w-64 shrink-0 flex flex-col border-r border-border-muted bg-surface overflow-hidden">
         <!-- Atmospheric layers -->
         <div class="sh-bloom"></div>
         <div class="sh-dotgrid absolute inset-0 opacity-60 pointer-events-none z-0"></div>
@@ -326,7 +331,7 @@ const PRESETS: ColorPreset[] = [
           </div>
 
           <!-- Navigation -->
-          <nav class="flex-1 overflow-y-auto sh-scroll px-4 pb-6">
+          <nav aria-label="Components" class="flex-1 overflow-y-auto sh-scroll px-4 pb-6">
             @for (group of filteredNav(); track group.category) {
               <section class="mb-5">
                 <div class="sh-rule flex items-center px-1 mb-2">

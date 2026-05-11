@@ -226,7 +226,7 @@ function fmtRangeWithTime(v: TwDateRange<Date> | null): string {
             [presets]="reportPresets"
             aria-label="Report period"
           />
-          <p class="text-xs text-fg-muted mt-3 font-mono">
+          <p data-testid="output-presets" class="text-xs text-fg-muted mt-3 font-mono">
             reportRange = {{ reportRangeLabel() }}
           </p>
         </div>
@@ -260,7 +260,7 @@ function fmtRangeWithTime(v: TwDateRange<Date> | null): string {
             [dateFilter]="weekdayFilter"
             aria-label="Vacation"
           />
-          <p class="text-xs text-fg-muted mt-2 font-mono">
+          <p data-testid="output-constraints" class="text-xs text-fg-muted mt-2 font-mono">
             vacation = {{ vacationLabel() }}
           </p>
         </div>
@@ -293,7 +293,7 @@ function fmtRangeWithTime(v: TwDateRange<Date> | null): string {
               [showTime]="true"
               aria-label="Meeting window"
             />
-            <p class="text-xs text-fg-muted mt-2 font-mono">
+            <p data-testid="output-with-time-24h" class="text-xs text-fg-muted mt-2 font-mono">
               meetingWindow = {{ meetingWindowLabel() }}
             </p>
           </div>
@@ -309,7 +309,7 @@ function fmtRangeWithTime(v: TwDateRange<Date> | null): string {
               color="accent"
               aria-label="Booking window"
             />
-            <p class="text-xs text-fg-muted mt-2 font-mono">
+            <p data-testid="output-with-time-12h" class="text-xs text-fg-muted mt-2 font-mono">
               bookingWindow = {{ bookingWindowLabel() }}
             </p>
           </div>
@@ -339,7 +339,7 @@ function fmtRangeWithTime(v: TwDateRange<Date> | null): string {
             size="lg"
             aria-label="Event range"
           />
-          <p class="text-xs text-fg-muted mt-3 font-mono">
+          <p data-testid="output-action-bar" class="text-xs text-fg-muted mt-3 font-mono">
             eventRange = {{ eventRangeLabel() }}
           </p>
         </div>
@@ -373,7 +373,7 @@ function fmtRangeWithTime(v: TwDateRange<Date> | null): string {
             />
             <span twHint>Pick a start and end day.</span>
           </tw-form-field>
-          <p class="text-xs text-fg-muted mt-3 font-mono">
+          <p data-testid="output-td-forms" class="text-xs text-fg-muted mt-3 font-mono">
             holiday = {{ holidayLabel() }}
           </p>
         </div>
@@ -423,7 +423,7 @@ function fmtRangeWithTime(v: TwDateRange<Date> | null): string {
               Clear
             </button>
           </div>
-          <pre class="text-xs font-mono mt-4 text-fg-muted">{{
+          <pre data-testid="output-reactive-forms" class="text-xs font-mono mt-4 text-fg-muted">{{
             { value: reportSnapshot(), status: reportCtrl.status, touched: reportCtrl.touched } | json
           }}</pre>
         </div>
@@ -458,7 +458,7 @@ function fmtRangeWithTime(v: TwDateRange<Date> | null): string {
             <span twHint>Start no earlier than today.</span>
             <span twError>Campaign window is required.</span>
           </tw-form-field>
-          <p class="text-xs font-mono mt-3 text-fg-muted">
+          <p data-testid="output-signal-forms" class="text-xs font-mono mt-3 text-fg-muted">
             window = {{ campaignLabel() }} · valid = {{ campaignForm().valid() }}
           </p>
         </div>
@@ -615,7 +615,7 @@ function fmtRangeWithTime(v: TwDateRange<Date> | null): string {
             aria-label="Playground"
             class="w-96"
           />
-          <p class="text-xs text-fg-muted mt-3 font-mono">
+          <p data-testid="output-playground" class="text-xs text-fg-muted mt-3 font-mono">
             value = {{ playLabel() }}
           </p>
         </div>

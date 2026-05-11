@@ -182,7 +182,7 @@ const SIZES: TwSize[] = ['xs', 'sm', 'md', 'lg', 'xl'];
           aria-label="Country"
           class="w-72"
         />
-        <p class="text-xs text-fg-muted mt-4 font-mono">selected = {{ searchValue() ?? 'null' }}</p>
+        <p data-testid="output-searchable" class="text-xs text-fg-muted mt-4 font-mono">selected = {{ searchValue() ?? 'null' }}</p>
       </div>
       <tw-code-block [code]="searchableSnippet" language="html" />
     </section>
@@ -210,7 +210,7 @@ const SIZES: TwSize[] = ['xs', 'sm', 'md', 'lg', 'xl'];
           color="accent"
           class="w-80"
         />
-        <p class="text-xs text-fg-muted mt-4 font-mono">
+        <p data-testid="output-multi-select" class="text-xs text-fg-muted mt-4 font-mono">
           selected = [{{ (tagValues() | json) }}]
         </p>
       </div>
@@ -312,7 +312,7 @@ const SIZES: TwSize[] = ['xs', 'sm', 'md', 'lg', 'xl'];
           aria-label="Fruit (template-driven)"
           class="w-64"
         />
-        <p class="text-xs text-fg-muted mt-3 font-mono">value = {{ tdFruit() ?? 'null' }}</p>
+        <p data-testid="output-td-forms" class="text-xs text-fg-muted mt-3 font-mono">value = {{ tdFruit() ?? 'null' }}</p>
         <div class="flex gap-2 mt-3">
           <button twButton variant="outline" color="neutral" size="xs" (click)="tdFruit.set('banana')">Set banana</button>
           <button twButton variant="outline" color="neutral" size="xs" (click)="tdFruit.set(null)">Clear</button>
@@ -348,7 +348,7 @@ const SIZES: TwSize[] = ['xs', 'sm', 'md', 'lg', 'xl'];
           aria-label="Fruit"
           class="w-64"
         />
-        <p class="text-xs text-fg-muted mt-3 font-mono">
+        <p data-testid="output-reactive-forms" class="text-xs text-fg-muted mt-3 font-mono">
           control.value = {{ reactiveCtrl.value ?? 'null' }} · disabled = {{ reactiveCtrl.disabled }}
         </p>
         <div class="flex gap-2 mt-3">
@@ -391,7 +391,7 @@ const SIZES: TwSize[] = ['xs', 'sm', 'md', 'lg', 'xl'];
           aria-label="Fruit (signal forms)"
           class="w-64"
         />
-        <p class="text-xs text-fg-muted mt-3 font-mono">
+        <p data-testid="output-signal-forms" class="text-xs text-fg-muted mt-3 font-mono">
           value = {{ signalForm.fruit().value() ?? 'null' }} ·
           touched = {{ signalForm.fruit().touched() }} ·
           valid = {{ signalForm.fruit().valid() }}
@@ -644,7 +644,7 @@ const SIZES: TwSize[] = ['xs', 'sm', 'md', 'lg', 'xl'];
             aria-label="Playground"
             class="w-80"
           />
-          <p class="text-xs text-fg-muted mt-3 font-mono">
+          <p data-testid="output-playground" class="text-xs text-fg-muted mt-3 font-mono">
             value = {{ playValue() === null ? 'null' : (playValue() | json) }}
           </p>
         </div>

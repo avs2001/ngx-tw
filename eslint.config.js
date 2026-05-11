@@ -2,6 +2,7 @@
 const eslint = require('@eslint/js');
 const tseslint = require('typescript-eslint');
 const angular = require('angular-eslint');
+const playwright = require('eslint-plugin-playwright');
 const prettier = require('eslint-config-prettier');
 
 module.exports = tseslint.config(
@@ -94,6 +95,11 @@ module.exports = tseslint.config(
       '@typescript-eslint/no-unused-vars': 'off',
       '@typescript-eslint/no-empty-function': 'off',
     },
+  },
+  {
+    // Playwright E2E specs and helpers.
+    files: ['e2e/**/*.ts'],
+    ...playwright.configs['flat/recommended'],
   },
   {
     files: ['**/*.html'],

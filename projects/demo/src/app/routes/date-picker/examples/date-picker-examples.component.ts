@@ -177,7 +177,7 @@ function isWeekday(d: Date): boolean {
             placeholder="Select a weekday"
             aria-label="Appointment"
           />
-          <p class="text-xs text-fg-muted mt-2 font-mono">
+          <p data-testid="output-constraints" class="text-xs text-fg-muted mt-2 font-mono">
             appointment = {{ appointmentLabel() }}
           </p>
         </div>
@@ -217,7 +217,7 @@ function isWeekday(d: Date): boolean {
               placeholder="Pick a date and time"
               aria-label="Meeting"
             />
-            <p class="text-xs text-fg-muted mt-2 font-mono">
+            <p data-testid="output-with-time-24h" class="text-xs text-fg-muted mt-2 font-mono">
               meeting = {{ meetingLabel() }}
             </p>
           </div>
@@ -234,7 +234,7 @@ function isWeekday(d: Date): boolean {
               placeholder="Pick a deadline"
               aria-label="Deadline"
             />
-            <p class="text-xs text-fg-muted mt-2 font-mono">
+            <p data-testid="output-with-time-12h" class="text-xs text-fg-muted mt-2 font-mono">
               deadline = {{ deadlineLabel() }}
             </p>
           </div>
@@ -264,7 +264,7 @@ function isWeekday(d: Date): boolean {
             placeholder="Pick event date"
             aria-label="Event date"
           />
-          <p class="text-xs text-fg-muted mt-3 font-mono">
+          <p data-testid="output-action-bar" class="text-xs text-fg-muted mt-3 font-mono">
             event = {{ eventLabel() }}
           </p>
         </div>
@@ -297,7 +297,7 @@ function isWeekday(d: Date): boolean {
             />
             <span twHint>Used for age-based offers.</span>
           </tw-form-field>
-          <p class="text-xs text-fg-muted mt-3 font-mono">
+          <p data-testid="output-td-forms" class="text-xs text-fg-muted mt-3 font-mono">
             birthday = {{ birthdayLabel() }}
           </p>
         </div>
@@ -346,7 +346,7 @@ function isWeekday(d: Date): boolean {
               Clear
             </button>
           </div>
-          <pre class="text-xs font-mono mt-4 text-fg-muted">{{
+          <pre data-testid="output-reactive-forms" class="text-xs font-mono mt-4 text-fg-muted">{{
             { value: deliveryCtrl.value, status: deliveryCtrl.status, touched: deliveryCtrl.touched } | json
           }}</pre>
         </div>
@@ -382,7 +382,7 @@ function isWeekday(d: Date): boolean {
             <span twHint>Must be today or later.</span>
             <span twError>Ship date is required.</span>
           </tw-form-field>
-          <p class="text-xs font-mono mt-3 text-fg-muted">
+          <p data-testid="output-signal-forms" class="text-xs font-mono mt-3 text-fg-muted">
             shipDate = {{ shipLabel() }} · valid = {{ shipForm().valid() }}
           </p>
         </div>
@@ -533,7 +533,7 @@ function isWeekday(d: Date): boolean {
             aria-label="Playground"
             class="w-80"
           />
-          <p class="text-xs text-fg-muted mt-3 font-mono">
+          <p data-testid="output-playground" class="text-xs text-fg-muted mt-3 font-mono">
             value = {{ playLabel() }}
           </p>
         </div>
