@@ -218,7 +218,7 @@ class UppercaseValueDirective {
     </section>
 
     <!-- Template-driven forms -->
-    <section class="mb-10">
+    <section class="mb-10" data-section="td">
       <h2 class="text-sm font-semibold mb-3">Template-Driven Forms</h2>
       <p class="text-sm text-fg-muted leading-relaxed max-w-2xl mb-4">
         Bind with
@@ -232,9 +232,32 @@ class UppercaseValueDirective {
       <div class="rounded-lg border border-border p-6 bg-surface-raised mb-4">
         <tw-form-field>
           <label twLabel>Display name</label>
-          <input twInput name="displayName" [(ngModel)]="displayName" required />
-          <span twHint>Value: {{ displayName() || '(empty)' }}</span>
+          <input
+            twInput
+            name="displayName"
+            [(ngModel)]="displayName"
+            [disabled]="displayNameDisabled()"
+            required
+          />
+          <span twHint>Bound model below.</span>
         </tw-form-field>
+        <p class="text-xs text-fg-muted mt-4 font-mono" data-testid="value-readout">
+          value = "{{ displayName() }}" · disabled = {{ displayNameDisabled() }}
+        </p>
+        <div class="flex gap-2 mt-3">
+          <button
+            twButton variant="outline" color="neutral" size="xs"
+            (click)="displayName.set('Ada Lovelace')"
+          >Set value</button>
+          <button
+            twButton variant="outline" color="neutral" size="xs"
+            (click)="displayNameDisabled.set(!displayNameDisabled())"
+          >Toggle disabled</button>
+          <button
+            twButton variant="outline" color="neutral" size="xs"
+            (click)="displayName.set(''); displayNameDisabled.set(false)"
+          >Reset</button>
+        </div>
       </div>
       <tw-code-block [code]="ngModelTsSnippet" language="ts" />
       <div class="mt-3">
@@ -243,7 +266,7 @@ class UppercaseValueDirective {
     </section>
 
     <!-- Reactive forms -->
-    <section class="mb-10">
+    <section class="mb-10" data-section="reactive">
       <h2 class="text-sm font-semibold mb-3">Reactive Forms</h2>
       <p class="text-sm text-fg-muted leading-relaxed max-w-2xl mb-4">
         Bind a
@@ -271,13 +294,15 @@ class UppercaseValueDirective {
           }
         </tw-form-field>
 
-        <p class="text-xs text-fg-muted mt-4 font-mono">
-          value = "{{ usernameCtrl.value }}" · touched = {{ usernameCtrl.touched }} · valid = {{ usernameCtrl.valid }}
+        <p class="text-xs text-fg-muted mt-4 font-mono" data-testid="value-readout">
+          value = "{{ usernameCtrl.value }}" · touched = {{ usernameCtrl.touched }} · valid = {{ usernameCtrl.valid }} · disabled = {{ usernameCtrl.disabled }}
         </p>
 
         <div class="flex gap-2 mt-3">
+          <button twButton variant="outline" color="neutral" size="xs" (click)="usernameCtrl.setValue('Ada Lovelace')">Set value</button>
           <button twButton variant="outline" color="neutral" size="xs" (click)="usernameCtrl.disable()">Disable</button>
           <button twButton variant="outline" color="neutral" size="xs" (click)="usernameCtrl.enable()">Enable</button>
+          <button twButton variant="outline" color="neutral" size="xs" (click)="usernameCtrl.markAsTouched()">Mark touched</button>
           <button twButton variant="outline" color="neutral" size="xs" (click)="usernameCtrl.reset('')">Reset</button>
         </div>
       </div>
@@ -288,7 +313,7 @@ class UppercaseValueDirective {
     </section>
 
     <!-- Signal forms -->
-    <section class="mb-10">
+    <section class="mb-10" data-section="signal">
       <h2 class="text-sm font-semibold mb-3">Signal Forms</h2>
       <p class="text-sm text-fg-muted leading-relaxed max-w-2xl mb-4">
         Angular v21 signal forms attach through
@@ -308,12 +333,12 @@ class UppercaseValueDirective {
             <span twError>Full name is required (min 2 chars).</span>
           }
         </tw-form-field>
-        <p class="text-xs text-fg-muted mt-4 font-mono">
+        <p class="text-xs text-fg-muted mt-4 font-mono" data-testid="value-readout">
           value = "{{ signalForm.fullName().value() || '' }}" · touched = {{ signalForm.fullName().touched() }} · valid = {{ signalForm.fullName().valid() }}
         </p>
         <div class="flex gap-2 mt-3">
           <button twButton variant="outline" color="neutral" size="xs" (click)="signalForm.fullName().value.set('Ada Lovelace')">Set value</button>
-          <button twButton variant="outline" color="neutral" size="xs" (click)="signalForm.fullName().reset()">Reset</button>
+          <button twButton variant="outline" color="neutral" size="xs" (click)="signalForm.fullName().reset('')">Reset</button>
         </div>
       </div>
       <tw-code-block [code]="signalTsSnippet" language="ts" />
@@ -531,6 +556,7 @@ class UppercaseValueDirective {
 })
 export class InputExamples {
   protected readonly displayName = signal('');
+  protected readonly displayNameDisabled = signal(false);
   protected readonly bio = signal('');
 
   protected readonly usernameCtrl = new FormControl<string>('', {
@@ -633,12 +659,18 @@ export class InputExamples {
   <input twInput [disabled]="true" value="acme-corp-2019" />
 </tw-form-field>`;
 
-  protected readonly ngModelTsSnippet = `protected readonly displayName = signal('');`;
+  protected readonly ngModelTsSnippet = `protected readonly displayName = signal('');
+protected readonly displayNameDisabled = signal(false);`;
 
   protected readonly ngModelHtmlSnippet = `<tw-form-field>
   <label twLabel>Display name</label>
-  <input twInput name="displayName" [(ngModel)]="displayName" required />
-  <span twHint>Value: {{ displayName() || '(empty)' }}</span>
+  <input
+    twInput
+    name="displayName"
+    [(ngModel)]="displayName"
+    [disabled]="displayNameDisabled()"
+    required
+  />
 </tw-form-field>`;
 
   protected readonly reactiveTsSnippet = `protected readonly usernameCtrl = new FormControl<string>('', {
@@ -671,7 +703,11 @@ protected readonly signalForm = form(this.signalModel, (p) => {
   @if (signalForm.fullName().errors().length && signalForm.fullName().touched()) {
     <span twError>Full name is required (min 2 chars).</span>
   }
-</tw-form-field>`;
+</tw-form-field>
+
+<!-- Note: FieldState.reset() resets only touched/dirty by default; pass an
+     explicit value if you want to clear the model too. -->
+<button (click)="signalForm.fullName().reset('')">Reset</button>`;
 
   protected readonly matcherTsSnippet = `import type { ErrorStateMatcher } from 'ngx-tw/core';
 
