@@ -292,7 +292,7 @@ const SIZES: TwSize[] = ['xs', 'sm', 'md', 'lg', 'xl'];
     </section>
 
     <!-- Template-Driven Forms -->
-    <section class="mb-10">
+    <section class="mb-10" data-section="td">
       <h2 class="text-sm font-semibold mb-3">Template-Driven Forms</h2>
       <p class="text-sm text-fg-muted leading-relaxed max-w-2xl mb-4">
         The select implements
@@ -325,7 +325,7 @@ const SIZES: TwSize[] = ['xs', 'sm', 'md', 'lg', 'xl'];
     </section>
 
     <!-- Reactive Forms -->
-    <section class="mb-10">
+    <section class="mb-10" data-section="reactive">
       <h2 class="text-sm font-semibold mb-3">Reactive Forms</h2>
       <p class="text-sm text-fg-muted leading-relaxed max-w-2xl mb-4">
         Bind a
@@ -369,7 +369,7 @@ const SIZES: TwSize[] = ['xs', 'sm', 'md', 'lg', 'xl'];
     </section>
 
     <!-- Signal Forms -->
-    <section class="mb-10">
+    <section class="mb-10" data-section="signal">
       <h2 class="text-sm font-semibold mb-3">Signal Forms</h2>
       <p class="text-sm text-fg-muted leading-relaxed max-w-2xl mb-4">
         For Angular v21 signal forms, build a model with
