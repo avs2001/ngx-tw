@@ -363,7 +363,10 @@ test.describe('Split', () => {
     const beforeTop = (await innerSplit.locator('tw-split-pane').nth(0).boundingBox())!;
 
     await innerGutter.focus();
-    await page.keyboard.press('ArrowDown');
+    await expect(innerGutter).toBeFocused();
+    const beforeValue = await innerGutter.getAttribute('aria-valuenow');
+    await innerGutter.press('ArrowDown');
+    await expect(innerGutter).not.toHaveAttribute('aria-valuenow', String(beforeValue));
 
     const afterTop = (await innerSplit.locator('tw-split-pane').nth(0).boundingBox())!;
     expect(afterTop.height).toBeGreaterThan(beforeTop.height);
