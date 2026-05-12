@@ -2,19 +2,31 @@ import { defineConfig, devices } from '@playwright/test';
 
 /**
  * See https://playwright.dev/docs/test-configuration.
+ *
+ * Worker tuning (chapter 09 / Phase 6):
+ *  - Local: undefined → playwright picks `cpus() / 2`. On the dev box this is
+ *    typically 4 workers, which balances dev-server CPU against test
+ *    parallelism.
+ *  - CI: 2 workers per shard. GitHub Actions `ubuntu-latest` provides 4
+ *    vCPUs; sharing two between Angular's dev server and Playwright
+ *    workers keeps full chromium-light shards under ~4 minutes
+ *    (target: full chromium < 10 min unsharded, < 4 min × 4 shards).
+ *  - Sharding is driven from CI via `--shard=N/M`.
  */
 export default defineConfig({
   testDir: './e2e',
-  /* Run tests in files in parallel */
   fullyParallel: true,
-  /* Fail the build on CI if you accidentally left test.only in the source code. */
   forbidOnly: !!process.env['CI'],
-  /* Retry on CI only */
-  retries: process.env['CI'] ? 2 : 0,
-  /* Opt out of parallel tests on CI. */
-  workers: process.env['CI'] ? 1 : undefined,
-  /* Reporter to use. See https://playwright.dev/docs/test-reporters */
-  reporter: 'html',
+  /* Retry on CI only; the flake-hunt fixes mean retries should be 0-1 in
+     practice — keep retries available so a transient infra blip (DNS,
+     OOM) doesn't fail the gate. */
+  retries: process.env['CI'] ? 1 : 0,
+  workers: process.env['CI'] ? 2 : undefined,
+  /* Reporter: HTML locally for the audit, JSON + GitHub on CI so the
+     job summary surfaces failures inline. */
+  reporter: process.env['CI']
+    ? [['github'], ['html', { open: 'never' }], ['list']]
+    : 'html',
 
   /* Auto-start the demo dev server so `npm run e2e` is self-contained. */
   webServer: {

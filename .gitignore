@@ -36,7 +36,10 @@ yarn-error.log
 /libpeerconnection.log
 testem.log
 /typings
+# Block ad-hoc __screenshots__ at the project root (Compodoc / test scratch
+# space), but DO commit Playwright's visual baselines under `e2e/`.
 __screenshots__/
+!/e2e/__screenshots__/
 
 # System files
 .DS_Store

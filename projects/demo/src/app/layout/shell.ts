@@ -368,7 +368,7 @@ const PRESETS: ColorPreset[] = [
                         </button>
                         <div class="sh-submenu"
                              [class.sh-submenu--open]="isItemExpanded(item.label)"
-                             [attr.aria-hidden]="!isItemExpanded(item.label)">
+                             [attr.inert]="isItemExpanded(item.label) ? null : ''">
                           <div>
                             <ul class="sh-nav-children mt-1 space-y-0.5 pb-1">
                               @for (child of item.children; track child.path) {

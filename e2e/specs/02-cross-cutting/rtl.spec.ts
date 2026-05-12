@@ -11,6 +11,11 @@ test.describe.configure({ mode: 'parallel' });
  * direction via `addInitScript` before Angular boots — the only available
  * access path until a shell toggle ships (P3 follow-up).
  *
+ * `addInitScript` runs at the `document_start` event, before the `<html>`
+ * tag has been parsed — `document.documentElement` is `null` at that
+ * moment. We register a `DOMContentLoaded` listener instead so the dir
+ * setter fires after parsing completes but before Angular bootstraps.
+ *
  * Sampled targets (chapter 05 §5.5): accordion, menu, select, date-picker,
  * paginator, slider, split, tabs. Each cell asserts:
  *   - The page mounts in `dir=rtl` without console errors.
@@ -20,7 +25,13 @@ test.describe.configure({ mode: 'parallel' });
  */
 test.beforeEach(async ({ page }) => {
   await page.addInitScript(() => {
-    document.documentElement.dir = 'rtl';
+    document.addEventListener(
+      'DOMContentLoaded',
+      () => {
+        document.documentElement.dir = 'rtl';
+      },
+      { once: true },
+    );
   });
 });
 

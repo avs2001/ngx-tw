@@ -117,9 +117,19 @@ test.describe('Split', () => {
     expect(valueNowBefore).toBeLessThanOrEqual(valueMax);
 
     await gutter.focus();
-    await page.keyboard.press('ArrowRight');
+    await expect(gutter).toBeFocused();
+    // Read the pre-press value AFTER focus has settled — under parallel
+    // dev-server load the gutter's `(focus)` template binding races the
+    // first `getAttribute('aria-valuenow')` read, and the keydown handler
+    // bails because `_focusedGutter()` is still null.
+    const settledBefore = Number(await gutter.getAttribute('aria-valuenow'));
+    await gutter.press('ArrowRight');
+    // `Locator.press()` focuses + dispatches the key in one atomic
+    // operation, and the assertion auto-retries until the signal-driven
+    // CD pass has updated `aria-valuenow`.
+    await expect(gutter).not.toHaveAttribute('aria-valuenow', String(settledBefore));
     const valueNowAfter = Number(await gutter.getAttribute('aria-valuenow'));
-    expect(valueNowAfter).toBeGreaterThan(valueNowBefore);
+    expect(valueNowAfter).toBeGreaterThan(settledBefore);
   });
 
   test('@keyboard ArrowRight on horizontal gutter grows first pane by step', async ({ page }) => {
@@ -128,14 +138,17 @@ test.describe('Split', () => {
 
     const gutter = split.gutter(split.horizontalSection, 0);
     await gutter.focus();
+    await expect(gutter).toBeFocused();
 
     const before = Number(await gutter.getAttribute('aria-valuenow'));
-    await page.keyboard.press('ArrowRight');
+    await gutter.press('ArrowRight');
+    await expect(gutter).not.toHaveAttribute('aria-valuenow', String(before));
     const after = Number(await gutter.getAttribute('aria-valuenow'));
     // Default keyboardStep is 10 (percent).
     expect(after - before).toBeCloseTo(10, 0);
 
-    await page.keyboard.press('ArrowLeft');
+    await gutter.press('ArrowLeft');
+    await expect(gutter).toHaveAttribute('aria-valuenow', String(before));
     const back = Number(await gutter.getAttribute('aria-valuenow'));
     expect(back).toBeCloseTo(before, 0);
   });
@@ -148,12 +161,14 @@ test.describe('Split', () => {
     await expect(gutter).toHaveAttribute('aria-orientation', 'horizontal');
 
     await gutter.focus();
+    await expect(gutter).toBeFocused();
     const before = Number(await gutter.getAttribute('aria-valuenow'));
-    await page.keyboard.press('ArrowDown');
+    await gutter.press('ArrowDown');
+    await expect(gutter).not.toHaveAttribute('aria-valuenow', String(before));
     const after = Number(await gutter.getAttribute('aria-valuenow'));
     expect(after).toBeGreaterThan(before);
-    // Sideways arrows are ignored on a vertical split.
-    await page.keyboard.press('ArrowRight');
+    // Sideways arrows are ignored on a vertical split — value stays put.
+    await gutter.press('ArrowRight');
     expect(Number(await gutter.getAttribute('aria-valuenow'))).toBeCloseTo(after, 0);
   });
 
@@ -165,9 +180,11 @@ test.describe('Split', () => {
     // without bumping into 15% min / 40% max on the same press.
     const gutter = split.gutter(split.threePaneSection, 0);
     await gutter.focus();
+    await expect(gutter).toBeFocused();
 
     const before = Number(await gutter.getAttribute('aria-valuenow'));
-    await page.keyboard.press('PageDown');
+    await gutter.press('PageDown');
+    await expect(gutter).not.toHaveAttribute('aria-valuenow', String(before));
     const after = Number(await gutter.getAttribute('aria-valuenow'));
     // Default keyboardStepLarge is 50, but the pane caps at 40% maxSize,
     // so the visible jump is at least one keyboardStep (10) and at most

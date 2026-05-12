@@ -93,7 +93,7 @@ const STATE_MODES: readonly StateMode[] = ['data', 'loading', 'empty', 'error'];
         @for (v of variants; track v) {
           <div>
             <p class="text-xs font-medium text-fg-muted mb-2 uppercase tracking-wide">{{ v }}</p>
-            <tw-table [data]="orders().slice(0, 4)" [variant]="v" [attr.aria-label]="'Orders — ' + v">
+            <tw-table [data]="ordersFirst4()" [variant]="v" [attr.aria-label]="'Orders — ' + v">
               <tw-column name="id" headerLabel="Order" [numeric]="true" width="90px">
                 <ng-template twCellDef let-row>#{{ asOrder(row).id }}</ng-template>
               </tw-column>
@@ -135,7 +135,7 @@ const STATE_MODES: readonly StateMode[] = ['data', 'loading', 'empty', 'error'];
         @for (d of densities; track d) {
           <div>
             <p class="text-xs font-medium text-fg-muted mb-2 uppercase tracking-wide">{{ d }}</p>
-            <tw-table [data]="orders().slice(0, 3)" [density]="d" variant="bordered" [attr.aria-label]="'Density — ' + d">
+            <tw-table [data]="ordersFirst3()" [density]="d" variant="bordered" [attr.aria-label]="'Density — ' + d">
               <tw-column name="id" headerLabel="ID" [numeric]="true">
                 <ng-template twCellDef let-row>{{ asOrder(row).id }}</ng-template>
               </tw-column>
@@ -272,7 +272,7 @@ const STATE_MODES: readonly StateMode[] = ['data', 'loading', 'empty', 'error'];
       </p>
       <div class="rounded-lg border border-border p-6 bg-surface-raised mb-4">
         <tw-table
-          [data]="orders().slice(0, 5)"
+          [data]="ordersFirst5()"
           [multiTemplateRows]="true"
           [(expandedRows)]="expandedOrders"
           aria-label="Expandable orders"
@@ -331,7 +331,7 @@ const STATE_MODES: readonly StateMode[] = ['data', 'loading', 'empty', 'error'];
         elsewhere.
       </p>
       <div class="rounded-lg border border-border p-6 bg-surface-raised mb-4">
-        <tw-table [data]="orders().slice(0, 5)" variant="bordered" aria-label="Totals demo">
+        <tw-table [data]="ordersFirst5()" variant="bordered" aria-label="Totals demo">
           <tw-column name="id" headerLabel="ID" [numeric]="true" width="80px">
             <ng-template twCellDef let-row>{{ asOrder(row).id }}</ng-template>
             <ng-template twFooterCellDef>
@@ -406,7 +406,7 @@ const STATE_MODES: readonly StateMode[] = ['data', 'loading', 'empty', 'error'];
         The context gives you the column name and index if you need them.
       </p>
       <div class="rounded-lg border border-border p-6 bg-surface-raised mb-4">
-        <tw-table [data]="orders().slice(0, 3)" aria-label="Custom headers" variant="bordered">
+        <tw-table [data]="ordersFirst3()" aria-label="Custom headers" variant="bordered">
           <tw-column name="id">
             <ng-template twHeaderCellDef>
               <span class="inline-flex items-center gap-1.5 text-fg">
@@ -453,7 +453,7 @@ const STATE_MODES: readonly StateMode[] = ['data', 'loading', 'empty', 'error'];
           twSort
           [(twSortActive)]="sortActive"
           [(twSortDirection)]="sortDirection"
-          [data]="sortedOrders().slice(0, 6)"
+          [data]="sortedOrdersFirst6()"
           variant="bordered"
           aria-label="Sortable orders"
         >
@@ -509,7 +509,7 @@ const STATE_MODES: readonly StateMode[] = ['data', 'loading', 'empty', 'error'];
       </p>
       <div class="rounded-lg border border-border p-6 bg-surface-raised mb-4">
         <tw-table
-          [data]="orders().slice(0, 4)"
+          [data]="ordersFirst4()"
           responsive="stack"
           stackBelow="md"
           aria-label="Responsive orders"
@@ -779,6 +779,19 @@ export class TableExamples {
   protected readonly sizes = SIZES;
   protected readonly stateModes = STATE_MODES;
 
+  /**
+   * Memoised slices of the order list. Each `[data]` binding gets a stable
+   * reference per render cycle so the `<tw-table>` data input doesn't
+   * toggle on every change-detection pass (each `.slice()` call in a
+   * template would otherwise produce a fresh array on every CD, which —
+   * combined with the table's CDK-bridging effect — drives NG0103 in
+   * zoneless dev mode).
+   */
+  protected readonly ordersFirst3 = computed<readonly Order[]>(() => this.orders().slice(0, 3));
+  protected readonly ordersFirst4 = computed<readonly Order[]>(() => this.orders().slice(0, 4));
+  protected readonly ordersFirst5 = computed<readonly Order[]>(() => this.orders().slice(0, 5));
+  protected readonly ordersFirst6 = computed<readonly Order[]>(() => this.orders().slice(0, 6));
+
   protected readonly stateMode = signal<StateMode>('data');
   protected readonly statesData = computed<readonly Order[]>(() =>
     this.stateMode() === 'empty' ? [] : this.orders().slice(0, 3),
@@ -802,6 +815,9 @@ export class TableExamples {
       return String(av ?? '').localeCompare(String(bv ?? '')) * sign;
     });
   });
+  protected readonly sortedOrdersFirst6 = computed<readonly Order[]>(() =>
+    this.sortedOrders().slice(0, 6),
+  );
 
   // Admin pattern
   protected readonly search = signal('');

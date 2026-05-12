@@ -11,6 +11,23 @@ body {
   color: var(--color-fg);
 }
 
+/* ── Library utilities ── */
+
+/* Hides scrollbars while preserving scroll behavior. Library-wide helper used
+   by components with internal scroll regions (e.g. code-block); also available
+   to consumers who import this theme. */
+@layer utilities {
+  .tw-scrollbar-none { scrollbar-width: none; }
+  .tw-scrollbar-none::-webkit-scrollbar { display: none; }
+}
+
+/* Applied to <body> during a tw-split drag to suppress text selection
+   and unify the cursor across iframes / scroll containers. */
+.tw-split-no-select {
+  user-select: none;
+  -webkit-user-select: none;
+}
+
 /* ── Animation keyframes ── */
 
 @keyframes fade-out {
@@ -296,5 +313,23 @@ body {
   .skeleton-wave::after {
     animation-duration: 0ms;
     animation-iteration-count: 1;
+  }
+}
+
+/* Universal reduced-motion guard. Components that use Tailwind utilities
+   without explicit `motion-reduce:` variants still need to honour user
+   preference (and pass the reduced-motion drift e2e). This sweeps the
+   long tail of inline `transition-*` / `animate-*` usages without
+   touching the per-component class strings. The named-class rules above
+   stay as the authoritative source for animation-specific tuning. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0s !important;
+    transition-delay: 0s !important;
+    animation-duration: 1ms !important;
+    animation-iteration-count: 1 !important;
+    animation-delay: 0s !important;
   }
 }
