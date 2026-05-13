@@ -28,6 +28,7 @@ export const yearsPerPage = YEARS_PER_PAGE;
     <div
       role="grid"
       [attr.aria-label]="gridLabel()"
+      [attr.aria-multiselectable]="multiSelectable() || null"
       (mouseleave)="onGridMouseLeave()"
     >
       @for (row of cells(); track $index) {

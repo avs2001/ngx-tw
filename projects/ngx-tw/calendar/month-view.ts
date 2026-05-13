@@ -35,6 +35,7 @@ const TOTAL_CELLS = DAYS_PER_WEEK * WEEKS_PER_MONTH;
     <div
       role="grid"
       [attr.aria-label]="gridLabel()"
+      [attr.aria-multiselectable]="multiSelectable() || null"
       (mouseleave)="onGridMouseLeave()"
     >
       <!-- gap-0: weekday headers align column-by-column with the day grid below, which itself must be gap-0 for contiguous range backgrounds. -->

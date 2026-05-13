@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ChangeDetectionStrategy, Component, signal } from '@angular/core';
 import { type ComponentFixture, TestBed } from '@angular/core/testing';
+import { LiveAnnouncer } from '@angular/cdk/a11y';
 import { CalendarComponent } from './calendar';
 import { provideNativeDateAdapter } from './native-date-adapter';
 import type {
@@ -1468,6 +1469,166 @@ describe('CalendarComponent', () => {
       ) as HTMLButtonElement[];
       const periodBtn = buttons[1]!;
       expect(periodBtn.textContent ?? '').toContain('2027');
+    });
+  });
+
+  // ── A1 — CDK LiveAnnouncer wiring ──
+
+  describe('LiveAnnouncer announcements', () => {
+    it('announces a navigation step when the next-month button is clicked', () => {
+      const announcer = TestBed.inject(LiveAnnouncer);
+      const spy = vi.spyOn(announcer, 'announce');
+
+      const fixture = TestBed.createComponent(BasicHost);
+      fixture.detectChanges();
+
+      const buttons = Array.from(
+        fixture.nativeElement.querySelectorAll('tw-calendar-header button'),
+      ) as HTMLButtonElement[];
+      // [prev, period, next] in DOM order.
+      buttons[2]!.click();
+      fixture.detectChanges();
+
+      expect(spy).toHaveBeenCalled();
+      const [message, politeness] = spy.mock.calls[spy.mock.calls.length - 1]!;
+      expect(typeof message).toBe('string');
+      expect((message as string).length).toBeGreaterThan(0);
+      expect(politeness).toBe('polite');
+    });
+
+    it('announces a navigation step when the previous-month button is clicked', () => {
+      const announcer = TestBed.inject(LiveAnnouncer);
+      const spy = vi.spyOn(announcer, 'announce');
+
+      const fixture = TestBed.createComponent(BasicHost);
+      fixture.detectChanges();
+
+      const buttons = Array.from(
+        fixture.nativeElement.querySelectorAll('tw-calendar-header button'),
+      ) as HTMLButtonElement[];
+      buttons[0]!.click();
+      fixture.detectChanges();
+
+      expect(spy).toHaveBeenCalled();
+      const [, politeness] = spy.mock.calls[spy.mock.calls.length - 1]!;
+      expect(politeness).toBe('polite');
+    });
+
+    it('announces a view change when the period header drills up to month view', () => {
+      const announcer = TestBed.inject(LiveAnnouncer);
+      const spy = vi.spyOn(announcer, 'announce');
+
+      const fixture = TestBed.createComponent(BasicHost);
+      fixture.detectChanges();
+
+      const periodButton = getPeriodButton(fixture);
+      periodButton.click();
+      fixture.detectChanges();
+
+      expect(spy).toHaveBeenCalled();
+      const [, politeness] = spy.mock.calls[spy.mock.calls.length - 1]!;
+      expect(politeness).toBe('polite');
+    });
+
+    it('announces a view change when drilling down from the year view (month grid)', () => {
+      const announcer = TestBed.inject(LiveAnnouncer);
+      const spy = vi.spyOn(announcer, 'announce');
+
+      const fixture = TestBed.createComponent<CalendarComponent<CalendarMode, Date>>(
+        CalendarComponent as unknown as new () => CalendarComponent<CalendarMode, Date>,
+      );
+      fixture.componentRef.setInput('startView', 'month');
+      fixture.detectChanges();
+
+      const monthCell = fixture.nativeElement.querySelector(
+        'tw-calendar-year-view tw-calendar-cell button',
+      ) as HTMLButtonElement | null;
+      expect(monthCell).toBeTruthy();
+      monthCell!.click();
+      fixture.detectChanges();
+
+      expect(spy).toHaveBeenCalled();
+      const [, politeness] = spy.mock.calls[spy.mock.calls.length - 1]!;
+      expect(politeness).toBe('polite');
+    });
+
+    it('does NOT render a hand-rolled <div aria-live> region', () => {
+      const fixture = TestBed.createComponent(BasicHost);
+      fixture.detectChanges();
+      // The calendar root must not ship its own aria-live region — the CDK
+      // LiveAnnouncer owns the announcement surface (A1).
+      const ariaLiveInCalendar = fixture.nativeElement.querySelector(
+        'tw-calendar [aria-live]',
+      );
+      expect(ariaLiveInCalendar).toBeNull();
+    });
+  });
+
+  // ── A2 — aria-multiselectable on each grid view ──
+
+  describe('aria-multiselectable', () => {
+    it("does NOT set aria-multiselectable when mode='single'", () => {
+      const fixture = TestBed.createComponent(BasicHost);
+      fixture.componentInstance.mode.set('single');
+      fixture.detectChanges();
+      const grid = fixture.nativeElement.querySelector(
+        'tw-calendar-month-view [role="grid"]',
+      );
+      expect(grid).toBeTruthy();
+      expect(grid!.getAttribute('aria-multiselectable')).toBeNull();
+    });
+
+    it("sets aria-multiselectable='true' on the day grid when mode='multiple'", () => {
+      const fixture = TestBed.createComponent(BasicHost);
+      fixture.componentInstance.mode.set('multiple');
+      fixture.detectChanges();
+      const grid = fixture.nativeElement.querySelector(
+        'tw-calendar-month-view [role="grid"]',
+      );
+      expect(grid).toBeTruthy();
+      expect(grid!.getAttribute('aria-multiselectable')).toBe('true');
+    });
+
+    it("sets aria-multiselectable='true' on the day grid when mode='range'", () => {
+      const fixture = TestBed.createComponent(BasicHost);
+      fixture.componentInstance.mode.set('range');
+      fixture.detectChanges();
+      // mode='range' defaults to two month panes — both grids must advertise it.
+      const grids = fixture.nativeElement.querySelectorAll(
+        'tw-calendar-month-view [role="grid"]',
+      );
+      expect(grids.length).toBeGreaterThanOrEqual(1);
+      for (const grid of Array.from(grids) as HTMLElement[]) {
+        expect(grid.getAttribute('aria-multiselectable')).toBe('true');
+      }
+    });
+
+    it("sets aria-multiselectable='true' on the year-view grid (mode='multiple', drilled up)", () => {
+      const fixture = TestBed.createComponent<CalendarComponent<CalendarMode, Date>>(
+        CalendarComponent as unknown as new () => CalendarComponent<CalendarMode, Date>,
+      );
+      fixture.componentRef.setInput('mode', 'multiple');
+      fixture.componentRef.setInput('startView', 'month');
+      fixture.detectChanges();
+      const grid = fixture.nativeElement.querySelector(
+        'tw-calendar-year-view [role="grid"]',
+      );
+      expect(grid).toBeTruthy();
+      expect(grid!.getAttribute('aria-multiselectable')).toBe('true');
+    });
+
+    it("sets aria-multiselectable='true' on the multi-year-view grid (mode='range', drilled up)", () => {
+      const fixture = TestBed.createComponent<CalendarComponent<CalendarMode, Date>>(
+        CalendarComponent as unknown as new () => CalendarComponent<CalendarMode, Date>,
+      );
+      fixture.componentRef.setInput('mode', 'range');
+      fixture.componentRef.setInput('startView', 'year');
+      fixture.detectChanges();
+      const grid = fixture.nativeElement.querySelector(
+        'tw-calendar-years-view [role="grid"]',
+      );
+      expect(grid).toBeTruthy();
+      expect(grid!.getAttribute('aria-multiselectable')).toBe('true');
     });
   });
 });

@@ -41,11 +41,11 @@ const cellVariants = tv(
             'text-primary-600 dark:text-primary-400 font-semibold ring-1 ring-primary-500 hover:bg-primary-100 dark:hover:bg-primary-900/30',
         },
         selected: {
-          button: 'bg-primary-500 text-white font-semibold hover:bg-primary-600',
+          button: 'bg-primary-500 text-on-primary font-semibold hover:bg-primary-600',
         },
         'range-start': {
           button:
-            'bg-primary-500 text-white font-semibold rounded-l-full rounded-r-none hover:bg-primary-600',
+            'bg-primary-500 text-on-primary font-semibold rounded-l-full rounded-r-none hover:bg-primary-600',
         },
         'range-middle': {
           button:
@@ -53,7 +53,7 @@ const cellVariants = tv(
         },
         'range-end': {
           button:
-            'bg-primary-500 text-white font-semibold rounded-r-full rounded-l-none hover:bg-primary-600',
+            'bg-primary-500 text-on-primary font-semibold rounded-r-full rounded-l-none hover:bg-primary-600',
         },
         'preview-start': {
           button:

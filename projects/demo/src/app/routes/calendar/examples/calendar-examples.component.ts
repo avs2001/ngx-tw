@@ -10,7 +10,7 @@ import { form, FormField, required } from '@angular/forms/signals';
 import {
   CalendarComponent,
   CalendarSingleDirective,
-  TwCalendarPresets,
+  CalendarPresetsDirective,
   type CalendarRangeValue,
   type DateFilterFn,
 } from 'ngx-tw/calendar';
@@ -29,7 +29,7 @@ function fmt(d: Date | null | undefined): string {
   imports: [
     CalendarComponent,
     CalendarSingleDirective,
-    TwCalendarPresets,
+    CalendarPresetsDirective,
     ButtonDirective,
     CodeBlockComponent,
     ReactiveFormsModule,

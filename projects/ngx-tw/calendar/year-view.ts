@@ -25,6 +25,7 @@ const MONTHS_PER_YEAR = 12;
     <div
       role="grid"
       [attr.aria-label]="gridLabel()"
+      [attr.aria-multiselectable]="multiSelectable() || null"
       (mouseleave)="onGridMouseLeave()"
     >
       @for (row of cells(); track $index) {

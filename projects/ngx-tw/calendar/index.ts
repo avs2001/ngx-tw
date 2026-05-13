@@ -13,7 +13,7 @@ export {
 } from './calendar-validators';
 export type { CalendarValidatorContext } from './calendar-validators';
 
-export { TwCalendarPresets } from './calendar-presets';
+export { CalendarPresetsDirective } from './calendar-presets';
 
 export { CalendarHeaderComponent } from './calendar-header';
 

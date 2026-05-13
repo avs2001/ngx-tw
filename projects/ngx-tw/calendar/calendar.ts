@@ -26,6 +26,7 @@ import {
   type TemplateRef,
   type WritableSignal,
 } from '@angular/core';
+import { LiveAnnouncer } from '@angular/cdk/a11y';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import {
   type AbstractControl,
@@ -95,7 +96,6 @@ const calendarVariants = tv(
     slots: {
       root: 'inline-block p-2 bg-surface text-fg',
       months: '',
-      liveRegion: 'sr-only',
     },
     variants: {
       bordered: {
@@ -174,10 +174,6 @@ const calendarVariants = tv(
 
       <ng-content select="[twCalendarPresets]" />
 
-      <div class="sr-only" aria-live="polite" aria-atomic="true">
-        {{ liveAnnouncement() }}
-      </div>
-
       @switch (viewState()) {
         @case ('day') {
           <div [class]="monthsClasses()">
@@ -196,6 +192,7 @@ const calendarVariants = tv(
               [previewEnd]="previewRange()?.end ?? null"
               [invalidFlashDate]="invalidFlashDate()"
               [gridIndex]="0"
+              [multiSelectable]="multiSelectable()"
               (selectedChange)="onDateSelected($event)"
               (activeDateChange)="onActiveDateChange($event, 0)"
               (previewChange)="onPreviewChange($event)"
@@ -216,6 +213,7 @@ const calendarVariants = tv(
                 [previewEnd]="previewRange()?.end ?? null"
                 [invalidFlashDate]="invalidFlashDate()"
                 [gridIndex]="1"
+                [multiSelectable]="multiSelectable()"
                 (selectedChange)="onDateSelected($event)"
                 (activeDateChange)="onActiveDateChange($event, 1)"
                 (previewChange)="onPreviewChange($event)"
@@ -233,6 +231,7 @@ const calendarVariants = tv(
             [cellTemplate]="cellTemplate()"
             [previewStart]="previewRange()?.start ?? null"
             [previewEnd]="previewRange()?.end ?? null"
+            [multiSelectable]="multiSelectable()"
             (selectedChange)="onMonthSelected($event)"
             (activeDateChange)="onActiveDateChange($event)"
             (previewChange)="onPreviewChange($event)"
@@ -248,6 +247,7 @@ const calendarVariants = tv(
             [cellTemplate]="cellTemplate()"
             [previewStart]="previewRange()?.start ?? null"
             [previewEnd]="previewRange()?.end ?? null"
+            [multiSelectable]="multiSelectable()"
             (selectedChange)="onYearSelected($event)"
             (activeDateChange)="onActiveDateChange($event)"
             (previewChange)="onPreviewChange($event)"
@@ -270,6 +270,7 @@ export class CalendarComponent<
   private readonly elementRef = inject(ElementRef<HTMLElement>);
   private readonly injector = inject(Injector);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly liveAnnouncer = inject(LiveAnnouncer);
   private readonly ngControl = inject(NgControl, { self: true, optional: true });
 
   /** Angular's `LOCALE_ID` — used as the fallback when no `locale` input is supplied (§19.1). */
@@ -566,9 +567,6 @@ export class CalendarComponent<
 
   /** Raw `TOut` retained when `fromForm` throws (§7.6, Phase 14). `null` otherwise. */
   private readonly _lastInvalidFormValue: WritableSignal<unknown> = signal(null);
-
-  /** Screen-reader live region text. */
-  readonly liveAnnouncement: WritableSignal<string> = signal('');
 
   // ---------------------------------------------------------------------------
   // Public readonly signals (§33.3)
@@ -914,6 +912,13 @@ export class CalendarComponent<
     if (this.mode() === 'range') return 2;
     return 1;
   });
+
+  /**
+   * @internal Drives `aria-multiselectable` on every view grid. `true` when the
+   * current `mode` allows more than one cell to be selected at a time
+   * (`'multiple'` or `'range'`); `false` for `'single'`.
+   */
+  readonly multiSelectable: Signal<boolean> = computed(() => this.mode() !== 'single');
 
   /** Secondary anchor for the right-hand grid in multi-column mode. */
   readonly secondaryActiveDate: Signal<D | null> = computed(() => {
@@ -1706,13 +1711,13 @@ export class CalendarComponent<
   private announceViewChange(): void {
     const intl = this.effectiveIntl();
     if (intl.skipAnnouncement) return;
-    this.liveAnnouncement.set(intl.viewSwitched(this._viewState(), this.periodLabel()));
+    this.liveAnnouncer.announce(intl.viewSwitched(this._viewState(), this.periodLabel()), 'polite');
   }
 
   private announceNavigation(direction: 'previous' | 'next'): void {
     const intl = this.effectiveIntl();
     if (intl.skipAnnouncement) return;
-    this.liveAnnouncement.set(intl.navigatedTo(direction, this.periodLabel()));
+    this.liveAnnouncer.announce(intl.navigatedTo(direction, this.periodLabel()), 'polite');
   }
 
 }

@@ -11,4 +11,4 @@ import { Directive } from '@angular/core';
     class: 'flex flex-wrap items-center gap-1.5 px-2 pb-2',
   },
 })
-export class TwCalendarPresets {}
+export class CalendarPresetsDirective {}
