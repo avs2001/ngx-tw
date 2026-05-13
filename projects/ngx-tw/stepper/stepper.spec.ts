@@ -475,6 +475,16 @@ describe('StepperComponent', () => {
       expect(panel?.getAttribute('tabindex')).toBe('0');
     });
 
+    it('applies a focus-visible outline ring to the focusable panel', () => {
+      const fixture = TestBed.createComponent(BasicHost);
+      fixture.detectChanges();
+      const panel = queryPanel(fixture);
+      const cls = panel?.className ?? '';
+      expect(cls).toContain('focus-visible:outline-2');
+      expect(cls).toContain('focus-visible:outline-offset-2');
+      expect(cls).toContain('focus-visible:outline-primary-500');
+    });
+
     it('announces the selected step via LiveAnnouncer', () => {
       const fixture = TestBed.createComponent(BasicHost);
       const announcer = TestBed.inject(LiveAnnouncer);

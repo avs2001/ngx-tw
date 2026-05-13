@@ -49,7 +49,7 @@ const stepperVariants = tv(
       header: 'flex',
       stepItem: 'flex',
       stepHeader:
-        'group inline-flex items-center gap-2 cursor-pointer transition-colors duration-200 motion-reduce:transition-none rounded-md focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500 disabled:cursor-not-allowed',
+        'group relative inline-flex items-center gap-2 cursor-pointer transition-colors duration-200 motion-reduce:transition-none rounded-md focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500 disabled:cursor-not-allowed',
       stepIndicator:
         'inline-flex items-center justify-center shrink-0 rounded-full font-medium transition-[color,background-color,border-color,box-shadow] duration-200 motion-reduce:transition-none',
       stepNumber: 'leading-none',
@@ -102,7 +102,8 @@ const stepperVariants = tv(
           stepItem: 'flex-row items-center flex-1 last:flex-none',
           stepConnector: 'flex-1 h-px mx-2',
           stepLabelWrapper: 'ml-2',
-          stepPanel: 'mt-4 outline-none',
+          stepPanel:
+            'mt-4 rounded-lg outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500 motion-reduce:transition-none',
         },
         vertical: {
           root: 'flex-col',
@@ -110,7 +111,8 @@ const stepperVariants = tv(
           stepItem: 'flex-col items-start w-full',
           stepConnector: 'w-px min-h-6 ml-4 my-1 flex-1',
           stepLabelWrapper: 'ml-3',
-          stepPanel: 'ml-11 mt-2 mb-4 outline-none',
+          stepPanel:
+            'ml-11 mt-2 mb-4 rounded-lg outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500 motion-reduce:transition-none',
         },
       },
     },
@@ -328,6 +330,13 @@ export class StepperComponent extends CdkStepper implements AfterViewInit {
   private readonly _destroyRef = inject(DestroyRef);
   private readonly _globalOptions = inject(STEPPER_GLOBAL_OPTIONS, { optional: true });
 
+  /**
+   * CdkStepper exposes its state via class properties (selectedIndex,
+   * previousIndex, orientation), not signals. We mirror those into signals so
+   * templates can react via @if/@for and OnPush change detection works without
+   * manual `markForCheck`. Sync happens in the property setters and lifecycle
+   * hooks below — keep these mirrors in lock-step with the CDK fields.
+   */
   private readonly _orientationSignal = signal<StepperOrientation>('horizontal');
   private readonly _selectedIndexSignal = signal(0);
   private readonly _previousIndexSignal = signal(0);
