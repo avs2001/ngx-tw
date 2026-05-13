@@ -191,6 +191,34 @@ describe('ThemeService', () => {
     expect(el.getAttribute('data-theme')).toBe('dark');
   });
 
+  it('should define --color-on-{role} tokens for all 8 semantic roles on the theme root', () => {
+    setup();
+    // Inject the canonical on-role token mappings from _semantic.css onto the
+    // documentElement so we can verify them via getComputedStyle. Real apps
+    // pick these up by importing `ngx-tw/theme`. Keep this style block in sync
+    // with the `--color-on-*` block in _semantic.css.
+    const style = doc.createElement('style');
+    style.textContent = `:root {
+      --color-on-info: white;
+      --color-on-success: #052e16;
+      --color-on-warning: #451a03;
+      --color-on-error: white;
+      --color-on-primary: white;
+      --color-on-secondary: white;
+      --color-on-accent: white;
+      --color-on-neutral: white;
+    }`;
+    doc.head.appendChild(style);
+    try {
+      const cs = getComputedStyle(doc.documentElement);
+      for (const role of ['info', 'success', 'warning', 'error', 'primary', 'secondary', 'accent', 'neutral']) {
+        expect(cs.getPropertyValue(`--color-on-${role}`).trim()).not.toBe('');
+      }
+    } finally {
+      style.remove();
+    }
+  });
+
   it('should return correct composite state', () => {
     setup({ defaultTheme: 'dark', prefersDark: false });
     const state = service.state();

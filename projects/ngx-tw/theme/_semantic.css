@@ -134,4 +134,19 @@
   --color-error-800: var(--color-red-800);
   --color-error-900: var(--color-red-900);
   --color-error-950: var(--color-red-950);
+
+  /* ===== On-role foregrounds =====
+     Foreground colour that pairs with a solid `{role}-500` fill. Each value is
+     picked to meet WCAG AA against the matched -500 background. Most roles use
+     `white` (the -500 shade is dark enough); `success` and `warning` use the
+     deepest -950 shade because their -500 fills (green/amber) are too light
+     for a white foreground. */
+  --color-on-info: var(--color-white);
+  --color-on-success: var(--color-green-950);
+  --color-on-warning: var(--color-amber-950);
+  --color-on-error: var(--color-white);
+  --color-on-primary: var(--color-white);
+  --color-on-secondary: var(--color-white);
+  --color-on-accent: var(--color-white);
+  --color-on-neutral: var(--color-white);
 }
