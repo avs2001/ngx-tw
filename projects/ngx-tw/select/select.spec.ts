@@ -248,6 +248,17 @@ describe('SelectComponent', () => {
       expect(listbox).toBeTruthy();
     });
 
+    it('applies canonical focus-visible outline classes to the listbox', async () => {
+      const fixture = TestBed.createComponent(BasicHost);
+      fixture.detectChanges();
+      getTriggerButton(fixture).click();
+      await advance(fixture);
+      const listbox = document.querySelector('[role="listbox"]') as HTMLElement;
+      expect(listbox.className).toContain('focus-visible:outline-2');
+      expect(listbox.className).toContain('focus-visible:outline-offset-2');
+      expect(listbox.className).toContain('focus-visible:outline-primary-500');
+    });
+
     it('renders each option with role="option"', async () => {
       const fixture = TestBed.createComponent(BasicHost);
       fixture.detectChanges();

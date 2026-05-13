@@ -64,7 +64,7 @@ import type {
       [id]="listboxId()"
       [attr.aria-multiselectable]="multiple() ? 'true' : null"
       [style.maxHeight.px]="panelMaxHeight()"
-      class="flex-1 min-h-0 overflow-y-auto py-1 focus:outline-none"
+      class="flex-1 min-h-0 overflow-y-auto py-1 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500"
     >
       @if (visibleOptions().length === 0) {
         @if (emptyTemplate(); as tpl) {

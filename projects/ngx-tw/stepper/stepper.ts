@@ -156,34 +156,34 @@ const INDICATOR_PENDING =
 const INDICATOR_DISABLED =
   'bg-surface-muted text-fg-subtle border border-border opacity-60';
 const INDICATOR_ERROR =
-  'bg-error-500 text-white border border-error-500';
+  'bg-error-500 text-on-error border border-error-500';
 
 const INDICATOR_ACTIVE: Record<TwColor, string> = {
   primary:
-    'bg-primary-500 text-white border border-primary-500 ring-4 ring-primary-100 dark:ring-primary-950',
+    'bg-primary-500 text-on-primary border border-primary-500 ring-4 ring-primary-100 dark:ring-primary-950',
   secondary:
-    'bg-secondary-500 text-white border border-secondary-500 ring-4 ring-secondary-100 dark:ring-secondary-950',
+    'bg-secondary-500 text-on-secondary border border-secondary-500 ring-4 ring-secondary-100 dark:ring-secondary-950',
   accent:
-    'bg-accent-500 text-white border border-accent-500 ring-4 ring-accent-100 dark:ring-accent-950',
+    'bg-accent-500 text-on-accent border border-accent-500 ring-4 ring-accent-100 dark:ring-accent-950',
   neutral: 'bg-fg text-surface border border-fg ring-4 ring-surface-muted',
-  info: 'bg-info-500 text-white border border-info-500 ring-4 ring-info-100 dark:ring-info-950',
+  info: 'bg-info-500 text-on-info border border-info-500 ring-4 ring-info-100 dark:ring-info-950',
   success:
-    'bg-success-500 text-white border border-success-500 ring-4 ring-success-100 dark:ring-success-950',
+    'bg-success-500 text-on-success border border-success-500 ring-4 ring-success-100 dark:ring-success-950',
   warning:
-    'bg-warning-500 text-white border border-warning-500 ring-4 ring-warning-100 dark:ring-warning-950',
+    'bg-warning-500 text-on-warning border border-warning-500 ring-4 ring-warning-100 dark:ring-warning-950',
   error:
-    'bg-error-500 text-white border border-error-500 ring-4 ring-error-100 dark:ring-error-950',
+    'bg-error-500 text-on-error border border-error-500 ring-4 ring-error-100 dark:ring-error-950',
 };
 
 const INDICATOR_COMPLETED: Record<TwColor, string> = {
-  primary: 'bg-primary-500 text-white border border-primary-500',
-  secondary: 'bg-secondary-500 text-white border border-secondary-500',
-  accent: 'bg-accent-500 text-white border border-accent-500',
+  primary: 'bg-primary-500 text-on-primary border border-primary-500',
+  secondary: 'bg-secondary-500 text-on-secondary border border-secondary-500',
+  accent: 'bg-accent-500 text-on-accent border border-accent-500',
   neutral: 'bg-fg text-surface border border-fg',
-  info: 'bg-info-500 text-white border border-info-500',
-  success: 'bg-success-500 text-white border border-success-500',
-  warning: 'bg-warning-500 text-white border border-warning-500',
-  error: 'bg-error-500 text-white border border-error-500',
+  info: 'bg-info-500 text-on-info border border-info-500',
+  success: 'bg-success-500 text-on-success border border-success-500',
+  warning: 'bg-warning-500 text-on-warning border border-warning-500',
+  error: 'bg-error-500 text-on-error border border-error-500',
 };
 
 const LABEL_PENDING = 'text-fg-muted';

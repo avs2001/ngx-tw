@@ -37,6 +37,9 @@ const menuVariants = tv(
   { twMerge: true },
 );
 
+// Menu items use the codified menu-item focus carve-out: `focus-visible:bg-surface-muted`
+// (and color-tinted equivalents below) in place of the canonical outline ring. See the
+// "Focus Rings → Menu-item carve-out" section in CLAUDE.md.
 const menuItemVariants = tv(
   {
     base: 'relative flex w-full flex-wrap items-center gap-2 rounded-md cursor-pointer select-none transition-colors duration-200 motion-reduce:transition-none text-fg outline-none focus-visible:bg-surface-muted hover:bg-surface-muted',
