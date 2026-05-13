@@ -65,7 +65,7 @@ Keep descriptions to one line where possible. Do not describe TypeScript types �
 - Selector prefix: `tw`. Use element selectors for components (`tw-button`, `tw-card`) and attribute selectors for directives (`twBadge`, `twTooltip`).
 - Follow Angular v21 style guide naming: bare names without type suffixes — `button.ts` (not `button.component.ts`), `badge.ts`, `button.spec.ts`.
 - **Secondary entry points:** every component directory is its own entry point (e.g., `ngx-tw/button`, `ngx-tw/badge`). Consumers import per-component: `import { ButtonComponent } from 'ngx-tw/button'`.
-- **Class naming:** follow Angular CLI conventions — `ButtonComponent`, `BadgeDirective`, `TooltipDirective`. No manual prefix; the package scope (`ngx-tw/button`) provides namespacing. Shared types use `Tw` prefix (`TwColor`, `TwSize`) since they are hand-authored and appear in consumer code.
+- **Class naming:** follow Angular CLI conventions — `ButtonComponent`, `BadgeDirective`, `TooltipDirective`. **Never** apply a `Tw*` prefix to component or directive class identifiers — the package scope (`ngx-tw/button`) provides all the namespacing consumers need, and Angular CLI reserves bare names for component classes. Selectors are unaffected: element selectors keep the `tw-` prefix (`tw-button`) and attribute selectors keep the `tw` camelCase prefix (`twBadge`). Shared **types** are the only identifiers that carry a `Tw` prefix (`TwColor`, `TwSize`) because they are hand-authored and appear in consumer code with no other namespace cue. Existing violators (`TwSplit`, `TwSplitPane`, `TwSplitGutter`, `TwSplitPaneHeader`, `TwCalendarPresets`) are scheduled for rename in PR4 / PR6 of the library fix plan — do not introduce new ones.
 - Each component directory must contain its own `ng-package.json` with `{ "lib": { "entryFile": "index.ts" } }` and an `index.ts` that re-exports the public API for that entry point.
 - Shared code (e.g., `types.ts`) lives in a `core/` secondary entry point (`ngx-tw/core`).
 - The root `public-api.ts` re-exports all entry points for convenience, but consumers are encouraged to use direct imports for tree-shaking.
@@ -282,15 +282,38 @@ focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pri
 - Outline width: `2` (2px). Offset: `2` (2px). Color: `primary-500`.
 - For selected/active states that persist, use `ring-2 ring-offset-2 ring-primary-500` instead.
 
+**Menu-item carve-out:** Elements whose `role` is `menuitem`, `menuitemcheckbox`, or `menuitemradio` MAY use a background-shift focus indicator (`focus-visible:bg-surface-muted`) instead of the canonical outline ring. This matches Material, Radix, and Headless UI conventions and keeps the menu visually quiet during keyboard traversal. The element must still expose `focus-visible:` styling — never bare `focus:` — and the background shift must be unambiguously distinguishable from the resting state. Canonical example: `projects/ngx-tw/menu/menu.ts`. The carve-out does NOT extend to other listbox-like roles (`option`, `tab`, `treeitem`); those still take the canonical outline ring.
+
 #### Icon Sizing
 
-Icons inside components follow this scale:
+The library ships **four sub-scales** for `size-*` utilities. Pick the sub-scale that matches the role, then pick the value within it. Do not mix sub-scales (never use `size-7` for a glyph; never use `size-5` for a dot indicator).
+
+**Glyph icons** — SVG icons rendered inline alongside text:
 
 | Context | Size | Tailwind |
 |---|---|---|
 | Inside captions, small buttons | `size-4` (16px) | `size-4` |
 | Standard icons (alerts, navigation) | `size-5` (20px) | `size-5` |
 | Large standalone icons, avatars | `size-10` (40px) | `size-10` |
+
+**Square interactive targets** — icon-only buttons or affordances where the container *is* the touch target (paginator chevrons, stepper indicators, sort-header arrow buttons). The glyph inside still uses the glyph scale above:
+
+| Size | Tailwind |
+|---|---|
+| `xs` | `size-6` (24px) |
+| `sm` | `size-7` (28px) |
+| `md` | `size-8` (32px) |
+| `lg` | `size-9` (36px) |
+
+**Dot indicators** — non-interactive status markers (stepper dots, presence indicators):
+
+| Size | Tailwind |
+|---|---|
+| `xs` | `size-2` (8px) |
+| `sm` | `size-2.5` (10px) |
+| `md` | `size-3` (12px) |
+
+**Half-step decorative** — `size-3.5` (14px) is permitted **only** for xs-density chevrons inside compact triggers (sort, pickers, time-picker meridiem, split chevron) where neither `size-3` nor `size-4` lines up with adjacent text. Each use must carry a one-line comment explaining why the half-step is needed.
 
 Always add `shrink-0` to icons in flex containers to prevent them from collapsing. Use `mt-0.5` on icons next to multi-line text to align with the first line's baseline.
 
@@ -384,14 +407,41 @@ Angular v18+ supports native fallback content in `ng-content` slots:
 
 ## Component API Design
 
-- **Inputs:** adjectives for state (`disabled`, `selected`), nouns for data (`label`, `color`, `size`). Boolean inputs default to `false`.
+- **Inputs:** adjectives for state (`disabled`, `selected`), nouns for data (`label`, `color`, `size`). Boolean inputs default to `false` unless they qualify for the documented exception below.
 - **Outputs:** follow Angular's `propertyChange` pattern (`valueChange`, `openedChange`). Action events use past tense (`closed`, `selected`).
 - Use `input()` for configuration. Use `model()` only when the consumer needs two-way binding syntax `[(prop)]` — the component mutates a value the parent owns.
 - Prefer a single `variant` input for the primary visual axis (`solid | outline | ghost`). Use separate inputs when axes are independent (`color`, `size`).
 - **Shared variant types:** define common variant types (`TwColor`, `TwSize`) in the `core/` secondary entry point (`ngx-tw/core`). Every component that exposes `color` or `size` must use these shared types.
 - **Class merging:** `twMerge` is enabled globally via `tv()` — never concatenate class strings manually.
 - Content projection over inputs for rich content. Use `ng-content` for a button's label, not a `label` input.
-- Keep inputs under 5–6 per component. More signals a need to split or use content projection.
+
+### Input count cap
+
+Default cap: **≤ 5–6 inputs per component.** More signals over-configuration; the fix is content projection or splitting into multiple components.
+
+The library codifies four exceptions where the cap is impractical because the component shape inherently demands a wider configuration surface. A new component that fits one of the shapes below MAY exceed the cap; otherwise, refactor.
+
+| Exception | Why the surface is wide | Canonical example |
+|---|---|---|
+| **Overlay-bearing components** | CDK overlay primitives demand position, scroll strategy, backdrop, focus-trap, close-behavior, etc. | popover, menu, tooltip, dialog, command-palette, select, calendar/date-picker, time-picker |
+| **Form controls** | ARIA + Forms baseline (`aria-label{ledby,by}`, `name`, `label`, `description`, `required`, `disabled`, `labelPosition`, plus `color`/`size`/`variant`) is ~12 inputs minimum | `checkbox` (12+ inputs) |
+| **Structural-layout primitives** | Each input is an independent geometric or behavioural axis (axis, unit, gutter, persistence, keyboard step, RTL, label) | `split` (`SplitComponent` 10 + `SplitPaneComponent` 8) |
+| **Data primitives** | Tabular APIs have multiple orthogonal config axes (appearance, sticky, responsive, selection) | `table` — temporary; PR8 reshapes into config objects, after which this exception no longer applies |
+
+Visual primitives (avatar, icon) and decorative primitives (progress-bar) do **not** qualify — reshape with config objects instead.
+
+### Boolean defaults
+
+Boolean inputs default to `false`. The exception: defaults of `true` are permitted when the resting "off" state would surprise consumers and the rationale is documented in an inline JSDoc comment on the same input. The codified list:
+
+- `spinner.track = input(true)` — without the track ring the spinner reads as a partial arc, not a loading indicator
+- `accordion.collapsible = input(true)` — accordions are collapsible by definition; opt-out only
+- `calendar.bordered = input(true)` — embedded calendar reads as bordered; the borderless variant is the special case
+- `calendar.allowSingleDayRange = input(true)` — selecting one day twice in range mode is the default user expectation
+- `calendar.persistPartialRange = input(true)` — losing a half-finished range on blur is unexpected
+- `calendar.showAdjacentMonths = input(true)` — month grid expects the leading/trailing days to render
+
+New boolean inputs that default to `true` MUST land with the same inline-comment justification or the input must be inverted (e.g., `disabled` instead of `enabled`).
 
 ## Accessibility
 
@@ -462,7 +512,7 @@ Every component spec must cover:
 - Do not create wrapper services for simple logic.
 - Do not create helper utilities or abstractions for one-off operations.
 - Do not add CSS files to components — Tailwind utilities only.
-- Do not use `providedIn: 'root'` in library services (consumers control injection scope).
+- Do not use `providedIn: 'root'` in library **services** (consumers control injection scope). Stateless **policy tokens** (canonical example: `TW_ERROR_STATE_MATCHER` in `ngx-tw/core`) are exempt — they ship a single canonical default, hold no per-consumer state, and have no behavior worth scoping. New exempt tokens must be similarly stateless and pure-default.
 - Do not use raw Tailwind palette colors (`blue-*`, `red-*`, etc.) in components — use semantic tokens (`info-*`, `error-*`, etc.).
 - Do not use raw `neutral-*` shades for structural styling — use surface/fg/border tokens instead.
 - Do not assume the consumer's theme — components must work with any semantic token mapping.

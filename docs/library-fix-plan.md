@@ -402,7 +402,7 @@ Copy this section into your issue tracker / GitHub project board. Each row maps 
 | # | Phase | Title | Status | Owner | Effort | Blocked by |
 |---|---|---|---|---|---|---|
 | PR1 | 1 | Stepper focus indicator | 🔵 Review | — | S | — |
-| PR2 | 2 | CLAUDE.md alignment | ☐ Open | — | M | — |
+| PR2 | 2 | CLAUDE.md alignment | ✅ Merged | — | M | — |
 | PR3 | 3 | `on-{role}` semantic tokens | ☐ Open | — | S | — |
 | PR4 | 4 | Calendar a11y + naming | ☐ Open | — | M | PR2, PR3 |
 | PR5 | 4 | Focus-ring hygiene sweep | ☐ Open | — | S | PR2, PR3 |
