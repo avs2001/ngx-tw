@@ -22,7 +22,7 @@
     @if (palette.grouped().length === 0) {
       @if (palette.emptyTemplate(); as emptyTpl) {
         <div [class]="emptyClasses()">
-          <ng-container *ngTemplateOutlet="emptyTpl; context: { $implicit: palette.query() }" />
+          <ng-container [ngTemplateOutlet]="emptyTpl" [ngTemplateOutletContext]="{ $implicit: palette.query() }" />
         </div>
       } @else {
         <div [class]="emptyClasses()">No results found</div>
@@ -45,7 +45,7 @@
             >
               @if (item.template; as tpl) {
                 <span [class]="itemLabelClasses()">
-                  <ng-container *ngTemplateOutlet="tpl" />
+                  <ng-container [ngTemplateOutlet]="tpl" />
                 </span>
               } @else {
                 <span [class]="itemLabelClasses()">{{ item.data.label }}</span>
@@ -68,7 +68,7 @@
   </div>
   @if (palette.footerTemplate(); as footerTpl) {
     <div [class]="footerClasses()">
-      <ng-container *ngTemplateOutlet="footerTpl" />
+      <ng-container [ngTemplateOutlet]="footerTpl" />
     </div>
   }
 </div>

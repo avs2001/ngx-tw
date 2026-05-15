@@ -7,6 +7,7 @@ import {
   CollapsibleGroupComponent,
   CollapsibleTriggerDirective,
   CollapsibleIconDirective,
+  type CollapsibleVariant,
 } from './collapsible';
 
 // ── Test host for standalone collapsible ──
@@ -17,6 +18,7 @@ import {
     <tw-collapsible
       [disabled]="disabled()"
       [keepAlive]="keepAlive()"
+      [variant]="variant()"
       [(open)]="open"
       (toggled)="lastToggled = $event"
     >
@@ -29,6 +31,7 @@ class StandaloneHost {
   open = signal(false);
   disabled = signal(false);
   keepAlive = signal(false);
+  variant = signal<CollapsibleVariant>('default');
   lastToggled: boolean | undefined;
 }
 
@@ -152,11 +155,9 @@ describe('CollapsibleComponent', () => {
 
     it('should render all variants without error', () => {
       const variants = ['default', 'bordered', 'ghost', 'filled'] as const;
+      const fixture = createFixture(StandaloneHost);
       for (const variant of variants) {
-        const fixture = createFixture(StandaloneHost);
-        const collapsible = fixture.debugElement.children[0];
-        collapsible.componentInstance.variant = variant;
-        fixture.componentRef.setInput('variant', variant);
+        fixture.componentInstance.variant.set(variant);
         expect(() => fixture.detectChanges()).not.toThrow();
       }
     });

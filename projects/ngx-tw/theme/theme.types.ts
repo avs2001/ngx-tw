@@ -16,11 +16,17 @@ export interface ThemeConfig {
 }
 
 export interface ThemeState {
+  /** The user-selected theme — may be `'system'`. */
   readonly theme: Theme;
+  /** The theme actually applied to the DOM — never `'system'`. */
   readonly resolvedTheme: ResolvedTheme;
+  /** The OS color-scheme preference detected via `prefers-color-scheme`. */
   readonly systemTheme: ResolvedTheme;
+  /** True when {@link resolvedTheme} is `'dark'`. */
   readonly isDark: boolean;
+  /** True when {@link resolvedTheme} is `'light'`. */
   readonly isLight: boolean;
+  /** True when {@link resolvedTheme} is `'high-contrast'`. */
   readonly isHighContrast: boolean;
 }
 

@@ -2,11 +2,11 @@
  * `tw-progress-bar` — visualises measurable progress.
  *
  * Composition usecases:
- * - Upload progress (determinate linear with `valueFormatter` → `"3.2 MB / 10 MB"`).
- * - Multi-step wizard (segmented variant, `segments` = step count).
+ * - Upload progress (determinate linear with `options.formatter` → `"3.2 MB / 10 MB"`).
+ * - Multi-step wizard (segmented variant, `options.segments` = step count).
  * - Skill / rating display (static determinate linear).
  * - Inline list-row progress (compact `size="sm"`, constrained width via host class).
- * - Card-footer task completion (`showValue=true`, `color` switches to `success`/`error`).
+ * - Card-footer task completion (`options.showValue=true`, `color` switches to `success`/`error`).
  * - Indeterminate loading before first byte (omit `value` — the bar sweeps).
  *
  * For unknown-duration operations with no measurable progress, use `tw-spinner` instead.
@@ -30,6 +30,27 @@ export type ProgressBarSize = 'sm' | 'md' | 'lg';
 
 /** Function signature for formatting the visible / announced progress value. */
 export type ProgressBarValueFormatter = (value: number, max: number, min: number) => string;
+
+/**
+ * Non-visual configuration bundled into a single input to keep the component's public
+ * surface small. Every field is optional and falls back to a sensible default.
+ */
+export interface ProgressBarOptions {
+  /** Lower bound of the value range. Defaults to `0`. */
+  min?: number;
+  /** Upper bound of the value range. Defaults to `100`. */
+  max?: number;
+  /** Number of equal cells when `variant` is `'segmented'`. Ignored for `'linear'`. Defaults to `5`. */
+  segments?: number;
+  /** When true, renders the formatted progress value next to the label. Defaults to `false`. */
+  showValue?: boolean;
+  /** Custom formatter for the displayed and announced value. Defaults to an integer percentage, e.g. `'42%'`. */
+  formatter?: ProgressBarValueFormatter;
+  /** Accessible name when no visible `label` is provided. Mirrored to `aria-label` on the progressbar element. */
+  ariaLabel?: string;
+  /** ID of an external element that labels the progress bar. Mirrored to `aria-labelledby`. */
+  ariaLabelledby?: string;
+}
 
 // ── Static fill-color lookup (Tailwind v4 scans class strings statically) ──
 
@@ -101,7 +122,11 @@ const DEFAULT_FORMATTER: ProgressBarValueFormatter = (value, max, min) => {
  * ```html
  * <tw-progress-bar [value]="40" />
  * <tw-progress-bar label="Fetching records" />
- * <tw-progress-bar variant="segmented" [segments]="4" [value]="step() * 25" />
+ * <tw-progress-bar
+ *   variant="segmented"
+ *   [value]="step() * 25"
+ *   [options]="{ segments: 4 }"
+ * />
  * ```
  */
 @Component({
@@ -118,7 +143,7 @@ const DEFAULT_FORMATTER: ProgressBarValueFormatter = (value, max, min) => {
         } @else {
           <span></span>
         }
-        @if (showValue() && !isIndeterminate()) {
+        @if (resolvedShowValue() && !isIndeterminate()) {
           <span [class]="valueTextClasses()">{{ formattedValue() }}</span>
         }
       </div>
@@ -128,8 +153,8 @@ const DEFAULT_FORMATTER: ProgressBarValueFormatter = (value, max, min) => {
       <div
         [class]="railClasses()"
         role="progressbar"
-        [attr.aria-valuemin]="min()"
-        [attr.aria-valuemax]="max()"
+        [attr.aria-valuemin]="resolvedMin()"
+        [attr.aria-valuemax]="resolvedMax()"
         [attr.aria-valuenow]="isIndeterminate() ? null : clampedValue()"
         [attr.aria-valuetext]="isIndeterminate() ? null : formattedValue()"
         [attr.aria-busy]="isIndeterminate() ? true : null"
@@ -146,8 +171,8 @@ const DEFAULT_FORMATTER: ProgressBarValueFormatter = (value, max, min) => {
       <div
         [class]="segmentListClasses()"
         role="progressbar"
-        [attr.aria-valuemin]="min()"
-        [attr.aria-valuemax]="max()"
+        [attr.aria-valuemin]="resolvedMin()"
+        [attr.aria-valuemax]="resolvedMax()"
         [attr.aria-valuenow]="isIndeterminate() ? null : clampedValue()"
         [attr.aria-valuetext]="isIndeterminate() ? null : formattedValue()"
         [attr.aria-busy]="isIndeterminate() ? true : null"
@@ -162,14 +187,8 @@ const DEFAULT_FORMATTER: ProgressBarValueFormatter = (value, max, min) => {
   `,
 })
 export class ProgressBarComponent {
-  /** Current progress value. When null or undefined, the bar renders indeterminate. Values outside `[min, max]` are clamped. */
+  /** Current progress value. When null or undefined, the bar renders indeterminate. Values outside `[options.min, options.max]` are clamped. */
   readonly value = input<number | null | undefined>(null);
-
-  /** Lower bound of the value range. Defaults to `0`. */
-  readonly min = input(0);
-
-  /** Upper bound of the value range. Defaults to `100`. */
-  readonly max = input(100);
 
   /** Visual style of the bar. `'linear'` renders a single fill; `'segmented'` splits the rail into discrete steps. Defaults to `'linear'`. */
   readonly variant = input<ProgressBarVariant>('linear');
@@ -180,26 +199,26 @@ export class ProgressBarComponent {
   /** Bar thickness. `'sm'` = h-1, `'md'` = h-2, `'lg'` = h-3. Defaults to `'md'`. */
   readonly size = input<ProgressBarSize>('md');
 
-  /** Number of equal cells when `variant` is `'segmented'`. Ignored for `'linear'`. Defaults to `5`. */
-  readonly segments = input(5);
-
   /** Visible label rendered above the bar. When set, the bar is wired to the label via `aria-labelledby`. */
   readonly label = input<string | undefined>(undefined);
 
-  /** When true, renders the formatted progress value next to the label. Defaults to `false`. */
-  readonly showValue = input(false);
-
-  /** Custom formatter for the displayed and announced value. Defaults to an integer percentage, e.g. `'42%'`. */
-  readonly valueFormatter = input<ProgressBarValueFormatter | undefined>(undefined);
-
-  /** Accessible name when no visible label is provided. Mirrored to `aria-label` on the progressbar element. */
-  readonly ariaLabel = input<string | undefined>(undefined);
-
-  /** ID of an external element that labels the progress bar. Mirrored to `aria-labelledby`. */
-  readonly ariaLabelledby = input<string | undefined>(undefined);
+  /** Bundles non-visual configuration: value range (`min`/`max`/`segments`), value readout (`showValue`/`formatter`), and accessibility fallbacks (`ariaLabel`/`ariaLabelledby`). Every field is optional. */
+  readonly options = input<ProgressBarOptions | undefined>(undefined);
 
   /** @internal */
   readonly labelId = `tw-progress-bar-${nextId++}-label`;
+
+  /** @internal */
+  readonly resolvedMin = computed(() => this.options()?.min ?? 0);
+
+  /** @internal */
+  readonly resolvedMax = computed(() => this.options()?.max ?? 100);
+
+  /** @internal */
+  readonly resolvedSegments = computed(() => this.options()?.segments ?? 5);
+
+  /** @internal */
+  readonly resolvedShowValue = computed(() => this.options()?.showValue ?? false);
 
   /** @internal */
   readonly isIndeterminate = computed(() => {
@@ -210,9 +229,9 @@ export class ProgressBarComponent {
   /** @internal */
   readonly clampedValue = computed(() => {
     const v = this.value();
-    if (v === null || v === undefined) return this.min();
-    const lo = this.min();
-    const hi = this.max();
+    if (v === null || v === undefined) return this.resolvedMin();
+    const lo = this.resolvedMin();
+    const hi = this.resolvedMax();
     if (v < lo) return lo;
     if (v > hi) return hi;
     return v;
@@ -221,38 +240,38 @@ export class ProgressBarComponent {
   /** @internal */
   readonly progressRatio = computed(() => {
     if (this.isIndeterminate()) return 0;
-    const range = this.max() - this.min();
+    const range = this.resolvedMax() - this.resolvedMin();
     if (range <= 0) return 0;
-    return (this.clampedValue() - this.min()) / range;
+    return (this.clampedValue() - this.resolvedMin()) / range;
   });
 
   /** @internal */
   readonly formattedValue = computed(() => {
     if (this.isIndeterminate()) return '';
-    const fmt = this.valueFormatter() ?? DEFAULT_FORMATTER;
-    return fmt(this.clampedValue(), this.max(), this.min());
+    const fmt = this.options()?.formatter ?? DEFAULT_FORMATTER;
+    return fmt(this.clampedValue(), this.resolvedMax(), this.resolvedMin());
   });
 
   /** @internal */
-  readonly hasHeader = computed(() => !!this.label() || this.showValue());
+  readonly hasHeader = computed(() => !!this.label() || this.resolvedShowValue());
 
   /** @internal */
   readonly segmentIndices = computed(() => {
-    const n = Math.max(1, Math.floor(this.segments()));
+    const n = Math.max(1, Math.floor(this.resolvedSegments()));
     return Array.from({ length: n }, (_, i) => i);
   });
 
   /** @internal */
   readonly resolvedAriaLabel = computed(() => {
     if (this.label()) return null;
-    if (this.ariaLabelledby()) return null;
-    return this.ariaLabel() ?? null;
+    if (this.options()?.ariaLabelledby) return null;
+    return this.options()?.ariaLabel ?? null;
   });
 
   /** @internal */
   readonly resolvedAriaLabelledby = computed(() => {
     if (this.label()) return this.labelId;
-    return this.ariaLabelledby() ?? null;
+    return this.options()?.ariaLabelledby ?? null;
   });
 
   // ── tv() slot computeds ──
@@ -290,10 +309,11 @@ export class ProgressBarComponent {
     let warned = false;
     effect(() => {
       if (warned) return;
-      if (this.label() || this.ariaLabel() || this.ariaLabelledby()) return;
+      const opts = this.options();
+      if (this.label() || opts?.ariaLabel || opts?.ariaLabelledby) return;
       warned = true;
       console.warn(
-        'tw-progress-bar: no accessible name provided. Supply one of `label`, `ariaLabel`, or `ariaLabelledby`.',
+        'tw-progress-bar: no accessible name provided. Supply one of `label`, `options.ariaLabel`, or `options.ariaLabelledby`.',
       );
     });
   }

@@ -162,9 +162,8 @@ export class CalendarHarness extends ComponentHarness {
   /** @internal Returns the header buttons in [prev, period, next] order. */
   private async orderedHeaderButtons() {
     const buttons = await this.headerNavButtons();
-    // Header renders [period, prev, next] visually, but the DOM is [period-button, prev-button, next-button].
-    // We normalise to [prev, period, next] by treating the first button as "period".
-    const [period, prev, next] = buttons;
+    // Header DOM is [prev-button, period-button, next-button].
+    const [prev, period, next] = buttons;
     return [prev, period, next] as const;
   }
 

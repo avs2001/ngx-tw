@@ -4,13 +4,24 @@
  * responsive (scroll / stack / hide) + sticky + layout controls, and typed
  * template contexts per cell/row/footer/expansion.
  *
+ * v2 input shape — visual/behavioral concerns are grouped into config objects:
+ *   - `appearance`  { variant, density, size, layout, rowAnimations }
+ *   - `sticky`      { header, footer, scrollHeight }
+ *   - `responsive`  { mode, stackBelow }
+ *   - `selection`   { enabled }
+ *   - `<tw-column>` `display` { sticky, align, numeric, hideBelow, width }
+ *
+ * Each config input accepts a partial object; unset keys fall back to the documented
+ * defaults (see `APPEARANCE_DEFAULTS`, etc.). Data, state, mechanical mode flags, i18n
+ * and a11y attributes stay flat.
+ *
  * Out of scope for v1:
  *   - Column resize, drag-reorder
  *   - CDK virtual scroll viewport integration
  *   - Inline cell editing
  *   - Filter UI primitives
  *   - Arrow-key "grid" pattern keyboard navigation (APG)
- *   - Full selection checkbox rendering (selection API is declared; rendering ships v2)
+ *   - Full selection checkbox rendering (selection API is declared; rendering ships later)
  *   - Sticky-edge shadows
  */
 
@@ -58,10 +69,10 @@ export type TwTableVariant = 'default' | 'striped' | 'bordered';
 /** Row density. `'comfortable'` — larger vertical padding. `'compact'` — tighter padding for dense data. */
 export type TwTableDensity = 'comfortable' | 'compact';
 
-/** Responsive behaviour. `'scroll'` — horizontal overflow. `'stack'` — cards per row below a breakpoint. `'hide'` — columns with `hideBelow` are hidden. */
-export type TwTableResponsive = 'scroll' | 'stack' | 'hide';
+/** Responsive behaviour mode. `'scroll'` — horizontal overflow. `'stack'` — cards per row below a breakpoint. `'hide'` — columns with `hideBelow` are hidden. */
+export type TwTableResponsiveMode = 'scroll' | 'stack' | 'hide';
 
-/** Table layout algorithm. `'auto'` — content-sized columns. `'fixed'` — respects `<tw-column width>`. */
+/** Table layout algorithm. `'auto'` — content-sized columns. `'fixed'` — respects `<tw-column display.width>`. */
 export type TwTableLayout = 'auto' | 'fixed';
 
 /** Horizontal alignment of a column's cells. */
@@ -69,6 +80,95 @@ export type TwColumnAlign = 'start' | 'center' | 'end';
 
 /** Column stickiness. `'start'` pins to leading edge; `'end'` pins to trailing edge; `false` disables. */
 export type TwColumnSticky = 'start' | 'end' | false;
+
+// ── Config object types ──────────────────────────────────────────────
+
+/** Visual configuration. Pass any subset; unset keys fall back to the defaults. */
+export interface TwTableAppearance {
+  /** Visual variant. Defaults to `'default'`. */
+  variant?: TwTableVariant;
+  /** Row density (vertical padding only — independent of font size). Defaults to `'comfortable'`. */
+  density?: TwTableDensity;
+  /** Base font-size scale for header and data cells. Defaults to `'md'`. */
+  size?: TwSize;
+  /** Table layout algorithm. Defaults to `'auto'`. */
+  layout?: TwTableLayout;
+  /** When `true`, rows fade in on enter via `animate.enter="fade-in"`. Off by default to avoid flicker on frequent data updates. Defaults to `false`. */
+  rowAnimations?: boolean;
+}
+
+/** Sticky configuration — pinned header/footer rows and an internal scroll region. */
+export interface TwTableSticky {
+  /** When `true`, the `<thead>` row stays visible while the body scrolls. Requires `scrollHeight` or a scrolling ancestor. Defaults to `false`. */
+  header?: boolean;
+  /** When `true`, the `<tfoot>` row stays pinned while the body scrolls. Defaults to `false`. */
+  footer?: boolean;
+  /** Max-height of the internal scroll container. A number is treated as pixels; a string is passed through as a CSS length. When `null`, the table flows with its content. Defaults to `null`. */
+  scrollHeight?: string | number | null;
+}
+
+/** Responsive configuration — how the table adapts to narrow viewports. */
+export interface TwTableResponsive {
+  /** Narrow-viewport strategy. Defaults to `'scroll'`. */
+  mode?: TwTableResponsiveMode;
+  /** Breakpoint below which the `'stack'` mode engages. Ignored when `mode !== 'stack'`. Defaults to `'md'`. */
+  stackBelow?: TwBreakpoint;
+}
+
+/** Selection configuration. */
+export interface TwTableSelection {
+  /** When `true`, exposes a leading `_selection` column slot for checkbox rendering. Defaults to `false`. */
+  enabled?: boolean;
+}
+
+/** Per-column display configuration. */
+export interface TwColumnDisplay {
+  /** Sticky positioning. `'start'` pins to the leading edge; `'end'` pins to the trailing edge; `false` disables stickiness. Defaults to `false`. */
+  sticky?: TwColumnSticky;
+  /** Horizontal text alignment. `'end'` is idiomatic for numeric columns. Defaults to `'start'`. */
+  align?: TwColumnAlign;
+  /** Convenience flag equivalent to `align: 'end'` plus tabular numerals. Overridden by an explicit `align`. Defaults to `false`. */
+  numeric?: boolean;
+  /** Responsive visibility: when set and the viewport is below this breakpoint, the column is hidden (applies when the table's `responsive.mode === 'hide'`). Defaults to `null`. */
+  hideBelow?: TwBreakpoint | null;
+  /** CSS column width applied to header and data cells. A number is treated as pixels; a string is passed through. Only honoured when the table's `appearance.layout === 'fixed'`. Defaults to `null`. */
+  width?: string | number | null;
+}
+
+// ── Resolved-default constants ───────────────────────────────────────
+
+const APPEARANCE_DEFAULTS: Required<TwTableAppearance> = {
+  variant: 'default',
+  density: 'comfortable',
+  size: 'md',
+  layout: 'auto',
+  rowAnimations: false,
+};
+
+const STICKY_DEFAULTS: Required<TwTableSticky> = {
+  header: false,
+  footer: false,
+  scrollHeight: null,
+};
+
+const RESPONSIVE_DEFAULTS: Required<TwTableResponsive> = {
+  mode: 'scroll',
+  stackBelow: 'md',
+};
+
+const SELECTION_DEFAULTS: Required<TwTableSelection> = {
+  enabled: false,
+};
+
+const DISPLAY_DEFAULTS: Required<TwColumnDisplay> = {
+  sticky: false,
+  align: 'start',
+  numeric: false,
+  hideBelow: null,
+  width: null,
+};
+
+// ── i18n + event types ───────────────────────────────────────────────
 
 /** String labels used by the table. All keys optional on the `labels` input; unset keys fall back to the English defaults. */
 export interface TwTableLabels {
@@ -180,7 +280,7 @@ export interface TwRowExpansionContext<T> {
   collapse: () => void;
 }
 
-/** Payload emitted by `rowClick`. */
+/** Payload emitted by `rowClicked`. */
 export interface TwRowClickEvent<T> {
   /** The clicked row. */
   row: T;
@@ -533,29 +633,17 @@ export class ColumnComponent<T = unknown> {
   /** Unique identifier for this column. Required — referenced by `*twRowDef` / `*twHeaderRowDef` and used as the CDK `cdkColumnDef` name. */
   readonly name = input.required<string>();
 
-  /** Sticky positioning. `'start'` pins to the leading edge; `'end'` pins to the trailing edge; `false` disables stickiness. Defaults to `false`. */
-  readonly sticky = input<TwColumnSticky>(false);
-
-  /** Horizontal text alignment. `'end'` is idiomatic for numeric columns. Defaults to `'start'`. */
-  readonly align = input<TwColumnAlign>('start');
+  /** Visual configuration: sticky, align, numeric, hideBelow, width. Accepts any subset; unset keys fall back to the defaults. */
+  readonly display = input<TwColumnDisplay>({});
 
   /** When true, removes this column from the visible column set. Defaults to `false`. */
   readonly hidden = input<boolean>(false);
-
-  /** Responsive visibility: when set and the viewport is below this breakpoint, the column is hidden (applies when the table's `responsive === 'hide'`). Defaults to `null`. */
-  readonly hideBelow = input<TwBreakpoint | null>(null);
-
-  /** CSS column width applied to header and data cells. A number is treated as pixels; a string is passed through. Only honoured when the table's `layout === 'fixed'`. Defaults to `null`. */
-  readonly width = input<string | number | null>(null);
 
   /** Ordering hint for the default visible-columns list when no `*twRowDef` is declared. Lower renders first. Defaults to `0`. */
   readonly priority = input<number>(0);
 
   /** Plain text header label. Used when no `*twHeaderCellDef` template is projected. Defaults to `undefined`. */
   readonly headerLabel = input<string | undefined>(undefined);
-
-  /** Convenience flag equivalent to `align="end"` + tabular numerals. Overridden by an explicit `align`. Defaults to `false`. */
-  readonly numeric = input<boolean>(false);
 
   /** Label used as `data-label` on cells in responsive `'stack'` mode. Falls back to `headerLabel`, then `name`. Defaults to `undefined`. */
   readonly stackLabel = input<string | undefined>(undefined);
@@ -583,15 +671,29 @@ export class ColumnComponent<T = unknown> {
   readonly extraHeaderClass = signal('');
   readonly extraFooterClass = signal('');
 
+  /** Resolved display config — partial input merged with `DISPLAY_DEFAULTS`. */
+  readonly resolvedDisplay = computed<Required<TwColumnDisplay>>(() => ({
+    ...DISPLAY_DEFAULTS,
+    ...this.display(),
+  }));
+
+  /** @internal Convenience accessor for the cdkColumnDef `[sticky]` binding. */
+  readonly stickyStart = computed(() => this.resolvedDisplay().sticky === 'start');
+
+  /** @internal Convenience accessor for the cdkColumnDef `[stickyEnd]` binding. */
+  readonly stickyEnd = computed(() => this.resolvedDisplay().sticky === 'end');
+
   /** @internal Effective align — `numeric` forces `'end'` unless `align` is explicitly set to a non-default value. */
   readonly effectiveAlign = computed<TwColumnAlign>(() => {
-    const align = this.align();
-    if (align === 'start' && this.numeric()) return 'end';
-    return align;
+    const display = this.resolvedDisplay();
+    if (display.align === 'start' && display.numeric) return 'end';
+    return display.align;
   });
 
   /** @internal CSS width string applied to cells. */
-  readonly resolvedWidth = computed<string | null>(() => coerceCssSize(this.width()));
+  readonly resolvedWidth = computed<string | null>(() =>
+    coerceCssSize(this.resolvedDisplay().width),
+  );
 
   /** @internal `data-label` emitted on cells in stack mode. */
   readonly stackDataLabel = computed<string>(
@@ -601,7 +703,7 @@ export class ColumnComponent<T = unknown> {
   /** @internal Align class plus tabular-numerals when `numeric` is true — shared by data and footer cells. */
   private readonly dataCellPrefix = computed(() => {
     const align = ALIGN_CLASSES[this.effectiveAlign()];
-    const numeric = this.numeric() ? '[font-variant-numeric:tabular-nums]' : '';
+    const numeric = this.resolvedDisplay().numeric ? '[font-variant-numeric:tabular-nums]' : '';
     return numeric ? `${align} ${numeric}` : align;
   });
 
@@ -692,41 +794,20 @@ export class TableComponent<T = unknown> {
   /** When non-null, renders the error slot in place of the body. Defaults to `null`. */
   readonly error = input<unknown | null>(null);
 
-  /** Visual variant. Defaults to `'default'`. */
-  readonly variant = input<TwTableVariant>('default');
+  /** Visual configuration — `variant`, `density`, `size`, `layout`, `rowAnimations`. Accepts a partial; unset keys fall back to the defaults. */
+  readonly appearance = input<TwTableAppearance>({});
 
-  /** Row density. Defaults to `'comfortable'`. */
-  readonly density = input<TwTableDensity>('comfortable');
+  /** Sticky configuration — `header`, `footer`, `scrollHeight`. Accepts a partial; unset keys fall back to the defaults. */
+  readonly sticky = input<TwTableSticky>({});
 
-  /** Controls the table's font-size scale. Uses the shared `TwSize` scale. Defaults to `'md'`. */
-  readonly size = input<TwSize>('md');
+  /** Responsive configuration — `mode`, `stackBelow`. Accepts a partial; unset keys fall back to the defaults. */
+  readonly responsive = input<TwTableResponsive>({});
 
-  /** Responsive behaviour on narrow viewports. Defaults to `'scroll'`. */
-  readonly responsive = input<TwTableResponsive>('scroll');
-
-  /** Breakpoint below which the `'stack'` responsive mode engages. Ignored when `responsive !== 'stack'`. Defaults to `'md'`. */
-  readonly stackBelow = input<TwBreakpoint>('md');
-
-  /** When true, the `<thead>` row stays visible while the body scrolls. Requires `scrollHeight` or a scrolling ancestor. Defaults to `false`. */
-  readonly stickyHeader = input<boolean>(false);
-
-  /** When true, the `<tfoot>` row stays pinned while the body scrolls. Defaults to `false`. */
-  readonly stickyFooter = input<boolean>(false);
-
-  /** Max-height of the internal scroll container. A number is treated as pixels; a string is passed through as a CSS length. When null, the table flows with its content. Defaults to `null`. */
-  readonly scrollHeight = input<string | number | null>(null);
-
-  /** Table layout algorithm. `'fixed'` respects `<tw-column width>` and enables CDK's sticky-width optimizations. Defaults to `'auto'`. */
-  readonly layout = input<TwTableLayout>('auto');
+  /** Selection configuration — `enabled`. Accepts a partial; unset keys fall back to the defaults. */
+  readonly selection = input<TwTableSelection>({});
 
   /** Whether multiple row templates may render per data object. Required for `*twRowExpansion` and advanced `*twRowDef [when]` usage. Defaults to `false`. */
   readonly multiTemplateRows = input<boolean>(false);
-
-  /** When true, exposes a leading `_selection` column slot (v1: empty placeholder; v2: checkbox rendering). Defaults to `false`. */
-  readonly selectable = input<boolean>(false);
-
-  /** When true, rows fade in on enter via `animate.enter="fade-in"`. Off by default to avoid flicker on data updates. Defaults to `false`. */
-  readonly rowAnimations = input<boolean>(false);
 
   /** Overrides for user-facing strings. Unset keys fall back to the English defaults. Defaults to `{}`. */
   readonly labels = input<Partial<TwTableLabels>>({});
@@ -742,13 +823,13 @@ export class TableComponent<T = unknown> {
   /** Two-way bound set of rows currently expanded. Immutable — set a new `Set` on every change; do not mutate in place. */
   readonly expandedRows = model<ReadonlySet<T>>(new Set<T>());
 
-  /** Two-way bound list of selected rows. Set a new array on every change; do not mutate. Only used when `selectable` is `true`. */
+  /** Two-way bound list of selected rows. Set a new array on every change; do not mutate. Only used when `selection.enabled` is `true`. */
   readonly selected = model<readonly T[]>([]);
 
   // ── Outputs ──
 
   /** Fires when a row is clicked. Suppressed when the click originated inside an interactive descendant (button, link, input, etc.). */
-  readonly rowClick = output<TwRowClickEvent<T>>();
+  readonly rowClicked = output<TwRowClickEvent<T>>();
 
   /** Fires after `selected` changes via user interaction (not on programmatic writes). */
   readonly selectionChange = output<TwSelectionChangeEvent<T>>();
@@ -786,6 +867,32 @@ export class TableComponent<T = unknown> {
   /** Returns the DOM id used for the expansion row of the given data row at the given index. Useful for wiring `aria-controls` from a trigger cell. */
   readonly expansionId = (_row: T, index: number): string =>
     `${this.hostId}-expansion-${index}`;
+
+  // ── Resolved config (partial input merged with defaults) ──
+
+  /** @internal Resolved visual configuration. */
+  readonly resolvedAppearance = computed<Required<TwTableAppearance>>(() => ({
+    ...APPEARANCE_DEFAULTS,
+    ...this.appearance(),
+  }));
+
+  /** @internal Resolved sticky configuration. */
+  readonly resolvedSticky = computed<Required<TwTableSticky>>(() => ({
+    ...STICKY_DEFAULTS,
+    ...this.sticky(),
+  }));
+
+  /** @internal Resolved responsive configuration. */
+  readonly resolvedResponsive = computed<Required<TwTableResponsive>>(() => ({
+    ...RESPONSIVE_DEFAULTS,
+    ...this.responsive(),
+  }));
+
+  /** @internal Resolved selection configuration. */
+  readonly resolvedSelection = computed<Required<TwTableSelection>>(() => ({
+    ...SELECTION_DEFAULTS,
+    ...this.selection(),
+  }));
 
   // ── Derived state ──
 
@@ -829,7 +936,7 @@ export class TableComponent<T = unknown> {
   });
 
   /** @internal CSS max-height string for the scroll container. */
-  readonly maxHeightStyle = computed(() => coerceCssSize(this.scrollHeight()));
+  readonly maxHeightStyle = computed(() => coerceCssSize(this.resolvedSticky().scrollHeight));
 
   /** @internal The visible (non-hidden) columns in render order (by ascending `priority`). */
   readonly visibleColumns = computed<readonly ColumnComponent<T>[]>(() =>
@@ -838,10 +945,10 @@ export class TableComponent<T = unknown> {
       .sort((a, b) => a.priority() - b.priority()),
   );
 
-  /** @internal Column names of the visible set, prefixed with `_selection` when `selectable === true`. */
+  /** @internal Column names of the visible set, prefixed with `_selection` when `selection.enabled === true`. */
   readonly visibleColumnNames = computed<readonly string[]>(() => {
     const names = this.visibleColumns().map((c) => c.name());
-    return this.selectable() ? ['_selection', ...names] : names;
+    return this.resolvedSelection().enabled ? ['_selection', ...names] : names;
   });
 
   /** @internal Whether any column has a projected footer-cell template. */
@@ -857,22 +964,28 @@ export class TableComponent<T = unknown> {
   /** @internal Colspan to use for the expansion `<td>`. */
   readonly expansionColspan = computed(() => {
     const cols = this.visibleColumns().length;
-    return Math.max(1, cols + (this.selectable() ? 1 : 0));
+    return Math.max(1, cols + (this.resolvedSelection().enabled ? 1 : 0));
   });
+
+  /** @internal Pulled by the template for the `*cdkHeaderRowDef`/`*cdkFooterRowDef` `sticky:` field. */
+  readonly stickyHeader = computed(() => this.resolvedSticky().header);
+  readonly stickyFooter = computed(() => this.resolvedSticky().footer);
 
   // ── Variant class computation ──
 
-  private readonly _variantResult = computed(() =>
-    tableVariants({
-      variant: this.variant(),
-      density: this.density(),
-      size: this.size(),
-      layout: this.layout(),
-      stickyHeader: this.stickyHeader(),
-      stickyFooter: this.stickyFooter(),
+  private readonly _variantResult = computed(() => {
+    const appearance = this.resolvedAppearance();
+    const stickyCfg = this.resolvedSticky();
+    return tableVariants({
+      variant: appearance.variant,
+      density: appearance.density,
+      size: appearance.size,
+      layout: appearance.layout,
+      stickyHeader: stickyCfg.header,
+      stickyFooter: stickyCfg.footer,
       loading: this.loading(),
-    }),
-  );
+    });
+  });
 
   readonly hostClasses = computed(() => this._variantResult().root());
   readonly toolbarClasses = computed(() => this._variantResult().toolbar());
@@ -884,15 +997,17 @@ export class TableComponent<T = unknown> {
 
   readonly tableClasses = computed(() => {
     const base = this._variantResult().table();
-    if (this.responsive() !== 'stack') return base;
-    return `${base} ${STACK_TABLE_UTILITIES[this.stackBelow()]}`;
+    const responsive = this.resolvedResponsive();
+    if (responsive.mode !== 'stack') return base;
+    return `${base} ${STACK_TABLE_UTILITIES[responsive.stackBelow]}`;
   });
 
   readonly thClasses = computed(() => this._variantResult().th());
   readonly tdClasses = computed(() => {
     const base = this._variantResult().td();
-    if (this.responsive() === 'stack') {
-      return `${base} ${STACK_CELL_UTILITIES[this.stackBelow()]}`;
+    const responsive = this.resolvedResponsive();
+    if (responsive.mode === 'stack') {
+      return `${base} ${STACK_CELL_UTILITIES[responsive.stackBelow]}`;
     }
     return base;
   });
@@ -930,7 +1045,7 @@ export class TableComponent<T = unknown> {
       const tb = this.trackBy();
       if (tb) table.trackBy = tb;
       table.multiTemplateDataRows = this.multiTemplateRows();
-      table.fixedLayout = this.layout() === 'fixed';
+      table.fixedLayout = this.resolvedAppearance().layout === 'fixed';
     });
 
     // Bridge the projected no-data row to CdkTable.
@@ -959,7 +1074,7 @@ export class TableComponent<T = unknown> {
     // (sticky, hideBelow). ColumnComponent combines these with its own align/numeric bits.
     effect(() => {
       const visible = this.visibleColumns();
-      const responsive = this.responsive();
+      const responsiveMode = this.resolvedResponsive().mode;
       const thCls = this.thClasses();
       const tdCls = this.tdClasses();
       const footerCls = this.footerTdClasses();
@@ -970,12 +1085,12 @@ export class TableComponent<T = unknown> {
           const visibleIndex = visible.indexOf(col);
           col.columnIndex.set(Math.max(0, visibleIndex));
 
+          const display = col.resolvedDisplay();
           const decor: string[] = [];
-          const sticky = col.sticky();
-          if (sticky) decor.push(STICKY_CELL_ZINDEX, 'bg-surface-raised');
-
-          const below = col.hideBelow();
-          if (below && responsive === 'hide') decor.push(HIDE_BELOW_UTILITIES[below]);
+          if (display.sticky) decor.push(STICKY_CELL_ZINDEX, 'bg-surface-raised');
+          if (display.hideBelow && responsiveMode === 'hide') {
+            decor.push(HIDE_BELOW_UTILITIES[display.hideBelow]);
+          }
 
           const decorCls = decor.join(' ');
           col.extraHeaderClass.set(`${thCls} ${decorCls}`.trim());
@@ -1023,7 +1138,7 @@ export class TableComponent<T = unknown> {
       if (!isDevMode()) return;
       const hasCaption = !!this._elementRef.nativeElement.querySelector('caption');
       if (!hasCaption && !this.ariaLabel() && !this.ariaLabelledby()) {
-         
+
         console.warn(
           '[tw-table] no accessible name provided. Add a `<caption slot="caption">`, `[aria-label]`, or `[aria-labelledby]`.',
         );
@@ -1063,7 +1178,7 @@ export class TableComponent<T = unknown> {
       const role = node.getAttribute('role');
       if (role === 'button' || role === 'link' || role === 'checkbox') return;
     }
-    this.rowClick.emit({ row, index, event });
+    this.rowClicked.emit({ row, index, event });
   }
 
   /** @internal Whether a row is currently expanded. */

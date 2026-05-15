@@ -82,7 +82,7 @@ const TEAM: readonly TeamMember[] = [
             </tr>
             <tr>
               <td class="px-4 py-2 font-mono text-xs">Row click</td>
-              <td class="px-4 py-2 text-fg-muted"><code class="font-mono">(rowClick)</code> is suppressed when the click originated inside an interactive descendant (button, link, input).</td>
+              <td class="px-4 py-2 text-fg-muted"><code class="font-mono">(rowClicked)</code> is suppressed when the click originated inside an interactive descendant (button, link, input).</td>
             </tr>
             <tr>
               <td class="px-4 py-2 font-mono text-xs">Row expansion</td>
@@ -101,7 +101,7 @@ const TEAM: readonly TeamMember[] = [
       <h2 class="text-sm font-semibold mb-3">Basic Usage</h2>
       <div class="rounded-lg border border-border p-6 bg-surface-raised mb-4">
         <tw-table [data]="team()" aria-label="Team members">
-          <tw-column name="id" headerLabel="ID" [numeric]="true" width="80px">
+          <tw-column name="id" headerLabel="ID" [display]="{ numeric: true, width: '80px' }">
             <ng-template twCellDef let-row>{{ asMember(row).id }}</ng-template>
           </tw-column>
           <tw-column name="name" headerLabel="Name">
@@ -131,8 +131,8 @@ const TEAM: readonly TeamMember[] = [
         <li>Generic over <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">T</code> — fully typed cell / header / footer / expansion contexts</li>
         <li>CDK data sources: plain array, <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">Observable&lt;T[]&gt;</code>, or <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">DataSource&lt;T&gt;</code></li>
         <li>Sticky header, sticky footer, sticky start / end columns</li>
-        <li>Internal scroll container via <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">scrollHeight</code></li>
-        <li>3 responsive modes: <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">scroll</code> (default), <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">stack</code> (card-per-row below a breakpoint), <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">hide</code> (per-column <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">hideBelow</code>)</li>
+        <li>Internal scroll container via <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">sticky.scrollHeight</code></li>
+        <li>3 responsive modes: <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">scroll</code> (default), <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">stack</code> (card-per-row below a breakpoint), <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">hide</code> (per-column <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">display.hideBelow</code>)</li>
         <li>Loading / error / empty state overlays with projectable fallbacks</li>
         <li>Row expansion via <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">*twRowExpansion</code> + <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">[(expandedRows)]</code></li>
         <li>Slot-based chrome: <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">caption</code> / <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">toolbar</code> / <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">footer</code> / <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">pagination</code> / <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">empty</code> / <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">loading</code> / <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">error</code></li>
@@ -175,7 +175,7 @@ export class TableOverview {
   }
 
   protected readonly basicUsageSnippet = `<tw-table [data]="team" aria-label="Team members">
-  <tw-column name="id" headerLabel="ID" [numeric]="true" width="80px">
+  <tw-column name="id" headerLabel="ID" [display]="{ numeric: true, width: '80px' }">
     <ng-template twCellDef let-row>{{ row.id }}</ng-template>
   </tw-column>
   <tw-column name="name" headerLabel="Name">

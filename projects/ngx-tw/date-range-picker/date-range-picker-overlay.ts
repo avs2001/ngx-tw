@@ -77,6 +77,7 @@ import type { DateRangePickerMonths, DateRangePreset } from './date-range-picker
         class="!rounded-none !border-0 !bg-transparent !p-2"
         [bordered]="false"
         [value]="$any(pendingRangeAsRange())"
+        [startAt]="$any(initialStartAt())"
         [startView]="startView()"
         [monthColumns]="numberOfMonths()"
         [minDate]="minDate()"
@@ -261,6 +262,12 @@ export class DateRangePickerOverlayComponent<D = unknown> {
   readonly pendingRangeAsRange = computed<{ start: D | null; end: D | null }>(() => {
     const v = this.pendingRange();
     return v ? { start: v.start, end: v.end } : { start: null, end: null };
+  });
+
+  /** @internal Seeds the calendar's active month on first attach so it anchors to the current value rather than today. */
+  readonly initialStartAt = computed<D | null>(() => {
+    const v = this.pendingRange();
+    return v?.start ?? null;
   });
 
   // ── Template handlers ──

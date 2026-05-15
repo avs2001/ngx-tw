@@ -196,7 +196,7 @@ describe('FormFieldComponent', () => {
       fixture.detectChanges();
       await fixture.whenStable();
       expect(subscriptWrapper(fixture)).toBeTruthy();
-      expect(subscriptWrapper(fixture).className).toContain('min-h-[1.25rem]');
+      expect(subscriptWrapper(fixture).className).toContain('min-h-5');
     });
   });
 

@@ -156,6 +156,59 @@ and APIs may shift again before the v1.0 tag.
 - `CalendarHarness.getCurrentView()` and `CalendarHarness.switchView()` accept
   `'day' | 'month' | 'year'` (mirrored as `CalendarHarnessView`).
 
+#### Table — v2 input reshape (PR8)
+
+The table's wide, flat input surface has been grouped into four config-object
+inputs on `<tw-table>` and one on `<tw-column>`. Each config accepts a
+partial object; unset keys fall back to the documented defaults. Data, state,
+the row-mechanics flag, i18n and a11y attributes remain flat.
+
+**`<tw-table>` migration:**
+
+| v1 input | v2 location |
+|---|---|
+| `[variant]` | `[appearance]="{ variant }"` |
+| `[density]` | `[appearance]="{ density }"` |
+| `[size]` | `[appearance]="{ size }"` |
+| `[layout]` | `[appearance]="{ layout }"` |
+| `[rowAnimations]` | `[appearance]="{ rowAnimations }"` |
+| `[stickyHeader]` | `[sticky]="{ header }"` |
+| `[stickyFooter]` | `[sticky]="{ footer }"` |
+| `[scrollHeight]` | `[sticky]="{ scrollHeight }"` |
+| `[responsive]` (mode union) | `[responsive]="{ mode }"` |
+| `[stackBelow]` | `[responsive]="{ stackBelow }"` |
+| `[selectable]` | `[selection]="{ enabled }"` |
+
+`data`, `trackBy`, `loading`, `error`, `multiTemplateRows`, `labels`,
+`aria-label`, `aria-labelledby`, and the `expandedRows` / `selected` models
+keep their v1 shape.
+
+**`<tw-column>` migration:**
+
+| v1 input | v2 location |
+|---|---|
+| `[sticky]` | `[display]="{ sticky }"` |
+| `[align]` | `[display]="{ align }"` |
+| `[numeric]` | `[display]="{ numeric }"` |
+| `[hideBelow]` | `[display]="{ hideBelow }"` |
+| `width` (attr/binding) | `[display]="{ width }"` |
+
+`name`, `hidden`, `priority`, `headerLabel`, and `stackLabel` keep their v1
+shape.
+
+**Outputs:**
+
+- `(rowClick)` → `(rowClicked)` — past-tense action convention.
+  `selectionChange` and `expansionChange` are unchanged (state-change pattern).
+
+**Types:**
+
+- `TwTableResponsive` (the `'scroll' | 'stack' | 'hide'` mode union) is
+  renamed to `TwTableResponsiveMode`. The new `TwTableResponsive` interface is
+  the responsive config object.
+- New: `TwTableAppearance`, `TwTableSticky`, `TwTableResponsive` (config),
+  `TwTableSelection`, `TwColumnDisplay`.
+
 ### Removed (BREAKING)
 
 #### Calendar — input / output / mode surface

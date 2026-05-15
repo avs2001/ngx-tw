@@ -1,7 +1,10 @@
 /** Constraints declared by a single pane. */
 export interface PaneConstraints {
+  /** Pane's initial size in the active unit (percent or pixel). `undefined` means "share whatever's left equally". */
   defaultSize: number | undefined;
+  /** Lower bound applied during initial layout and after every resize. */
   minSize: number;
+  /** Upper bound applied during initial layout and after every resize. */
   maxSize: number;
 }
 
@@ -9,6 +12,7 @@ const EPSILON = 0.01;
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
+/** Clamps `value` into `[min, max]` without wrapping. */
 export function clampSize(value: number, min: number, max: number): number {
   return Math.min(Math.max(value, min), max);
 }

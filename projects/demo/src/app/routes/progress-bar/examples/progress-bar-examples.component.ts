@@ -1,6 +1,7 @@
-import { ChangeDetectionStrategy, Component, DestroyRef, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, DestroyRef, computed, inject, signal } from '@angular/core';
 import { ProgressBarComponent } from 'ngx-tw/progress-bar';
 import type {
+  ProgressBarOptions,
   ProgressBarSize,
   ProgressBarValueFormatter,
   ProgressBarVariant,
@@ -21,6 +22,8 @@ const COLORS: TwColor[] = [
   'error',
 ];
 const SIZES: ProgressBarSize[] = ['sm', 'md', 'lg'];
+
+const SHOW_VALUE: ProgressBarOptions = { showValue: true };
 
 interface QueueFile {
   readonly name: string;
@@ -54,13 +57,13 @@ const QUEUE_FILES: readonly QueueFile[] = [
       </p>
       <div class="rounded-lg border border-border p-6 bg-surface-raised mb-4">
         <div class="space-y-6">
-          <tw-progress-bar label="Linear" [value]="60" [showValue]="true" />
+          <tw-progress-bar label="Linear" [value]="60" [options]="showValueOption" />
           <div>
             <tw-progress-bar
               [label]="'Onboarding step ' + step() + ' of 4'"
               variant="segmented"
-              [segments]="4"
               [value]="step() * 25"
+              [options]="{ segments: 4 }"
             />
             <div class="flex items-center gap-2 mt-4">
               <button
@@ -89,8 +92,8 @@ const QUEUE_FILES: readonly QueueFile[] = [
       <tw-code-block [code]="variantsSnippet" language="html" />
       <p class="text-sm text-fg-muted leading-relaxed max-w-2xl mt-4">
         The
-        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">segments</code>
-        input is ignored when
+        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">options.segments</code>
+        field is ignored when
         <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">variant</code>
         is
         <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">'linear'</code>,
@@ -116,7 +119,7 @@ const QUEUE_FILES: readonly QueueFile[] = [
       <div class="rounded-lg border border-border p-6 bg-surface-raised mb-4">
         <div class="space-y-4">
           @for (c of colors; track c) {
-            <tw-progress-bar [label]="c" [color]="c" [value]="65" [showValue]="true" />
+            <tw-progress-bar [label]="c" [color]="c" [value]="65" [options]="showValueOption" />
           }
         </div>
       </div>
@@ -138,7 +141,7 @@ const QUEUE_FILES: readonly QueueFile[] = [
       <div class="rounded-lg border border-border p-6 bg-surface-raised mb-4">
         <div class="space-y-4">
           @for (s of sizes; track s) {
-            <tw-progress-bar [label]="s" [size]="s" [value]="50" [showValue]="true" />
+            <tw-progress-bar [label]="s" [size]="s" [value]="50" [options]="showValueOption" />
           }
         </div>
       </div>
@@ -164,7 +167,7 @@ const QUEUE_FILES: readonly QueueFile[] = [
         <div class="space-y-4">
           <div>
             <p class="text-xs font-medium text-fg-muted mb-2 uppercase tracking-wide">Determinate</p>
-            <tw-progress-bar label="Rendering report" [value]="42" [showValue]="true" />
+            <tw-progress-bar label="Rendering report" [value]="42" [options]="showValueOption" />
           </div>
           <div>
             <p class="text-xs font-medium text-fg-muted mb-2 uppercase tracking-wide">Indeterminate</p>
@@ -172,15 +175,15 @@ const QUEUE_FILES: readonly QueueFile[] = [
           </div>
           <div>
             <p class="text-xs font-medium text-fg-muted mb-2 uppercase tracking-wide">Success</p>
-            <tw-progress-bar label="Backup complete" [value]="100" [showValue]="true" color="success" />
+            <tw-progress-bar label="Backup complete" [value]="100" color="success" [options]="showValueOption" />
           </div>
           <div>
             <p class="text-xs font-medium text-fg-muted mb-2 uppercase tracking-wide">Warning</p>
-            <tw-progress-bar label="Backup paused" [value]="45" [showValue]="true" color="warning" />
+            <tw-progress-bar label="Backup paused" [value]="45" color="warning" [options]="showValueOption" />
           </div>
           <div>
             <p class="text-xs font-medium text-fg-muted mb-2 uppercase tracking-wide">Error</p>
-            <tw-progress-bar label="Backup failed at 63%" [value]="63" [showValue]="true" color="error" />
+            <tw-progress-bar label="Backup failed at 63%" [value]="63" color="error" [options]="showValueOption" />
           </div>
         </div>
       </div>
@@ -192,8 +195,8 @@ const QUEUE_FILES: readonly QueueFile[] = [
       <h2 class="text-sm font-semibold mb-3">Custom value formatter</h2>
       <p class="text-sm text-fg-muted leading-relaxed max-w-2xl mb-4">
         The default formatter renders an integer percentage, which rarely matches the
-        units of the underlying task. Pass a
-        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">valueFormatter</code>
+        units of the underlying task. Pass an
+        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">options.formatter</code>
         to render bytes, fractions, or any domain-specific string — the same string is
         shown next to the label and mirrored to
         <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">aria-valuetext</code>
@@ -203,10 +206,8 @@ const QUEUE_FILES: readonly QueueFile[] = [
         <tw-progress-bar
           label="annual-report-2026.pdf"
           [value]="uploaded()"
-          [max]="uploadTotal"
-          [showValue]="true"
-          [valueFormatter]="formatBytes"
           color="info"
+          [options]="uploadOptions"
         />
         <div class="flex items-center gap-2 mt-4">
           <button
@@ -242,7 +243,7 @@ const QUEUE_FILES: readonly QueueFile[] = [
         When the bar sits inside a list row or card without a visible
         <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">label</code>,
         provide an accessible name with
-        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">ariaLabel</code>
+        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">options.ariaLabel</code>
         so the bar still announces its purpose. Constrain the width with a host class
         (<code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">class="w-40"</code>)
         — the component fills its container by default.
@@ -259,7 +260,7 @@ const QUEUE_FILES: readonly QueueFile[] = [
                 class="w-40 shrink-0"
                 [value]="file.progress"
                 size="sm"
-                [ariaLabel]="file.name + ' upload progress'"
+                [options]="{ ariaLabel: file.name + ' upload progress' }"
               />
               <span class="text-xs text-fg-muted font-mono tabular-nums w-10 text-right">{{ file.progress }}%</span>
             </li>
@@ -359,9 +360,8 @@ const QUEUE_FILES: readonly QueueFile[] = [
             [variant]="playVariant()"
             [color]="playColor()"
             [size]="playSize()"
-            [showValue]="playShowValue()"
             [value]="playIndeterminate() ? null : playValue()"
-            [segments]="5"
+            [options]="playOptions()"
           />
           <div class="flex items-center gap-2 mt-4 flex-wrap">
             <button twButton size="xs" variant="outline" color="neutral" (click)="playValue.set(0)">0%</button>
@@ -383,6 +383,7 @@ export class ProgressBarExamples {
   protected readonly colors = COLORS;
   protected readonly sizes = SIZES;
   protected readonly files = QUEUE_FILES;
+  protected readonly showValueOption = SHOW_VALUE;
 
   // Wizard
   protected readonly step = signal(1);
@@ -393,6 +394,15 @@ export class ProgressBarExamples {
   protected readonly uploadRunning = signal(false);
   private uploadTimer: ReturnType<typeof setInterval> | null = null;
 
+  protected readonly uploadOptions: ProgressBarOptions = {
+    max: this.uploadTotal,
+    showValue: true,
+    formatter: (value, max) => {
+      const toMB = (b: number) => (b / 1_048_576).toFixed(1);
+      return `${toMB(value)} MB / ${toMB(max)} MB`;
+    },
+  };
+
   // Playground
   protected readonly playVariant = signal<ProgressBarVariant>('linear');
   protected readonly playColor = signal<TwColor>('primary');
@@ -400,6 +410,11 @@ export class ProgressBarExamples {
   protected readonly playShowValue = signal(true);
   protected readonly playIndeterminate = signal(false);
   protected readonly playValue = signal(50);
+
+  protected readonly playOptions = computed<ProgressBarOptions>(() => ({
+    segments: 5,
+    showValue: this.playShowValue(),
+  }));
 
   private readonly destroyRef = inject(DestroyRef);
 
@@ -463,52 +478,54 @@ export class ProgressBarExamples {
   // ── Code snippets ──
 
   protected readonly variantsSnippet = `<!-- Linear (continuous fill) -->
-<tw-progress-bar label="Linear" [value]="60" [showValue]="true" />
+<tw-progress-bar label="Linear" [value]="60" [options]="{ showValue: true }" />
 
 <!-- Segmented (discrete steps) -->
 <tw-progress-bar
   [label]="'Onboarding step ' + step() + ' of 4'"
   variant="segmented"
-  [segments]="4"
   [value]="step() * 25"
+  [options]="{ segments: 4 }"
 />`;
 
   protected readonly colorsSnippet = `
 @for (c of colors; track c) {
-  <tw-progress-bar [label]="c" [color]="c" [value]="65" [showValue]="true" />
+  <tw-progress-bar [label]="c" [color]="c" [value]="65" [options]="{ showValue: true }" />
 }`.trim();
 
   protected readonly sizesSnippet = `
 @for (s of sizes; track s) {
-  <tw-progress-bar [label]="s" [size]="s" [value]="50" [showValue]="true" />
+  <tw-progress-bar [label]="s" [size]="s" [value]="50" [options]="{ showValue: true }" />
 }`.trim();
 
   protected readonly statesSnippet = `<!-- Determinate -->
-<tw-progress-bar label="Rendering report" [value]="42" [showValue]="true" />
+<tw-progress-bar label="Rendering report" [value]="42" [options]="{ showValue: true }" />
 
 <!-- Indeterminate: omit value, or pass null -->
 <tw-progress-bar label="Waiting for server" />
 
 <!-- Outcome states -->
-<tw-progress-bar label="Backup complete"     [value]="100" [showValue]="true" color="success" />
-<tw-progress-bar label="Backup paused"       [value]="45"  [showValue]="true" color="warning" />
-<tw-progress-bar label="Backup failed at 63%" [value]="63"  [showValue]="true" color="error"   />`;
+<tw-progress-bar label="Backup complete"     [value]="100" color="success" [options]="{ showValue: true }" />
+<tw-progress-bar label="Backup paused"       [value]="45"  color="warning" [options]="{ showValue: true }" />
+<tw-progress-bar label="Backup failed at 63%" [value]="63"  color="error"   [options]="{ showValue: true }" />`;
 
   protected readonly formatterTsSnippet = `const TEN_MB = 10 * 1_048_576;
 protected readonly uploaded = signal(3_355_443);
 
-protected readonly formatBytes: ProgressBarValueFormatter = (value, max) => {
-  const toMB = (b: number) => (b / 1_048_576).toFixed(1);
-  return \`\${toMB(value)} MB / \${toMB(max)} MB\`;
+protected readonly uploadOptions: ProgressBarOptions = {
+  max: TEN_MB,
+  showValue: true,
+  formatter: (value, max) => {
+    const toMB = (b: number) => (b / 1_048_576).toFixed(1);
+    return \`\${toMB(value)} MB / \${toMB(max)} MB\`;
+  },
 };`;
 
   protected readonly formatterHtmlSnippet = `<tw-progress-bar
   label="annual-report-2026.pdf"
   [value]="uploaded()"
-  [max]="TEN_MB"
-  [showValue]="true"
-  [valueFormatter]="formatBytes"
   color="info"
+  [options]="uploadOptions"
 />`;
 
   protected readonly inContextSnippet = `<ul class="divide-y divide-border-muted">
@@ -520,7 +537,7 @@ protected readonly formatBytes: ProgressBarValueFormatter = (value, max) => {
         class="w-40 shrink-0"
         [value]="file.progress"
         size="sm"
-        [ariaLabel]="file.name + ' upload progress'"
+        [options]="{ ariaLabel: file.name + ' upload progress' }"
       />
       <span class="text-xs text-fg-muted font-mono tabular-nums w-10 text-right">{{ file.progress }}%</span>
     </li>

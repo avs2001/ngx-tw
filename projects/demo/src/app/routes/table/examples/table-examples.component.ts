@@ -7,8 +7,11 @@ import {
   TwHeaderCellDefDirective,
   TwNoDataRowDirective,
   TwRowExpansionDirective,
+  type TwTableAppearance,
   type TwTableDensity,
   type TwTableResponsive,
+  type TwTableResponsiveMode,
+  type TwTableSticky,
   type TwTableVariant,
 } from 'ngx-tw/table';
 import { PaginatorComponent } from 'ngx-tw/paginator';
@@ -52,7 +55,7 @@ const STATUS_CLASSES: Record<Order['status'], string> = {
 
 const VARIANTS: TwTableVariant[] = ['default', 'striped', 'bordered'];
 const DENSITIES: TwTableDensity[] = ['comfortable', 'compact'];
-const RESPONSIVE: TwTableResponsive[] = ['scroll', 'stack', 'hide'];
+const RESPONSIVE_MODES: TwTableResponsiveMode[] = ['scroll', 'stack', 'hide'];
 const SIZES: TwSize[] = ['xs', 'sm', 'md', 'lg', 'xl'];
 
 type StateMode = 'data' | 'loading' | 'empty' | 'error';
@@ -93,8 +96,8 @@ const STATE_MODES: readonly StateMode[] = ['data', 'loading', 'empty', 'error'];
         @for (v of variants; track v) {
           <div>
             <p class="text-xs font-medium text-fg-muted mb-2 uppercase tracking-wide">{{ v }}</p>
-            <tw-table [data]="ordersFirst4()" [variant]="v" [attr.aria-label]="'Orders — ' + v">
-              <tw-column name="id" headerLabel="Order" [numeric]="true" width="90px">
+            <tw-table [data]="ordersFirst4()" [appearance]="{ variant: v }" [attr.aria-label]="'Orders — ' + v">
+              <tw-column name="id" headerLabel="Order" [display]="{ numeric: true, width: '90px' }">
                 <ng-template twCellDef let-row>#{{ asOrder(row).id }}</ng-template>
               </tw-column>
               <tw-column name="customer" headerLabel="Customer">
@@ -108,7 +111,7 @@ const STATE_MODES: readonly StateMode[] = ['data', 'loading', 'empty', 'error'];
                   </span>
                 </ng-template>
               </tw-column>
-              <tw-column name="total" headerLabel="Total" [numeric]="true">
+              <tw-column name="total" headerLabel="Total" [display]="{ numeric: true }">
                 <ng-template twCellDef let-row>\${{ asOrder(row).total.toFixed(2) }}</ng-template>
               </tw-column>
             </tw-table>
@@ -129,20 +132,21 @@ const STATE_MODES: readonly StateMode[] = ['data', 'loading', 'empty', 'error'];
         for data-dense admin panels where users need to scan many rows without scrolling. If you
         want a smaller typeface too, combine density with the
         <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">size</code>
-        input.
+        key on
+        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">appearance</code>.
       </p>
       <div class="rounded-lg border border-border p-6 bg-surface-raised mb-4 grid gap-4 md:grid-cols-2">
         @for (d of densities; track d) {
           <div>
             <p class="text-xs font-medium text-fg-muted mb-2 uppercase tracking-wide">{{ d }}</p>
-            <tw-table [data]="ordersFirst3()" [density]="d" variant="bordered" [attr.aria-label]="'Density — ' + d">
-              <tw-column name="id" headerLabel="ID" [numeric]="true">
+            <tw-table [data]="ordersFirst3()" [appearance]="{ variant: 'bordered', density: d }" [attr.aria-label]="'Density — ' + d">
+              <tw-column name="id" headerLabel="ID" [display]="{ numeric: true }">
                 <ng-template twCellDef let-row>{{ asOrder(row).id }}</ng-template>
               </tw-column>
               <tw-column name="customer" headerLabel="Customer">
                 <ng-template twCellDef let-row>{{ asOrder(row).customer }}</ng-template>
               </tw-column>
-              <tw-column name="total" headerLabel="Total" [numeric]="true">
+              <tw-column name="total" headerLabel="Total" [display]="{ numeric: true }">
                 <ng-template twCellDef let-row>\${{ asOrder(row).total.toFixed(2) }}</ng-template>
               </tw-column>
             </tw-table>
@@ -185,16 +189,15 @@ const STATE_MODES: readonly StateMode[] = ['data', 'loading', 'empty', 'error'];
           [data]="statesData()"
           [loading]="stateMode() === 'loading'"
           [error]="stateMode() === 'error' ? 'Failed to load orders' : null"
-          variant="default"
           aria-label="State demo"
         >
-          <tw-column name="id" headerLabel="ID" [numeric]="true" width="80px">
+          <tw-column name="id" headerLabel="ID" [display]="{ numeric: true, width: '80px' }">
             <ng-template twCellDef let-row>#{{ asOrder(row).id }}</ng-template>
           </tw-column>
           <tw-column name="customer" headerLabel="Customer">
             <ng-template twCellDef let-row>{{ asOrder(row).customer }}</ng-template>
           </tw-column>
-          <tw-column name="total" headerLabel="Total" [numeric]="true">
+          <tw-column name="total" headerLabel="Total" [display]="{ numeric: true }">
             <ng-template twCellDef let-row>\${{ asOrder(row).total.toFixed(2) }}</ng-template>
           </tw-column>
         </tw-table>
@@ -206,26 +209,23 @@ const STATE_MODES: readonly StateMode[] = ['data', 'loading', 'empty', 'error'];
     <section class="mb-10">
       <h2 class="text-sm font-semibold mb-3">Sticky Header &amp; Columns</h2>
       <p class="text-sm text-fg-muted leading-relaxed max-w-2xl mb-4">
-        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">[stickyHeader]="true"</code>
-        pins the header while the body scrolls — it only works if the table has an internal
-        scroll region, so pair it with
-        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">scrollHeight</code>.
-        Columns pin to the leading or trailing edge via
-        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">sticky="start"</code>
-        or
-        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">sticky="end"</code>
+        Set
+        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">[sticky]="&#123; header: true, scrollHeight: '280px' &#125;"</code>
+        to pin the header while the body scrolls — sticky-header needs an internal scroll region,
+        so the two keys belong together on the same config object. Columns pin to the leading or
+        trailing edge via the column's
+        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">display.sticky</code>
         — the canonical pair is a sticky ID column on the left and a sticky actions column on the
         right. Scroll the preview below horizontally and vertically to test both axes.
       </p>
       <div class="rounded-lg border border-border p-6 bg-surface-raised mb-4">
         <tw-table
           [data]="orders()"
-          [stickyHeader]="true"
-          scrollHeight="280px"
-          variant="bordered"
+          [appearance]="{ variant: 'bordered' }"
+          [sticky]="{ header: true, scrollHeight: '280px' }"
           aria-label="Orders — sticky demo"
         >
-          <tw-column name="id" headerLabel="ID" [numeric]="true" sticky="start" width="80px">
+          <tw-column name="id" headerLabel="ID" [display]="{ numeric: true, sticky: 'start', width: '80px' }">
             <ng-template twCellDef let-row>#{{ asOrder(row).id }}</ng-template>
           </tw-column>
           <tw-column name="customer" headerLabel="Customer">
@@ -239,13 +239,13 @@ const STATE_MODES: readonly StateMode[] = ['data', 'loading', 'empty', 'error'];
               </span>
             </ng-template>
           </tw-column>
-          <tw-column name="total" headerLabel="Total" [numeric]="true">
+          <tw-column name="total" headerLabel="Total" [display]="{ numeric: true }">
             <ng-template twCellDef let-row>\${{ asOrder(row).total.toFixed(2) }}</ng-template>
           </tw-column>
           <tw-column name="updatedAt" headerLabel="Updated">
             <ng-template twCellDef let-row>{{ asOrder(row).updatedAt }}</ng-template>
           </tw-column>
-          <tw-column name="actions" headerLabel="" sticky="end" width="100px">
+          <tw-column name="actions" headerLabel="" [display]="{ sticky: 'end', width: '100px' }">
             <ng-template twCellDef>
               <button twButton variant="ghost" color="primary" size="xs">View</button>
             </ng-template>
@@ -277,7 +277,7 @@ const STATE_MODES: readonly StateMode[] = ['data', 'loading', 'empty', 'error'];
           [(expandedRows)]="expandedOrders"
           aria-label="Expandable orders"
         >
-          <tw-column name="toggle" headerLabel="" width="44px">
+          <tw-column name="toggle" headerLabel="" [display]="{ width: '44px' }">
             <ng-template twCellDef let-row>
               <button
                 twButton variant="ghost" color="neutral" size="xs"
@@ -293,13 +293,13 @@ const STATE_MODES: readonly StateMode[] = ['data', 'loading', 'empty', 'error'];
               </button>
             </ng-template>
           </tw-column>
-          <tw-column name="id" headerLabel="Order" [numeric]="true" width="90px">
+          <tw-column name="id" headerLabel="Order" [display]="{ numeric: true, width: '90px' }">
             <ng-template twCellDef let-row>#{{ asOrder(row).id }}</ng-template>
           </tw-column>
           <tw-column name="customer" headerLabel="Customer">
             <ng-template twCellDef let-row>{{ asOrder(row).customer }}</ng-template>
           </tw-column>
-          <tw-column name="total" headerLabel="Total" [numeric]="true">
+          <tw-column name="total" headerLabel="Total" [display]="{ numeric: true }">
             <ng-template twCellDef let-row>\${{ asOrder(row).total.toFixed(2) }}</ng-template>
           </tw-column>
           <ng-template twRowExpansion let-row let-collapse="collapse">
@@ -331,8 +331,8 @@ const STATE_MODES: readonly StateMode[] = ['data', 'loading', 'empty', 'error'];
         elsewhere.
       </p>
       <div class="rounded-lg border border-border p-6 bg-surface-raised mb-4">
-        <tw-table [data]="ordersFirst5()" variant="bordered" aria-label="Totals demo">
-          <tw-column name="id" headerLabel="ID" [numeric]="true" width="80px">
+        <tw-table [data]="ordersFirst5()" [appearance]="{ variant: 'bordered' }" aria-label="Totals demo">
+          <tw-column name="id" headerLabel="ID" [display]="{ numeric: true, width: '80px' }">
             <ng-template twCellDef let-row>{{ asOrder(row).id }}</ng-template>
             <ng-template twFooterCellDef>
               <span class="font-semibold text-fg-muted">Totals</span>
@@ -344,7 +344,7 @@ const STATE_MODES: readonly StateMode[] = ['data', 'loading', 'empty', 'error'];
               <span class="text-xs text-fg-muted">{{ rows.length }} orders</span>
             </ng-template>
           </tw-column>
-          <tw-column name="total" headerLabel="Total" [numeric]="true">
+          <tw-column name="total" headerLabel="Total" [display]="{ numeric: true }">
             <ng-template twCellDef let-row>\${{ asOrder(row).total.toFixed(2) }}</ng-template>
             <ng-template twFooterCellDef let-rows="rows">
               <span class="font-semibold">\${{ sumTotal(rows).toFixed(2) }}</span>
@@ -368,14 +368,14 @@ const STATE_MODES: readonly StateMode[] = ['data', 'loading', 'empty', 'error'];
         inside the table. It takes precedence over the overlay.
       </p>
       <div class="rounded-lg border border-border p-6 bg-surface-raised mb-4">
-        <tw-table [data]="emptyData" variant="bordered" aria-label="Empty orders">
-          <tw-column name="id" headerLabel="ID" [numeric]="true">
+        <tw-table [data]="emptyData" [appearance]="{ variant: 'bordered' }" aria-label="Empty orders">
+          <tw-column name="id" headerLabel="ID" [display]="{ numeric: true }">
             <ng-template twCellDef let-row>{{ asOrder(row).id }}</ng-template>
           </tw-column>
           <tw-column name="customer" headerLabel="Customer">
             <ng-template twCellDef let-row>{{ asOrder(row).customer }}</ng-template>
           </tw-column>
-          <tw-column name="total" headerLabel="Total" [numeric]="true">
+          <tw-column name="total" headerLabel="Total" [display]="{ numeric: true }">
             <ng-template twCellDef let-row>\${{ asOrder(row).total.toFixed(2) }}</ng-template>
           </tw-column>
           <ng-template twNoDataRow>
@@ -406,7 +406,7 @@ const STATE_MODES: readonly StateMode[] = ['data', 'loading', 'empty', 'error'];
         The context gives you the column name and index if you need them.
       </p>
       <div class="rounded-lg border border-border p-6 bg-surface-raised mb-4">
-        <tw-table [data]="ordersFirst3()" aria-label="Custom headers" variant="bordered">
+        <tw-table [data]="ordersFirst3()" aria-label="Custom headers" [appearance]="{ variant: 'bordered' }">
           <tw-column name="id">
             <ng-template twHeaderCellDef>
               <span class="inline-flex items-center gap-1.5 text-fg">
@@ -421,7 +421,7 @@ const STATE_MODES: readonly StateMode[] = ['data', 'loading', 'empty', 'error'];
           <tw-column name="customer" headerLabel="Customer">
             <ng-template twCellDef let-row>{{ asOrder(row).customer }}</ng-template>
           </tw-column>
-          <tw-column name="total" headerLabel="Total" [numeric]="true">
+          <tw-column name="total" headerLabel="Total" [display]="{ numeric: true }">
             <ng-template twCellDef let-row>\${{ asOrder(row).total.toFixed(2) }}</ng-template>
           </tw-column>
         </tw-table>
@@ -454,10 +454,10 @@ const STATE_MODES: readonly StateMode[] = ['data', 'loading', 'empty', 'error'];
           [(twSortActive)]="sortActive"
           [(twSortDirection)]="sortDirection"
           [data]="sortedOrdersFirst6()"
-          variant="bordered"
+          [appearance]="{ variant: 'bordered' }"
           aria-label="Sortable orders"
         >
-          <tw-column name="id" [numeric]="true" width="100px">
+          <tw-column name="id" [display]="{ numeric: true, width: '100px' }">
             <ng-template twHeaderCellDef>
               <span tw-sort-header id="id">Order</span>
             </ng-template>
@@ -469,7 +469,7 @@ const STATE_MODES: readonly StateMode[] = ['data', 'loading', 'empty', 'error'];
             </ng-template>
             <ng-template twCellDef let-row>{{ asOrder(row).customer }}</ng-template>
           </tw-column>
-          <tw-column name="total" [numeric]="true">
+          <tw-column name="total" [display]="{ numeric: true }">
             <ng-template twHeaderCellDef>
               <span tw-sort-header id="total" start="desc">Total</span>
             </ng-template>
@@ -497,9 +497,7 @@ const STATE_MODES: readonly StateMode[] = ['data', 'loading', 'empty', 'error'];
       <h2 class="text-sm font-semibold mb-3">Responsive — Stack Below Breakpoint</h2>
       <p class="text-sm text-fg-muted leading-relaxed max-w-2xl mb-4">
         On narrow viewports a horizontally-scrolling table often frustrates users. With
-        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">responsive="stack"</code>
-        and
-        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">stackBelow="md"</code>,
+        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">[responsive]="&#123; mode: 'stack', stackBelow: 'md' &#125;"</code>,
         each row becomes a card below the breakpoint and every cell gets a prefix label from the
         column's
         <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">stackLabel</code>
@@ -510,11 +508,10 @@ const STATE_MODES: readonly StateMode[] = ['data', 'loading', 'empty', 'error'];
       <div class="rounded-lg border border-border p-6 bg-surface-raised mb-4">
         <tw-table
           [data]="ordersFirst4()"
-          responsive="stack"
-          stackBelow="md"
+          [responsive]="{ mode: 'stack', stackBelow: 'md' }"
           aria-label="Responsive orders"
         >
-          <tw-column name="id" headerLabel="ID" stackLabel="Order" [numeric]="true">
+          <tw-column name="id" headerLabel="ID" stackLabel="Order" [display]="{ numeric: true }">
             <ng-template twCellDef let-row>#{{ asOrder(row).id }}</ng-template>
           </tw-column>
           <tw-column name="customer" headerLabel="Customer" stackLabel="Customer">
@@ -528,7 +525,7 @@ const STATE_MODES: readonly StateMode[] = ['data', 'loading', 'empty', 'error'];
               </span>
             </ng-template>
           </tw-column>
-          <tw-column name="total" headerLabel="Total" stackLabel="Total" [numeric]="true">
+          <tw-column name="total" headerLabel="Total" stackLabel="Total" [display]="{ numeric: true }">
             <ng-template twCellDef let-row>\${{ asOrder(row).total.toFixed(2) }}</ng-template>
           </tw-column>
         </tw-table>
@@ -555,9 +552,8 @@ const STATE_MODES: readonly StateMode[] = ['data', 'loading', 'empty', 'error'];
           [(twSortActive)]="adminSortActive"
           [(twSortDirection)]="adminSortDirection"
           [data]="pagedOrders()"
-          variant="bordered"
-          [stickyHeader]="true"
-          scrollHeight="320px"
+          [appearance]="{ variant: 'bordered' }"
+          [sticky]="{ header: true, scrollHeight: '320px' }"
           aria-label="Orders admin"
         >
           <div slot="toolbar" class="flex items-center justify-between w-full">
@@ -577,7 +573,7 @@ const STATE_MODES: readonly StateMode[] = ['data', 'loading', 'empty', 'error'];
             <button twButton variant="outline" color="neutral" size="sm">Export CSV</button>
           </div>
 
-          <tw-column name="id" [numeric]="true" sticky="start" width="90px">
+          <tw-column name="id" [display]="{ numeric: true, sticky: 'start', width: '90px' }">
             <ng-template twHeaderCellDef>
               <span tw-sort-header id="id">Order</span>
             </ng-template>
@@ -597,7 +593,7 @@ const STATE_MODES: readonly StateMode[] = ['data', 'loading', 'empty', 'error'];
               </span>
             </ng-template>
           </tw-column>
-          <tw-column name="total" [numeric]="true">
+          <tw-column name="total" [display]="{ numeric: true }">
             <ng-template twHeaderCellDef>
               <span tw-sort-header id="total" start="desc">Total</span>
             </ng-template>
@@ -633,7 +629,7 @@ const STATE_MODES: readonly StateMode[] = ['data', 'loading', 'empty', 'error'];
         <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">comfortable</code>
         with sticky header on — that's the shape most admin tables end up in. Toggle
         <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">loading</code>
-        to see the overlay, or flip responsive to
+        to see the overlay, or flip the responsive mode to
         <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">stack</code>
         and resize the browser below the configured breakpoint.
       </p>
@@ -688,14 +684,14 @@ const STATE_MODES: readonly StateMode[] = ['data', 'loading', 'empty', 'error'];
             <p class="text-xs font-semibold text-fg uppercase tracking-wide mb-3">Layout</p>
             <div class="flex flex-wrap gap-4">
               <div>
-                <label class="block text-xs font-medium text-fg-muted mb-1">Responsive</label>
+                <label class="block text-xs font-medium text-fg-muted mb-1">Responsive mode</label>
                 <div class="flex gap-1">
-                  @for (r of responsive; track r) {
+                  @for (r of responsiveModes; track r) {
                     <button
                       twButton variant="ghost" color="neutral" size="xs"
-                      [class.!bg-primary-100]="playResponsive() === r"
-                      [class.!text-primary-700]="playResponsive() === r"
-                      (click)="playResponsive.set(r)"
+                      [class.!bg-primary-100]="playResponsiveMode() === r"
+                      [class.!text-primary-700]="playResponsiveMode() === r"
+                      (click)="playResponsiveMode.set(r)"
                     >{{ r }}</button>
                   }
                 </div>
@@ -734,18 +730,14 @@ const STATE_MODES: readonly StateMode[] = ['data', 'loading', 'empty', 'error'];
 
         <tw-table
           [data]="playData()"
-          [variant]="playVariant()"
-          [density]="playDensity()"
-          [size]="playSize()"
-          [responsive]="playResponsive()"
-          stackBelow="md"
-          [stickyHeader]="playStickyHeader()"
-          [scrollHeight]="playScrollHeight() ? '240px' : null"
+          [appearance]="playAppearance()"
+          [sticky]="playSticky()"
+          [responsive]="playResponsiveConfig()"
           [loading]="playState() === 'loading'"
           [error]="playState() === 'error' ? 'Failed to load orders' : null"
           aria-label="Playground table"
         >
-          <tw-column name="id" headerLabel="Order" stackLabel="Order" [numeric]="true" width="90px">
+          <tw-column name="id" headerLabel="Order" stackLabel="Order" [display]="{ numeric: true, width: '90px' }">
             <ng-template twCellDef let-row>#{{ asOrder(row).id }}</ng-template>
           </tw-column>
           <tw-column name="customer" headerLabel="Customer" stackLabel="Customer">
@@ -759,7 +751,7 @@ const STATE_MODES: readonly StateMode[] = ['data', 'loading', 'empty', 'error'];
               </span>
             </ng-template>
           </tw-column>
-          <tw-column name="total" headerLabel="Total" stackLabel="Total" [numeric]="true">
+          <tw-column name="total" headerLabel="Total" stackLabel="Total" [display]="{ numeric: true }">
             <ng-template twCellDef let-row>\${{ asOrder(row).total.toFixed(2) }}</ng-template>
           </tw-column>
           <tw-column name="updatedAt" headerLabel="Updated" stackLabel="Updated">
@@ -775,7 +767,7 @@ export class TableExamples {
   protected readonly emptyData: readonly Order[] = [];
   protected readonly variants = VARIANTS;
   protected readonly densities = DENSITIES;
-  protected readonly responsive = RESPONSIVE;
+  protected readonly responsiveModes = RESPONSIVE_MODES;
   protected readonly sizes = SIZES;
   protected readonly stateModes = STATE_MODES;
 
@@ -851,17 +843,34 @@ export class TableExamples {
     return this.adminSortedOrders().slice(start, start + this.pageSize);
   });
 
-  // Playground
+  // Playground — config objects derived from individual signals so the buttons
+  // can toggle each axis independently.
   protected readonly playVariant = signal<TwTableVariant>('bordered');
   protected readonly playDensity = signal<TwTableDensity>('comfortable');
   protected readonly playSize = signal<TwSize>('md');
-  protected readonly playResponsive = signal<TwTableResponsive>('scroll');
+  protected readonly playResponsiveMode = signal<TwTableResponsiveMode>('scroll');
   protected readonly playStickyHeader = signal(false);
   protected readonly playScrollHeight = signal(false);
   protected readonly playState = signal<StateMode>('data');
   protected readonly playData = computed<readonly Order[]>(() =>
     this.playState() === 'empty' ? [] : this.orders().slice(0, 6),
   );
+
+  protected readonly playAppearance = computed<TwTableAppearance>(() => ({
+    variant: this.playVariant(),
+    density: this.playDensity(),
+    size: this.playSize(),
+  }));
+
+  protected readonly playSticky = computed<TwTableSticky>(() => ({
+    header: this.playStickyHeader(),
+    scrollHeight: this.playScrollHeight() ? '240px' : null,
+  }));
+
+  protected readonly playResponsiveConfig = computed<TwTableResponsive>(() => ({
+    mode: this.playResponsiveMode(),
+    stackBelow: 'md',
+  }));
 
   protected asOrder(row: unknown): Order {
     return row as Order;
@@ -896,8 +905,8 @@ export class TableExamples {
   // ── Snippets ───────────────────────────────────────────────────
 
   protected readonly variantsSnippet = `@for (v of variants; track v) {
-  <tw-table [data]="orders" [variant]="v" [attr.aria-label]="'Orders — ' + v">
-    <tw-column name="id" headerLabel="Order" [numeric]="true" width="90px">
+  <tw-table [data]="orders" [appearance]="{ variant: v }" [attr.aria-label]="'Orders — ' + v">
+    <tw-column name="id" headerLabel="Order" [display]="{ numeric: true, width: '90px' }">
       <ng-template twCellDef let-row>#{{ row.id }}</ng-template>
     </tw-column>
     <tw-column name="customer" headerLabel="Customer">
@@ -908,8 +917,8 @@ export class TableExamples {
 }`;
 
   protected readonly densitySnippet = `@for (d of densities; track d) {
-  <tw-table [data]="orders" [density]="d" variant="bordered" [attr.aria-label]="'Density — ' + d">
-    <tw-column name="id" headerLabel="ID" [numeric]="true">
+  <tw-table [data]="orders" [appearance]="{ variant: 'bordered', density: d }" [attr.aria-label]="'Density — ' + d">
+    <tw-column name="id" headerLabel="ID" [display]="{ numeric: true }">
       <ng-template twCellDef let-row>{{ row.id }}</ng-template>
     </tw-column>
     <!-- … -->
@@ -920,10 +929,9 @@ export class TableExamples {
   [data]="statesData()"
   [loading]="stateMode() === 'loading'"
   [error]="stateMode() === 'error' ? 'Failed to load orders' : null"
-  variant="default"
   aria-label="State demo"
 >
-  <tw-column name="id" headerLabel="ID" [numeric]="true" width="80px">
+  <tw-column name="id" headerLabel="ID" [display]="{ numeric: true, width: '80px' }">
     <ng-template twCellDef let-row>#{{ row.id }}</ng-template>
   </tw-column>
   <!-- … -->
@@ -931,16 +939,15 @@ export class TableExamples {
 
   protected readonly stickySnippet = `<tw-table
   [data]="orders"
-  [stickyHeader]="true"
-  scrollHeight="280px"
-  variant="bordered"
+  [appearance]="{ variant: 'bordered' }"
+  [sticky]="{ header: true, scrollHeight: '280px' }"
   aria-label="Sticky demo"
 >
-  <tw-column name="id" headerLabel="ID" sticky="start" [numeric]="true" width="80px">
+  <tw-column name="id" headerLabel="ID" [display]="{ numeric: true, sticky: 'start', width: '80px' }">
     <ng-template twCellDef let-row>#{{ row.id }}</ng-template>
   </tw-column>
   <!-- middle columns scroll horizontally -->
-  <tw-column name="actions" headerLabel="" sticky="end" width="100px">
+  <tw-column name="actions" headerLabel="" [display]="{ sticky: 'end', width: '100px' }">
     <ng-template twCellDef>
       <button twButton variant="ghost" color="primary" size="xs">View</button>
     </ng-template>
@@ -953,7 +960,7 @@ export class TableExamples {
   [(expandedRows)]="expandedOrders"
   aria-label="Expandable orders"
 >
-  <tw-column name="toggle" headerLabel="" width="44px">
+  <tw-column name="toggle" headerLabel="" [display]="{ width: '44px' }">
     <ng-template twCellDef let-row>
       <button
         twButton variant="ghost" color="neutral" size="xs"
@@ -972,8 +979,8 @@ export class TableExamples {
   </ng-template>
 </tw-table>`;
 
-  protected readonly footerSnippet = `<tw-table [data]="orders" variant="bordered" aria-label="Totals demo">
-  <tw-column name="id" headerLabel="ID" [numeric]="true" width="80px">
+  protected readonly footerSnippet = `<tw-table [data]="orders" [appearance]="{ variant: 'bordered' }" aria-label="Totals demo">
+  <tw-column name="id" headerLabel="ID" [display]="{ numeric: true, width: '80px' }">
     <ng-template twCellDef let-row>{{ row.id }}</ng-template>
     <ng-template twFooterCellDef>
       <span class="font-semibold text-fg-muted">Totals</span>
@@ -985,7 +992,7 @@ export class TableExamples {
       <span class="text-xs text-fg-muted">{{ rows.length }} orders</span>
     </ng-template>
   </tw-column>
-  <tw-column name="total" headerLabel="Total" [numeric]="true">
+  <tw-column name="total" headerLabel="Total" [display]="{ numeric: true }">
     <ng-template twCellDef let-row>\${{ row.total.toFixed(2) }}</ng-template>
     <ng-template twFooterCellDef let-rows="rows">
       <span class="font-semibold">\${{ sumTotal(rows).toFixed(2) }}</span>
@@ -993,8 +1000,8 @@ export class TableExamples {
   </tw-column>
 </tw-table>`;
 
-  protected readonly noDataSnippet = `<tw-table [data]="[]" variant="bordered" aria-label="Empty orders">
-  <tw-column name="id" headerLabel="ID" [numeric]="true">
+  protected readonly noDataSnippet = `<tw-table [data]="[]" [appearance]="{ variant: 'bordered' }" aria-label="Empty orders">
+  <tw-column name="id" headerLabel="ID" [display]="{ numeric: true }">
     <ng-template twCellDef let-row>{{ row.id }}</ng-template>
   </tw-column>
   <!-- … -->
@@ -1011,7 +1018,7 @@ export class TableExamples {
   </ng-template>
 </tw-table>`;
 
-  protected readonly headerTemplateSnippet = `<tw-table [data]="orders" variant="bordered" aria-label="Custom headers">
+  protected readonly headerTemplateSnippet = `<tw-table [data]="orders" [appearance]="{ variant: 'bordered' }" aria-label="Custom headers">
   <tw-column name="id">
     <ng-template twHeaderCellDef>
       <span class="inline-flex items-center gap-1.5 text-fg">
@@ -1046,16 +1053,16 @@ protected readonly sortedOrders = computed<readonly Order[]>(() => {
   [(twSortActive)]="sortActive"
   [(twSortDirection)]="sortDirection"
   [data]="sortedOrders()"
-  variant="bordered"
+  [appearance]="{ variant: 'bordered' }"
   aria-label="Sortable orders"
 >
-  <tw-column name="id" [numeric]="true" width="100px">
+  <tw-column name="id" [display]="{ numeric: true, width: '100px' }">
     <ng-template twHeaderCellDef>
       <span tw-sort-header id="id">Order</span>
     </ng-template>
     <ng-template twCellDef let-row>#{{ row.id }}</ng-template>
   </tw-column>
-  <tw-column name="total" [numeric]="true">
+  <tw-column name="total" [display]="{ numeric: true }">
     <ng-template twHeaderCellDef>
       <span tw-sort-header id="total" start="desc">Total</span>
     </ng-template>
@@ -1065,17 +1072,16 @@ protected readonly sortedOrders = computed<readonly Order[]>(() => {
 
   protected readonly responsiveSnippet = `<tw-table
   [data]="orders"
-  responsive="stack"
-  stackBelow="md"
+  [responsive]="{ mode: 'stack', stackBelow: 'md' }"
   aria-label="Responsive orders"
 >
-  <tw-column name="id" headerLabel="ID" stackLabel="Order" [numeric]="true">
+  <tw-column name="id" headerLabel="ID" stackLabel="Order" [display]="{ numeric: true }">
     <ng-template twCellDef let-row>#{{ row.id }}</ng-template>
   </tw-column>
   <tw-column name="customer" headerLabel="Customer" stackLabel="Customer">
     <ng-template twCellDef let-row>{{ row.customer }}</ng-template>
   </tw-column>
-  <tw-column name="total" headerLabel="Total" stackLabel="Total" [numeric]="true">
+  <tw-column name="total" headerLabel="Total" stackLabel="Total" [display]="{ numeric: true }">
     <ng-template twCellDef let-row>\${{ row.total.toFixed(2) }}</ng-template>
   </tw-column>
 </tw-table>`;
@@ -1085,9 +1091,8 @@ protected readonly sortedOrders = computed<readonly Order[]>(() => {
   [(twSortActive)]="sortActive"
   [(twSortDirection)]="sortDirection"
   [data]="pagedOrders()"
-  variant="bordered"
-  [stickyHeader]="true"
-  scrollHeight="320px"
+  [appearance]="{ variant: 'bordered' }"
+  [sticky]="{ header: true, scrollHeight: '320px' }"
   aria-label="Orders admin"
 >
   <div slot="toolbar" class="flex items-center justify-between w-full">
@@ -1098,7 +1103,7 @@ protected readonly sortedOrders = computed<readonly Order[]>(() => {
     <button twButton variant="outline" color="neutral" size="sm">Export CSV</button>
   </div>
 
-  <tw-column name="id" [numeric]="true" sticky="start" width="90px">
+  <tw-column name="id" [display]="{ numeric: true, sticky: 'start', width: '90px' }">
     <ng-template twHeaderCellDef><span tw-sort-header id="id">Order</span></ng-template>
     <ng-template twCellDef let-row>#{{ row.id }}</ng-template>
   </tw-column>

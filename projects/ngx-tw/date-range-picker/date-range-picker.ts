@@ -1089,7 +1089,35 @@ export class DateRangePickerComponent<D = Date>
     instance.onClear.set(() => this.onClearAction());
     instance.onCancel.set(() => this.onCancelAction());
     instance.onApply.set(() => this.onApplyAction());
+    // Push the initial config synchronously so the first render reflects the
+    // current inputs; the effect below keeps things in sync afterwards.
+    instance.size.set(this.size());
+    instance.color.set(this.color());
+    instance.minDate.set(this.minDate());
+    instance.maxDate.set(this.maxDate());
+    instance.dateFilter.set(this.dateFilter());
+    instance.startView.set(this.startView());
+    instance.numberOfMonths.set(this.numberOfMonths());
+    instance.pendingRange.set(this.pendingRange());
+    instance.currentView.set(this.currentView());
+    instance.presets.set(this.presets());
+    instance.activePresetId.set(this.activePresetId());
+    instance.showActions.set(this.showActions());
+    instance.showTime.set(this.showTime());
+    instance.timeFormat.set(this.timeFormat());
+    instance.showSeconds.set(this.showSeconds());
+    instance.hourStep.set(this.hourStep());
+    instance.minuteStep.set(this.minuteStep());
+    instance.secondStep.set(this.secondStep());
+    instance.todayLabel.set(this.todayLabel());
+    instance.clearLabel.set(this.clearLabel());
+    instance.cancelLabel.set(this.cancelLabel());
+    instance.applyLabel.set(this.applyLabel());
+    instance.rangeSeparator.set(this.rangeSeparator());
     this.overlayInstanceSignal.set(instance);
+    // Flush the initial config into the overlay's first render so view children
+    // (calendar, time pickers, action bar) observe the picker's current inputs.
+    ref.changeDetectorRef.detectChanges();
   }
 
   private subscribePerOpen(): void {

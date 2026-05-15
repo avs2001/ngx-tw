@@ -1,7 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { ChangeDetectionStrategy, Component, signal } from '@angular/core';
 import { type ComponentFixture, TestBed } from '@angular/core/testing';
-import { FormControl, ReactiveFormsModule } from '@angular/forms';
+import { FormControl, FormsModule, ReactiveFormsModule } from '@angular/forms';
+import { form, FormField } from '@angular/forms/signals';
 import { SegmentedControlComponent, SegmentedControlOptionComponent } from './segmented-control';
 import type { SegmentedControlVariant, SegmentedControlRounded } from './segmented-control';
 import type { TwColor, TwSize } from 'ngx-tw/core';
@@ -50,6 +51,35 @@ class TestHost {
 })
 class CvaTestHost {
   control = new FormControl<string | null>('x');
+}
+
+@Component({
+  imports: [SegmentedControlComponent, SegmentedControlOptionComponent, FormsModule],
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  template: `
+    <tw-segmented-control [(ngModel)]="value">
+      <tw-segmented-option value="x">X</tw-segmented-option>
+      <tw-segmented-option value="y">Y</tw-segmented-option>
+    </tw-segmented-control>
+  `,
+})
+class TemplateDrivenHost {
+  value: string | null = 'x';
+}
+
+@Component({
+  imports: [SegmentedControlComponent, SegmentedControlOptionComponent, FormField],
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  template: `
+    <tw-segmented-control [formField]="segmentForm.choice">
+      <tw-segmented-option value="x">X</tw-segmented-option>
+      <tw-segmented-option value="y">Y</tw-segmented-option>
+    </tw-segmented-control>
+  `,
+})
+class SignalFormHost {
+  protected readonly model = signal<{ choice: string | null }>({ choice: 'x' });
+  readonly segmentForm = form(this.model);
 }
 
 // ── Helpers ──
@@ -423,5 +453,68 @@ describe('SegmentedControl CVA', () => {
     getOptions(fixture)[1].click();
     fixture.detectChanges();
     expect(host.control.value).toBe('x');
+  });
+});
+
+// ── Template-driven forms ──
+
+describe('SegmentedControl template-driven forms', () => {
+  let fixture: ComponentFixture<TemplateDrivenHost>;
+
+  beforeEach(async () => {
+    await TestBed.configureTestingModule({
+      imports: [TemplateDrivenHost],
+    }).compileComponents();
+    fixture = TestBed.createComponent(TemplateDrivenHost);
+    fixture.detectChanges();
+  });
+
+  it('should reflect initial ngModel value in the DOM', async () => {
+    await fixture.whenStable();
+    const options = getOptions(fixture);
+    expect(options[0].getAttribute('aria-checked')).toBe('true');
+  });
+
+  it('should update ngModel on click', async () => {
+    await fixture.whenStable();
+    const options = getOptions(fixture);
+    options[1].click();
+    fixture.detectChanges();
+    await fixture.whenStable();
+    expect(fixture.componentInstance.value).toBe('y');
+  });
+
+});
+
+// ── Signal forms ──
+
+describe('SegmentedControl signal forms', () => {
+  let fixture: ComponentFixture<SignalFormHost>;
+
+  beforeEach(async () => {
+    await TestBed.configureTestingModule({
+      imports: [SignalFormHost],
+    }).compileComponents();
+    fixture = TestBed.createComponent(SignalFormHost);
+    fixture.detectChanges();
+  });
+
+  it('should reflect initial field value in the DOM', () => {
+    const options = getOptions(fixture);
+    expect(options[0].getAttribute('aria-checked')).toBe('true');
+  });
+
+  it('should update field value when user selects an option', () => {
+    const options = getOptions(fixture);
+    options[1].click();
+    fixture.detectChanges();
+    expect(fixture.componentInstance.segmentForm.choice().value()).toBe('y');
+  });
+
+  it('should reflect programmatic field updates in the DOM', () => {
+    fixture.componentInstance.segmentForm.choice().value.set('y');
+    fixture.detectChanges();
+    const options = getOptions(fixture);
+    expect(options[1].getAttribute('aria-checked')).toBe('true');
   });
 });

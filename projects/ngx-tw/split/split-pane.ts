@@ -22,7 +22,7 @@ import {
   },
   template: `<ng-content />`,
 })
-export class TwSplitPane {
+export class SplitPaneComponent {
   /** Initial size of this pane in the container's unit. Omit to use even distribution. */
   readonly defaultSize = input<number | undefined>(undefined);
 
@@ -58,21 +58,21 @@ export class TwSplitPane {
 
   /**
    * @internal
-   * Written by the parent TwSplit to set this pane's current flex-basis.
+   * Written by the parent SplitComponent to set this pane's current flex-basis.
    * Not part of the public API.
    */
   readonly _basis = signal('');
 
   /**
    * @internal
-   * Current size in the container's unit. Written by the parent TwSplit.
+   * Current size in the container's unit. Written by the parent SplitComponent.
    * Not part of the public API.
    */
   readonly _size = signal(0);
 
   /**
    * @internal
-   * Written by the parent TwSplit to reflect collapsed state on the host.
+   * Written by the parent SplitComponent to reflect collapsed state on the host.
    * Not part of the public API.
    */
   readonly _collapsed = signal(false);

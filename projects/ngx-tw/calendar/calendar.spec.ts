@@ -518,11 +518,8 @@ describe('CalendarComponent', () => {
       const calendar = getCalendarComponent(fixture);
 
       // CVA contract: `writeValue` is what reactive-forms calls when the parent
-      // FormControl changes. Invoking it directly avoids the
-      // NG_VALIDATORS/forwardRef circular DI that occurs when binding the
-      // calendar to a FormControl in a TestBed-created host (Phase 3 wires the
-      // validator; Phase 14 finishes the form integration). See calendar.ts
-      // line 116-127 for the multi-provider declarations.
+      // FormControl changes. Invoking it directly exercises the same code path
+      // without needing a FormControl-bound host.
       calendar.writeValue(new Date(2026, 3, 15));
       fixture.detectChanges();
 

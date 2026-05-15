@@ -40,11 +40,12 @@ import { CodeBlockComponent } from 'ngx-tw/code-block';
         are dropped and
         <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">aria-busy="true"</code>
         is set so assistive tech announces ongoing activity. An accessible name is
-        required — supply one of
+        required — supply
         <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">label</code>,
-        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">ariaLabel</code>,
-        or
-        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">ariaLabelledby</code>;
+        or one of
+        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">options.ariaLabel</code>
+        /
+        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">options.ariaLabelledby</code>;
         the fill animation respects
         <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">prefers-reduced-motion</code>.
       </p>
@@ -53,7 +54,7 @@ import { CodeBlockComponent } from 'ngx-tw/code-block';
     <section class="mb-10">
       <h2 class="text-sm font-semibold mb-3">Basic Usage</h2>
       <div class="rounded-lg border border-border p-6 bg-surface-raised mb-4">
-        <tw-progress-bar label="Syncing files" [value]="42" [showValue]="true" />
+        <tw-progress-bar label="Syncing files" [value]="42" [options]="{ showValue: true }" />
       </div>
       <tw-code-block [code]="basicUsageSnippet" language="html" />
     </section>
@@ -70,7 +71,7 @@ import { CodeBlockComponent } from 'ngx-tw/code-block';
         <li>Determinate mode with a clamped
           <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">value</code>
           over any
-          <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">min</code>/<code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">max</code>
+          <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">options.min</code>/<code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">options.max</code>
           range
         </li>
         <li>Indeterminate sweep when
@@ -85,7 +86,7 @@ import { CodeBlockComponent } from 'ngx-tw/code-block';
         </li>
         <li>3 thicknesses (<code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">sm</code> / <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">md</code> / <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">lg</code>) with a tabular-nums value readout</li>
         <li>Custom
-          <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">valueFormatter</code>
+          <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">options.formatter</code>
           for byte counts, fractions, and other non-percent displays
         </li>
         <li>Fully
@@ -125,7 +126,7 @@ export class ProgressBarOverview {
   protected readonly basicUsageSnippet = `<tw-progress-bar
   label="Syncing files"
   [value]="42"
-  [showValue]="true"
+  [options]="{ showValue: true }"
 />`;
 
   protected readonly importSnippet = `import { ProgressBarComponent } from 'ngx-tw/progress-bar';`;

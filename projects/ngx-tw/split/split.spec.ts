@@ -1,8 +1,8 @@
 import { Component } from '@angular/core';
 import { type ComponentFixture, TestBed } from '@angular/core/testing';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { TwSplit } from './split';
-import { TwSplitPane } from './split-pane';
+import { SplitComponent } from './split';
+import { SplitPaneComponent } from './split-pane';
 import {
   resolveInitialSizes,
   redistributeWithConstraints,
@@ -16,13 +16,13 @@ import {
 // ── Host components ──────────────────────────────────────────────────────────
 
 @Component({
-  imports: [TwSplit, TwSplitPane],
+  imports: [SplitComponent, SplitPaneComponent],
   template: `<tw-split><tw-split-pane>A</tw-split-pane><tw-split-pane>B</tw-split-pane></tw-split>`,
 })
 class TwoPaneHost {}
 
 @Component({
-  imports: [TwSplit, TwSplitPane],
+  imports: [SplitComponent, SplitPaneComponent],
   template: `
     <tw-split>
       <tw-split-pane>A</tw-split-pane>
@@ -34,19 +34,19 @@ class TwoPaneHost {}
 class ThreePaneHost {}
 
 @Component({
-  imports: [TwSplit],
+  imports: [SplitComponent],
   template: `<tw-split></tw-split>`,
 })
 class NoPanesHost {}
 
 @Component({
-  imports: [TwSplit, TwSplitPane],
+  imports: [SplitComponent, SplitPaneComponent],
   template: `<tw-split><tw-split-pane>Solo</tw-split-pane></tw-split>`,
 })
 class OnePaneHost {}
 
 @Component({
-  imports: [TwSplit, TwSplitPane],
+  imports: [SplitComponent, SplitPaneComponent],
   template: `
     <tw-split [unit]="unit">
       <tw-split-pane [defaultSize]="30">A</tw-split-pane>
@@ -59,7 +59,7 @@ class DefaultSizePercentHost {
 }
 
 @Component({
-  imports: [TwSplit, TwSplitPane],
+  imports: [SplitComponent, SplitPaneComponent],
   template: `
     <tw-split>
       <tw-split-pane [minSize]="20" [defaultSize]="30">A</tw-split-pane>
@@ -70,7 +70,7 @@ class DefaultSizePercentHost {
 class MinMaxHost {}
 
 @Component({
-  imports: [TwSplit, TwSplitPane],
+  imports: [SplitComponent, SplitPaneComponent],
   template: `
     <tw-split unit="pixel">
       <tw-split-pane [defaultSize]="300">A</tw-split-pane>
@@ -91,10 +91,10 @@ function getSplit(fixture: ComponentFixture<unknown>): HTMLElement {
   return fixture.nativeElement.querySelector('tw-split') as HTMLElement;
 }
 
-function getSplitInstance(fixture: ComponentFixture<unknown>): TwSplit {
+function getSplitInstance(fixture: ComponentFixture<unknown>): SplitComponent {
   return fixture.nativeElement.querySelector('tw-split').__ngContext__
-    ? (fixture.debugElement.query(e => e.componentInstance instanceof TwSplit)?.componentInstance as TwSplit)
-    : (fixture.componentInstance as TwSplit);
+    ? (fixture.debugElement.query(e => e.componentInstance instanceof SplitComponent)?.componentInstance as SplitComponent)
+    : (fixture.componentInstance as SplitComponent);
 }
 
 function parseBasis(el: HTMLElement): string {
@@ -376,7 +376,7 @@ describe('split-sizing pure functions', () => {
 
 // ── Component integration specs ───────────────────────────────────────────────
 
-describe('TwSplit (Phase 1 scaffold)', () => {
+describe('SplitComponent (Phase 1 scaffold)', () => {
   describe('rendering', () => {
     it('mounts without errors with two panes and no inputs', async () => {
       const fixture = TestBed.createComponent(TwoPaneHost);
@@ -396,7 +396,7 @@ describe('TwSplit (Phase 1 scaffold)', () => {
     });
 
     it('applies flex-col layout class for vertical direction', () => {
-      const fixture = TestBed.createComponent(TwSplit);
+      const fixture = TestBed.createComponent(SplitComponent);
       fixture.componentRef.setInput('direction', 'vertical');
       fixture.detectChanges();
       expect(fixture.nativeElement.className).toContain('flex-col');
@@ -482,8 +482,8 @@ describe('TwSplit (Phase 1 scaffold)', () => {
       await fixture.whenStable();
       fixture.detectChanges();
 
-      const split = fixture.debugElement.query(e => e.componentInstance instanceof TwSplit)
-        ?.componentInstance as TwSplit;
+      const split = fixture.debugElement.query(e => e.componentInstance instanceof SplitComponent)
+        ?.componentInstance as SplitComponent;
       const sizes = split._sizes();
       // pane 1 has defaultSize=70 but maxSize=60 → clamped to 60
       expect(sizes[1]).toBeCloseTo(60, 1);
@@ -492,7 +492,7 @@ describe('TwSplit (Phase 1 scaffold)', () => {
     });
 
     it('clamps pane below minSize up to minSize and redistributes', async () => {
-      const fixture = TestBed.createComponent(TwSplit);
+      const fixture = TestBed.createComponent(SplitComponent);
       fixture.detectChanges();
       await fixture.whenStable();
 
@@ -503,89 +503,89 @@ describe('TwSplit (Phase 1 scaffold)', () => {
     });
   });
 
-  describe('TwSplit inputs (§3.2)', () => {
+  describe('SplitComponent inputs (§3.2)', () => {
     it('has direction defaulting to horizontal', () => {
-      const fixture = TestBed.createComponent(TwSplit);
+      const fixture = TestBed.createComponent(SplitComponent);
       fixture.detectChanges();
       expect(fixture.componentInstance.direction()).toBe('horizontal');
     });
 
     it('has unit defaulting to percent', () => {
-      const fixture = TestBed.createComponent(TwSplit);
+      const fixture = TestBed.createComponent(SplitComponent);
       fixture.detectChanges();
       expect(fixture.componentInstance.unit()).toBe('percent');
     });
 
     it('has gutterSize defaulting to 6', () => {
-      const fixture = TestBed.createComponent(TwSplit);
+      const fixture = TestBed.createComponent(SplitComponent);
       fixture.detectChanges();
       expect(fixture.componentInstance.gutterSize()).toBe(6);
     });
 
     it('has disabled defaulting to false', () => {
-      const fixture = TestBed.createComponent(TwSplit);
+      const fixture = TestBed.createComponent(SplitComponent);
       fixture.detectChanges();
       expect(fixture.componentInstance.disabled()).toBe(false);
     });
 
     it('has keyboardStep defaulting to 10', () => {
-      const fixture = TestBed.createComponent(TwSplit);
+      const fixture = TestBed.createComponent(SplitComponent);
       fixture.detectChanges();
       expect(fixture.componentInstance.keyboardStep()).toBe(10);
     });
 
     it('has keyboardStepLarge defaulting to 50', () => {
-      const fixture = TestBed.createComponent(TwSplit);
+      const fixture = TestBed.createComponent(SplitComponent);
       fixture.detectChanges();
       expect(fixture.componentInstance.keyboardStepLarge()).toBe(50);
     });
 
     it('has storageKey defaulting to null', () => {
-      const fixture = TestBed.createComponent(TwSplit);
+      const fixture = TestBed.createComponent(SplitComponent);
       fixture.detectChanges();
       expect(fixture.componentInstance.storageKey()).toBeNull();
     });
 
     it('has rtl defaulting to null', () => {
-      const fixture = TestBed.createComponent(TwSplit);
+      const fixture = TestBed.createComponent(SplitComponent);
       fixture.detectChanges();
       expect(fixture.componentInstance.rtl()).toBeNull();
     });
   });
 
-  describe('TwSplitPane inputs (§3.3)', () => {
+  describe('SplitPaneComponent inputs (§3.3)', () => {
     it('has minSize defaulting to 0', () => {
-      const fixture = TestBed.createComponent(TwSplitPane);
+      const fixture = TestBed.createComponent(SplitPaneComponent);
       fixture.detectChanges();
       expect(fixture.componentInstance.minSize()).toBe(0);
     });
 
     it('has maxSize defaulting to Infinity', () => {
-      const fixture = TestBed.createComponent(TwSplitPane);
+      const fixture = TestBed.createComponent(SplitPaneComponent);
       fixture.detectChanges();
       expect(fixture.componentInstance.maxSize()).toBe(Infinity);
     });
 
     it('has collapsible defaulting to false', () => {
-      const fixture = TestBed.createComponent(TwSplitPane);
+      const fixture = TestBed.createComponent(SplitPaneComponent);
       fixture.detectChanges();
       expect(fixture.componentInstance.collapsible()).toBe(false);
     });
 
     it('has collapsedSize defaulting to 0', () => {
-      const fixture = TestBed.createComponent(TwSplitPane);
+      const fixture = TestBed.createComponent(SplitPaneComponent);
       fixture.detectChanges();
       expect(fixture.componentInstance.collapsedSize()).toBe(0);
     });
 
     it('has snapSize defaulting to 0', () => {
-      const fixture = TestBed.createComponent(TwSplitPane);
+      const fixture = TestBed.createComponent(SplitPaneComponent);
       fixture.detectChanges();
       expect(fixture.componentInstance.snapSize()).toBe(0);
     });
 
     it('has defaultSize defaulting to undefined', () => {
-      const fixture = TestBed.createComponent(TwSplitPane);
+      const fixture = TestBed.createComponent(SplitPaneComponent);
       fixture.detectChanges();
       expect(fixture.componentInstance.defaultSize()).toBeUndefined();
     });
@@ -597,8 +597,8 @@ describe('TwSplit (Phase 1 scaffold)', () => {
       fixture.detectChanges();
       await fixture.whenStable();
 
-      const split = fixture.debugElement.query(e => e.componentInstance instanceof TwSplit)
-        ?.componentInstance as TwSplit;
+      const split = fixture.debugElement.query(e => e.componentInstance instanceof SplitComponent)
+        ?.componentInstance as SplitComponent;
 
       split.setSizes([40, 60]);
       fixture.detectChanges();
@@ -613,8 +613,8 @@ describe('TwSplit (Phase 1 scaffold)', () => {
       fixture.detectChanges();
       await fixture.whenStable();
 
-      const split = fixture.debugElement.query(e => e.componentInstance instanceof TwSplit)
-        ?.componentInstance as TwSplit;
+      const split = fixture.debugElement.query(e => e.componentInstance instanceof SplitComponent)
+        ?.componentInstance as SplitComponent;
 
       expect(() => split.setSizes([30, 30, 40])).toThrow();
     });
@@ -624,8 +624,8 @@ describe('TwSplit (Phase 1 scaffold)', () => {
       fixture.detectChanges();
       await fixture.whenStable();
 
-      const split = fixture.debugElement.query(e => e.componentInstance instanceof TwSplit)
-        ?.componentInstance as TwSplit;
+      const split = fixture.debugElement.query(e => e.componentInstance instanceof SplitComponent)
+        ?.componentInstance as SplitComponent;
 
       const emitted: number[][] = [];
       split.sizesChange.subscribe((s: number[]) => emitted.push(s));
@@ -642,8 +642,8 @@ describe('TwSplit (Phase 1 scaffold)', () => {
       fixture.detectChanges();
       await fixture.whenStable();
 
-      const split = fixture.debugElement.query(e => e.componentInstance instanceof TwSplit)
-        ?.componentInstance as TwSplit;
+      const split = fixture.debugElement.query(e => e.componentInstance instanceof SplitComponent)
+        ?.componentInstance as SplitComponent;
 
       split.setSizes([50, 50]);
       fixture.detectChanges();
@@ -658,10 +658,10 @@ describe('TwSplit (Phase 1 scaffold)', () => {
   });
 
   describe('stub methods (§3.2 — not yet implemented)', () => {
-    let split: TwSplit;
+    let split: SplitComponent;
 
     beforeEach(() => {
-      const fixture = TestBed.createComponent(TwSplit);
+      const fixture = TestBed.createComponent(SplitComponent);
       fixture.detectChanges();
       split = fixture.componentInstance;
     });
@@ -681,8 +681,8 @@ describe('TwSplit (Phase 1 scaffold)', () => {
       fixture.detectChanges();
       await fixture.whenStable();
 
-      const split = fixture.debugElement.query(e => e.componentInstance instanceof TwSplit)
-        ?.componentInstance as TwSplit;
+      const split = fixture.debugElement.query(e => e.componentInstance instanceof SplitComponent)
+        ?.componentInstance as SplitComponent;
 
       // Simulate initial container of 506px → available=500 (500 - 1 gutter of 6)
       split._onContainerResize(506);
@@ -709,8 +709,8 @@ describe('TwSplit (Phase 1 scaffold)', () => {
       fixture.detectChanges();
       await fixture.whenStable();
 
-      const split = fixture.debugElement.query(e => e.componentInstance instanceof TwSplit)
-        ?.componentInstance as TwSplit;
+      const split = fixture.debugElement.query(e => e.componentInstance instanceof SplitComponent)
+        ?.componentInstance as SplitComponent;
 
       split._onContainerResize(506);
       fixture.detectChanges();
@@ -725,11 +725,11 @@ describe('TwSplit (Phase 1 scaffold)', () => {
     });
 
     it('fires sizesChange when clamping occurs during pixel resize', async () => {
-      const fixture = TestBed.createComponent(TwSplit);
+      const fixture = TestBed.createComponent(SplitComponent);
       fixture.detectChanges();
       await fixture.whenStable();
 
-      // Can't easily set up contentChildren via ComponentFixture on TwSplit directly.
+      // Can't easily set up contentChildren via ComponentFixture on SplitComponent directly.
       // Tested via PixelHost above and pure function tests.
     });
   });
@@ -740,8 +740,8 @@ describe('TwSplit (Phase 1 scaffold)', () => {
       fixture.detectChanges();
       await fixture.whenStable();
 
-      const split = fixture.debugElement.query(e => e.componentInstance instanceof TwSplit)
-        ?.componentInstance as TwSplit;
+      const split = fixture.debugElement.query(e => e.componentInstance instanceof SplitComponent)
+        ?.componentInstance as SplitComponent;
 
       expect(sumIsClose(split._sizes(), 100)).toBe(true);
     });
@@ -751,8 +751,8 @@ describe('TwSplit (Phase 1 scaffold)', () => {
       fixture.detectChanges();
       await fixture.whenStable();
 
-      const split = fixture.debugElement.query(e => e.componentInstance instanceof TwSplit)
-        ?.componentInstance as TwSplit;
+      const split = fixture.debugElement.query(e => e.componentInstance instanceof SplitComponent)
+        ?.componentInstance as SplitComponent;
 
       split.setSizes([33, 67]);
       expect(sumIsClose(split._sizes(), 100)).toBe(true);
@@ -771,19 +771,19 @@ describe('TwSplit (Phase 1 scaffold)', () => {
       await fixture.whenStable();
       fixture.detectChanges();
 
-      const split = fixture.debugElement.query(e => e.componentInstance instanceof TwSplit)
-        ?.componentInstance as TwSplit;
+      const split = fixture.debugElement.query(e => e.componentInstance instanceof SplitComponent)
+        ?.componentInstance as SplitComponent;
 
       const existingPanes = fixture.debugElement
-        .queryAll(e => e.componentInstance instanceof TwSplitPane)
-        .map(d => d.componentInstance as TwSplitPane);
+        .queryAll(e => e.componentInstance instanceof SplitPaneComponent)
+        .map(d => d.componentInstance as SplitPaneComponent);
 
       const sizesBeforeAdd = [...split._sizes()];
       expect(sizesBeforeAdd).toHaveLength(2);
       expect(sumIsClose(sizesBeforeAdd, 100)).toBe(true);
 
-      // Create a fresh TwSplitPane instance to represent the new pane.
-      const newPane = TestBed.createComponent(TwSplitPane).componentInstance;
+      // Create a fresh SplitPaneComponent instance to represent the new pane.
+      const newPane = TestBed.createComponent(SplitPaneComponent).componentInstance;
       split._onPanesChange([...existingPanes, newPane], split._containerSizePx());
 
       const sizesAfterAdd = split._sizes();
@@ -797,12 +797,12 @@ describe('TwSplit (Phase 1 scaffold)', () => {
       await fixture.whenStable();
       fixture.detectChanges();
 
-      const split = fixture.debugElement.query(e => e.componentInstance instanceof TwSplit)
-        ?.componentInstance as TwSplit;
+      const split = fixture.debugElement.query(e => e.componentInstance instanceof SplitComponent)
+        ?.componentInstance as SplitComponent;
 
       const allPanes = fixture.debugElement
-        .queryAll(e => e.componentInstance instanceof TwSplitPane)
-        .map(d => d.componentInstance as TwSplitPane);
+        .queryAll(e => e.componentInstance instanceof SplitPaneComponent)
+        .map(d => d.componentInstance as SplitPaneComponent);
 
       expect(split._sizes()).toHaveLength(3);
 

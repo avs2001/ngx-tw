@@ -1,8 +1,9 @@
-import { Component, input } from '@angular/core';
+import { Component, computed, input } from '@angular/core';
 import { type ComponentFixture, TestBed } from '@angular/core/testing';
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { ProgressBarComponent } from './progress-bar';
 import type {
+  ProgressBarOptions,
   ProgressBarSize,
   ProgressBarValueFormatter,
   ProgressBarVariant,
@@ -13,7 +14,7 @@ import type { TwColor } from 'ngx-tw/core';
 
 @Component({
   imports: [ProgressBarComponent],
-  template: `<tw-progress-bar ariaLabel="test" />`,
+  template: `<tw-progress-bar [options]="{ ariaLabel: 'test' }" />`,
 })
 class DefaultHost {}
 
@@ -22,17 +23,11 @@ class DefaultHost {}
   template: `
     <tw-progress-bar
       [value]="value()"
-      [min]="min()"
-      [max]="max()"
       [variant]="variant()"
       [color]="color()"
       [size]="size()"
-      [segments]="segments()"
       [label]="label()"
-      [showValue]="showValue()"
-      [valueFormatter]="valueFormatter()"
-      [ariaLabel]="ariaLabel()"
-      [ariaLabelledby]="ariaLabelledby()"
+      [options]="options()"
     />
   `,
 })
@@ -49,6 +44,16 @@ class ConfiguredHost {
   readonly valueFormatter = input<ProgressBarValueFormatter | undefined>(undefined);
   readonly ariaLabel = input<string | undefined>(undefined);
   readonly ariaLabelledby = input<string | undefined>(undefined);
+
+  readonly options = computed<ProgressBarOptions>(() => ({
+    min: this.min(),
+    max: this.max(),
+    segments: this.segments(),
+    showValue: this.showValue(),
+    formatter: this.valueFormatter(),
+    ariaLabel: this.ariaLabel(),
+    ariaLabelledby: this.ariaLabelledby(),
+  }));
 }
 
 // ── Helpers ───────────────────────────────────────────────────────
@@ -85,6 +90,22 @@ describe('ProgressBarComponent', () => {
       const el = getProgressEl(fixture);
       expect(el.getAttribute('aria-valuemin')).toBe('0');
       expect(el.getAttribute('aria-valuemax')).toBe('100');
+    });
+
+    it('renders with default options when options input is undefined', () => {
+      // ConfiguredHost passes options() but with all-default fields; an entirely
+      // undefined options must also yield the same defaults.
+      @Component({
+        imports: [ProgressBarComponent],
+        template: `<tw-progress-bar [value]="50" />`,
+      })
+      class Bare {}
+      const fixture = TestBed.createComponent(Bare);
+      fixture.detectChanges();
+      const el = getProgressEl(fixture);
+      expect(el.getAttribute('aria-valuemin')).toBe('0');
+      expect(el.getAttribute('aria-valuemax')).toBe('100');
+      expect(el.getAttribute('aria-valuenow')).toBe('50');
     });
   });
 
@@ -139,7 +160,7 @@ describe('ProgressBarComponent', () => {
       expect(getFill(fixture).style.width).toBe('100%');
     });
 
-    it('supports custom min/max', () => {
+    it('supports custom min/max via options', () => {
       const fixture = TestBed.createComponent(ConfiguredHost);
       fixture.componentRef.setInput('min', 10);
       fixture.componentRef.setInput('max', 20);
@@ -291,7 +312,7 @@ describe('ProgressBarComponent', () => {
     }
   });
 
-  describe('showValue', () => {
+  describe('options.showValue', () => {
     it('renders the formatted value when showValue=true', () => {
       const fixture = TestBed.createComponent(ConfiguredHost);
       fixture.componentRef.setInput('value', 37);
@@ -306,7 +327,6 @@ describe('ProgressBarComponent', () => {
       fixture.componentRef.setInput('value', 37);
       fixture.componentRef.setInput('showValue', false);
       fixture.detectChanges();
-      // The component only shows the label (no value caption), so textContent excludes "37%"
       const valueSpan = fixture.nativeElement.querySelector('.tabular-nums');
       expect(valueSpan).toBeNull();
       expect(getProgressEl(fixture).getAttribute('aria-valuetext')).toBe('37%');
@@ -325,7 +345,7 @@ describe('ProgressBarComponent', () => {
     });
   });
 
-  describe('valueFormatter', () => {
+  describe('options.formatter', () => {
     it('uses the custom formatter for visible text and aria-valuetext', () => {
       const fixture = TestBed.createComponent(ConfiguredHost);
       const fmt: ProgressBarValueFormatter = (v, mx) => `${v}/${mx}`;
@@ -352,7 +372,7 @@ describe('ProgressBarComponent', () => {
       expect(el.getAttribute('aria-labelledby')).toBe(labelSpan!.id);
     });
 
-    it('ariaLabel input mirrors to aria-label when no label is set', () => {
+    it('options.ariaLabel mirrors to aria-label when no label is set', () => {
       const fixture = TestBed.createComponent(ConfiguredHost);
       fixture.componentRef.setInput('label', undefined);
       fixture.componentRef.setInput('ariaLabel', 'Task progress');
@@ -363,7 +383,7 @@ describe('ProgressBarComponent', () => {
       expect(el.hasAttribute('aria-labelledby')).toBe(false);
     });
 
-    it('ariaLabelledby input mirrors to aria-labelledby when no label is set', () => {
+    it('options.ariaLabelledby mirrors to aria-labelledby when no label is set', () => {
       const fixture = TestBed.createComponent(ConfiguredHost);
       fixture.componentRef.setInput('label', undefined);
       fixture.componentRef.setInput('ariaLabelledby', 'external-label-id');
@@ -392,7 +412,7 @@ describe('ProgressBarComponent', () => {
       warn.mockRestore();
     });
 
-    it('does not warn when ariaLabel is provided', () => {
+    it('does not warn when options.ariaLabel is provided', () => {
       const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
       const fixture = TestBed.createComponent(ConfiguredHost);
       fixture.componentRef.setInput('label', undefined);

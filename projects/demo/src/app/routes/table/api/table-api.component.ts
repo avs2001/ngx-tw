@@ -10,8 +10,17 @@ import { CodeBlockComponent } from 'ngx-tw/code-block';
     <section class="mb-10">
       <h2 class="text-sm font-semibold mb-3">TableComponent&lt;T&gt;</h2>
       <p class="text-xs text-fg-muted mb-4 font-mono">Selector: tw-table</p>
+      <p class="text-sm text-fg-muted leading-relaxed max-w-2xl mb-4">
+        Visual and behavioural concerns are grouped into config-object inputs —
+        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">appearance</code>,
+        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">sticky</code>,
+        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">responsive</code>, and
+        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">selection</code>.
+        Each accepts a partial object; unset keys fall back to the documented defaults. Data, state,
+        the row-mechanics flag, i18n, and a11y attributes remain flat.
+      </p>
 
-      <h3 class="text-xs font-semibold text-fg-muted uppercase tracking-wide mb-2">Inputs</h3>
+      <h3 class="text-xs font-semibold text-fg-muted uppercase tracking-wide mb-2">Top-level inputs</h3>
       <div class="overflow-x-auto border border-border rounded-lg mb-6">
         <table class="w-full text-sm">
           <thead>
@@ -48,76 +57,34 @@ import { CodeBlockComponent } from 'ngx-tw/code-block';
               <td class="px-4 py-2 text-fg-muted">When non-null, replaces the body with the error slot or fallback message.</td>
             </tr>
             <tr>
-              <td class="px-4 py-2 font-mono text-xs">variant</td>
-              <td class="px-4 py-2 font-mono text-xs text-fg-muted">'default' | 'striped' | 'bordered'</td>
-              <td class="px-4 py-2 font-mono text-xs text-fg-muted">'default'</td>
-              <td class="px-4 py-2 text-fg-muted">Visual variant — clean dividers, striped rows, or full grid with rounded outer border.</td>
+              <td class="px-4 py-2 font-mono text-xs">appearance</td>
+              <td class="px-4 py-2 font-mono text-xs text-fg-muted">TwTableAppearance</td>
+              <td class="px-4 py-2 font-mono text-xs text-fg-muted">{{ '{}' }}</td>
+              <td class="px-4 py-2 text-fg-muted">Visual configuration — see <a href="#appearance-fields" class="text-primary-600 hover:underline">TwTableAppearance fields</a>.</td>
             </tr>
             <tr>
-              <td class="px-4 py-2 font-mono text-xs">density</td>
-              <td class="px-4 py-2 font-mono text-xs text-fg-muted">'comfortable' | 'compact'</td>
-              <td class="px-4 py-2 font-mono text-xs text-fg-muted">'comfortable'</td>
-              <td class="px-4 py-2 text-fg-muted">Cell padding scale; comfortable for browseable lists, compact for dense admin panels.</td>
-            </tr>
-            <tr>
-              <td class="px-4 py-2 font-mono text-xs">size</td>
-              <td class="px-4 py-2 font-mono text-xs text-fg-muted">TwSize</td>
-              <td class="px-4 py-2 font-mono text-xs text-fg-muted">'md'</td>
-              <td class="px-4 py-2 text-fg-muted">Base font-size scale applied to headers and cells.</td>
+              <td class="px-4 py-2 font-mono text-xs">sticky</td>
+              <td class="px-4 py-2 font-mono text-xs text-fg-muted">TwTableSticky</td>
+              <td class="px-4 py-2 font-mono text-xs text-fg-muted">{{ '{}' }}</td>
+              <td class="px-4 py-2 text-fg-muted">Sticky header/footer + internal scroll region — see <a href="#sticky-fields" class="text-primary-600 hover:underline">TwTableSticky fields</a>.</td>
             </tr>
             <tr>
               <td class="px-4 py-2 font-mono text-xs">responsive</td>
-              <td class="px-4 py-2 font-mono text-xs text-fg-muted">'scroll' | 'stack' | 'hide'</td>
-              <td class="px-4 py-2 font-mono text-xs text-fg-muted">'scroll'</td>
-              <td class="px-4 py-2 text-fg-muted">Narrow-viewport strategy — scroll keeps the table as-is, stack collapses rows into cards, hide drops <code class="font-mono">hideBelow</code> columns.</td>
+              <td class="px-4 py-2 font-mono text-xs text-fg-muted">TwTableResponsive</td>
+              <td class="px-4 py-2 font-mono text-xs text-fg-muted">{{ '{}' }}</td>
+              <td class="px-4 py-2 text-fg-muted">Responsive behaviour — see <a href="#responsive-fields" class="text-primary-600 hover:underline">TwTableResponsive fields</a>.</td>
             </tr>
             <tr>
-              <td class="px-4 py-2 font-mono text-xs">stackBelow</td>
-              <td class="px-4 py-2 font-mono text-xs text-fg-muted">TwBreakpoint</td>
-              <td class="px-4 py-2 font-mono text-xs text-fg-muted">'md'</td>
-              <td class="px-4 py-2 text-fg-muted">Breakpoint below which the <code class="font-mono">'stack'</code> responsive mode engages.</td>
-            </tr>
-            <tr>
-              <td class="px-4 py-2 font-mono text-xs">stickyHeader</td>
-              <td class="px-4 py-2 font-mono text-xs text-fg-muted">boolean</td>
-              <td class="px-4 py-2 font-mono text-xs text-fg-muted">false</td>
-              <td class="px-4 py-2 text-fg-muted">Pins the header while the body scrolls; requires <code class="font-mono">scrollHeight</code> or a scrolling ancestor.</td>
-            </tr>
-            <tr>
-              <td class="px-4 py-2 font-mono text-xs">stickyFooter</td>
-              <td class="px-4 py-2 font-mono text-xs text-fg-muted">boolean</td>
-              <td class="px-4 py-2 font-mono text-xs text-fg-muted">false</td>
-              <td class="px-4 py-2 text-fg-muted">Pins the footer row while the body scrolls.</td>
-            </tr>
-            <tr>
-              <td class="px-4 py-2 font-mono text-xs">scrollHeight</td>
-              <td class="px-4 py-2 font-mono text-xs text-fg-muted">string | number | null</td>
-              <td class="px-4 py-2 font-mono text-xs text-fg-muted">null</td>
-              <td class="px-4 py-2 text-fg-muted">Max-height of the internal scroll container; numbers are treated as pixels.</td>
-            </tr>
-            <tr>
-              <td class="px-4 py-2 font-mono text-xs">layout</td>
-              <td class="px-4 py-2 font-mono text-xs text-fg-muted">'auto' | 'fixed'</td>
-              <td class="px-4 py-2 font-mono text-xs text-fg-muted">'auto'</td>
-              <td class="px-4 py-2 text-fg-muted">Table layout algorithm — fixed respects <code class="font-mono">&lt;tw-column width&gt;</code> and enables sticky-width optimizations.</td>
+              <td class="px-4 py-2 font-mono text-xs">selection</td>
+              <td class="px-4 py-2 font-mono text-xs text-fg-muted">TwTableSelection</td>
+              <td class="px-4 py-2 font-mono text-xs text-fg-muted">{{ '{}' }}</td>
+              <td class="px-4 py-2 text-fg-muted">Selection configuration — see <a href="#selection-fields" class="text-primary-600 hover:underline">TwTableSelection fields</a>.</td>
             </tr>
             <tr>
               <td class="px-4 py-2 font-mono text-xs">multiTemplateRows</td>
               <td class="px-4 py-2 font-mono text-xs text-fg-muted">boolean</td>
               <td class="px-4 py-2 font-mono text-xs text-fg-muted">false</td>
               <td class="px-4 py-2 text-fg-muted">Required for <code class="font-mono">*twRowExpansion</code> and advanced CDK row-template variants.</td>
-            </tr>
-            <tr>
-              <td class="px-4 py-2 font-mono text-xs">selectable</td>
-              <td class="px-4 py-2 font-mono text-xs text-fg-muted">boolean</td>
-              <td class="px-4 py-2 font-mono text-xs text-fg-muted">false</td>
-              <td class="px-4 py-2 text-fg-muted">Exposes a leading selection column slot (rendering ships in v2).</td>
-            </tr>
-            <tr>
-              <td class="px-4 py-2 font-mono text-xs">rowAnimations</td>
-              <td class="px-4 py-2 font-mono text-xs text-fg-muted">boolean</td>
-              <td class="px-4 py-2 font-mono text-xs text-fg-muted">false</td>
-              <td class="px-4 py-2 text-fg-muted">Fades rows in on enter; off by default to avoid flicker on frequent data updates.</td>
             </tr>
             <tr>
               <td class="px-4 py-2 font-mono text-xs">
@@ -135,7 +102,7 @@ import { CodeBlockComponent } from 'ngx-tw/code-block';
               </td>
               <td class="px-4 py-2 font-mono text-xs text-fg-muted">readonly T[]</td>
               <td class="px-4 py-2 font-mono text-xs text-fg-muted">[]</td>
-              <td class="px-4 py-2 text-fg-muted">Two-way bound selection list; only used when <code class="font-mono">selectable</code> is true.</td>
+              <td class="px-4 py-2 text-fg-muted">Two-way bound selection list; only used when <code class="font-mono">selection.enabled</code> is true.</td>
             </tr>
             <tr>
               <td class="px-4 py-2 font-mono text-xs">labels</td>
@@ -159,6 +126,136 @@ import { CodeBlockComponent } from 'ngx-tw/code-block';
         </table>
       </div>
 
+      <h3 id="appearance-fields" class="text-xs font-semibold text-fg-muted uppercase tracking-wide mb-2">TwTableAppearance fields</h3>
+      <div class="overflow-x-auto border border-border rounded-lg mb-6">
+        <table class="w-full text-sm">
+          <thead>
+            <tr class="bg-surface-muted text-left">
+              <th class="px-4 py-2 font-medium text-fg-muted">Key</th>
+              <th class="px-4 py-2 font-medium text-fg-muted">Type</th>
+              <th class="px-4 py-2 font-medium text-fg-muted">Default</th>
+              <th class="px-4 py-2 font-medium text-fg-muted">Description</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-border-muted">
+            <tr>
+              <td class="px-4 py-2 font-mono text-xs">variant</td>
+              <td class="px-4 py-2 font-mono text-xs text-fg-muted">'default' | 'striped' | 'bordered'</td>
+              <td class="px-4 py-2 font-mono text-xs text-fg-muted">'default'</td>
+              <td class="px-4 py-2 text-fg-muted">Visual variant — clean dividers, striped rows, or full grid with rounded outer border.</td>
+            </tr>
+            <tr>
+              <td class="px-4 py-2 font-mono text-xs">density</td>
+              <td class="px-4 py-2 font-mono text-xs text-fg-muted">'comfortable' | 'compact'</td>
+              <td class="px-4 py-2 font-mono text-xs text-fg-muted">'comfortable'</td>
+              <td class="px-4 py-2 text-fg-muted">Cell padding scale; comfortable for browseable lists, compact for dense admin panels.</td>
+            </tr>
+            <tr>
+              <td class="px-4 py-2 font-mono text-xs">size</td>
+              <td class="px-4 py-2 font-mono text-xs text-fg-muted">TwSize</td>
+              <td class="px-4 py-2 font-mono text-xs text-fg-muted">'md'</td>
+              <td class="px-4 py-2 text-fg-muted">Base font-size scale applied to headers and cells.</td>
+            </tr>
+            <tr>
+              <td class="px-4 py-2 font-mono text-xs">layout</td>
+              <td class="px-4 py-2 font-mono text-xs text-fg-muted">'auto' | 'fixed'</td>
+              <td class="px-4 py-2 font-mono text-xs text-fg-muted">'auto'</td>
+              <td class="px-4 py-2 text-fg-muted">Table layout algorithm — fixed respects <code class="font-mono">display.width</code> and enables sticky-width optimizations.</td>
+            </tr>
+            <tr>
+              <td class="px-4 py-2 font-mono text-xs">rowAnimations</td>
+              <td class="px-4 py-2 font-mono text-xs text-fg-muted">boolean</td>
+              <td class="px-4 py-2 font-mono text-xs text-fg-muted">false</td>
+              <td class="px-4 py-2 text-fg-muted">Fades rows in on enter; off by default to avoid flicker on frequent data updates.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3 id="sticky-fields" class="text-xs font-semibold text-fg-muted uppercase tracking-wide mb-2">TwTableSticky fields</h3>
+      <div class="overflow-x-auto border border-border rounded-lg mb-6">
+        <table class="w-full text-sm">
+          <thead>
+            <tr class="bg-surface-muted text-left">
+              <th class="px-4 py-2 font-medium text-fg-muted">Key</th>
+              <th class="px-4 py-2 font-medium text-fg-muted">Type</th>
+              <th class="px-4 py-2 font-medium text-fg-muted">Default</th>
+              <th class="px-4 py-2 font-medium text-fg-muted">Description</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-border-muted">
+            <tr>
+              <td class="px-4 py-2 font-mono text-xs">header</td>
+              <td class="px-4 py-2 font-mono text-xs text-fg-muted">boolean</td>
+              <td class="px-4 py-2 font-mono text-xs text-fg-muted">false</td>
+              <td class="px-4 py-2 text-fg-muted">Pins the header while the body scrolls; requires <code class="font-mono">scrollHeight</code> or a scrolling ancestor.</td>
+            </tr>
+            <tr>
+              <td class="px-4 py-2 font-mono text-xs">footer</td>
+              <td class="px-4 py-2 font-mono text-xs text-fg-muted">boolean</td>
+              <td class="px-4 py-2 font-mono text-xs text-fg-muted">false</td>
+              <td class="px-4 py-2 text-fg-muted">Pins the footer row while the body scrolls.</td>
+            </tr>
+            <tr>
+              <td class="px-4 py-2 font-mono text-xs">scrollHeight</td>
+              <td class="px-4 py-2 font-mono text-xs text-fg-muted">string | number | null</td>
+              <td class="px-4 py-2 font-mono text-xs text-fg-muted">null</td>
+              <td class="px-4 py-2 text-fg-muted">Max-height of the internal scroll container; numbers are treated as pixels.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3 id="responsive-fields" class="text-xs font-semibold text-fg-muted uppercase tracking-wide mb-2">TwTableResponsive fields</h3>
+      <div class="overflow-x-auto border border-border rounded-lg mb-6">
+        <table class="w-full text-sm">
+          <thead>
+            <tr class="bg-surface-muted text-left">
+              <th class="px-4 py-2 font-medium text-fg-muted">Key</th>
+              <th class="px-4 py-2 font-medium text-fg-muted">Type</th>
+              <th class="px-4 py-2 font-medium text-fg-muted">Default</th>
+              <th class="px-4 py-2 font-medium text-fg-muted">Description</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-border-muted">
+            <tr>
+              <td class="px-4 py-2 font-mono text-xs">mode</td>
+              <td class="px-4 py-2 font-mono text-xs text-fg-muted">TwTableResponsiveMode</td>
+              <td class="px-4 py-2 font-mono text-xs text-fg-muted">'scroll'</td>
+              <td class="px-4 py-2 text-fg-muted">Narrow-viewport strategy — <code class="font-mono">scroll</code> keeps the table as-is, <code class="font-mono">stack</code> collapses rows into cards, <code class="font-mono">hide</code> drops <code class="font-mono">display.hideBelow</code> columns.</td>
+            </tr>
+            <tr>
+              <td class="px-4 py-2 font-mono text-xs">stackBelow</td>
+              <td class="px-4 py-2 font-mono text-xs text-fg-muted">TwBreakpoint</td>
+              <td class="px-4 py-2 font-mono text-xs text-fg-muted">'md'</td>
+              <td class="px-4 py-2 text-fg-muted">Breakpoint below which <code class="font-mono">mode: 'stack'</code> engages.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3 id="selection-fields" class="text-xs font-semibold text-fg-muted uppercase tracking-wide mb-2">TwTableSelection fields</h3>
+      <div class="overflow-x-auto border border-border rounded-lg mb-6">
+        <table class="w-full text-sm">
+          <thead>
+            <tr class="bg-surface-muted text-left">
+              <th class="px-4 py-2 font-medium text-fg-muted">Key</th>
+              <th class="px-4 py-2 font-medium text-fg-muted">Type</th>
+              <th class="px-4 py-2 font-medium text-fg-muted">Default</th>
+              <th class="px-4 py-2 font-medium text-fg-muted">Description</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-border-muted">
+            <tr>
+              <td class="px-4 py-2 font-mono text-xs">enabled</td>
+              <td class="px-4 py-2 font-mono text-xs text-fg-muted">boolean</td>
+              <td class="px-4 py-2 font-mono text-xs text-fg-muted">false</td>
+              <td class="px-4 py-2 text-fg-muted">Exposes a leading <code class="font-mono">_selection</code> column slot for checkbox rendering.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
       <h3 class="text-xs font-semibold text-fg-muted uppercase tracking-wide mb-2">Outputs</h3>
       <div class="overflow-x-auto border border-border rounded-lg mb-6">
         <table class="w-full text-sm">
@@ -171,7 +268,7 @@ import { CodeBlockComponent } from 'ngx-tw/code-block';
           </thead>
           <tbody class="divide-y divide-border-muted">
             <tr>
-              <td class="px-4 py-2 font-mono text-xs">rowClick</td>
+              <td class="px-4 py-2 font-mono text-xs">rowClicked</td>
               <td class="px-4 py-2 font-mono text-xs text-fg-muted">EventEmitter&lt;TwRowClickEvent&lt;T&gt;&gt;</td>
               <td class="px-4 py-2 text-fg-muted">Fires when a row is clicked; suppressed when the click originated inside an interactive descendant.</td>
             </tr>
@@ -253,10 +350,12 @@ import { CodeBlockComponent } from 'ngx-tw/code-block';
       <h2 class="text-sm font-semibold mb-3">ColumnComponent&lt;T&gt;</h2>
       <p class="text-xs text-fg-muted mb-4 font-mono">Selector: tw-column</p>
       <p class="text-sm text-fg-muted leading-relaxed max-w-2xl mb-4">
-        Pure-metadata component — its host element is <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">display: none</code>; the actual cells are emitted by the parent <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">&lt;tw-table&gt;</code> using the projected <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">*twHeaderCellDef</code> / <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">*twCellDef</code> / <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">*twFooterCellDef</code> templates.
+        Pure-metadata component — its host element is <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">display: none</code>; the actual cells are emitted by the parent <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">&lt;tw-table&gt;</code> using the projected <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">*twHeaderCellDef</code> / <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">*twCellDef</code> / <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">*twFooterCellDef</code> templates. Visual axes live on the
+        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">display</code>
+        config object; identity, ordering, and label inputs stay flat.
       </p>
 
-      <h3 class="text-xs font-semibold text-fg-muted uppercase tracking-wide mb-2">Inputs</h3>
+      <h3 class="text-xs font-semibold text-fg-muted uppercase tracking-wide mb-2">Top-level inputs</h3>
       <div class="overflow-x-auto border border-border rounded-lg mb-6">
         <table class="w-full text-sm">
           <thead>
@@ -275,40 +374,16 @@ import { CodeBlockComponent } from 'ngx-tw/code-block';
               <td class="px-4 py-2 text-fg-muted">Required — unique column id used as the CDK <code class="font-mono">cdkColumnDef</code> name.</td>
             </tr>
             <tr>
-              <td class="px-4 py-2 font-mono text-xs">sticky</td>
-              <td class="px-4 py-2 font-mono text-xs text-fg-muted">'start' | 'end' | false</td>
-              <td class="px-4 py-2 font-mono text-xs text-fg-muted">false</td>
-              <td class="px-4 py-2 text-fg-muted">Pins the column to the leading or trailing edge during horizontal scroll.</td>
-            </tr>
-            <tr>
-              <td class="px-4 py-2 font-mono text-xs">align</td>
-              <td class="px-4 py-2 font-mono text-xs text-fg-muted">'start' | 'center' | 'end'</td>
-              <td class="px-4 py-2 font-mono text-xs text-fg-muted">'start'</td>
-              <td class="px-4 py-2 text-fg-muted">Horizontal alignment applied to header and data cells.</td>
-            </tr>
-            <tr>
-              <td class="px-4 py-2 font-mono text-xs">numeric</td>
-              <td class="px-4 py-2 font-mono text-xs text-fg-muted">boolean</td>
-              <td class="px-4 py-2 font-mono text-xs text-fg-muted">false</td>
-              <td class="px-4 py-2 text-fg-muted">Convenience flag equivalent to <code class="font-mono">align="end"</code> plus tabular numerals.</td>
+              <td class="px-4 py-2 font-mono text-xs">display</td>
+              <td class="px-4 py-2 font-mono text-xs text-fg-muted">TwColumnDisplay</td>
+              <td class="px-4 py-2 font-mono text-xs text-fg-muted">{{ '{}' }}</td>
+              <td class="px-4 py-2 text-fg-muted">Visual configuration — see <a href="#column-display-fields" class="text-primary-600 hover:underline">TwColumnDisplay fields</a>.</td>
             </tr>
             <tr>
               <td class="px-4 py-2 font-mono text-xs">hidden</td>
               <td class="px-4 py-2 font-mono text-xs text-fg-muted">boolean</td>
               <td class="px-4 py-2 font-mono text-xs text-fg-muted">false</td>
               <td class="px-4 py-2 text-fg-muted">Removes the column from the visible column set.</td>
-            </tr>
-            <tr>
-              <td class="px-4 py-2 font-mono text-xs">hideBelow</td>
-              <td class="px-4 py-2 font-mono text-xs text-fg-muted">TwBreakpoint | null</td>
-              <td class="px-4 py-2 font-mono text-xs text-fg-muted">null</td>
-              <td class="px-4 py-2 text-fg-muted">Hides the column below this viewport breakpoint when the table's <code class="font-mono">responsive === 'hide'</code>.</td>
-            </tr>
-            <tr>
-              <td class="px-4 py-2 font-mono text-xs">width</td>
-              <td class="px-4 py-2 font-mono text-xs text-fg-muted">string | number | null</td>
-              <td class="px-4 py-2 font-mono text-xs text-fg-muted">null</td>
-              <td class="px-4 py-2 text-fg-muted">CSS column width; only honoured when the table's <code class="font-mono">layout === 'fixed'</code>.</td>
             </tr>
             <tr>
               <td class="px-4 py-2 font-mono text-xs">priority</td>
@@ -327,6 +402,52 @@ import { CodeBlockComponent } from 'ngx-tw/code-block';
               <td class="px-4 py-2 font-mono text-xs text-fg-muted">string</td>
               <td class="px-4 py-2 font-mono text-xs text-fg-muted">undefined</td>
               <td class="px-4 py-2 text-fg-muted">Inline label used as <code class="font-mono">data-label</code> in stack mode; falls back to <code class="font-mono">headerLabel</code> then <code class="font-mono">name</code>.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3 id="column-display-fields" class="text-xs font-semibold text-fg-muted uppercase tracking-wide mb-2">TwColumnDisplay fields</h3>
+      <div class="overflow-x-auto border border-border rounded-lg mb-6">
+        <table class="w-full text-sm">
+          <thead>
+            <tr class="bg-surface-muted text-left">
+              <th class="px-4 py-2 font-medium text-fg-muted">Key</th>
+              <th class="px-4 py-2 font-medium text-fg-muted">Type</th>
+              <th class="px-4 py-2 font-medium text-fg-muted">Default</th>
+              <th class="px-4 py-2 font-medium text-fg-muted">Description</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-border-muted">
+            <tr>
+              <td class="px-4 py-2 font-mono text-xs">sticky</td>
+              <td class="px-4 py-2 font-mono text-xs text-fg-muted">'start' | 'end' | false</td>
+              <td class="px-4 py-2 font-mono text-xs text-fg-muted">false</td>
+              <td class="px-4 py-2 text-fg-muted">Pins the column to the leading or trailing edge during horizontal scroll.</td>
+            </tr>
+            <tr>
+              <td class="px-4 py-2 font-mono text-xs">align</td>
+              <td class="px-4 py-2 font-mono text-xs text-fg-muted">'start' | 'center' | 'end'</td>
+              <td class="px-4 py-2 font-mono text-xs text-fg-muted">'start'</td>
+              <td class="px-4 py-2 text-fg-muted">Horizontal alignment applied to header and data cells.</td>
+            </tr>
+            <tr>
+              <td class="px-4 py-2 font-mono text-xs">numeric</td>
+              <td class="px-4 py-2 font-mono text-xs text-fg-muted">boolean</td>
+              <td class="px-4 py-2 font-mono text-xs text-fg-muted">false</td>
+              <td class="px-4 py-2 text-fg-muted">Convenience flag equivalent to <code class="font-mono">align: 'end'</code> plus tabular numerals.</td>
+            </tr>
+            <tr>
+              <td class="px-4 py-2 font-mono text-xs">hideBelow</td>
+              <td class="px-4 py-2 font-mono text-xs text-fg-muted">TwBreakpoint | null</td>
+              <td class="px-4 py-2 font-mono text-xs text-fg-muted">null</td>
+              <td class="px-4 py-2 text-fg-muted">Hides the column below this viewport breakpoint when the table's <code class="font-mono">responsive.mode === 'hide'</code>.</td>
+            </tr>
+            <tr>
+              <td class="px-4 py-2 font-mono text-xs">width</td>
+              <td class="px-4 py-2 font-mono text-xs text-fg-muted">string | number | null</td>
+              <td class="px-4 py-2 font-mono text-xs text-fg-muted">null</td>
+              <td class="px-4 py-2 text-fg-muted">CSS column width; only honoured when the table's <code class="font-mono">appearance.layout === 'fixed'</code>.</td>
             </tr>
           </tbody>
         </table>
@@ -386,12 +507,43 @@ import { CodeBlockComponent } from 'ngx-tw/code-block';
 export class TableApi {
   protected readonly typesSnippet = `type TwTableVariant = 'default' | 'striped' | 'bordered';
 type TwTableDensity = 'comfortable' | 'compact';
-type TwTableResponsive = 'scroll' | 'stack' | 'hide';
+type TwTableResponsiveMode = 'scroll' | 'stack' | 'hide';
 type TwTableLayout = 'auto' | 'fixed';
 type TwColumnAlign = 'start' | 'center' | 'end';
 type TwColumnSticky = 'start' | 'end' | false;
 
 type TwTableDataSourceInput<T> = readonly T[] | Observable<readonly T[]> | DataSource<T>;
+
+interface TwTableAppearance {
+  variant?: TwTableVariant;      // default: 'default'
+  density?: TwTableDensity;      // default: 'comfortable'
+  size?: TwSize;                 // default: 'md'
+  layout?: TwTableLayout;        // default: 'auto'
+  rowAnimations?: boolean;       // default: false
+}
+
+interface TwTableSticky {
+  header?: boolean;                       // default: false
+  footer?: boolean;                       // default: false
+  scrollHeight?: string | number | null;  // default: null
+}
+
+interface TwTableResponsive {
+  mode?: TwTableResponsiveMode;  // default: 'scroll'
+  stackBelow?: TwBreakpoint;     // default: 'md'
+}
+
+interface TwTableSelection {
+  enabled?: boolean;             // default: false
+}
+
+interface TwColumnDisplay {
+  sticky?: TwColumnSticky;                // default: false
+  align?: TwColumnAlign;                  // default: 'start'
+  numeric?: boolean;                      // default: false
+  hideBelow?: TwBreakpoint | null;        // default: null
+  width?: string | number | null;         // default: null
+}
 
 interface TwTableLabels {
   ariaLabel: string;

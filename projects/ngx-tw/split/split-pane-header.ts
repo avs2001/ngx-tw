@@ -8,4 +8,4 @@ import { Directive } from '@angular/core';
 @Directive({
   selector: '[twSplitPaneHeader]',
 })
-export class TwSplitPaneHeader {}
+export class SplitPaneHeaderDirective {}

@@ -8,5 +8,6 @@ import type { ResolvedTheme } from './theme.types';
   },
 })
 export class ThemeDirective {
+  /** Scopes a subtree to a specific resolved theme by writing `data-theme` on the host. Required. */
   readonly twTheme = input.required<ResolvedTheme>();
 }

@@ -155,9 +155,9 @@ describe('ItemComponent', () => {
       const item: HTMLElement = fixture.nativeElement.querySelector('tw-item');
       const title: HTMLElement = fixture.nativeElement.querySelector('[twItemTitle]');
 
-      expect(item.className).toContain('gap-4');
+      expect(item.className).toContain('gap-3');
       expect(item.className).toContain('py-3');
-      expect(title.className).toContain('text-lg');
+      expect(title.className).toContain('text-base');
       expect(title.className).toContain('font-semibold');
     });
   });

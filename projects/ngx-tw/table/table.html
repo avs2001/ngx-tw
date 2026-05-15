@@ -26,8 +26,8 @@
       @for (col of visibleColumns(); track col.name()) {
         <ng-container
           [cdkColumnDef]="col.name()"
-          [sticky]="col.sticky() === 'start'"
-          [stickyEnd]="col.sticky() === 'end'"
+          [sticky]="col.stickyStart()"
+          [stickyEnd]="col.stickyEnd()"
         >
           <th
             cdk-header-cell

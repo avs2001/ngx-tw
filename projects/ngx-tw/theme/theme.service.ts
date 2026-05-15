@@ -34,10 +34,14 @@ export class ThemeService implements OnDestroy {
     return t === 'system' ? this.systemTheme() : t;
   });
 
+  /** True when the resolved theme is `'dark'`. */
   readonly isDark = computed(() => this.resolvedTheme() === 'dark');
+  /** True when the resolved theme is `'light'`. */
   readonly isLight = computed(() => this.resolvedTheme() === 'light');
+  /** True when the resolved theme is `'high-contrast'`. */
   readonly isHighContrast = computed(() => this.resolvedTheme() === 'high-contrast');
 
+  /** Snapshot of the full theme state — selected, resolved, system, and boolean flags. */
   readonly state = computed<ThemeState>(() => ({
     theme: this.theme(),
     resolvedTheme: this.resolvedTheme(),
@@ -61,16 +65,19 @@ export class ThemeService implements OnDestroy {
     });
   }
 
+  /** Sets the selected theme. Pass `'system'` to follow the OS preference. */
   setTheme(theme: Theme): void {
     this.theme.set(theme);
   }
 
+  /** Advances the selected theme to the next entry in {@link THEMES}, wrapping around. */
   cycleTheme(): void {
     const current = this.theme();
     const idx = THEMES.indexOf(current);
     this.theme.set(THEMES[(idx + 1) % THEMES.length]);
   }
 
+  /** Writes the configured theme attribute onto an arbitrary element — used to scope themes to a subtree. */
   applyToElement(element: HTMLElement, theme: ResolvedTheme): void {
     element.setAttribute(this.config.attribute, theme);
   }

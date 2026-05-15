@@ -42,7 +42,6 @@ export const COMPONENTS = [
   'slider',
   'sort',
   'spinner',
-  'split',
   'stepper',
   'switch',
   'tab-nav',

@@ -120,7 +120,7 @@ import { CodeBlockComponent } from 'ngx-tw/code-block';
               <td class="px-4 py-2 font-mono text-xs">allowSingleDayRange</td>
               <td class="px-4 py-2 font-mono text-xs text-fg-muted">boolean</td>
               <td class="px-4 py-2 font-mono text-xs text-fg-muted">true</td>
-              <td class="px-4 py-2 text-fg-muted">When <code class="font-mono">false</code>, clicking the same date twice flashes invalid instead of committing <code class="font-mono">{start, end: start}</code>.</td>
+              <td class="px-4 py-2 text-fg-muted">When <code class="font-mono">false</code>, clicking the same date twice flashes invalid instead of committing <code class="font-mono">&#123;start, end: start&#125;</code>.</td>
             </tr>
             <tr>
               <td class="px-4 py-2 font-mono text-xs">persistPartialRange</td>

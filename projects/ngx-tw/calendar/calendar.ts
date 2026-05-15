@@ -271,7 +271,14 @@ export class CalendarComponent<
   private readonly injector = inject(Injector);
   private readonly destroyRef = inject(DestroyRef);
   private readonly liveAnnouncer = inject(LiveAnnouncer);
-  private readonly ngControl = inject(NgControl, { self: true, optional: true });
+  /**
+   * Resolved lazily in `ngOnInit` — eager construction-time injection creates a
+   * circular dependency (NG0200): the component registers itself as both
+   * `NG_VALUE_ACCESSOR` and `NG_VALIDATORS`, and `FormControlName` resolves
+   * those eagerly while constructing on the same element. Looking up
+   * `NgControl` after construction breaks the cycle.
+   */
+  private ngControl: NgControl | null = null;
 
   /** Angular's `LOCALE_ID` — used as the fallback when no `locale` input is supplied (§19.1). */
   private readonly platformLocale: string = inject(LOCALE_ID);
@@ -733,13 +740,24 @@ export class CalendarComponent<
   }
 
   ngOnInit(): void {
+    // Lazy NgControl lookup avoids the construction-time cycle (see field
+    // declaration). By `ngOnInit` the host's `FormControlName`/`NgModel` is
+    // fully constructed, so resolving it here is safe.
+    this.ngControl = this.injector.get(NgControl, null, {
+      self: true,
+      optional: true,
+    });
+
     // Reset detection per §6.5 — `FormControl.reset()` emits a dedicated
     // `FormResetEvent` on its events stream (and parent `FormGroup.reset()`
-    // cascades via each child's `reset()`). Subscribing here is stable across
-    // Reactive, Template-driven, and Signal Forms since they all flow through
-    // the same `NgControl` wrapper.
-    const ctrl = this.ngControl?.control;
-    if (ctrl) {
+    // cascades via each child's `reset()`). Only Reactive / Template-driven
+    // forms expose an `AbstractControl.events` Observable; Signal Forms'
+    // `FormField` provides an `InteropNgControl` shim whose `.control`
+    // re-points to itself and has no `events` stream, so we feature-detect
+    // before subscribing. Signal Forms reset is handled via the field's
+    // value-signal flow, not this event.
+    const ctrl = this.ngControl?.control as AbstractControl | undefined;
+    if (ctrl?.events) {
       ctrl.events.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((event) => {
         if (event instanceof FormResetEvent) {
           this.handleFormReset();
@@ -905,13 +923,8 @@ export class CalendarComponent<
     return this.dateAdapter.getFirstDayOfWeek();
   });
 
-  /** Auto-defaults to 2 when mode is `'range'`. */
-  readonly effectiveMonthColumns: Signal<number> = computed(() => {
-    const explicit = this.monthColumns();
-    if (explicit !== 1) return explicit;
-    if (this.mode() === 'range') return 2;
-    return 1;
-  });
+  /** Resolves the configured `monthColumns` value. Range-mode consumers pass `2` explicitly. */
+  readonly effectiveMonthColumns: Signal<number> = computed(() => this.monthColumns());
 
   /**
    * @internal Drives `aria-multiselectable` on every view grid. `true` when the

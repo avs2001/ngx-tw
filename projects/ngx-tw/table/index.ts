@@ -12,6 +12,7 @@ export {
 export type {
   TwCellContext,
   TwColumnAlign,
+  TwColumnDisplay,
   TwColumnSticky,
   TwFooterCellContext,
   TwHeaderCellContext,
@@ -20,11 +21,15 @@ export type {
   TwRowExpansionChangeEvent,
   TwRowExpansionContext,
   TwSelectionChangeEvent,
+  TwTableAppearance,
   TwTableDataSourceInput,
   TwTableDensity,
   TwTableLabels,
   TwTableLayout,
   TwTableResponsive,
+  TwTableResponsiveMode,
+  TwTableSelection,
+  TwTableSticky,
   TwTableVariant,
 } from './table';
 

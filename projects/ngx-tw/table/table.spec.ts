@@ -43,7 +43,7 @@ const SAMPLE_ROWS: Row[] = [
       <tw-column name="name" headerLabel="Name">
         <ng-template twCellDef let-row>{{ $any(row).name }}</ng-template>
       </tw-column>
-      <tw-column name="amount" headerLabel="Amount" [numeric]="true">
+      <tw-column name="amount" headerLabel="Amount" [display]="{ numeric: true }">
         <ng-template twCellDef let-row>{{ $any(row).amount }}</ng-template>
       </tw-column>
     </tw-table>
@@ -59,7 +59,7 @@ class BasicHost {
   template: `
     <tw-table
       [data]="data()"
-      [variant]="variant()"
+      [appearance]="{ variant: variant() }"
       [loading]="loading()"
       [error]="error()"
       aria-label="Variant host"
@@ -161,7 +161,7 @@ class ObservableHost {
   imports: [TableComponent, ColumnComponent, TwCellDefDirective],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <tw-table [data]="data()" aria-label="Click host" (rowClick)="onRowClick($event)">
+    <tw-table [data]="data()" aria-label="Click host" (rowClicked)="onRowClick($event)">
       <tw-column name="id" headerLabel="ID">
         <ng-template twCellDef let-row>
           <button type="button" class="row-action">Action {{ $any(row).id }}</button>
@@ -359,7 +359,7 @@ describe('TableComponent — async data source', () => {
 });
 
 describe('TableComponent — row click suppression', () => {
-  it('suppresses rowClick when the click originates inside a button', async () => {
+  it('suppresses rowClicked when the click originates inside a button', async () => {
     await TestBed.configureTestingModule({ imports: [RowClickHost] }).compileComponents();
     const fixture = TestBed.createComponent(RowClickHost);
     fixture.detectChanges();
@@ -373,9 +373,9 @@ describe('TableComponent — row click suppression', () => {
     expect(button).toBeTruthy();
     expect(row).toBeTruthy();
 
-    const spy = vi.spyOn(tableCmp.rowClick, 'emit');
+    const spy = vi.spyOn(tableCmp.rowClicked, 'emit');
 
-    // Clicking inside a button should suppress rowClick.
+    // Clicking inside a button should suppress rowClicked.
     const buttonEvent = new MouseEvent('click', { bubbles: true });
     Object.defineProperty(buttonEvent, 'composedPath', {
       value: () => [button, row],

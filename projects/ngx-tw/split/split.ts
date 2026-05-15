@@ -16,7 +16,7 @@ import {
   input,
 } from '@angular/core';
 import type { SplitCollapseEvent, SplitDirection, SplitResizeEvent, SplitUnit } from './split.types';
-import { TwSplitPane } from './split-pane';
+import { SplitPaneComponent } from './split-pane';
 import {
   availableSpace,
   computeBasis,
@@ -50,7 +50,7 @@ import {
   },
   template: `<ng-content />`,
 })
-export class TwSplit {
+export class SplitComponent {
   /** Axis along which panes are laid out. `'horizontal'` = side-by-side; `'vertical'` = stacked. Defaults to `'horizontal'`. */
   readonly direction = input<SplitDirection>('horizontal');
 
@@ -100,7 +100,7 @@ export class TwSplit {
   private readonly _ngZone = inject(NgZone);
   private readonly _destroyRef = inject(DestroyRef);
 
-  readonly _panes = contentChildren(TwSplitPane);
+  readonly _panes = contentChildren(SplitPaneComponent);
 
   /**
    * @internal
@@ -119,7 +119,7 @@ export class TwSplit {
 
   // Previous pane refs — plain field, not a signal, so the pane effect does
   // not re-run just because we wrote this value.
-  private _prevPaneRefs: readonly TwSplitPane[] | null = null;
+  private _prevPaneRefs: readonly SplitPaneComponent[] | null = null;
 
   readonly _hostClass = computed(() =>
     ['flex h-full w-full', this.direction() === 'horizontal' ? 'flex-row' : 'flex-col'].join(' '),
@@ -196,7 +196,7 @@ export class TwSplit {
    * @internal — exposed for testing; do not call from application code.
    * Called by the contentChildren effect when the pane list changes.
    */
-  _onPanesChange(panes: readonly TwSplitPane[], containerPx: number): void {
+  _onPanesChange(panes: readonly SplitPaneComponent[], containerPx: number): void {
     const unit = this.unit();
     const gutterSize = this.gutterSize();
     const n = panes.length;
@@ -211,7 +211,7 @@ export class TwSplit {
   }
 
   private _initializeSizes(
-    panes: readonly TwSplitPane[],
+    panes: readonly SplitPaneComponent[],
     unit: SplitUnit,
     available: number,
     gutterSize: number,
@@ -224,7 +224,7 @@ export class TwSplit {
 
     if (available > 0 && isDevMode() && hasMinSizeOverflow(configs, unit, available)) {
       console.warn(
-        `TwSplit: sum of minSize values exceeds available space (${available}${unit === 'percent' ? '%' : 'px'}). Panes will overflow.`,
+        `SplitComponent: sum of minSize values exceeds available space (${available}${unit === 'percent' ? '%' : 'px'}). Panes will overflow.`,
       );
     }
 
@@ -234,8 +234,8 @@ export class TwSplit {
   }
 
   private _reconcilePanes(
-    newPanes: readonly TwSplitPane[],
-    prevPanes: readonly TwSplitPane[],
+    newPanes: readonly SplitPaneComponent[],
+    prevPanes: readonly SplitPaneComponent[],
     unit: SplitUnit,
     available: number,
     gutterSize: number,
@@ -249,7 +249,7 @@ export class TwSplit {
     const removed = prevPanes.filter(p => !newSet.has(p));
 
     // Process removals first (working against the prev order)
-    let workingPanes: TwSplitPane[] = [...prevPanes];
+    let workingPanes: SplitPaneComponent[] = [...prevPanes];
     for (const removedPane of removed) {
       const idx = workingPanes.indexOf(removedPane);
       if (idx === -1) continue;
@@ -280,7 +280,7 @@ export class TwSplit {
   // ── Apply sizes to pane DOM ─────────────────────────────────────────────────
 
   private _applyToPanes(
-    panes: readonly TwSplitPane[],
+    panes: readonly SplitPaneComponent[],
     sizes: number[],
     unit: SplitUnit,
     numPanes: number,
@@ -303,7 +303,7 @@ export class TwSplit {
   setSizes(sizes: number[]): void {
     const panes = this._panes();
     if (sizes.length !== panes.length) {
-      throw new Error(`TwSplit.setSizes: expected ${panes.length} sizes, got ${sizes.length}`);
+      throw new Error(`SplitComponent.setSizes: expected ${panes.length} sizes, got ${sizes.length}`);
     }
     const unit = this.unit();
     const containerPx = this._containerSizePx();
@@ -323,7 +323,7 @@ export class TwSplit {
    * The pane must have `collapsible = true`. Throws if the index is out of range.
    */
   collapse(_paneIndex: number): void {
-    throw new Error('TwSplit.collapse: not implemented');
+    throw new Error('SplitComponent.collapse: not implemented');
   }
 
   /**
@@ -331,7 +331,7 @@ export class TwSplit {
    * Throws if the index is out of range.
    */
   expand(_paneIndex: number): void {
-    throw new Error('TwSplit.expand: not implemented');
+    throw new Error('SplitComponent.expand: not implemented');
   }
 
   /**
@@ -352,7 +352,7 @@ export class TwSplit {
   }
 }
 
-function toPaneConfig(pane: TwSplitPane): PaneConstraints {
+function toPaneConfig(pane: SplitPaneComponent): PaneConstraints {
   return {
     defaultSize: pane.defaultSize(),
     minSize: pane.minSize(),
