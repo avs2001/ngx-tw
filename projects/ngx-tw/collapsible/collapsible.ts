@@ -6,7 +6,6 @@ import {
   computed,
   contentChild,
   contentChildren,
-  DestroyRef,
   Directive,
   effect,
   ElementRef,
@@ -17,7 +16,7 @@ import {
   signal,
   ViewEncapsulation,
 } from '@angular/core';
-import { LiveAnnouncer } from '@angular/cdk/a11y';
+import { FocusableOption, FocusKeyManager, LiveAnnouncer } from '@angular/cdk/a11y';
 import { tv } from 'tailwind-variants';
 import type { TwColor, TwSize } from 'ngx-tw/core';
 
@@ -157,7 +156,7 @@ export class CollapsibleIconDirective {
     }
   `,
 })
-export class CollapsibleTriggerDirective {
+export class CollapsibleTriggerDirective implements FocusableOption {
   /** @internal */
   readonly collapsible = inject(CollapsibleComponent);
   readonly elementRef = inject(ElementRef<HTMLElement>);
@@ -191,6 +190,16 @@ export class CollapsibleTriggerDirective {
 
   focus(): void {
     this.elementRef.nativeElement.focus();
+  }
+
+  /** @internal FocusableOption: lets FocusKeyManager skip disabled triggers. */
+  get disabled(): boolean {
+    return this.collapsible.disabled();
+  }
+
+  /** @internal FocusableOption: text label for typeahead navigation. */
+  getLabel(): string {
+    return this.elementRef.nativeElement.textContent?.trim() ?? '';
   }
 }
 
@@ -337,13 +346,13 @@ export class CollapsibleGroupComponent {
   /** @internal */
   readonly hostClasses = computed(() => 'block rounded-lg overflow-hidden divide-y divide-border');
 
-  private readonly destroyRef = inject(DestroyRef);
-
   /** @internal */
   readonly items = contentChildren(CollapsibleComponent);
 
   /** @internal */
   readonly triggers = contentChildren(CollapsibleTriggerDirective, { descendants: true });
+
+  private keyManager: FocusKeyManager<CollapsibleTriggerDirective> | null = null;
 
   constructor() {
     // Sync children open states from the group value
@@ -366,6 +375,24 @@ export class CollapsibleGroupComponent {
           item.setOpen(openValues.includes(itemValue));
         }
       }
+    });
+
+    // Rebuild FocusKeyManager whenever the trigger set changes
+    effect((onCleanup) => {
+      const triggers = this.triggers();
+      if (triggers.length === 0) {
+        this.keyManager = null;
+        return;
+      }
+      this.keyManager = new FocusKeyManager(triggers)
+        .withWrap()
+        .withHomeAndEnd()
+        .withVerticalOrientation()
+        .withTypeAhead();
+
+      onCleanup(() => {
+        this.keyManager?.destroy();
+      });
     });
   }
 
@@ -419,58 +446,18 @@ export class CollapsibleGroupComponent {
 
   /** @internal Handle keyboard navigation within the group. */
   onTriggerKeydown(event: KeyboardEvent): void {
+    if (!this.keyManager) return;
+
+    // Sync active item with the currently focused trigger.
+    // Use event.target (not document.activeElement) so this works under shadow DOM.
     const triggers = this.triggers();
-    if (triggers.length === 0) return;
-
-    const currentIndex = triggers.findIndex(
-      t => t.elementRef.nativeElement === document.activeElement,
+    const focusedIdx = triggers.findIndex(
+      t => t.elementRef.nativeElement === event.target,
     );
-
-    let targetIndex = -1;
-
-    switch (event.key) {
-      case 'ArrowDown':
-        targetIndex = this.findNextEnabledIndex(currentIndex, 1);
-        break;
-      case 'ArrowUp':
-        targetIndex = this.findNextEnabledIndex(currentIndex, -1);
-        break;
-      case 'Home':
-        targetIndex = this.findFirstEnabledIndex();
-        break;
-      case 'End':
-        targetIndex = this.findLastEnabledIndex();
-        break;
-      default:
-        return;
+    if (focusedIdx >= 0 && focusedIdx !== this.keyManager.activeItemIndex) {
+      this.keyManager.setActiveItem(focusedIdx);
     }
 
-    if (targetIndex >= 0) {
-      event.preventDefault();
-      triggers[targetIndex].focus();
-    }
-  }
-
-  private findNextEnabledIndex(from: number, direction: 1 | -1): number {
-    const items = this.items();
-    const len = items.length;
-    let idx = from;
-    for (let i = 0; i < len; i++) {
-      idx = (idx + direction + len) % len;
-      if (!items[idx].disabled()) return idx;
-    }
-    return -1;
-  }
-
-  private findFirstEnabledIndex(): number {
-    return this.items().findIndex(item => !item.disabled());
-  }
-
-  private findLastEnabledIndex(): number {
-    const items = this.items();
-    for (let i = items.length - 1; i >= 0; i--) {
-      if (!items[i].disabled()) return i;
-    }
-    return -1;
+    this.keyManager.onKeydown(event);
   }
 }

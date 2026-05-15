@@ -369,7 +369,7 @@ describe('CollapsibleComponent', () => {
       const triggers = fixture.nativeElement.querySelectorAll('[twcollapsibletrigger]');
 
       (triggers[0] as HTMLElement).focus();
-      triggers[0].dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }));
+      triggers[0].dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', keyCode: 40, bubbles: true }));
       fixture.detectChanges();
 
       expect(document.activeElement).toBe(triggers[1]);
@@ -380,7 +380,7 @@ describe('CollapsibleComponent', () => {
       const triggers = fixture.nativeElement.querySelectorAll('[twcollapsibletrigger]');
 
       (triggers[1] as HTMLElement).focus();
-      triggers[1].dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowUp', bubbles: true }));
+      triggers[1].dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowUp', keyCode: 38, bubbles: true }));
       fixture.detectChanges();
 
       expect(document.activeElement).toBe(triggers[0]);
@@ -391,7 +391,7 @@ describe('CollapsibleComponent', () => {
       const triggers = fixture.nativeElement.querySelectorAll('[twcollapsibletrigger]');
 
       (triggers[1] as HTMLElement).focus();
-      triggers[1].dispatchEvent(new KeyboardEvent('keydown', { key: 'Home', bubbles: true }));
+      triggers[1].dispatchEvent(new KeyboardEvent('keydown', { key: 'Home', keyCode: 36, bubbles: true }));
       fixture.detectChanges();
 
       expect(document.activeElement).toBe(triggers[0]);
@@ -403,7 +403,7 @@ describe('CollapsibleComponent', () => {
 
       (triggers[0] as HTMLElement).focus();
       // End should go to the last enabled trigger (index 1 since index 2 is disabled)
-      triggers[0].dispatchEvent(new KeyboardEvent('keydown', { key: 'End', bubbles: true }));
+      triggers[0].dispatchEvent(new KeyboardEvent('keydown', { key: 'End', keyCode: 35, bubbles: true }));
       fixture.detectChanges();
 
       // Panel C at index 2 is disabled, so End should skip it
@@ -417,7 +417,7 @@ describe('CollapsibleComponent', () => {
 
       // From B (index 1), ArrowDown should skip disabled C (index 2) and wrap to A (index 0)
       (triggers[1] as HTMLElement).focus();
-      triggers[1].dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }));
+      triggers[1].dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', keyCode: 40, bubbles: true }));
       fixture.detectChanges();
 
       expect(document.activeElement).toBe(triggers[0]);

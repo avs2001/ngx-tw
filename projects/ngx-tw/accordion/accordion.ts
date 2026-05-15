@@ -10,6 +10,7 @@ import {
   input,
   model,
 } from '@angular/core';
+import { FocusKeyManager } from '@angular/cdk/a11y';
 import { tv } from 'tailwind-variants';
 import {
   CollapsibleComponent,
@@ -60,6 +61,9 @@ const accordionVariants = tv(
   host: {
     'role': 'group',
     '[class]': 'rootClasses()',
+    '[attr.aria-multiselectable]': "type() === 'multiple' || null",
+    '[attr.aria-label]': 'ariaLabel() ?? null',
+    '[attr.aria-labelledby]': 'ariaLabelledby() ?? null',
   },
   template: `<ng-content />`,
   providers: [
@@ -82,6 +86,12 @@ export class AccordionComponent {
   /** Open panel value(s). String in `'single'` mode, string[] in `'multiple'` mode. Two-way bindable. */
   readonly value = model<string | string[]>('');
 
+  /** Accessible name for the accordion. Use when surrounding context doesn't make the purpose obvious. */
+  readonly ariaLabel = input<string | undefined>(undefined, { alias: 'aria-label' });
+
+  /** ID(s) of element(s) that label the accordion. Use instead of `aria-label` when a visible heading is available. */
+  readonly ariaLabelledby = input<string | undefined>(undefined, { alias: 'aria-labelledby' });
+
   /** @internal */
   readonly items = contentChildren(CollapsibleComponent);
 
@@ -92,6 +102,8 @@ export class AccordionComponent {
   readonly rootClasses = computed(() =>
     accordionVariants({ variant: this.variant() }).root(),
   );
+
+  private keyManager: FocusKeyManager<CollapsibleTriggerDirective> | null = null;
 
   constructor() {
     afterNextRender(() => {
@@ -113,6 +125,24 @@ export class AccordionComponent {
           item.setOpen(openValues.includes(itemValue));
         }
       }
+    });
+
+    // Rebuild FocusKeyManager whenever the trigger set changes
+    effect((onCleanup) => {
+      const triggers = this.triggers();
+      if (triggers.length === 0) {
+        this.keyManager = null;
+        return;
+      }
+      this.keyManager = new FocusKeyManager(triggers)
+        .withWrap()
+        .withHomeAndEnd()
+        .withVerticalOrientation()
+        .withTypeAhead();
+
+      onCleanup(() => {
+        this.keyManager?.destroy();
+      });
     });
   }
 
@@ -163,58 +193,18 @@ export class AccordionComponent {
 
   /** @internal Handle keyboard navigation within the accordion. */
   onTriggerKeydown(event: KeyboardEvent): void {
+    if (!this.keyManager) return;
+
+    // Sync active item with the currently focused trigger.
+    // Use event.target (not document.activeElement) so this works under shadow DOM.
     const triggers = this.triggers();
-    if (triggers.length === 0) return;
-
-    const currentIndex = triggers.findIndex(
-      t => t.elementRef.nativeElement === document.activeElement,
+    const focusedIdx = triggers.findIndex(
+      t => t.elementRef.nativeElement === event.target,
     );
-
-    let targetIndex = -1;
-
-    switch (event.key) {
-      case 'ArrowDown':
-        targetIndex = this.findNextEnabledIndex(currentIndex, 1);
-        break;
-      case 'ArrowUp':
-        targetIndex = this.findNextEnabledIndex(currentIndex, -1);
-        break;
-      case 'Home':
-        targetIndex = this.findFirstEnabledIndex();
-        break;
-      case 'End':
-        targetIndex = this.findLastEnabledIndex();
-        break;
-      default:
-        return;
+    if (focusedIdx >= 0 && focusedIdx !== this.keyManager.activeItemIndex) {
+      this.keyManager.setActiveItem(focusedIdx);
     }
 
-    if (targetIndex >= 0) {
-      event.preventDefault();
-      triggers[targetIndex].focus();
-    }
-  }
-
-  private findNextEnabledIndex(from: number, direction: 1 | -1): number {
-    const items = this.items();
-    const len = items.length;
-    let idx = from;
-    for (let i = 0; i < len; i++) {
-      idx = (idx + direction + len) % len;
-      if (!items[idx].disabled()) return idx;
-    }
-    return -1;
-  }
-
-  private findFirstEnabledIndex(): number {
-    return this.items().findIndex(item => !item.disabled());
-  }
-
-  private findLastEnabledIndex(): number {
-    const items = this.items();
-    for (let i = items.length - 1; i >= 0; i--) {
-      if (!items[i].disabled()) return i;
-    }
-    return -1;
+    this.keyManager.onKeydown(event);
   }
 }

@@ -72,6 +72,25 @@ class VariantHost {
   variant = signal<'default' | 'bordered' | 'ghost'>('default');
 }
 
+// ── Test host: ARIA labelling ──
+
+@Component({
+  imports: [AccordionComponent, CollapsibleComponent, CollapsibleTriggerDirective],
+  template: `
+    <h2 id="sections-heading">Sections</h2>
+    <tw-accordion [attr.aria-label]="label()" [attr.aria-labelledby]="labelledby()">
+      <tw-collapsible value="a">
+        <button twCollapsibleTrigger>A</button>
+        <p>Content</p>
+      </tw-collapsible>
+    </tw-accordion>
+  `,
+})
+class AriaHost {
+  label = signal<string | null>(null);
+  labelledby = signal<string | null>(null);
+}
+
 describe('AccordionComponent', () => {
   let mockAnnouncer: { announce: ReturnType<typeof vi.fn> };
 
@@ -122,6 +141,28 @@ describe('AccordionComponent', () => {
       fixture.componentInstance.variant.set('ghost');
       fixture.detectChanges();
       expect(accordion.className).not.toContain('border-border');
+    });
+
+    it('should apply divide-y on default and bordered variants', () => {
+      const fixture = createFixture(VariantHost);
+      const accordion = fixture.nativeElement.querySelector('tw-accordion');
+
+      fixture.componentInstance.variant.set('default');
+      fixture.detectChanges();
+      expect(accordion.className).toContain('divide-y');
+
+      fixture.componentInstance.variant.set('bordered');
+      fixture.detectChanges();
+      expect(accordion.className).toContain('divide-y');
+    });
+
+    it('should NOT apply divide-y on ghost variant', () => {
+      const fixture = createFixture(VariantHost);
+      const accordion = fixture.nativeElement.querySelector('tw-accordion');
+
+      fixture.componentInstance.variant.set('ghost');
+      fixture.detectChanges();
+      expect(accordion.className).not.toContain('divide-y');
     });
   });
 
@@ -267,7 +308,7 @@ describe('AccordionComponent', () => {
       const triggers = fixture.nativeElement.querySelectorAll('[twcollapsibletrigger]');
 
       (triggers[0] as HTMLElement).focus();
-      triggers[0].dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }));
+      triggers[0].dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', keyCode: 40, bubbles: true }));
       fixture.detectChanges();
 
       expect(document.activeElement).toBe(triggers[1]);
@@ -278,7 +319,7 @@ describe('AccordionComponent', () => {
       const triggers = fixture.nativeElement.querySelectorAll('[twcollapsibletrigger]');
 
       (triggers[1] as HTMLElement).focus();
-      triggers[1].dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowUp', bubbles: true }));
+      triggers[1].dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowUp', keyCode: 38, bubbles: true }));
       fixture.detectChanges();
 
       expect(document.activeElement).toBe(triggers[0]);
@@ -289,7 +330,7 @@ describe('AccordionComponent', () => {
       const triggers = fixture.nativeElement.querySelectorAll('[twcollapsibletrigger]');
 
       (triggers[1] as HTMLElement).focus();
-      triggers[1].dispatchEvent(new KeyboardEvent('keydown', { key: 'Home', bubbles: true }));
+      triggers[1].dispatchEvent(new KeyboardEvent('keydown', { key: 'Home', keyCode: 36, bubbles: true }));
       fixture.detectChanges();
 
       expect(document.activeElement).toBe(triggers[0]);
@@ -300,7 +341,7 @@ describe('AccordionComponent', () => {
       const triggers = fixture.nativeElement.querySelectorAll('[twcollapsibletrigger]');
 
       (triggers[0] as HTMLElement).focus();
-      triggers[0].dispatchEvent(new KeyboardEvent('keydown', { key: 'End', bubbles: true }));
+      triggers[0].dispatchEvent(new KeyboardEvent('keydown', { key: 'End', keyCode: 35, bubbles: true }));
       fixture.detectChanges();
 
       expect(document.activeElement).toBe(triggers[1]);
@@ -311,7 +352,7 @@ describe('AccordionComponent', () => {
       const triggers = fixture.nativeElement.querySelectorAll('[twcollapsibletrigger]');
 
       (triggers[1] as HTMLElement).focus();
-      triggers[1].dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }));
+      triggers[1].dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', keyCode: 40, bubbles: true }));
       fixture.detectChanges();
 
       expect(document.activeElement).toBe(triggers[0]);
@@ -346,6 +387,38 @@ describe('AccordionComponent', () => {
       fixture.detectChanges();
 
       expect(triggers[0].getAttribute('aria-expanded')).toBe('true');
+    });
+
+    it('should NOT set aria-multiselectable in single mode', () => {
+      const fixture = createFixture(SingleHost);
+      const accordion = fixture.nativeElement.querySelector('tw-accordion');
+      expect(accordion.hasAttribute('aria-multiselectable')).toBe(false);
+    });
+
+    it('should set aria-multiselectable="true" in multiple mode', () => {
+      const fixture = createFixture(MultipleHost);
+      const accordion = fixture.nativeElement.querySelector('tw-accordion');
+      expect(accordion.getAttribute('aria-multiselectable')).toBe('true');
+    });
+
+    it('should reflect aria-label on the host', () => {
+      const fixture = createFixture(AriaHost);
+      const accordion = fixture.nativeElement.querySelector('tw-accordion');
+      expect(accordion.hasAttribute('aria-label')).toBe(false);
+
+      fixture.componentInstance.label.set('Sidebar sections');
+      fixture.detectChanges();
+      expect(accordion.getAttribute('aria-label')).toBe('Sidebar sections');
+    });
+
+    it('should reflect aria-labelledby on the host', () => {
+      const fixture = createFixture(AriaHost);
+      const accordion = fixture.nativeElement.querySelector('tw-accordion');
+      expect(accordion.hasAttribute('aria-labelledby')).toBe(false);
+
+      fixture.componentInstance.labelledby.set('sections-heading');
+      fixture.detectChanges();
+      expect(accordion.getAttribute('aria-labelledby')).toBe('sections-heading');
     });
   });
 });
