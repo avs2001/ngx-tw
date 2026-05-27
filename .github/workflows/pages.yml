@@ -1,0 +1,69 @@
+name: pages
+
+# Build the demo app and deploy it to GitHub Pages on every push to `main`.
+# Live URL (once Pages is enabled in repo settings):
+#   https://kebormed.github.io/ngx-tw/
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# Pages deploys are global state — never run two at once.
+concurrency:
+  group: pages-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+env:
+  NODE_VERSION: '22'
+
+jobs:
+  build:
+    name: build demo
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      - run: npm ci
+
+      - name: Build library
+        # The demo imports from `ngx-tw/*` entry points — those resolve via the
+        # built artifact, so the lib must be built before the demo.
+        run: npm run build:lib
+
+      - name: Build demo
+        # `--base-href` rewrites the <base> tag so asset/route URLs resolve
+        # under the repo path. Trailing slash is required.
+        run: npx ng build demo --configuration production --base-href=/ngx-tw/
+
+      - name: Add SPA fallback
+        # GitHub Pages serves 404.html on any unknown path. Copying index.html
+        # over it lets Angular's router pick up deep links instead of showing
+        # the Pages 404 page.
+        run: cp dist/demo/browser/index.html dist/demo/browser/404.html
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist/demo/browser
+
+  deploy:
+    name: deploy to Pages
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

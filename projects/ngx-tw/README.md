@@ -38,7 +38,7 @@ ngx-tw default theme to your global stylesheet so semantic tokens resolve:
 ```css
 /* src/styles.css */
 @import 'tailwindcss';
-@import 'ngx-tw/theme/default.css';
+@import 'ngx-tw/theme/index.css';
 ```
 
 The default theme maps semantic roles (`info`, `success`, `warning`, `error`,
@@ -70,7 +70,7 @@ export class AppComponent {}
 Override any semantic token in your own CSS using Tailwind v4's `@theme` block:
 
 ```css
-@import 'ngx-tw/theme/default.css';
+@import 'ngx-tw/theme/index.css';
 
 @theme {
   /* Re-brand primary to a custom indigo */
@@ -84,7 +84,7 @@ Override any semantic token in your own CSS using Tailwind v4's `@theme` block:
 ```
 
 Dark mode is handled entirely by the theme layer — swap in your own
-`default.css` equivalent (or extend the ngx-tw one) if you need a different
+`index.css` equivalent (or extend the ngx-tw one) if you need a different
 dark palette. Components only reference semantic tokens, so they adapt
 automatically.
 

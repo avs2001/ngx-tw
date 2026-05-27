@@ -1,0 +1,74 @@
+name: release
+
+# Release pipeline for ngx-tw.
+#
+# Two-stage flow driven by the Changesets action:
+#   1. On push to `main` with pending `.changeset/*.md` files, the action opens
+#      (or updates) a "Version Packages" PR that bumps the library version and
+#      regenerates CHANGELOG.md.
+#   2. When that PR is merged, the next push to `main` finds no pending
+#      changesets — the action runs `changeset:publish`, which builds the lib
+#      and publishes `dist/ngx-tw/` to npm, then creates a matching GitHub
+#      release + tag.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  # Only one release pipeline at a time — prevents racing publishes.
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  NODE_VERSION: '22'
+
+jobs:
+  release:
+    name: release
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: write       # create tags, releases, push Version Packages PR
+      pull-requests: write  # open/update the Version Packages PR
+      id-token: write       # reserved for future OIDC publish migration
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          # Full history so changesets can compute the changelog diff.
+          fetch-depth: 0
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Sanity build before any publish decision
+        # If the lib doesn't build cleanly, we should never reach `npm publish`.
+        run: npm run build:lib
+
+      - name: Run unit tests
+        run: npm run test:ci
+
+      - name: Create Release PR or Publish
+        id: changesets
+        uses: changesets/action@v1
+        with:
+          # When pending changesets exist → open/update the Version Packages PR.
+          version: npm run changeset:version
+          # When pending changesets are gone (PR was merged) → publish to npm.
+          publish: npm run changeset:publish
+          commit: 'chore(release): version packages'
+          title: 'chore(release): version packages'
+          createGithubReleases: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
