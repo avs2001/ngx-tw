@@ -16,13 +16,13 @@
   ],
   "author": "Iuga Ciprian",
   "license": "MIT",
-  "homepage": "https://github.com/kebormed/ngx-tw#readme",
+  "homepage": "https://github.com/avs2001/ngx-tw#readme",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/kebormed/ngx-tw.git"
+    "url": "git+https://github.com/avs2001/ngx-tw.git"
   },
   "bugs": {
-    "url": "https://github.com/kebormed/ngx-tw/issues"
+    "url": "https://github.com/avs2001/ngx-tw/issues"
   },
   "peerDependencies": {
     "@angular/common": "^21.2.0",

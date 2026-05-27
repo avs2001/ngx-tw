@@ -2,7 +2,7 @@ name: pages
 
 # Build the demo app and deploy it to GitHub Pages on every push to `main`.
 # Live URL (once Pages is enabled in repo settings):
-#   https://kebormed.github.io/ngx-tw/
+#   https://avs2001.github.io/ngx-tw/
 
 on:
   push:
