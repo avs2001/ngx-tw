@@ -1,0 +1,304 @@
+import { ChangeDetectionStrategy, Component } from '@angular/core';
+import { RouterLink } from '@angular/router';
+import {
+  BreadcrumbsComponent,
+  BreadcrumbsItemTemplateDirective,
+  BreadcrumbsLinkDirective,
+  BreadcrumbsSeparatorTemplateDirective,
+  type TwBreadcrumbsItem,
+} from 'ngx-tw/breadcrumbs';
+import { CodeBlockComponent } from 'ngx-tw/code-block';
+import { IconComponent } from 'ngx-tw/icon';
+import type { TwSize } from 'ngx-tw/core';
+
+const SIZES: TwSize[] = ['xs', 'sm', 'md', 'lg', 'xl'];
+
+interface RouterCmd {
+  routerLink: string;
+}
+
+@Component({
+  selector: 'app-breadcrumbs-examples',
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  imports: [
+    BreadcrumbsComponent,
+    BreadcrumbsItemTemplateDirective,
+    BreadcrumbsLinkDirective,
+    BreadcrumbsSeparatorTemplateDirective,
+    CodeBlockComponent,
+    IconComponent,
+    RouterLink,
+  ],
+  template: `
+    <!-- Basic trail -->
+    <section class="mb-10">
+      <h2 class="text-sm font-semibold mb-3">Basic 3-level trail</h2>
+      <p class="text-sm text-fg-muted leading-relaxed max-w-2xl mb-4">
+        The default render needs nothing beyond an items array. Anchors emit on the
+        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">href</code>
+        you provide; the last entry stays a plain
+        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">&lt;span&gt;</code>
+        marked
+        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">aria-current="page"</code>.
+      </p>
+      <div class="rounded-lg border border-border p-6 bg-surface-raised mb-4">
+        <tw-breadcrumbs [items]="basicItems" />
+      </div>
+      <tw-code-block [code]="basicSnippet" language="html" />
+    </section>
+
+    <!-- Custom separator (icon name) -->
+    <section class="mb-10">
+      <h2 class="text-sm font-semibold mb-3">Custom separator (icon name)</h2>
+      <p class="text-sm text-fg-muted leading-relaxed max-w-2xl mb-4">
+        Swap the chevron for any registered icon via the
+        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">separator</code>
+        input. Below uses
+        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">"slash"</code>.
+      </p>
+      <div class="rounded-lg border border-border p-6 bg-surface-raised mb-4">
+        <tw-breadcrumbs [items]="basicItems" separator="slash" />
+      </div>
+      <tw-code-block [code]="separatorIconSnippet" language="html" />
+    </section>
+
+    <!-- Custom separator (template) -->
+    <section class="mb-10">
+      <h2 class="text-sm font-semibold mb-3">Custom separator (template)</h2>
+      <p class="text-sm text-fg-muted leading-relaxed max-w-2xl mb-4">
+        For any non-icon separator (a slash character, a dot, a different glyph), project a
+        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">*twBreadcrumbsSeparator</code>
+        template.
+      </p>
+      <div class="rounded-lg border border-border p-6 bg-surface-raised mb-4">
+        <tw-breadcrumbs [items]="basicItems">
+          <ng-template twBreadcrumbsSeparator>
+            <span class="text-fg-subtle font-medium px-0.5">/</span>
+          </ng-template>
+        </tw-breadcrumbs>
+      </div>
+      <tw-code-block [code]="separatorTemplateSnippet" language="html" />
+    </section>
+
+    <!-- Overflow / truncation -->
+    <section class="mb-10">
+      <h2 class="text-sm font-semibold mb-3">Truncation with overflow menu</h2>
+      <p class="text-sm text-fg-muted leading-relaxed max-w-2xl mb-4">
+        Set
+        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">maxItems</code>
+        to cap the visible hops. The first item and the current page stay visible; the middle
+        items collapse behind an ellipsis button that opens an
+        <a routerLink="/components/menu" class="text-primary-600 hover:underline">overflow menu</a>.
+      </p>
+      <div class="rounded-lg border border-border p-6 bg-surface-raised mb-4 space-y-4">
+        <div>
+          <p class="text-xs font-medium text-fg-muted mb-2 uppercase tracking-wide">maxItems = 3</p>
+          <tw-breadcrumbs [items]="longTrail" [maxItems]="3" />
+        </div>
+        <div>
+          <p class="text-xs font-medium text-fg-muted mb-2 uppercase tracking-wide">maxItems = 1 (clamps to 2)</p>
+          <tw-breadcrumbs [items]="longTrail" [maxItems]="1" />
+        </div>
+      </div>
+      <tw-code-block [code]="overflowSnippet" language="html" />
+    </section>
+
+    <!-- Router integration -->
+    <section class="mb-10">
+      <h2 class="text-sm font-semibold mb-3">Angular Router integration</h2>
+      <p class="text-sm text-fg-muted leading-relaxed max-w-2xl mb-4">
+        Project a custom item template and bind
+        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">routerLink</code>
+        on your own anchor. The
+        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">twBreadcrumbsLink</code>
+        directive pulls the component's link styling so your anchor looks identical to the default
+        render.
+      </p>
+      <div class="rounded-lg border border-border p-6 bg-surface-raised mb-4">
+        <tw-breadcrumbs [items]="routerItems">
+          <ng-template twBreadcrumbsItem let-item let-isCurrent="isCurrent">
+            @if (isCurrent) {
+              <span twBreadcrumbsLink [current]="true">{{ item.label }}</span>
+            } @else if (toRouter(item.data); as cmd) {
+              <a twBreadcrumbsLink [routerLink]="cmd.routerLink">{{ item.label }}</a>
+            } @else if (item.href) {
+              <a twBreadcrumbsLink [href]="item.href">{{ item.label }}</a>
+            } @else {
+              <span twBreadcrumbsLink>{{ item.label }}</span>
+            }
+          </ng-template>
+        </tw-breadcrumbs>
+      </div>
+      <tw-code-block [code]="routerSnippet" language="html" />
+    </section>
+
+    <!-- RTL -->
+    <section class="mb-10">
+      <h2 class="text-sm font-semibold mb-3">RTL (right-to-left)</h2>
+      <p class="text-sm text-fg-muted leading-relaxed max-w-2xl mb-4">
+        Wrap any region in
+        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">dir="rtl"</code>
+        and the default chevron flips automatically. The flex order also reverses, so the trail
+        reads naturally from right to left.
+      </p>
+      <div class="rounded-lg border border-border p-6 bg-surface-raised mb-4" dir="rtl">
+        <tw-breadcrumbs [items]="basicItems" ariaLabel="مسار التنقل" />
+      </div>
+      <tw-code-block [code]="rtlSnippet" language="html" />
+    </section>
+
+    <!-- Leading icon via custom template -->
+    <section class="mb-10">
+      <h2 class="text-sm font-semibold mb-3">Leading icon via custom template</h2>
+      <p class="text-sm text-fg-muted leading-relaxed max-w-2xl mb-4">
+        The first hop is often a "home" icon. Render any glyph next to the label by projecting a
+        template.
+      </p>
+      <div class="rounded-lg border border-border p-6 bg-surface-raised mb-4">
+        <tw-breadcrumbs [items]="iconItems">
+          <ng-template twBreadcrumbsItem let-item let-isCurrent="isCurrent" let-index="index">
+            @if (isCurrent) {
+              <span twBreadcrumbsLink [current]="true">{{ item.label }}</span>
+            } @else {
+              <a twBreadcrumbsLink [attr.href]="item.href" class="gap-1.5">
+                @if (index === 0) {
+                  <tw-icon name="home" size="sm" />
+                }
+                <span>{{ item.label }}</span>
+              </a>
+            }
+          </ng-template>
+        </tw-breadcrumbs>
+      </div>
+      <tw-code-block [code]="iconSnippet" language="html" />
+    </section>
+
+    <!-- Size gallery -->
+    <section class="mb-10">
+      <h2 class="text-sm font-semibold mb-3">Sizes</h2>
+      <p class="text-sm text-fg-muted leading-relaxed max-w-2xl mb-4">
+        The
+        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">size</code>
+        input scales font, gap, and icon size in lockstep.
+      </p>
+      <div class="rounded-lg border border-border p-6 bg-surface-raised mb-4">
+        <div class="space-y-4">
+          @for (size of sizes; track size) {
+            <div>
+              <p class="text-xs font-medium text-fg-muted mb-2 uppercase tracking-wide">{{ size }}</p>
+              <tw-breadcrumbs [items]="basicItems" [size]="size" />
+            </div>
+          }
+        </div>
+      </div>
+    </section>
+
+    <!-- Disabled item -->
+    <section>
+      <h2 class="text-sm font-semibold mb-3">Disabled hop</h2>
+      <p class="text-sm text-fg-muted leading-relaxed max-w-2xl mb-4">
+        Set
+        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">disabled: true</code>
+        on an item to render it as muted text with
+        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">aria-disabled="true"</code>
+        — useful when a section in the trail is gated or temporarily unavailable.
+      </p>
+      <div class="rounded-lg border border-border p-6 bg-surface-raised mb-4">
+        <tw-breadcrumbs [items]="disabledItems" />
+      </div>
+      <tw-code-block [code]="disabledSnippet" language="html" />
+    </section>
+  `,
+})
+export class BreadcrumbsExamples {
+  protected readonly sizes = SIZES;
+
+  protected readonly basicItems: readonly TwBreadcrumbsItem[] = [
+    { label: 'Home', href: '/' },
+    { label: 'Library', href: '/library' },
+    { label: 'Books' },
+  ];
+
+  protected readonly longTrail: readonly TwBreadcrumbsItem[] = [
+    { label: 'Home', href: '/' },
+    { label: 'Workspaces', href: '/workspaces' },
+    { label: 'Acme', href: '/workspaces/acme' },
+    { label: 'Projects', href: '/workspaces/acme/projects' },
+    { label: 'Mobile App', href: '/workspaces/acme/projects/mobile' },
+    { label: 'Settings' },
+  ];
+
+  protected readonly routerItems: readonly TwBreadcrumbsItem[] = [
+    { label: 'Components', data: { routerLink: '/components/button' } },
+    { label: 'Breadcrumbs', data: { routerLink: '/components/breadcrumbs/overview' } },
+    { label: 'Examples' },
+  ];
+
+  protected readonly iconItems: readonly TwBreadcrumbsItem[] = [
+    { label: 'Home', href: '/' },
+    { label: 'Reports', href: '/reports' },
+    { label: 'Q4 Revenue' },
+  ];
+
+  protected readonly disabledItems: readonly TwBreadcrumbsItem[] = [
+    { label: 'Home', href: '/' },
+    { label: 'Billing', href: '/billing', disabled: true },
+    { label: 'Invoice 1024' },
+  ];
+
+  protected toRouter(data: unknown): RouterCmd | null {
+    return data && typeof data === 'object' && 'routerLink' in data
+      ? (data as RouterCmd)
+      : null;
+  }
+
+  protected readonly basicSnippet = `<tw-breadcrumbs [items]="items" />`;
+
+  protected readonly separatorIconSnippet = `<tw-breadcrumbs [items]="items" separator="slash" />`;
+
+  protected readonly separatorTemplateSnippet = `<tw-breadcrumbs [items]="items">
+  <ng-template twBreadcrumbsSeparator>
+    <span class="text-fg-subtle font-medium px-0.5">/</span>
+  </ng-template>
+</tw-breadcrumbs>`;
+
+  protected readonly overflowSnippet = `<tw-breadcrumbs [items]="longTrail" [maxItems]="3" />
+<!-- 6 items, maxItems=3 → first + ellipsis menu + last 2 -->`;
+
+  protected readonly routerSnippet = `<tw-breadcrumbs [items]="trail">
+  <ng-template twBreadcrumbsItem let-item let-isCurrent="isCurrent">
+    @if (isCurrent) {
+      <span twBreadcrumbsLink [current]="true">{{ item.label }}</span>
+    } @else {
+      <a twBreadcrumbsLink [routerLink]="item.data?.routerLink">{{ item.label }}</a>
+    }
+  </ng-template>
+</tw-breadcrumbs>`;
+
+  protected readonly rtlSnippet = `<div dir="rtl">
+  <tw-breadcrumbs [items]="items" ariaLabel="مسار التنقل" />
+</div>`;
+
+  protected readonly iconSnippet = `<tw-breadcrumbs [items]="items">
+  <ng-template twBreadcrumbsItem let-item let-isCurrent="isCurrent" let-index="index">
+    @if (isCurrent) {
+      <span twBreadcrumbsLink [current]="true">{{ item.label }}</span>
+    } @else {
+      <a twBreadcrumbsLink [attr.href]="item.href" class="gap-1.5">
+        @if (index === 0) {
+          <tw-icon name="home" size="sm" />
+        }
+        <span>{{ item.label }}</span>
+      </a>
+    }
+  </ng-template>
+</tw-breadcrumbs>`;
+
+  protected readonly disabledSnippet = `<tw-breadcrumbs
+  [items]="[
+    { label: 'Home', href: '/' },
+    { label: 'Billing', href: '/billing', disabled: true },
+    { label: 'Invoice 1024' },
+  ]"
+/>`;
+}

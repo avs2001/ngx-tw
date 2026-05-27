@@ -139,6 +139,10 @@ export const routes: Routes = [
         loadChildren: () => import('./routes/date-range-picker/date-range-picker.routes').then(m => m.DATE_RANGE_PICKER_ROUTES),
       },
       {
+        path: 'components/textarea',
+        loadChildren: () => import('./routes/textarea/textarea.routes').then(m => m.TEXTAREA_ROUTES),
+      },
+      {
         path: 'components/time-picker',
         loadChildren: () => import('./routes/time-picker/time-picker.routes').then(m => m.TIME_PICKER_ROUTES),
       },
@@ -161,6 +165,14 @@ export const routes: Routes = [
       {
         path: 'components/table',
         loadChildren: () => import('./routes/table/table.routes').then(m => m.TABLE_ROUTES),
+      },
+      {
+        path: 'components/breadcrumbs',
+        loadChildren: () => import('./routes/breadcrumbs/breadcrumbs.routes').then(m => m.BREADCRUMBS_ROUTES),
+      },
+      {
+        path: 'components/sheet',
+        loadChildren: () => import('./routes/sheet/sheet.routes').then(m => m.SHEET_ROUTES),
       },
       {
         path: 'services/theme',

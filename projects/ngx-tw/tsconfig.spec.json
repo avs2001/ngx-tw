@@ -40,6 +40,7 @@
     "radio/**/*.spec.ts",
     "select/**/*.spec.ts",
     "input/**/*.spec.ts",
+    "textarea/**/*.spec.ts",
     "spinner/**/*.spec.ts",
     "progress-bar/**/*.spec.ts",
     "skeleton/**/*.spec.ts",
@@ -53,6 +54,8 @@
     "split/**/*.spec.ts",
     "table/**/*.spec.ts",
     "time-picker/**/*.spec.ts",
-    "item/**/*.spec.ts"
+    "item/**/*.spec.ts",
+    "breadcrumbs/**/*.spec.ts",
+    "sheet/**/*.spec.ts"
   ]
 }

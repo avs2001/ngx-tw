@@ -2,6 +2,7 @@ import { type ApplicationConfig, provideBrowserGlobalErrorListeners } from '@ang
 import { provideRouter } from '@angular/router';
 import { provideTheme } from 'ngx-tw/theme';
 import { provideTwDialog } from 'ngx-tw/dialog';
+import { provideSheet } from 'ngx-tw/sheet';
 import { provideToast } from 'ngx-tw/toast';
 import { provideNativeDateAdapter } from 'ngx-tw/calendar';
 import { provideTwLucideIcons } from 'ngx-tw/icon/lucide';
@@ -12,7 +13,7 @@ import {
   Edit, Trash2, Eye, Lock, Unlock,
   ArrowDownWideNarrow, Calendar, ChevronRight, FileText,
   Package, PlayCircle, MessageSquare, LayoutTemplate,
-  Layers, FlipHorizontal2,
+  Layers, FlipHorizontal2, Inbox, Slash,
 } from 'lucide-angular';
 
 import { routes } from './app.routes';
@@ -23,6 +24,7 @@ export const appConfig: ApplicationConfig = {
     provideRouter(routes),
     provideTheme(),
     provideTwDialog(),
+    provideSheet(),
     provideToast({ position: 'bottom-right', duration: 4000 }),
     provideNativeDateAdapter(),
     provideTwLucideIcons({
@@ -32,7 +34,7 @@ export const appConfig: ApplicationConfig = {
       Edit, Trash2, Eye, Lock, Unlock,
       ArrowDownWideNarrow, Calendar, ChevronRight, FileText,
       Package, PlayCircle, MessageSquare, LayoutTemplate,
-      Layers, FlipHorizontal2,
+      Layers, FlipHorizontal2, Inbox, Slash,
     }),
   ]
 };

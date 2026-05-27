@@ -55,6 +55,11 @@ const NAV: NavGroup[] = [
         { label: 'Examples', path: '/components/badge/examples' },
         { label: 'API', path: '/components/badge/api' },
       ]},
+      { label: 'Breadcrumbs', children: [
+        { label: 'Overview', path: '/components/breadcrumbs/overview' },
+        { label: 'Examples', path: '/components/breadcrumbs/examples' },
+        { label: 'API', path: '/components/breadcrumbs/api' },
+      ]},
       { label: 'Button', children: [
         { label: 'Overview', path: '/components/button/overview' },
         { label: 'Examples', path: '/components/button/examples' },
@@ -170,6 +175,11 @@ const NAV: NavGroup[] = [
         { label: 'Examples', path: '/components/separator/examples' },
         { label: 'API', path: '/components/separator/api' },
       ]},
+      { label: 'Sheet', children: [
+        { label: 'Overview', path: '/components/sheet/overview' },
+        { label: 'Examples', path: '/components/sheet/examples' },
+        { label: 'API', path: '/components/sheet/api' },
+      ]},
       { label: 'Skeleton', children: [
         { label: 'Overview', path: '/components/skeleton/overview' },
         { label: 'Examples', path: '/components/skeleton/examples' },
@@ -219,6 +229,11 @@ const NAV: NavGroup[] = [
         { label: 'Overview', path: '/components/tabs/overview' },
         { label: 'Examples', path: '/components/tabs/examples' },
         { label: 'API', path: '/components/tabs/api' },
+      ]},
+      { label: 'Textarea', children: [
+        { label: 'Overview', path: '/components/textarea/overview' },
+        { label: 'Examples', path: '/components/textarea/examples' },
+        { label: 'API', path: '/components/textarea/api' },
       ]},
       { label: 'Time Picker', children: [
         { label: 'Overview', path: '/components/time-picker/overview' },
