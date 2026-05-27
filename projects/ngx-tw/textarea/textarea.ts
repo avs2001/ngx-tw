@@ -11,6 +11,7 @@ import {
 } from '@angular/core';
 import { CdkTextareaAutosize } from '@angular/cdk/text-field';
 import { tv } from 'tailwind-variants';
+import type { TwSize } from 'ngx-tw/core';
 import { TW_FORM_FIELD_CONTROL } from 'ngx-tw/form-field';
 import { InputDirective } from 'ngx-tw/input';
 
@@ -62,13 +63,6 @@ const textareaVariants = tv(
 @Directive({
   selector: 'textarea[twTextarea]',
   exportAs: 'twTextarea',
-  // Re-expose `size` from the inherited `InputDirective` in the directive's
-  // own input metadata. ng-packagr's partial compilation emits `ɵdir` listing
-  // only the child's declared inputs, so without this `<textarea twTextarea
-  // [size]="…">` fails strict template-check on the consumer side (NG8002).
-  // Listing it here adds `size` to the child `ɵdir` without redeclaring the
-  // signal field — runtime behavior is unchanged.
-  inputs: ['size'],
   hostDirectives: [
     {
       directive: CdkTextareaAutosize,
@@ -100,6 +94,25 @@ export class TextareaDirective extends InputDirective {
     self: true,
     optional: true,
   });
+
+  // Re-declares the `size` input inherited from `InputDirective` so it lands
+  // on this directive's own `ɵdir` input metadata. ng-packagr emits `ɵdir`
+  // with only the child's directly declared inputs, so without this the
+  // consumer-side strict template-check rejects `<textarea twTextarea
+  // [size]="…">` with NG8002. Both signals share the same `'md'` default
+  // and the inherited `classes()` computed reads through polymorphism, so
+  // runtime behaviour is unchanged.
+  //
+  // The `@ts-ignore` is needed for a CI-only quirk: under
+  // `noImplicitOverride`, partial compilation resolves `InputDirective`
+  // through the just-built `dist/` d.ts on CI, where TypeScript decides the
+  // base member isn't visible and rejects `override` with TS4113. Locally
+  // the same resolution sees the member, so `@ts-expect-error` would itself
+  // flag as unused. `@ts-ignore` suppresses whichever error fires and is
+  // a no-op when neither does.
+  /** Density of a standalone textarea. Maps to the inline-padding + font scale (`xs` … `xl`). Ignored inside a `<tw-form-field>` — the wrapper's `size` carries density. Defaults to `'md'`. */
+  // @ts-ignore — TS4113 (CI) vs TS4114 (local); see comment above.
+  override readonly size = input<TwSize>('md');
 
   /** Grows the textarea with its content (composed from CDK's `CdkTextareaAutosize`). When `true` the user-resize handle is forced off — autosize owns the height. Defaults to `false`. */
   readonly autosize = input<boolean, unknown>(false, {
