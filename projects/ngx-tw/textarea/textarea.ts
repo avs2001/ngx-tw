@@ -11,6 +11,7 @@ import {
 } from '@angular/core';
 import { CdkTextareaAutosize } from '@angular/cdk/text-field';
 import { tv } from 'tailwind-variants';
+import type { TwSize } from 'ngx-tw/core';
 import { TW_FORM_FIELD_CONTROL } from 'ngx-tw/form-field';
 import { InputDirective } from 'ngx-tw/input';
 
@@ -93,6 +94,16 @@ export class TextareaDirective extends InputDirective {
     self: true,
     optional: true,
   });
+
+  // Re-declares the `size` input inherited from `InputDirective`. ng-packagr's
+  // partial compilation emits `ɵdir` metadata listing only the directive's own
+  // inputs — Angular's strict-template-check on the consumer side then can't
+  // resolve `[size]` bindings on `<textarea twTextarea>`. Re-declaring with
+  // `override` puts `size` back on the child directive's input map without
+  // changing semantics; both signals share the same `'md'` default and the
+  // inherited `classes()` computed reads through polymorphism (`this.size()`).
+  /** Density of a standalone textarea. Maps to the inline-padding + font scale (`xs` … `xl`). Ignored inside a `<tw-form-field>` — the wrapper's `size` carries density. Defaults to `'md'`. */
+  override readonly size = input<TwSize>('md');
 
   /** Grows the textarea with its content (composed from CDK's `CdkTextareaAutosize`). When `true` the user-resize handle is forced off — autosize owns the height. Defaults to `false`. */
   readonly autosize = input<boolean, unknown>(false, {
