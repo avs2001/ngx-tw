@@ -38,19 +38,6 @@ jobs:
       - run: npm ci
       - run: npm run lint
 
-  unit-test:
-    name: unit tests
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: npm
-      - run: npm ci
-      - run: npm run test:ci
-
   build-lib:
     name: build library
     runs-on: ubuntu-latest
@@ -70,6 +57,30 @@ jobs:
           name: ngx-tw-dist
           path: dist/ngx-tw
           retention-days: 7
+
+  unit-test:
+    name: unit tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    # Tests import from `@cdevhub/ngx-tw/*`, which tsconfig.paths maps to
+    # `./dist/ngx-tw/*`. Without the built artifact, esbuild falls back through
+    # the workspace symlink to raw source, and components with templateUrl
+    # (form-field, tabs, table, …) fail to compile in TestBed because their
+    # templates aren't inlined. Stage dist/ from the build-lib job first.
+    needs: [build-lib]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      - run: npm ci
+      - name: Download dist artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: ngx-tw-dist
+          path: dist/ngx-tw
+      - run: npm run test:ci
 
   pack-check:
     name: npm pack dry-run
