@@ -17,8 +17,11 @@ concurrency:
   group: e2e-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
-# Pin a stable node + playwright image. `bookworm` matches the playwright
-# docker image's base and provides the system fonts the demo loads.
+# Least privilege: every job only reads source and up/downloads artifacts.
+# Pin the token read-only rather than inheriting the repo default.
+permissions:
+  contents: read
+
 env:
   NODE_VERSION: '22'
 

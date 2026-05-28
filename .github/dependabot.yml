@@ -1,0 +1,43 @@
+version: 2
+
+# Keep dependencies and pinned GitHub Actions patched. PRs target `develop`
+# (the repo's working branch) so they flow through the same CI/e2e gate.
+updates:
+  # npm dependencies for the monorepo root (covers the ngx-tw workspace).
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    target-branch: develop
+    open-pull-requests-limit: 5
+    labels:
+      - dependencies
+    groups:
+      # Angular core + CDK + build move in lockstep; one PR avoids partial
+      # major bumps that break the build.
+      angular:
+        patterns:
+          - '@angular/*'
+          - '@angular-eslint/*'
+          - angular-eslint
+          - ng-packagr
+      # Test/lint tooling churns often on patch/minor — batch it.
+      dev-tooling:
+        dependency-type: development
+        update-types:
+          - minor
+          - patch
+
+  # Pinned action SHAs/tags (e.g. softprops/action-gh-release) get tracked
+  # and bumped here, with the pin comment kept in sync.
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    target-branch: develop
+    open-pull-requests-limit: 5
+    labels:
+      - dependencies
+      - ci
