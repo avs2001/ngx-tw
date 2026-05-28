@@ -55,25 +55,56 @@ npm start               # runs the demo app on http://localhost:4600
 
 ## Releases
 
-Releases are automated with [Changesets](https://github.com/changesets/changesets).
+Releases are **tag-driven** and run from a single local command. The release
+script bumps the version, regenerates `CHANGELOG.md` from
+[conventional commits](https://www.conventionalcommits.org/) since the last
+tag, commits, tags `@cdevhub/ngx-tw@<version>`, and pushes. The pushed tag
+triggers `release.yml` which publishes to npm (with provenance) and creates
+the matching GitHub Release.
 
-1. On the feature branch, run `npm run changeset` and commit the generated
-   `.changeset/*.md` file alongside your code change.
-2. Open a PR into `develop`. CI (`lint`, `build-lib`, `unit-test`, `pack-check`,
-   `e2e-smoke`, `e2e-a11y`) must pass.
-3. On merge to `develop`, the `release` workflow opens (or updates) a
-   **"Version Packages"** PR that bumps `projects/ngx-tw/package.json` and
-   regenerates `CHANGELOG.md` from the pending changesets.
-4. Merging that PR publishes `@cdevhub/ngx-tw` to npm with provenance,
-   creates a matching GitHub Release + tag (`@cdevhub/ngx-tw@<version>`),
-   and triggers the `pages` workflow to redeploy the demo.
+```bash
+# from a clean develop, in sync with origin, with CI green:
+npm run release:patch     # 0.2.0 → 0.2.1
+npm run release:minor     # 0.2.0 → 0.3.0
+npm run release:major     # 0.2.0 → 1.0.0
 
-Changes that should not produce a release (docs, CI, refactors, demo-only
-edits) need **no** changeset — the Version Packages PR only opens when at
-least one changeset is present.
+# preview what the script would do without committing or pushing:
+npm run release:dry
+```
 
-See [`.changeset/README.md`](./.changeset/README.md) for the changeset format
-and [`CHANGELOG.md`](./CHANGELOG.md) for version history.
+The script will refuse to release if:
+
+- you are not on `develop`
+- the working tree is dirty
+- local `develop` is not in sync with `origin/develop`
+- the latest `ci.yml` run on develop for the current HEAD is not green
+  (pass `--skip-ci-check` to override, e.g. `node scripts/release.mjs patch --skip-ci-check`)
+- local pre-flight (`lint`, `build:lib`, `test:ci`, `pack:check`) fails
+- no `feat:` / `fix:` / `perf:` / breaking commits exist since the last tag
+
+### Commit message format
+
+The changelog is generated from commits, so commit messages matter. Use
+[conventional commits](https://www.conventionalcommits.org/):
+
+```
+<type>(<scope>): <description>
+
+# Examples:
+feat(button): add color="accent" variant
+fix(badge): correct focus ring offset on sm size
+perf(table): memoise row keying
+feat(menu)!: rename close output to closed (BREAKING)
+chore(deps): bump @angular/cdk to 21.3.0
+```
+
+Types `feat`, `fix`, and `perf` produce a changelog entry. A `!` after the
+type — or a `BREAKING CHANGE:` footer — marks a breaking change and lifts
+the entry into the **⚠ BREAKING CHANGES** section. Other types
+(`chore`, `docs`, `ci`, `build`, `refactor`, `test`, `style`, `revert`) are
+skipped from the changelog but still count for git history.
+
+See [`CHANGELOG.md`](./CHANGELOG.md) for version history.
 
 ## Contributing
 

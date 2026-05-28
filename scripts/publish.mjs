@@ -1,12 +1,16 @@
 #!/usr/bin/env node
-// Publish helper for ngx-tw.
+// Publish helper for @cdevhub/ngx-tw.
 //
-// ng-packagr builds the library into `dist/ngx-tw/` and copies a transformed
-// package.json there — that is the artifact npm should publish. Changesets'
-// default `changeset publish` would run `npm publish` from the workspace
-// directory (`projects/ngx-tw/`), which contains source, not the built
-// artifact. So we run the publish ourselves and emit the magic stdout marker
-// that `changesets/action` parses to create the matching GitHub release.
+// ng-packagr builds the library into `dist/ngx-tw/` and writes a transformed
+// package.json there — that is the artifact npm should publish (not the
+// workspace source at `projects/ngx-tw/`). This script publishes from `dist/`
+// and is invoked by `.github/workflows/release.yml` on tag pushes matching
+// `@cdevhub/ngx-tw@*`. The git tag and GitHub Release are created by the
+// release script + workflow respectively; this file only handles the
+// `npm publish` step.
+//
+// Idempotent: re-running for an already-published version is a no-op, so the
+// release workflow can be retried safely.
 
 import { execSync } from 'node:child_process';
 import { readFileSync, existsSync } from 'node:fs';
@@ -19,11 +23,8 @@ if (!existsSync(resolve(distDir, 'package.json'))) {
   process.exit(1);
 }
 
-const pkg = JSON.parse(readFileSync(resolve(distDir, 'package.json'), 'utf8'));
-const { name, version } = pkg;
+const { name, version } = JSON.parse(readFileSync(resolve(distDir, 'package.json'), 'utf8'));
 
-// Skip if this exact version is already on npm — keeps the workflow idempotent
-// when the release job retries.
 let alreadyPublished = false;
 try {
   execSync(`npm view ${name}@${version} version`, { stdio: 'pipe' });
@@ -33,37 +34,16 @@ try {
 }
 
 if (alreadyPublished) {
-  console.log(`• ${name}@${version} is already published — skipping.`);
+  console.log(`• ${name}@${version} is already on npm — skipping.`);
   process.exit(0);
 }
 
-// Provenance attaches a signed npm attestation linking the published tarball
-// back to the GitHub Actions run that built it. Requires `id-token: write`
-// on the release job (already set) and an "automation"/"granular" NPM_TOKEN
-// from a 2FA-enabled account. Locally we skip it because `npm publish
-// --provenance` only works from a recognised CI environment.
+// Provenance attaches a signed npm attestation linking the tarball back to the
+// GitHub Actions run that built it. Requires `id-token: write` on the release
+// job (already set) and a Granular/Automation `NPM_TOKEN` from a 2FA-enabled
+// account. Skipped locally because `--provenance` only works in recognised CI.
 const provenance = process.env.GITHUB_ACTIONS === 'true' ? ' --provenance' : '';
 
-console.log(`→ publishing ${name}@${version} from ${distDir}${provenance ? ' (with provenance)' : ''}`);
+console.log(`→ publishing ${name}@${version}${provenance ? ' (with provenance)' : ''}`);
 execSync(`npm publish --access public${provenance}`, { cwd: distDir, stdio: 'inherit' });
-
-// changesets/action runs `git push origin <tag>` after parsing the marker
-// below, but it expects the tag to already exist locally — `changeset publish`
-// would normally create it, but we don't call that (we publish from `dist/`).
-// Create it ourselves. Tolerate "already exists" so retries on the same SHA
-// are idempotent.
-const tag = `${name}@${version}`;
-try {
-  execSync(`git tag ${tag}`, { stdio: 'pipe' });
-  console.log(`→ created git tag ${tag}`);
-} catch (err) {
-  const stderr = err.stderr?.toString() ?? '';
-  if (stderr.includes('already exists')) {
-    console.log(`• git tag ${tag} already exists — reusing.`);
-  } else {
-    throw err;
-  }
-}
-
-// Stdout marker parsed by changesets/action to create the GitHub release.
-console.log(`🦋  New tag: ${tag}`);
+console.log(`✓ ${name}@${version} published.`);

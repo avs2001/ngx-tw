@@ -1,23 +1,24 @@
 name: release
 
-# Release pipeline for ngx-tw.
+# Tag-driven publish pipeline for @cdevhub/ngx-tw.
 #
-# Two-stage flow driven by the Changesets action:
-#   1. On push to `develop` with pending `.changeset/*.md` files, the action
-#      opens (or updates) a "Version Packages" PR that bumps the library
-#      version and regenerates CHANGELOG.md.
-#   2. When that PR is merged, the next push to `develop` finds no pending
-#      changesets — the action runs `changeset:publish`, which builds the lib
-#      and publishes `dist/ngx-tw/` to npm, then creates a matching GitHub
-#      release + tag.
+# Triggered by pushes of release tags shaped `@cdevhub/ngx-tw@<version>`,
+# which are created by `npm run release:patch|minor|major` running locally.
+# On a tag push this job:
+#   1. Builds the library and runs unit tests + pack-check against the tag SHA.
+#   2. Verifies the tag version matches the package.json version (mismatch =
+#      somebody pushed a hand-crafted tag; refuse to publish).
+#   3. Publishes `dist/ngx-tw/` to npm with provenance.
+#   4. Creates the matching GitHub Release, using the changelog section for
+#      this version as the release body.
 
 on:
   push:
-    branches: [develop]
+    tags:
+      - '@cdevhub/ngx-tw@*'
   workflow_dispatch:
 
 concurrency:
-  # Only one release pipeline at a time — prevents racing publishes.
   group: release-${{ github.ref }}
   cancel-in-progress: false
 
@@ -25,22 +26,21 @@ env:
   NODE_VERSION: '22'
 
 jobs:
-  release:
-    name: release
+  publish:
+    name: publish to npm + create release
     runs-on: ubuntu-latest
     timeout-minutes: 20
     permissions:
-      contents: write       # create tags, releases, push Version Packages PR
-      pull-requests: write  # open/update the Version Packages PR
+      contents: write       # create the GitHub Release
       id-token: write       # required for `npm publish --provenance` attestation
       # NOTE: provenance also requires `NPM_TOKEN` to be a Granular Access Token
       # (or legacy Automation token) from a 2FA-enabled npm account. A classic
       # "Read+Write" token will fail the publish, not silently skip provenance.
     steps:
-      - name: Checkout
+      - name: Checkout tag
         uses: actions/checkout@v4
         with:
-          # Full history so changesets can compute the changelog diff.
+          # Need history for changelog extraction and tag verification.
           fetch-depth: 0
 
       - name: Setup Node
@@ -53,16 +53,14 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Sanity build before any publish decision
-        # If the lib doesn't build cleanly, we should never reach `npm publish`.
+      - name: Build library
         run: npm run build:lib
 
       - name: Run unit tests
         run: npm run test:ci
 
       - name: Verify publishable tarball
-        # Mirrors the ci.yml pack-check job — the release path must enforce the
-        # same tarball-content guarantees CI does (README, LICENSE, manifest).
+        # Mirrors ci.yml — refuse to publish a tarball missing README/LICENSE.
         run: |
           cd dist/ngx-tw
           npm pack --dry-run --json | tee ../pack-manifest.json
@@ -75,18 +73,51 @@ jobs:
             console.log('Tarball OK —', m.files.length, 'files,', (m.size/1024).toFixed(1), 'KB');
           "
 
-      - name: Create Release PR or Publish
-        id: changesets
-        uses: changesets/action@v1
+      - name: Verify tag matches dist version
+        # A mismatch means someone pushed a tag that doesn't correspond to the
+        # version on the tagged commit — refuse to publish that.
+        run: |
+          TAG_VERSION="${GITHUB_REF_NAME#@cdevhub/ngx-tw@}"
+          PKG_VERSION=$(node -p "require('./dist/ngx-tw/package.json').version")
+          if [ "$TAG_VERSION" != "$PKG_VERSION" ]; then
+            echo "✖ Tag $GITHUB_REF_NAME does not match dist version $PKG_VERSION"
+            exit 1
+          fi
+          echo "✓ Tag matches dist version: $PKG_VERSION"
+
+      - name: Publish to npm
+        run: node scripts/publish.mjs
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Extract release notes from CHANGELOG
+        id: notes
+        # `GITHUB_REF_NAME` is the tag (`@cdevhub/ngx-tw@0.2.1`); strip the tag
+        # prefix inside node so we read the env var that GitHub Actions
+        # actually exports, not a non-exported bash variable.
+        run: |
+          node -e "
+            const fs = require('fs');
+            const tag = process.env.GITHUB_REF_NAME;
+            const v = tag.replace(/^@cdevhub\/ngx-tw@/, '');
+            const md = fs.readFileSync('CHANGELOG.md', 'utf8');
+            const lines = md.split('\n');
+            const escaped = v.replace(/\./g, '\\\\.');
+            const headRe = new RegExp('^## (\\\\[' + escaped + '\\\\]|' + escaped + ')(\\\\s|\$)');
+            const start = lines.findIndex(l => headRe.test(l));
+            if (start === -1) { console.error('No CHANGELOG section for ' + v); process.exit(1); }
+            const next = lines.findIndex((l, i) => i > start && l.startsWith('## '));
+            const body = lines.slice(start + 1, next === -1 ? lines.length : next).join('\n').trim();
+            fs.appendFileSync(process.env.GITHUB_OUTPUT, 'notes<<__END__\n' + body + '\n__END__\n');
+          "
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
         with:
-          # When pending changesets exist → open/update the Version Packages PR.
-          version: npm run changeset:version
-          # When pending changesets are gone (PR was merged) → publish to npm.
-          publish: npm run changeset:publish
-          commit: 'chore(release): version packages'
-          title: 'chore(release): version packages'
-          createGithubReleases: true
+          tag_name: ${{ github.ref_name }}
+          name: ${{ github.ref_name }}
+          body: ${{ steps.notes.outputs.notes }}
+          draft: false
+          prerelease: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
