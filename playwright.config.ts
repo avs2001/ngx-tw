@@ -70,6 +70,17 @@ export default defineConfig({
     { name: 'chromium-dark', use: { ...devices['Desktop Chrome'], colorScheme: 'dark' } },
     { name: 'firefox', use: { ...devices['Desktop Firefox'] } },
     { name: 'webkit', use: { ...devices['Desktop Safari'] } },
-    { name: 'mobile-chrome', use: { ...devices['Pixel 7'] } },
+    // mobile-chrome is intentionally scoped to mobile-tagged + smoke +
+    // accessibility tests only. The desktop `@interaction` sweep is
+    // mouse-event-centric (drag, pointer-capture, hover) and was not
+    // authored against the Pixel 7 viewport / touch event model —
+    // running the whole suite under mobile-chrome conflates real mobile
+    // regressions with desktop-only flake. The `mobile.spec.ts` file
+    // pins specifically-mobile scenarios to this project.
+    {
+      name: 'mobile-chrome',
+      use: { ...devices['Pixel 7'] },
+      grep: /@mobile|@smoke|@a11y/,
+    },
   ],
 });
