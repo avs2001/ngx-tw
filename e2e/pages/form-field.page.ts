@@ -1,11 +1,14 @@
 import { expect, type Locator, type Page } from '@playwright/test';
 
 export type FormFieldSectionName =
-  | 'Appearance'
+  | 'Variants'
+  | 'Size'
   | 'Colors'
   | 'Floating Label'
+  | 'Subscript Sizing'
   | 'States'
   | 'Prefix & Suffix'
+  | 'Icon Adornments'
   | 'Hints'
   | 'Textarea'
   | 'Template-Driven Forms'
@@ -21,13 +24,13 @@ export type FormFieldSectionName =
 export class FormFieldPage {
   readonly main: Locator;
 
-  readonly appearanceSection: Locator;
+  readonly variantsSection: Locator;
   readonly statesSection: Locator;
   readonly reactiveSection: Locator;
 
   constructor(readonly page: Page) {
     this.main = page.locator('main');
-    this.appearanceSection = this.section('Appearance');
+    this.variantsSection = this.section('Variants');
     this.statesSection = this.section('States');
     this.reactiveSection = this.section('Reactive Forms');
   }

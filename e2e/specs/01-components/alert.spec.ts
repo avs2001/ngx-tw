@@ -6,19 +6,20 @@ test.describe.configure({ mode: 'parallel' });
 /**
  * Alert interaction + a11y suite.
  *
- * Per `chapter 04 §Alert`:
- *   - Host element exposes `role="alert"`.
+ * Per `chapter 04 §Alert` (post-S11):
+ *   - Host `role` is derived from `politeness`: `'polite'` (default) →
+ *     `role="status"`, `'assertive'` → `role="alert"`, `'off'` → no role.
  *   - `dismissible` mode emits `(dismissed)` on close-button click; the
  *     parent owns the removal.
  *   - Actions slot (`[twAlertActions]`) renders projected buttons.
  */
 test.describe('Alert', () => {
-  test('@a11y default alert exposes role="alert"', async ({ page }) => {
+  test('@a11y default alert maps polite politeness to role="status"', async ({ page }) => {
     const alert = new AlertPage(page);
     await alert.goto();
 
     const first = alert.variantsSection.locator('tw-alert').first();
-    await expect(first).toHaveAttribute('role', 'alert');
+    await expect(first).toHaveAttribute('role', 'status');
   });
 
   test('@interaction dismissible alert emits (dismissed) and parent state removes it', async ({

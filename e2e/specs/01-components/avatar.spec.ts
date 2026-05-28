@@ -49,16 +49,15 @@ test.describe('Avatar', () => {
     await avatar.goto();
 
     // The "With max overflow" group has 5 children + max=3 → 2 hidden, plus
-    // the synthesized "+N" indicator. Source uses the `hidden` HTML attribute
-    // and aria-hidden="true", per chapter 04.
+    // the synthesized "+N" indicator. Post-S11 the group relies on the HTML5
+    // `hidden` attribute alone — it already removes the element from the a11y
+    // tree, so we no longer set a redundant `aria-hidden="true"`.
     const group = avatar.groupSection.locator('tw-avatar-group').nth(1);
     const allAvatars = group.locator('tw-avatar');
     await expect(allAvatars).toHaveCount(5);
 
-    // Overflowed avatars (indexes 3 and 4 here) carry both `hidden` and
-    // `aria-hidden="true"`.
+    // Overflowed avatars (indexes 3 and 4 here) carry only `hidden`.
     await expect(allAvatars.nth(3)).toHaveAttribute('hidden', '');
-    await expect(allAvatars.nth(3)).toHaveAttribute('aria-hidden', 'true');
     await expect(allAvatars.nth(4)).toHaveAttribute('hidden', '');
 
     // The first three remain in the a11y tree.

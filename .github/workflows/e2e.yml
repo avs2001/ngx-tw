@@ -44,7 +44,11 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/.cache/ms-playwright
-          key: ${{ runner.os }}-pw-${{ hashFiles('package-lock.json') }}
+          # Scope key by the browser set this job installs — otherwise the
+          # chromium-only smoke job wins the race to populate the cache, and
+          # subsequent jobs that need firefox/webkit get a stale chromium-only
+          # cache + a skipped install step → "Executable doesn't exist" crashes.
+          key: ${{ runner.os }}-pw-chromium-${{ hashFiles('package-lock.json') }}
       - name: Install Playwright (chromium)
         if: steps.pw-cache.outputs.cache-hit != 'true'
         run: npx playwright install --with-deps chromium
@@ -80,7 +84,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/.cache/ms-playwright
-          key: ${{ runner.os }}-pw-${{ hashFiles('package-lock.json') }}
+          key: ${{ runner.os }}-pw-chromium-${{ hashFiles('package-lock.json') }}
       - name: Install Playwright (chromium)
         if: steps.pw-cache.outputs.cache-hit != 'true'
         run: npx playwright install --with-deps chromium
@@ -125,7 +129,9 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/.cache/ms-playwright
-          key: ${{ runner.os }}-pw-${{ hashFiles('package-lock.json') }}
+          # `-all` keeps this cache disjoint from the chromium-only jobs so a
+          # fast-finishing smoke job can't shadow firefox/webkit binaries here.
+          key: ${{ runner.os }}-pw-all-${{ hashFiles('package-lock.json') }}
       - name: Install Playwright (all browsers)
         if: steps.pw-cache.outputs.cache-hit != 'true'
         run: npx playwright install --with-deps
@@ -175,7 +181,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/.cache/ms-playwright
-          key: ${{ runner.os }}-pw-${{ hashFiles('package-lock.json') }}
+          key: ${{ runner.os }}-pw-chromium-${{ hashFiles('package-lock.json') }}
       - name: Install Playwright (chromium)
         if: steps.pw-cache.outputs.cache-hit != 'true'
         run: npx playwright install --with-deps chromium

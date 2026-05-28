@@ -17,7 +17,7 @@ test.describe('Form Field', () => {
     const field = new FormFieldPage(page);
     await field.goto();
 
-    const outline = field.appearanceSection.locator('tw-form-field').first();
+    const outline = field.variantsSection.locator('tw-form-field').first();
     const input = outline.getByRole('textbox');
     await expect(input, 'aria-describedby should resolve to the hint id').toHaveAttribute(
       'aria-describedby',
@@ -26,7 +26,7 @@ test.describe('Form Field', () => {
     const describedBy = await input.getAttribute('aria-describedby');
     const ids = (describedBy ?? '').split(/\s+/).filter(Boolean);
     expect(ids.length).toBeGreaterThan(0);
-    // The text inside the hint span is the Appearance section's "Full legal
+    // The text inside the hint span is the Variants section's "Full legal
     // company name." copy — confirm describedby resolves to it.
     let foundHint = false;
     for (const id of ids) {

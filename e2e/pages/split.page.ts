@@ -6,13 +6,15 @@ import { expect, type Locator, type Page } from '@playwright/test';
  * accessible name — same convention as `DialogPage`.
  */
 export type SplitSectionName =
-  | 'Horizontal — sidebar & main'
-  | 'Vertical split'
-  | 'Three-pane editor layout'
-  | 'Collapsible pane with snap'
+  | 'Horizontal'
+  | 'Vertical'
+  | 'Three panes'
+  | 'Min / Max constraints'
+  | 'Collapsible pane'
+  | 'Persisted sizes'
   | 'Pixel mode'
-  | 'Persisted layout'
-  | 'Nested splits';
+  | 'RTL'
+  | 'Programmatic control';
 
 /**
  * Page Object Model for the split component's examples route.
@@ -28,21 +30,23 @@ export class SplitPage {
   readonly horizontalSection: Locator;
   readonly verticalSection: Locator;
   readonly threePaneSection: Locator;
+  readonly minMaxSection: Locator;
   readonly collapsibleSection: Locator;
   readonly pixelSection: Locator;
   readonly persistedSection: Locator;
-  readonly nestedSection: Locator;
+  readonly programmaticSection: Locator;
 
   constructor(readonly page: Page) {
     this.main = page.locator('main');
 
-    this.horizontalSection = this.section('Horizontal — sidebar & main');
-    this.verticalSection = this.section('Vertical split');
-    this.threePaneSection = this.section('Three-pane editor layout');
-    this.collapsibleSection = this.section('Collapsible pane with snap');
+    this.horizontalSection = this.section('Horizontal');
+    this.verticalSection = this.section('Vertical');
+    this.threePaneSection = this.section('Three panes');
+    this.minMaxSection = this.section('Min / Max constraints');
+    this.collapsibleSection = this.section('Collapsible pane');
     this.pixelSection = this.section('Pixel mode');
-    this.persistedSection = this.section('Persisted layout');
-    this.nestedSection = this.section('Nested splits');
+    this.persistedSection = this.section('Persisted sizes');
+    this.programmaticSection = this.section('Programmatic control');
   }
 
   /** Navigate to the split examples route and wait for the H1 to mount. */
@@ -65,25 +69,37 @@ export class SplitPage {
   /**
    * Gutter (the `[role="separator"]` rendered by `tw-split`). Pass the
    * gutter index (0 for a two-pane split) and optionally a section to
-   * disambiguate. Anchored by the `data-split-gutter-index` attribute the
-   * component sets in its template — stable across refactors.
+   * disambiguate. The component identifies gutters by accessible name
+   * (`Resize column N` / `Resize row N` — see `split.ts:_ariaLabel`); we
+   * anchor on `role="separator"` + position so the locator stays stable
+   * regardless of the label's i18n form.
    */
   gutter(section: Locator, index = 0): Locator {
-    return this.splitIn(section).locator(`[role="separator"][data-split-gutter-index="${index}"]`).first();
+    return this.splitIn(section).locator('[role="separator"]').nth(index);
   }
 
-  /** Programmatic collapse/expand/reset buttons in the Collapsible section. */
-  collapseButton(action: 'Collapse sidebar' | 'Expand sidebar' | 'Reset'): Locator {
+  /** Programmatic Collapse/Expand buttons in the Collapsible section. */
+  collapseButton(action: 'Collapse' | 'Expand'): Locator {
     return this.collapsibleSection.getByRole('button', { name: action, exact: true });
   }
 
   /**
-   * Live "pane N collapsed/expanded" status the demo writes from
-   * `(collapseChange)`. The demo binds it to a plain `<span>` with the
-   * `font-mono` class — locate by class within the collapsible section.
+   * setSizes / Reset buttons in the Programmatic section. The label is the
+   * button's exact accessible name as rendered in the demo.
+   */
+  programmaticButton(label: '20 / 80' | '50 / 50' | '80 / 20' | 'Reset'): Locator {
+    return this.programmaticSection.getByRole('button', { name: label, exact: true });
+  }
+
+  /**
+   * Live "collapsed/expanded (cause)" status the demo writes from
+   * `(collapseChange)`. Bound to a `<span>` in the Collapsible section.
+   * Post-S* the demo prints just `"<state> (<cause>)"`, no pane index.
    */
   get collapseStatus(): Locator {
-    return this.collapsibleSection.locator('span.font-mono');
+    // The status span sits in the section footer and is the *last* span with
+    // muted text — the section also contains short hint copy spans.
+    return this.collapsibleSection.locator('span', { hasText: /collapsed|expanded|—/ }).last();
   }
 
   /**
