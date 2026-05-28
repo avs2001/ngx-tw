@@ -107,11 +107,11 @@ test.describe('Tabs', () => {
     const t = new TabsPage(page);
     await t.goto();
 
-    // Tab trigger is `<button role="tab">` — the source template nests a
-    // close `<button>` inside but the browser hoists nested buttons during
-    // HTML parsing, so the close button becomes a DOM sibling of the
-    // trigger. Locate each by its own selector rather than parent-child.
-    const review = t.closableSection.locator('button[role="tab"][id$="tab-review"]');
+    // Post-S* the trigger is `<div role="tab">` (not `<button>`) so the
+    // inner close `<button>` is valid HTML — see `tabs.html` and the
+    // backlog notes on `nested-interactive`. Anchor by `role="tab"` only;
+    // the `<button>` selector would never match.
+    const review = t.closableSection.locator('[role="tab"][id$="tab-review"]');
     await review.click();
     await expect(review).toHaveAttribute('aria-selected', 'true');
 
@@ -123,7 +123,7 @@ test.describe('Tabs', () => {
     // (next enabled sibling) — overriding the demo's own reset-to-home that
     // runs first synchronously via the `(closed)` callback. End state:
     // 'published' is active and 'review' is gone.
-    const published = t.closableSection.locator('button[role="tab"][id$="tab-published"]');
+    const published = t.closableSection.locator('[role="tab"][id$="tab-published"]');
     await expect(published).toHaveAttribute('aria-selected', 'true');
     await expect(review).toHaveCount(0);
   });
