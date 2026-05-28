@@ -33,7 +33,16 @@ test.describe('Code Block', () => {
   test('@interaction copy button toggles label to "Copied" and emits (copied)', async ({
     page,
     context,
+    browserName,
   }) => {
+    // `clipboard-read` / `clipboard-write` are chromium permission ids;
+    // calling `grantPermissions` with them under firefox / webkit throws
+    // ("unknown permission"). Skip the copy round-trip on non-chromium —
+    // the unit spec covers the CDK clipboard wiring under jsdom.
+    test.skip(
+      browserName !== 'chromium',
+      `${browserName} does not expose chromium-style clipboard permissions`,
+    );
     await context.grantPermissions(['clipboard-read', 'clipboard-write']);
     const cb = new CodeBlockPage(page);
     await cb.goto();
