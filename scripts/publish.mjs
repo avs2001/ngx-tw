@@ -37,8 +37,15 @@ if (alreadyPublished) {
   process.exit(0);
 }
 
-console.log(`→ publishing ${name}@${version} from ${distDir}`);
-execSync('npm publish --access public', { cwd: distDir, stdio: 'inherit' });
+// Provenance attaches a signed npm attestation linking the published tarball
+// back to the GitHub Actions run that built it. Requires `id-token: write`
+// on the release job (already set) and an "automation"/"granular" NPM_TOKEN
+// from a 2FA-enabled account. Locally we skip it because `npm publish
+// --provenance` only works from a recognised CI environment.
+const provenance = process.env.GITHUB_ACTIONS === 'true' ? ' --provenance' : '';
+
+console.log(`→ publishing ${name}@${version} from ${distDir}${provenance ? ' (with provenance)' : ''}`);
+execSync(`npm publish --access public${provenance}`, { cwd: distDir, stdio: 'inherit' });
 
 // changesets/action runs `git push origin <tag>` after parsing the marker
 // below, but it expects the tag to already exist locally — `changeset publish`

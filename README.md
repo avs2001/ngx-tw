@@ -53,16 +53,27 @@ npm start               # runs the demo app on http://localhost:4600
 | `npm run lint`     | Lint TypeScript and templates                       |
 | `npm run lint:fix` | Lint with auto-fix                                  |
 
-## Publishing the library
+## Releases
 
-```bash
-npm run build:lib
-cd dist/ngx-tw
-npm publish
-```
+Releases are automated with [Changesets](https://github.com/changesets/changesets).
 
-See [`CHANGELOG.md`](./CHANGELOG.md) for version history and
-[`projects/ngx-tw/README.md`](./projects/ngx-tw/README.md) for consumer docs.
+1. On the feature branch, run `npm run changeset` and commit the generated
+   `.changeset/*.md` file alongside your code change.
+2. Open a PR into `develop`. CI (`lint`, `build-lib`, `unit-test`, `pack-check`,
+   `e2e-smoke`, `e2e-a11y`) must pass.
+3. On merge to `develop`, the `release` workflow opens (or updates) a
+   **"Version Packages"** PR that bumps `projects/ngx-tw/package.json` and
+   regenerates `CHANGELOG.md` from the pending changesets.
+4. Merging that PR publishes `@cdevhub/ngx-tw` to npm with provenance,
+   creates a matching GitHub Release + tag (`@cdevhub/ngx-tw@<version>`),
+   and triggers the `pages` workflow to redeploy the demo.
+
+Changes that should not produce a release (docs, CI, refactors, demo-only
+edits) need **no** changeset — the Version Packages PR only opens when at
+least one changeset is present.
+
+See [`.changeset/README.md`](./.changeset/README.md) for the changeset format
+and [`CHANGELOG.md`](./CHANGELOG.md) for version history.
 
 ## Contributing
 

@@ -17,12 +17,12 @@ human-readable note that will end up in the `CHANGELOG.md`.
    short summary. It writes a file like `.changeset/funny-name.md`.
 
 3. **Commit the changeset file** along with your code change. Open the PR.
-4. **Merging the PR to `main`** triggers the release workflow:
+4. **Merging the PR to `develop`** triggers the release workflow:
    - If un-released changesets exist, the workflow opens (or updates) a
      **"Version Packages"** PR that consumes the `.changeset/*.md` files,
      bumps `projects/ngx-tw/package.json`, and updates `CHANGELOG.md`.
    - **Merging the Version Packages PR** publishes the new version to npm
-     and creates a matching GitHub release + tag.
+     (with provenance attestation) and creates a matching GitHub release + tag.
 
 ## Adding a changeset manually
 

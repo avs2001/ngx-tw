@@ -1,9 +1,9 @@
 name: ci
 
-# CI gate for the ngx-tw library. Runs on every PR targeting develop/main and
-# on every push to those branches. Required status checks (lint, unit-test,
-# build-lib, pack-check) must be configured on the `main` branch in repo
-# settings — that's what makes this an enforceable quality gate.
+# CI gate for the ngx-tw library. Runs on every PR targeting `develop` and on
+# every push to `develop`. Required status checks (lint, unit-test, build-lib,
+# pack-check) must be configured on `develop` in repo settings — that's what
+# makes this an enforceable quality gate.
 
 on:
   pull_request:

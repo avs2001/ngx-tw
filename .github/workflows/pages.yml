@@ -1,6 +1,6 @@
 name: pages
 
-# Build the demo app and deploy it to GitHub Pages on every push to `main`.
+# Build the demo app and deploy it to GitHub Pages on every push to `develop`.
 # Live URL (once Pages is enabled in repo settings):
 #   https://avs2001.github.io/ngx-tw/
 
