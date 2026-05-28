@@ -40,5 +40,23 @@ if (alreadyPublished) {
 console.log(`→ publishing ${name}@${version} from ${distDir}`);
 execSync('npm publish --access public', { cwd: distDir, stdio: 'inherit' });
 
+// changesets/action runs `git push origin <tag>` after parsing the marker
+// below, but it expects the tag to already exist locally — `changeset publish`
+// would normally create it, but we don't call that (we publish from `dist/`).
+// Create it ourselves. Tolerate "already exists" so retries on the same SHA
+// are idempotent.
+const tag = `${name}@${version}`;
+try {
+  execSync(`git tag ${tag}`, { stdio: 'pipe' });
+  console.log(`→ created git tag ${tag}`);
+} catch (err) {
+  const stderr = err.stderr?.toString() ?? '';
+  if (stderr.includes('already exists')) {
+    console.log(`• git tag ${tag} already exists — reusing.`);
+  } else {
+    throw err;
+  }
+}
+
 // Stdout marker parsed by changesets/action to create the GitHub release.
-console.log(`🦋  New tag: ${name}@${version}`);
+console.log(`🦋  New tag: ${tag}`);
