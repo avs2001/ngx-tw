@@ -1,0 +1,79 @@
+name: e2e — update visual baselines
+
+# Manual trigger to regenerate the visual canary baselines from a clean
+# Linux/chromium environment, commit them back to the triggering branch,
+# and push. Use after intentional theme / visual-design changes.
+#
+# Why a separate workflow:
+#   - The main `e2e` workflow has `push`/`pull_request` triggers; adding
+#     `--update-snapshots` there would silently swallow real visual
+#     regressions on every commit.
+#   - Baselines MUST be regenerated on the same OS/browser that the visual
+#     job runs against (Linux + chromium). Regenerating on macOS or another
+#     platform produces wrong baselines that fail again immediately.
+
+on:
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: 'Branch to regenerate baselines on (default: current)'
+        required: false
+
+env:
+  NODE_VERSION: '22'
+
+jobs:
+  update-baselines:
+    name: Regenerate + commit visual baselines (chromium light + dark)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      # Need write access to push the regenerated PNGs back to the branch.
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.branch || github.ref }}
+          # Tokens that can push protected branches still need this for the
+          # `git push` step below to find the upstream.
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      - run: npm ci
+      - name: Cache Playwright browsers
+        id: pw-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          # Reuse the visual job's cache key so we don't double-download.
+          key: ${{ runner.os }}-pw-chromium-${{ hashFiles('package-lock.json') }}
+      - name: Install Playwright (chromium)
+        if: steps.pw-cache.outputs.cache-hit != 'true'
+        run: npx playwright install --with-deps chromium
+      - name: Install Playwright deps only
+        if: steps.pw-cache.outputs.cache-hit == 'true'
+        run: npx playwright install-deps chromium
+      - run: npm run build:lib
+      - name: Regenerate visual baselines
+        # `--update-snapshots` writes the freshly captured PNGs into
+        # `e2e/__screenshots__/...`. `--project=chromium-light --project=chromium-dark`
+        # mirrors the visual canary job in `e2e.yml`.
+        run: npx playwright test --grep @visual --project=chromium-light --project=chromium-dark --update-snapshots
+      - name: Commit + push regenerated baselines
+        run: |
+          set -euo pipefail
+          if [[ -z "$(git status --porcelain e2e/__screenshots__/)" ]]; then
+            echo "No baseline changes — nothing to commit."
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add e2e/__screenshots__/
+          git commit -m "chore(e2e): regenerate visual baselines
+
+          Auto-generated via the \`e2e — update visual baselines\` workflow.
+          Triggered manually after an intentional theme/visual-design change.
+          "
+          git push origin HEAD:${{ inputs.branch || github.ref_name }}
