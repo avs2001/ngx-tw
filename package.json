@@ -16,6 +16,7 @@
     "release:major": "node scripts/release.mjs major",
     "release:dry": "node scripts/release.mjs patch --dry-run",
     "e2e": "playwright test",
+    "e2e:fast": "playwright test --project=chromium-light --grep-invert @visual",
     "e2e:ui": "playwright test --ui",
     "e2e:smoke": "playwright test --grep @smoke --project=chromium-light",
     "e2e:a11y": "playwright test --grep @a11y --project=chromium-light",
