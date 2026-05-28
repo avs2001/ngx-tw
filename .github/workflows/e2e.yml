@@ -24,6 +24,34 @@ env:
 
 jobs:
   # ────────────────────────────────────────────────────────────────────
+  # Build the library once and share it as an artifact. Every e2e job
+  # below depends on this — the demo app imports `@cdevhub/ngx-tw/*`
+  # from `dist/`, so running the build in each job (`npm run build:lib`,
+  # ~25 s × 7 jobs) burns CI minutes for the same output. The pattern
+  # mirrors `ci.yml`'s `build-lib` + `download-artifact` setup.
+  # ────────────────────────────────────────────────────────────────────
+
+  build-lib:
+    name: build library (shared dist artifact)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      - run: npm ci
+      - name: Build ngx-tw (production)
+        run: npm run build:lib
+      - name: Upload dist artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ngx-tw-dist-e2e
+          path: dist/ngx-tw
+          retention-days: 1
+
+  # ────────────────────────────────────────────────────────────────────
   # PR — required checks
   # ────────────────────────────────────────────────────────────────────
 
@@ -31,6 +59,7 @@ jobs:
     name: e2e — smoke (chromium-light)
     if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch' || github.event_name == 'push'
     runs-on: ubuntu-latest
+    needs: [build-lib]
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
@@ -55,7 +84,11 @@ jobs:
       - name: Install Playwright deps only
         if: steps.pw-cache.outputs.cache-hit == 'true'
         run: npx playwright install-deps chromium
-      - run: npm run build:lib
+      - name: Download dist artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: ngx-tw-dist-e2e
+          path: dist/ngx-tw
       - name: Smoke
         run: npm run e2e:smoke
       - if: failure()
@@ -71,6 +104,7 @@ jobs:
     name: e2e — accessibility (chromium-light)
     if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch' || github.event_name == 'push'
     runs-on: ubuntu-latest
+    needs: [build-lib]
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
@@ -91,7 +125,11 @@ jobs:
       - name: Install Playwright deps only
         if: steps.pw-cache.outputs.cache-hit == 'true'
         run: npx playwright install-deps chromium
-      - run: npm run build:lib
+      - name: Download dist artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: ngx-tw-dist-e2e
+          path: dist/ngx-tw
       - name: A11y sweep (light + dark)
         run: npm run e2e:a11y
       - if: failure()
@@ -111,6 +149,7 @@ jobs:
     name: e2e — full (${{ matrix.shard }} of ${{ matrix.total }})
     if: github.event_name == 'push' || (github.event_name == 'schedule' && github.event.schedule == '0 3 * * *') || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
+    needs: [build-lib]
     timeout-minutes: 30
     strategy:
       fail-fast: false
@@ -138,7 +177,11 @@ jobs:
       - name: Install Playwright deps only
         if: steps.pw-cache.outputs.cache-hit == 'true'
         run: npx playwright install-deps
-      - run: npm run build:lib
+      - name: Download dist artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: ngx-tw-dist-e2e
+          path: dist/ngx-tw
       - name: Full suite (shard ${{ matrix.shard }}/${{ matrix.total }})
         # `--grep-invert @visual` excludes the visual sweep — visual has
         # its own job below with chromium-only baselines.
@@ -168,6 +211,7 @@ jobs:
     name: e2e — visual canary (chromium)
     if: github.event_name == 'push' || (github.event_name == 'schedule' && github.event.schedule == '0 4 * * 0') || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
+    needs: [build-lib]
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
@@ -188,7 +232,11 @@ jobs:
       - name: Install Playwright deps only
         if: steps.pw-cache.outputs.cache-hit == 'true'
         run: npx playwright install-deps chromium
-      - run: npm run build:lib
+      - name: Download dist artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: ngx-tw-dist-e2e
+          path: dist/ngx-tw
       - name: Visual sweep
         # Canary spec uses both chromium projects (light + dark). The
         # `@visual` grep is the source of truth for which tests run.
