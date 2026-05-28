@@ -5,6 +5,20 @@ All notable changes to **ngx-tw** will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.2.1 — 2026-05-28
+
+### Features
+
+- **release:** tag-driven release flow with `npm run release:*` ([85e6924](https://github.com/avs2001/ngx-tw/commit/85e692473ebe3dbd5ef8ff1c5842c491e66efff5))
+
+### Bug Fixes
+
+- **a11y:** clear dark-mode solid contrast + breadcrumbs duplicate landmarks ([09ab024](https://github.com/avs2001/ngx-tw/commit/09ab0241ee935a59cf8ffc8a79126dfb62a8f4d3))
+- **a11y:** WCAG-AA color-contrast + drop duplicate code-block landmarks ([4fe265f](https://github.com/avs2001/ngx-tw/commit/4fe265f4a914f3a3add4c01baf1527ce6c3f5e54))
+- **ci, e2e:** unstick the e2e workflow ([94fa08e](https://github.com/avs2001/ngx-tw/commit/94fa08e62b6b3ebe201631bfc2f80098822b0e45))
+- **ci:** unit tests need the built lib before running ([5c10bee](https://github.com/avs2001/ngx-tw/commit/5c10bee66769a5b3be9edace353572e11fd85052))
+- **ci:** unblock release tag push, scope unit tests to ngx-tw ([c2f5d0f](https://github.com/avs2001/ngx-tw/commit/c2f5d0f2a62696615dfd46f475de227655022295))
+
 ## [Unreleased]
 
 The calendar component is undergoing a phased v1 cutover (see
