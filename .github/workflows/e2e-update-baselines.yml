@@ -37,7 +37,7 @@ jobs:
           # Tokens that can push protected branches still need this for the
           # `git push` step below to find the upstream.
           fetch-depth: 0
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v6
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
