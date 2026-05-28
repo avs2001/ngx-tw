@@ -55,11 +55,11 @@
     "tslib": "^2.3.0"
   },
   "devDependencies": {
-    "@angular/build": "^21.2.7",
-    "@angular/cli": "^21.0.1",
-    "@angular/compiler-cli": "^21.0.0",
+    "@angular/build": "^21.2.13",
+    "@angular/cli": "^21.2.13",
+    "@angular/compiler-cli": "^21.2.15",
     "@axe-core/playwright": "^4.11.3",
-    "@playwright/test": "1.59.1",
+    "@playwright/test": "1.60.0",
     "@tailwindcss/postcss": "^4.1.12",
     "@types/luxon": "^3.7.1",
     "@typescript-eslint/eslint-plugin": "^8.59.0",
