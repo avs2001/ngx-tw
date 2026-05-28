@@ -250,8 +250,9 @@
   --color-info-soft-hover: var(--color-info-100);
   --color-info-soft-fg: var(--color-info-900);
   --color-info-soft-fg-muted: var(--color-info-800);
-  --color-info-solid: var(--color-info-600);
-  --color-info-solid-hover: var(--color-info-700);
+  /* Solid uses -700 not -600: sky-600/white is 3.85:1 (AA fail). -700/white is 5.6:1. */
+  --color-info-solid: var(--color-info-700);
+  --color-info-solid-hover: var(--color-info-800);
   --color-info-solid-fg: var(--color-white);
   --color-info-border: var(--color-info-300);
   --color-info-border-strong: var(--color-info-500);

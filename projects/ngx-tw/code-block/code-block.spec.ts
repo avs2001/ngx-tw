@@ -227,9 +227,14 @@ describe('CodeBlockComponent', () => {
     expect(button.getAttribute('aria-label')).toBe('Copied');
   });
 
-  it('should have role="region" on pre element', () => {
+  it('does not carry a landmark role on the pre element', () => {
+    // Documentation pages mount many code blocks; giving each `<pre>`
+    // `role="region"` triggered axe's `landmark-unique` rule across the
+    // demo. Keep the `<pre>` focusable + named via `aria-label` but skip
+    // the landmark role. Consumers can wrap the block in their own
+    // labelled section if they want it announced as a page landmark.
     const pre = fixture.nativeElement.querySelector('pre');
-    expect(pre.getAttribute('role')).toBe('region');
+    expect(pre.getAttribute('role')).toBeNull();
   });
 
   it('should have tabindex="0" on pre element', () => {

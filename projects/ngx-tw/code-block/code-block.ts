@@ -86,13 +86,14 @@ const codeBlockVariants = tv({
  * projection slot for filename / extra actions.
  *
  * @remarks
- * **`role="region"` ownership.** The outer host is a presentational container —
- * the inner `<pre tabindex="0" role="region" aria-label="...">` owns the
- * scrollable-content region semantics that screen readers and AXE care about.
- * Promoting the host to `role="region"` as well would double-announce the
- * landmark; the `<pre>` is the focusable, keyboard-reachable target, so the
- * region role belongs there. This matches APG guidance for scroll-region
- * widgets and Material's `pre`-as-region pattern.
+ * **Accessibility.** The inner `<pre tabindex="0" aria-label="...">` is the
+ * focusable, keyboard-reachable scroll surface; the host is presentational.
+ * The `<pre>` carries `aria-label` for SR users but no landmark role — a
+ * documentation page can mount many code blocks at once and ARIA's
+ * `landmark-unique` rule (axe best-practice) flags duplicate
+ * `region "<lang> code"` names. Consumers who want this block to act as a
+ * page landmark can wrap it in `<section aria-label="…">` with a unique
+ * name.
  */
 @Component({
   selector: 'tw-code-block',
@@ -126,7 +127,6 @@ const codeBlockVariants = tv({
       </button>
     </div>
     <pre
-      role="region"
       tabindex="0"
       [attr.aria-label]="preAriaLabel()"
       [class]="preClasses()"
