@@ -163,7 +163,7 @@ const TYPES: AccordionType[] = ['single', 'multiple'];
               @for (v of variants; track v) {
                 <button
                   type="button"
-                  class="px-2 py-1 text-xs font-medium rounded-md text-fg-muted hover:bg-surface-muted transition-colors duration-200"
+                  class="px-2 py-1 text-xs font-medium rounded-md text-fg-muted hover:bg-surface-muted transition-colors duration-normal"
                   [class.!bg-primary-100]="playVariant() === v"
                   [class.!text-primary-700]="playVariant() === v"
                   (click)="playVariant.set(v)"
@@ -177,7 +177,7 @@ const TYPES: AccordionType[] = ['single', 'multiple'];
               @for (t of types; track t) {
                 <button
                   type="button"
-                  class="px-2 py-1 text-xs font-medium rounded-md text-fg-muted hover:bg-surface-muted transition-colors duration-200"
+                  class="px-2 py-1 text-xs font-medium rounded-md text-fg-muted hover:bg-surface-muted transition-colors duration-normal"
                   [class.!bg-primary-100]="playType() === t"
                   [class.!text-primary-700]="playType() === t"
                   (click)="setType(t)"
@@ -190,7 +190,7 @@ const TYPES: AccordionType[] = ['single', 'multiple'];
             <div class="flex gap-1">
               <button
                 type="button"
-                class="px-2 py-1 text-xs font-medium rounded-md text-fg-muted hover:bg-surface-muted transition-colors duration-200 disabled:opacity-30 disabled:cursor-default"
+                class="px-2 py-1 text-xs font-medium rounded-md text-fg-muted hover:bg-surface-muted transition-colors duration-normal disabled:opacity-30 disabled:cursor-default"
                 [disabled]="playType() === 'multiple'"
                 [class.!bg-primary-100]="playCollapsible()"
                 [class.!text-primary-700]="playCollapsible()"
@@ -198,7 +198,7 @@ const TYPES: AccordionType[] = ['single', 'multiple'];
               >true</button>
               <button
                 type="button"
-                class="px-2 py-1 text-xs font-medium rounded-md text-fg-muted hover:bg-surface-muted transition-colors duration-200 disabled:opacity-30 disabled:cursor-default"
+                class="px-2 py-1 text-xs font-medium rounded-md text-fg-muted hover:bg-surface-muted transition-colors duration-normal disabled:opacity-30 disabled:cursor-default"
                 [disabled]="playType() === 'multiple'"
                 [class.!bg-primary-100]="!playCollapsible()"
                 [class.!text-primary-700]="!playCollapsible()"
@@ -237,14 +237,14 @@ export class AccordionExamples {
   protected readonly variants = VARIANTS;
   protected readonly types = TYPES;
 
-  protected readonly singleValue = signal<string | string[]>('');
-  protected readonly multipleValue = signal<string | string[]>([]);
-  protected readonly forcedValue = signal<string | string[]>('overview');
+  protected readonly singleValue = signal<string | string[] | null>(null);
+  protected readonly multipleValue = signal<string | string[] | null>([]);
+  protected readonly forcedValue = signal<string | string[] | null>('overview');
 
   protected readonly playVariant = signal<AccordionVariant>('bordered');
   protected readonly playType = signal<AccordionType>('single');
   protected readonly playCollapsible = signal(true);
-  protected readonly playValue = signal<string | string[]>('');
+  protected readonly playValue = signal<string | string[] | null>(null);
 
   protected readonly singleValueDisplay = computed(() => this.formatValue(this.singleValue()));
   protected readonly multipleValueDisplay = computed(() => this.formatValue(this.multipleValue()));
@@ -252,10 +252,11 @@ export class AccordionExamples {
 
   setType(type: AccordionType): void {
     this.playType.set(type);
-    this.playValue.set(type === 'multiple' ? [] : '');
+    this.playValue.set(type === 'multiple' ? [] : null);
   }
 
-  private formatValue(v: string | string[]): string {
+  private formatValue(v: string | string[] | null): string {
+    if (v === null) return "'none'";
     return Array.isArray(v) ? JSON.stringify(v) : `'${v}'`;
   }
 }

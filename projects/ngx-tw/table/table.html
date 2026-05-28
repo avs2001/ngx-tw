@@ -34,6 +34,7 @@
             *cdkHeaderCellDef
             [class]="col.headerCellClasses()"
             [style.width]="col.resolvedWidth()"
+            [attr.aria-sort]="col.ariaSort()"
             [attr.data-column]="col.name()"
             scope="col"
           >
@@ -78,6 +79,41 @@
         </ng-container>
       }
 
+      <!-- Selection pseudo-column emitted as a leading column when `selection.enabled` is true.
+           Hosts the master "select all" checkbox in the header and per-row checkboxes in the body.
+           The role="checkbox" host on <tw-checkbox> is allowlisted by the row-click suppression
+           helper so clicking it does NOT also emit `rowClicked`. -->
+      @if (resolvedSelection().enabled) {
+        <ng-container cdkColumnDef="_selection">
+          <th
+            cdk-header-cell
+            *cdkHeaderCellDef
+            [class]="selectionHeaderClasses()"
+            scope="col"
+          >
+            <tw-checkbox
+              size="sm"
+              [checked]="masterChecked()"
+              [indeterminate]="masterIndeterminate()"
+              (change)="toggleMasterSelection($event)"
+              [aria-label]="resolvedLabels().selectAllLabel"
+            />
+          </th>
+          <td
+            cdk-cell
+            *cdkCellDef="let row; let i = index"
+            [class]="selectionCellClasses()"
+          >
+            <tw-checkbox
+              size="sm"
+              [checked]="isSelected(row)"
+              (change)="setSelected(row, $event)"
+              [aria-label]="selectRowLabel(i)"
+            />
+          </td>
+        </ng-container>
+      }
+
       <!-- Auto-generated row defs driven by visibleColumnNames(). -->
       @if (visibleColumnNames().length > 0) {
         <tr
@@ -88,6 +124,7 @@
           cdk-row
           *cdkRowDef="let row; let i = dataIndex; columns: visibleColumnNames()"
           (click)="handleRowClick(row, i, $event)"
+          [attr.aria-selected]="rowAriaSelected(row)"
         ></tr>
         @if (hasFooterRow()) {
           <tr

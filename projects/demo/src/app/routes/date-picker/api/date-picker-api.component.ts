@@ -43,7 +43,7 @@ import { CodeBlockComponent } from 'ngx-tw/code-block';
             </tr>
             <tr>
               <td class="px-4 py-2 font-mono text-xs">dateFilter</td>
-              <td class="px-4 py-2 font-mono text-xs text-fg-muted">TwDateFilter&lt;D&gt; | null</td>
+              <td class="px-4 py-2 font-mono text-xs text-fg-muted">DateFilterFn&lt;D&gt; | null</td>
               <td class="px-4 py-2 font-mono text-xs text-fg-muted">null</td>
               <td class="px-4 py-2 text-fg-muted">Per-date predicate; return <code class="font-mono">false</code> to disable a cell.</td>
             </tr>
@@ -132,22 +132,34 @@ import { CodeBlockComponent } from 'ngx-tw/code-block';
               <td class="px-4 py-2 text-fg-muted">Opens the overlay as soon as the input receives focus.</td>
             </tr>
             <tr>
-              <td class="px-4 py-2 font-mono text-xs">withTime</td>
-              <td class="px-4 py-2 font-mono text-xs text-fg-muted">boolean</td>
-              <td class="px-4 py-2 font-mono text-xs text-fg-muted">false</td>
-              <td class="px-4 py-2 text-fg-muted">Renders a time picker inside the overlay and folds the time into the display format.</td>
+              <td class="px-4 py-2 font-mono text-xs">timeConfig</td>
+              <td class="px-4 py-2 font-mono text-xs text-fg-muted">DatePickerTimeConfig | null</td>
+              <td class="px-4 py-2 font-mono text-xs text-fg-muted">null</td>
+              <td class="px-4 py-2 text-fg-muted">Bundles all time-mode settings into a single config object — passing a non-null value enables the embedded <code class="font-mono">tw-time-picker</code>. Pass <code class="font-mono">&#123;&#125;</code> to opt in with all defaults; supply any of <code class="font-mono">format</code>, <code class="font-mono">showSeconds</code>, <code class="font-mono">hourStep</code>, <code class="font-mono">minuteStep</code>, <code class="font-mono">secondStep</code>, <code class="font-mono">minTime</code>, <code class="font-mono">maxTime</code> to override per-field defaults.</td>
             </tr>
             <tr>
-              <td class="px-4 py-2 font-mono text-xs">timeFormat</td>
-              <td class="px-4 py-2 font-mono text-xs text-fg-muted">'24h' | '12h'</td>
-              <td class="px-4 py-2 font-mono text-xs text-fg-muted">'24h'</td>
-              <td class="px-4 py-2 text-fg-muted">Clock format used by the embedded time picker.</td>
+              <td class="px-4 py-2 font-mono text-xs">locale</td>
+              <td class="px-4 py-2 font-mono text-xs text-fg-muted">string | null</td>
+              <td class="px-4 py-2 font-mono text-xs text-fg-muted">null</td>
+              <td class="px-4 py-2 text-fg-muted">Per-instance locale override for the embedded calendar and date adapter. Falls back to Angular <code class="font-mono">LOCALE_ID</code>.</td>
             </tr>
             <tr>
-              <td class="px-4 py-2 font-mono text-xs">showSeconds</td>
-              <td class="px-4 py-2 font-mono text-xs text-fg-muted">boolean</td>
-              <td class="px-4 py-2 font-mono text-xs text-fg-muted">false</td>
-              <td class="px-4 py-2 text-fg-muted">Exposes a seconds field in the embedded time picker.</td>
+              <td class="px-4 py-2 font-mono text-xs">dateClass</td>
+              <td class="px-4 py-2 font-mono text-xs text-fg-muted">DateClassFn&lt;D&gt; | null</td>
+              <td class="px-4 py-2 font-mono text-xs text-fg-muted">null</td>
+              <td class="px-4 py-2 text-fg-muted">Per-cell CSS class function, forwarded to the embedded calendar.</td>
+            </tr>
+            <tr>
+              <td class="px-4 py-2 font-mono text-xs">cellTemplate</td>
+              <td class="px-4 py-2 font-mono text-xs text-fg-muted">TemplateRef&lt;&#123; $implicit: CalendarCell&lt;D&gt; &#125;&gt; | null</td>
+              <td class="px-4 py-2 font-mono text-xs text-fg-muted">null</td>
+              <td class="px-4 py-2 text-fg-muted">Cell-content template forwarded to the embedded calendar — customize cell visuals beyond <code class="font-mono">dateClass</code>.</td>
+            </tr>
+            <tr>
+              <td class="px-4 py-2 font-mono text-xs">presets</td>
+              <td class="px-4 py-2 font-mono text-xs text-fg-muted">readonly DatePickerPreset&lt;D&gt;[]</td>
+              <td class="px-4 py-2 font-mono text-xs text-fg-muted">[]</td>
+              <td class="px-4 py-2 text-fg-muted">Quick-select preset entries rendered above the calendar. Each preset provides a <code class="font-mono">label</code> and a <code class="font-mono">date</code> factory.</td>
             </tr>
             <tr>
               <td class="px-4 py-2 font-mono text-xs">triggerAriaLabel</td>
@@ -248,6 +260,33 @@ import { CodeBlockComponent } from 'ngx-tw/code-block';
               <td class="px-4 py-2 font-mono text-xs text-fg-muted">EventEmitter&lt;DatePickerChangeEvent&lt;D&gt;&gt;</td>
               <td class="px-4 py-2 text-fg-muted">Fires after each commit with the new value, the previous value, and the source.</td>
             </tr>
+            <tr>
+              <td class="px-4 py-2 font-mono text-xs">presetSelected</td>
+              <td class="px-4 py-2 font-mono text-xs text-fg-muted">EventEmitter&lt;DatePickerPreset&lt;D&gt;&gt;</td>
+              <td class="px-4 py-2 text-fg-muted">Fires when a preset entry is clicked. Payload is the selected preset.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3 class="text-xs font-semibold text-fg-muted uppercase tracking-wide mb-2">Content projection</h3>
+      <div class="overflow-x-auto border border-border rounded-lg mb-6">
+        <table class="w-full text-sm">
+          <thead>
+            <tr class="bg-surface-muted text-left">
+              <th class="px-4 py-2 font-medium text-fg-muted">Slot</th>
+              <th class="px-4 py-2 font-medium text-fg-muted">Description</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-border-muted">
+            <tr>
+              <td class="px-4 py-2 font-mono text-xs">[slot=trigger-icon]</td>
+              <td class="px-4 py-2 text-fg-muted">Override the calendar icon inside the default trigger button. Falls back to a generic calendar SVG.</td>
+            </tr>
+            <tr>
+              <td class="px-4 py-2 font-mono text-xs">[slot=trigger]</td>
+              <td class="px-4 py-2 text-fg-muted">Project a custom trigger element (button, card, etc.). When provided, the default input + trigger chrome is hidden, the input remains in the DOM for form integration only, and clicks on the projected trigger toggle the overlay.</td>
+            </tr>
           </tbody>
         </table>
       </div>
@@ -318,5 +357,21 @@ interface DatePickerChangeEvent<D> {
 
 interface DatePickerOpenedEvent {
   trigger: HTMLElement;
+}
+
+interface DatePickerPreset<D = Date> {
+  label: string;
+  date: () => D;
+  id?: string;
+}
+
+interface DatePickerTimeConfig<D = Date> {
+  format?: TimePickerFormat;
+  showSeconds?: boolean;
+  hourStep?: number;
+  minuteStep?: number;
+  secondStep?: number;
+  minTime?: D | null;
+  maxTime?: D | null;
 }`;
 }

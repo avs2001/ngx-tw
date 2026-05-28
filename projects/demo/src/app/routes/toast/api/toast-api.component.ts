@@ -136,7 +136,7 @@ import { CodeBlockComponent } from 'ngx-tw/code-block';
               <td class="px-4 py-2 font-mono text-xs">severity</td>
               <td class="px-4 py-2 font-mono text-xs text-fg-muted">ToastSeverity</td>
               <td class="px-4 py-2 font-mono text-xs text-fg-muted">'info'</td>
-              <td class="px-4 py-2 text-fg-muted">Picks the color palette, default icon, and (for error) the live-region politeness.</td>
+              <td class="px-4 py-2 text-fg-muted">Severity variant. Drives color palette, default icon, and ARIA role / live politeness. Defaults to <code class="font-mono">'info'</code>.</td>
             </tr>
             <tr>
               <td class="px-4 py-2 font-mono text-xs">position</td>

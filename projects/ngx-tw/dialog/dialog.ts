@@ -29,7 +29,7 @@ import {
   TwDialogConfig,
   type TwDialogScrollStrategy,
 } from './dialog-config';
-import { TwDialogContainer } from './dialog-container';
+import { DialogContainer } from './dialog-container';
 import { TwDialogRef } from './dialog-ref';
 
 /**
@@ -111,7 +111,7 @@ export class TwDialog implements OnDestroy {
       disableClose: true,
       closeOnOverlayDetachments: false,
       container: {
-        type: TwDialogContainer,
+        type: DialogContainer,
         providers: () => [
           { provide: TwDialogConfig, useValue: merged },
           { provide: CdkDialogConfig, useValue: merged },
@@ -121,7 +121,7 @@ export class TwDialog implements OnDestroy {
         twRef = new TwDialogRef<R, C>(
           _cdkRef,
           merged as unknown as TwDialogConfig<unknown, R>,
-          container as TwDialogContainer,
+          container as DialogContainer,
         );
         const providers: StaticProvider[] = [
           { provide: TwDialogRef, useValue: twRef },

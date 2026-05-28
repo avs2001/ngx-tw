@@ -2,11 +2,11 @@ import { ChangeDetectionStrategy, Component, computed, signal } from '@angular/c
 import {
   ColumnComponent,
   TableComponent,
-  TwCellDefDirective,
-  TwFooterCellDefDirective,
-  TwHeaderCellDefDirective,
-  TwNoDataRowDirective,
-  TwRowExpansionDirective,
+  CellDefDirective,
+  FooterCellDefDirective,
+  HeaderCellDefDirective,
+  NoDataRowDirective,
+  RowExpansionDirective,
   type TwTableAppearance,
   type TwTableDensity,
   type TwTableResponsive,
@@ -67,11 +67,11 @@ const STATE_MODES: readonly StateMode[] = ['data', 'loading', 'empty', 'error'];
   imports: [
     TableComponent,
     ColumnComponent,
-    TwCellDefDirective,
-    TwHeaderCellDefDirective,
-    TwFooterCellDefDirective,
-    TwNoDataRowDirective,
-    TwRowExpansionDirective,
+    CellDefDirective,
+    HeaderCellDefDirective,
+    FooterCellDefDirective,
+    NoDataRowDirective,
+    RowExpansionDirective,
     PaginatorComponent,
     SortDirective,
     SortHeaderComponent,
@@ -285,7 +285,7 @@ const STATE_MODES: readonly StateMode[] = ['data', 'loading', 'empty', 'error'];
                 [attr.aria-expanded]="isExpanded(asOrder(row))"
                 (click)="toggleExpanded(asOrder(row), $event)"
               >
-                <svg class="size-4 transition-transform duration-200"
+                <svg class="size-4 transition-transform duration-normal"
                      [class.rotate-90]="isExpanded(asOrder(row))"
                      viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
                   <path fill-rule="evenodd" d="M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z" clip-rule="evenodd"/>
@@ -492,6 +492,53 @@ const STATE_MODES: readonly StateMode[] = ['data', 'loading', 'empty', 'error'];
       </div>
     </section>
 
+    <!-- Selection -->
+    <section class="mb-10">
+      <h2 class="text-sm font-semibold mb-3">Selection</h2>
+      <p class="text-sm text-fg-muted leading-relaxed max-w-2xl mb-4">
+        Set
+        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">[selection]="&#123; enabled: true &#125;"</code>
+        and the table renders a leading checkbox column for free. The header checkbox toggles every
+        visible row at once and announces <code class="font-mono">aria-checked="mixed"</code> when
+        only some rows are selected; each data row exposes
+        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">aria-selected</code>
+        so screen readers can announce the row's state. Wire
+        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">[(selected)]</code> to
+        drive your own actions from the current selection.
+      </p>
+      <div class="rounded-lg border border-border p-6 bg-surface-raised mb-4">
+        <tw-table
+          [data]="ordersFirst5()"
+          [appearance]="{ variant: 'bordered' }"
+          [selection]="{ enabled: true }"
+          [(selected)]="selectedOrders"
+          aria-label="Selectable orders"
+        >
+          <tw-column name="id" headerLabel="Order" [display]="{ numeric: true, width: '90px' }">
+            <ng-template twCellDef let-row>#{{ asOrder(row).id }}</ng-template>
+          </tw-column>
+          <tw-column name="customer" headerLabel="Customer">
+            <ng-template twCellDef let-row>{{ asOrder(row).customer }}</ng-template>
+          </tw-column>
+          <tw-column name="status" headerLabel="Status">
+            <ng-template twCellDef let-row>
+              <span class="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium"
+                    [class]="statusClass(asOrder(row).status)">
+                {{ asOrder(row).status }}
+              </span>
+            </ng-template>
+          </tw-column>
+          <tw-column name="total" headerLabel="Total" [display]="{ numeric: true }">
+            <ng-template twCellDef let-row>\${{ asOrder(row).total.toFixed(2) }}</ng-template>
+          </tw-column>
+        </tw-table>
+        <p class="mt-3 text-xs text-fg-muted font-mono">
+          selected: {{ selectedOrders().length }} of {{ ordersFirst5().length }}
+        </p>
+      </div>
+      <tw-code-block [code]="selectionSnippet" language="html" />
+    </section>
+
     <!-- Responsive stack -->
     <section class="mb-10">
       <h2 class="text-sm font-semibold mb-3">Responsive — Stack Below Breakpoint</h2>
@@ -563,7 +610,7 @@ const STATE_MODES: readonly StateMode[] = ['data', 'loading', 'empty', 'error'];
                 [value]="search()"
                 (input)="onSearch($event)"
                 placeholder="Search customers…"
-                class="px-3 py-1.5 text-sm rounded-md border border-border bg-surface focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500 transition-colors duration-200"
+                class="px-3 py-1.5 text-sm rounded-md border border-border bg-surface focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500 transition-colors duration-normal"
                 aria-label="Search orders"
               />
               <span class="text-xs text-fg-muted">
@@ -790,6 +837,7 @@ export class TableExamples {
   );
 
   protected readonly expandedOrders = signal<ReadonlySet<Order>>(new Set());
+  protected readonly selectedOrders = signal<readonly Order[]>([]);
 
   // Sort demo
   protected readonly sortActive = signal<string | null>(null);
@@ -1069,6 +1117,25 @@ protected readonly sortedOrders = computed<readonly Order[]>(() => {
     <ng-template twCellDef let-row>\${{ row.total.toFixed(2) }}</ng-template>
   </tw-column>
 </tw-table>`;
+
+  protected readonly selectionSnippet = `<tw-table
+  [data]="orders"
+  [appearance]="{ variant: 'bordered' }"
+  [selection]="{ enabled: true }"
+  [(selected)]="selectedOrders"
+  aria-label="Selectable orders"
+>
+  <tw-column name="id" headerLabel="Order" [display]="{ numeric: true, width: '90px' }">
+    <ng-template twCellDef let-row>#{{ row.id }}</ng-template>
+  </tw-column>
+  <tw-column name="customer" headerLabel="Customer">
+    <ng-template twCellDef let-row>{{ row.customer }}</ng-template>
+  </tw-column>
+  <!-- … -->
+</tw-table>
+
+<!-- Component class -->
+protected readonly selectedOrders = signal<readonly Order[]>([]);`;
 
   protected readonly responsiveSnippet = `<tw-table
   [data]="orders"

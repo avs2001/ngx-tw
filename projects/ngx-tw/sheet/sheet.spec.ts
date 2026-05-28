@@ -5,6 +5,7 @@ import { OverlayModule } from '@angular/cdk/overlay';
 import { provideSheet, Sheet } from './sheet';
 import { SheetRef } from './sheet-ref';
 import { SHEET_DATA } from './sheet-config';
+import { SheetContainer } from './sheet-container';
 import {
   SheetActionsDirective,
   SheetCloseDirective,
@@ -597,6 +598,67 @@ describe('Sheet', () => {
 
       localSheet.closeAll();
       flushExit();
+    });
+  });
+
+  describe('ancestor-DI fallback', () => {
+    // Exercises the `inject(SheetContainer, { optional: true, skipSelf: true })`
+    // path that replaced the legacy `findEnclosingSheet` DOM walk. The host
+    // provides a stub SheetContainer WITHOUT supplying SheetRef — so the
+    // primary `inject(SheetRef)` returns null and the directive must fall
+    // back to ancestor DI for the container reference.
+    it('SheetTitleDirective registers its id when only the container is in scope', () => {
+      const labelledBy: string[] = [];
+      const containerStub = {
+        _addAriaLabelledBy: (id: string) => labelledBy.push(id),
+        _removeAriaLabelledBy: (id: string) => {
+          const i = labelledBy.indexOf(id);
+          if (i >= 0) labelledBy.splice(i, 1);
+        },
+      };
+
+      @Component({
+        template: `<h2 twSheetTitle id="title-fallback">Title</h2>`,
+        imports: [SheetTitleDirective],
+        providers: [{ provide: SheetContainer, useValue: containerStub }],
+      })
+      class AncestorHost {}
+
+      TestBed.resetTestingModule();
+      TestBed.configureTestingModule({ imports: [OverlayModule] });
+      const fixture = TestBed.createComponent(AncestorHost);
+      fixture.detectChanges();
+      expect(labelledBy).toEqual(['title-fallback']);
+
+      fixture.destroy();
+      expect(labelledBy).toEqual([]);
+    });
+
+    it('SheetDescriptionDirective registers its id when only the container is in scope', () => {
+      const describedBy: string[] = [];
+      const containerStub = {
+        _addAriaDescribedBy: (id: string) => describedBy.push(id),
+        _removeAriaDescribedBy: (id: string) => {
+          const i = describedBy.indexOf(id);
+          if (i >= 0) describedBy.splice(i, 1);
+        },
+      };
+
+      @Component({
+        template: `<p twSheetDescription id="desc-fallback">Body</p>`,
+        imports: [SheetDescriptionDirective],
+        providers: [{ provide: SheetContainer, useValue: containerStub }],
+      })
+      class AncestorHost {}
+
+      TestBed.resetTestingModule();
+      TestBed.configureTestingModule({ imports: [OverlayModule] });
+      const fixture = TestBed.createComponent(AncestorHost);
+      fixture.detectChanges();
+      expect(describedBy).toEqual(['desc-fallback']);
+
+      fixture.destroy();
+      expect(describedBy).toEqual([]);
     });
   });
 });

@@ -48,28 +48,16 @@ import { CodeBlockComponent } from 'ngx-tw/code-block';
               <td class="px-4 py-2 text-fg-muted">Icon size on the standard scale from xs (12px) to xl (32px).</td>
             </tr>
             <tr>
-              <td class="px-4 py-2 font-mono text-xs">strokeWidth</td>
-              <td class="px-4 py-2 font-mono text-xs text-fg-muted">number</td>
-              <td class="px-4 py-2 font-mono text-xs text-fg-muted">2</td>
-              <td class="px-4 py-2 text-fg-muted">SVG stroke width applied to the rendered icon.</td>
-            </tr>
-            <tr>
-              <td class="px-4 py-2 font-mono text-xs">absoluteStrokeWidth</td>
-              <td class="px-4 py-2 font-mono text-xs text-fg-muted">boolean</td>
-              <td class="px-4 py-2 font-mono text-xs text-fg-muted">false</td>
-              <td class="px-4 py-2 text-fg-muted">When true, scales stroke width inversely with size to keep perceived weight constant.</td>
-            </tr>
-            <tr>
               <td class="px-4 py-2 font-mono text-xs">ariaLabel</td>
               <td class="px-4 py-2 font-mono text-xs text-fg-muted">string</td>
               <td class="px-4 py-2 font-mono text-xs text-fg-muted">—</td>
               <td class="px-4 py-2 text-fg-muted">Accessible label; when set, removes aria-hidden and announces the icon as role="img".</td>
             </tr>
             <tr>
-              <td class="px-4 py-2 font-mono text-xs">viewBox</td>
-              <td class="px-4 py-2 font-mono text-xs text-fg-muted">string</td>
-              <td class="px-4 py-2 font-mono text-xs text-fg-muted">'0 0 24 24'</td>
-              <td class="px-4 py-2 text-fg-muted">SVG viewBox attribute; override for non-24×24 icon sources.</td>
+              <td class="px-4 py-2 font-mono text-xs">svg</td>
+              <td class="px-4 py-2 font-mono text-xs text-fg-muted">TwIconSvgConfig</td>
+              <td class="px-4 py-2 font-mono text-xs text-fg-muted">—</td>
+              <td class="px-4 py-2 text-fg-muted">SVG-author config: strokeWidth (default 2), absoluteStrokeWidth (default false), viewBox (default '0 0 24 24'). Unset fields fall back to defaults.</td>
             </tr>
           </tbody>
         </table>
@@ -168,5 +156,11 @@ export class IconApi {
   protected readonly typesSnippet = `type TwIconNode = readonly [string, Readonly<Record<string, string | number>>];
 type TwIconData = readonly TwIconNode[];
 type TwIconMap = Record<string, TwIconData>;
-type TwIconColor = TwColor | 'current';`;
+type TwIconColor = TwColor | 'current';
+
+interface TwIconSvgConfig {
+  readonly strokeWidth?: number;          // default 2
+  readonly absoluteStrokeWidth?: boolean; // default false
+  readonly viewBox?: string;              // default '0 0 24 24'
+}`;
 }

@@ -17,6 +17,43 @@ Produces: component file, spec file, `index.ts`, `ng-package.json`, and `public-
 
 ---
 
+## Operating mode: self-skeptical
+
+This skill operates in **self-skeptical mode**: treat your own output as suspicious until verified. Mantra: *verified progress beats fast guesses*. Skepticism is adaptive — heavy on a new component, animation work, or CVA wiring; light on prose tweaks, token swaps, or single-test additions.
+
+### The loop
+
+1. **Understand** — restate the task, constraints, assumptions.
+2. **Plan** — propose the implementation path explicitly.
+3. **Act** — write the code.
+4. **Challenge** — ask "what could be wrong with this?" and name concrete failure modes.
+5. **Verify** — run the Phase 3 checklist; re-read what you wrote.
+6. **Revise** — fix every contradiction. Disclose what you cannot resolve.
+
+### Assumption ledger (inline)
+
+Maintain a short ledger of guesses **in your response text**, not in a file. 3–6 bullets, one line each:
+
+- **Assume:** `<thing>` — **Why:** `<source>` — **If wrong:** `<consequence>` — **Verified by:** `<grep | read | test | none-yet>`
+
+Cover at minimum: entry-point name, selector form (element vs attribute), public type names, whether `ControlValueAccessor` is needed, animation class names referenced.
+
+### Advisor checkpoints
+
+The advisor sees your full transcript automatically — don't paraphrase the work, just state what they need to see *in your response*, then call. Two required calls:
+
+- **REQUIRED — end of Phase 1**: state your plan paragraph and the ledger, then call `advisor`. They flag what you missed before you commit code.
+- **REQUIRED — end of Phase 3, before Phase 4**: state the red-team framing ("review this patch as if doing PR review") and your self-verification result, then call `advisor`. Heavier scrutiny applies to form-controls, overlay-bearing components, animation introductions, and any `public-api.ts` change.
+- **Advisory — inside Phase 2**: when stuck on a prompt-vs-CLAUDE.md contradiction, a CDK primitive choice, or a tv() shape that feels off. Not on every uncertainty.
+
+If advisor disagrees with evidence you already gathered, do **not** silently switch. Surface the conflict in your response and call `advisor` once more naming the constraint that should break the tie.
+
+### Evidence-first, no silent success
+
+Phase 4 names what was *verified*, not just what was *done*. Every checklist item is either green or surfaced under **Unresolved risks**. Never declare "done" with hidden uncertainty.
+
+---
+
 ## Phase 1 — Load context (always do this first)
 
 ### 1.1 Find and read the prompt document
@@ -59,13 +96,23 @@ similar to what you are building. Read their full source.
 
 If the library is empty, note this — you are establishing the first patterns.
 
-### 1.4 Output a context confirmation
+### 1.4 Output a context confirmation + ledger
 
-Before writing any code, output a single short paragraph:
+Before writing any code, output:
 
-> "Building `tw-[name]`. Read prompt at `docs/prompts/[name].md`,
-> CLAUDE.md conventions loaded, reference patterns from: [list or 'none — first component'].
-> ControlValueAccessor: [yes/no]. Starting implementation."
+1. A single short paragraph:
+
+   > "Building `tw-[name]`. Read prompt at `docs/prompts/[name].md`,
+   > CLAUDE.md conventions loaded, reference patterns from: [list or 'none — first component'].
+   > ControlValueAccessor: [yes/no]."
+
+2. Your **assumption ledger** (3–6 bullets) using the format from the Operating mode section. Mark each item as verified (where you already grepped/read) or `none-yet` (where you'll verify during Phase 2 or 3).
+
+### 1.5 Plan & advisor checkpoint (REQUIRED)
+
+State the implementation plan in 3–6 bullets — what files you'll create, what the variant axis is, how `tv()` will be sliced, what CDK primitives you'll compose, what tests will cover. Then call `advisor`.
+
+Wait for the advisor's response. Apply concrete corrections; surface unresolved conflicts in your next response and call `advisor` once more. Only proceed to Phase 2 once the plan stands up to the red-team pass.
 
 ---
 
@@ -212,10 +259,12 @@ export * from 'ngx-tw/[name]';
 
 ---
 
-## Phase 3 — Self-verification
+## Phase 3 — Self-verification & red-team pass
 
 Before outputting the closing summary, run through this checklist silently.
 For each item that fails, fix it before proceeding.
+
+**Red-team framing.** As you walk the checklist, re-read each file as if reviewing a teammate's PR — be the reviewer who would push back. Focus on the high-failure-rate items in this codebase: raw palette colors, `@angular/animations` imports, missing JSDoc, `fakeAsync` in specs, forgotten `defaultVariants`, `dark:` overrides on surface tokens, constructor injection sneaking back in, missing `OnPush`.
 
 **Angular conventions**
 - [ ] No `standalone: true` in decorator (it's the default in v21)
@@ -260,6 +309,17 @@ For each item that fails, fix it before proceeding.
 - [ ] `ng-package.json` created with correct entryFile
 - [ ] `public-api.ts` updated
 
+### Advisor call before declaring done (REQUIRED)
+
+State, in your response:
+
+- Every checklist item that passed.
+- Every item that failed and was fixed (briefly — what was wrong, what changed).
+- Every item that remains red, and why.
+- Any assumption from § 1.4's ledger that is still `none-yet`.
+
+Then call `advisor`. The advisor's job here is a red-team review of the patch as a whole. Apply concrete corrections; surface unresolved conflicts. Only proceed to the closing summary once the red-team pass clears.
+
 ---
 
 ## Phase 4 — Closing summary
@@ -267,7 +327,7 @@ For each item that fails, fix it before proceeding.
 Output a structured summary:
 
 ```
-## ✓ Implementation complete: tw-[name]
+## Implementation: tw-[name]
 
 **Files created:**
 - projects/ngx-tw/src/lib/[name]/[name].ts
@@ -276,9 +336,21 @@ Output a structured summary:
 - projects/ngx-tw/src/lib/[name]/ng-package.json
 - projects/ngx-tw/src/public-api.ts (updated)
 
+**Verified:**
+[Bullet list of checks that actually passed — e.g., "Phase 3 checklist: all 22 items green",
+"No raw palette colors (grepped for `-50|`-100|...|`-900` patterns)",
+"No `@angular/animations` import (grep returned 0)",
+"Spec covers rendering, inputs, outputs, interactions, a11y, CVA — verified by reading the file",
+"Two advisor passes cleared (plan + red-team)". Name the specific check, not a vague claim.]
+
 **Decisions made:**
-[List any assumptions from the prompt's [CONFIRM] items that you resolved,
-and how. Flag anything that still needs the developer's decision.]
+[List any assumptions from the prompt's [CONFIRM] items that you resolved, and how.
+Cite the ledger entry if relevant.]
+
+**Unresolved risks:**
+[Every red item from Phase 3, every assumption still `none-yet`, every advisor
+disagreement you could not reconcile. If empty, write "None — every checklist item
+passed and the assumption ledger is fully verified." Never leave this section out.]
 
 **Manual steps required:**
 [List any steps Claude cannot do — e.g., "Add animation keyframes for
@@ -305,3 +377,5 @@ running in the demo app.
 - Never create a CSS file for the component
 - Never use `@HostBinding`, `@HostListener`, or constructor injection
 - Never leave `[CONFIRM]` items unresolved without flagging them in the closing summary
+- Never skip either required `advisor` checkpoint (end of Phase 1, end of Phase 3)
+- Never declare "done" with hidden uncertainty — every red checklist item and every unverified ledger entry MUST appear under **Unresolved risks** in Phase 4

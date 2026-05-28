@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "mcp__jira__get_issue",
+      "mcp__ngx-com__lookup_component",
+      "mcp__claude-in-chrome__tabs_context_mcp",
+      "mcp__jira__get_config",
+      "mcp__claude-in-chrome__read_page",
+      "mcp__jira__list_fields",
+      "mcp__ide__getDiagnostics",
+      "Bash(whois:*)"
+    ]
+  }
+}

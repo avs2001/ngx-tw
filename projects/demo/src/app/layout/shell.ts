@@ -75,6 +75,11 @@ const NAV: NavGroup[] = [
         { label: 'Examples', path: '/components/card/examples' },
         { label: 'API', path: '/components/card/api' },
       ]},
+      { label: 'Carousel', children: [
+        { label: 'Overview', path: '/components/carousel/overview' },
+        { label: 'Examples', path: '/components/carousel/examples' },
+        { label: 'API', path: '/components/carousel/api' },
+      ]},
       { label: 'Checkbox', children: [
         { label: 'Overview', path: '/components/checkbox/overview' },
         { label: 'Examples', path: '/components/checkbox/examples' },
@@ -89,6 +94,11 @@ const NAV: NavGroup[] = [
         { label: 'Overview', path: '/components/collapsible/overview' },
         { label: 'Examples', path: '/components/collapsible/examples' },
         { label: 'API', path: '/components/collapsible/api' },
+      ]},
+      { label: 'Combobox', children: [
+        { label: 'Overview', path: '/components/combobox/overview' },
+        { label: 'Examples', path: '/components/combobox/examples' },
+        { label: 'API', path: '/components/combobox/api' },
       ]},
       { label: 'Command Palette', children: [
         { label: 'Overview', path: '/components/command-palette/overview' },
@@ -109,6 +119,11 @@ const NAV: NavGroup[] = [
         { label: 'Overview', path: '/components/dialog/overview' },
         { label: 'Examples', path: '/components/dialog/examples' },
         { label: 'API', path: '/components/dialog/api' },
+      ]},
+      { label: 'Empty State', children: [
+        { label: 'Overview', path: '/components/empty-state/overview' },
+        { label: 'Examples', path: '/components/empty-state/examples' },
+        { label: 'API', path: '/components/empty-state/api' },
       ]},
       { label: 'Flip Card', children: [
         { label: 'Overview', path: '/components/flip-card/overview' },
@@ -205,6 +220,11 @@ const NAV: NavGroup[] = [
         { label: 'Examples', path: '/components/split/examples' },
         { label: 'API', path: '/components/split/api' },
       ]},
+      { label: 'Stat', children: [
+        { label: 'Overview', path: '/components/stat/overview' },
+        { label: 'Examples', path: '/components/stat/examples' },
+        { label: 'API', path: '/components/stat/api' },
+      ]},
       { label: 'Stepper', children: [
         { label: 'Overview', path: '/components/stepper/overview' },
         { label: 'Examples', path: '/components/stepper/examples' },
@@ -239,6 +259,11 @@ const NAV: NavGroup[] = [
         { label: 'Overview', path: '/components/time-picker/overview' },
         { label: 'Examples', path: '/components/time-picker/examples' },
         { label: 'API', path: '/components/time-picker/api' },
+      ]},
+      { label: 'Timeline', children: [
+        { label: 'Overview', path: '/components/timeline/overview' },
+        { label: 'Examples', path: '/components/timeline/examples' },
+        { label: 'API', path: '/components/timeline/api' },
       ]},
       { label: 'Toast', children: [
         { label: 'Overview', path: '/components/toast/overview' },

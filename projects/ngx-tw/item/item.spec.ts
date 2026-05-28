@@ -1,5 +1,6 @@
 import { ChangeDetectionStrategy, Component, signal } from '@angular/core';
 import { type ComponentFixture, TestBed } from '@angular/core/testing';
+import { FocusMonitor } from '@angular/cdk/a11y';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import {
   ItemComponent,
@@ -38,6 +39,7 @@ class TitleOnlyHost {}
       [align]="align()"
       [interactive]="interactive()"
       [disabled]="disabled()"
+      [current]="current()"
       (selected)="onSelected($event)"
     >
       <i data-testid="leading" twItemLeading></i>
@@ -52,6 +54,7 @@ class FullItemHost {
   align = signal<ItemAlign>('start');
   interactive = signal(false);
   disabled = signal(false);
+  current = signal(false);
   lastEvent: Event | null = null;
   selectedCount = 0;
 
@@ -60,6 +63,28 @@ class FullItemHost {
     this.selectedCount++;
   }
 }
+
+@Component({
+  imports: [ItemComponent, ItemTitleDirective],
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  template: `
+    <tw-item class="py-4" [interactive]="true" [disabled]="true">
+      <span twItemTitle>Override</span>
+    </tw-item>
+  `,
+})
+class ConsumerOverrideHost {}
+
+@Component({
+  imports: [ItemComponent, ItemTitleDirective],
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  template: `
+    <tw-item interactive disabled current>
+      <span twItemTitle>Bare attrs</span>
+    </tw-item>
+  `,
+})
+class BareAttributeHost {}
 
 // ── Tests ──
 
@@ -246,6 +271,7 @@ describe('ItemComponent', () => {
 
       expect(fixture.componentInstance.selectedCount).toBe(1);
       expect(spy).toHaveBeenCalled();
+      expect(fixture.componentInstance.lastEvent).toBeInstanceOf(KeyboardEvent);
     });
 
     it('should emit selected on Space keydown and preventDefault', () => {
@@ -258,6 +284,7 @@ describe('ItemComponent', () => {
 
       expect(fixture.componentInstance.selectedCount).toBe(1);
       expect(spy).toHaveBeenCalled();
+      expect(fixture.componentInstance.lastEvent).toBeInstanceOf(KeyboardEvent);
     });
 
     it('should not emit selected for other keys', () => {
@@ -417,6 +444,104 @@ describe('ItemComponent', () => {
       const item: HTMLElement = fixture.nativeElement.querySelector('tw-item');
       expect(item.getAttribute('aria-disabled')).toBe('true');
       expect(item.getAttribute('tabindex')).toBeNull();
+    });
+  });
+
+  describe('current state', () => {
+    let fixture: ComponentFixture<FullItemHost>;
+
+    beforeEach(async () => {
+      await TestBed.configureTestingModule({
+        imports: [FullItemHost],
+      }).compileComponents();
+      fixture = TestBed.createComponent(FullItemHost);
+      fixture.detectChanges();
+    });
+
+    it('should not set aria-current or current classes by default', () => {
+      const item: HTMLElement = fixture.nativeElement.querySelector('tw-item');
+      expect(item.getAttribute('aria-current')).toBeNull();
+      expect(item.className).not.toContain('bg-primary-soft');
+      expect(item.className).not.toContain('ring-primary-border');
+    });
+
+    it('should apply current ring and aria-current when current=true', () => {
+      fixture.componentInstance.current.set(true);
+      fixture.detectChanges();
+
+      const item: HTMLElement = fixture.nativeElement.querySelector('tw-item');
+      expect(item.getAttribute('aria-current')).toBe('true');
+      expect(item.className).toContain('bg-primary-soft');
+      expect(item.className).toContain('ring-2');
+      expect(item.className).toContain('ring-inset');
+      expect(item.className).toContain('ring-primary-border');
+    });
+
+    it('should stack current and interactive focus styling together', () => {
+      fixture.componentInstance.current.set(true);
+      fixture.componentInstance.interactive.set(true);
+      fixture.detectChanges();
+
+      const item: HTMLElement = fixture.nativeElement.querySelector('tw-item');
+      expect(item.className).toContain('ring-primary-border');
+      expect(item.className).toContain('focus-visible:outline-primary-500');
+    });
+  });
+
+  describe('FocusMonitor integration', () => {
+    it('should monitor on init and stop monitoring on destroy', async () => {
+      const stopSpy = vi.fn();
+      const monitorSpy = vi.fn();
+
+      await TestBed.configureTestingModule({
+        imports: [TitleOnlyHost],
+        providers: [
+          {
+            provide: FocusMonitor,
+            useValue: { monitor: monitorSpy, stopMonitoring: stopSpy },
+          },
+        ],
+      }).compileComponents();
+      const fixture = TestBed.createComponent(TitleOnlyHost);
+      fixture.detectChanges();
+
+      expect(monitorSpy).toHaveBeenCalledTimes(1);
+
+      fixture.destroy();
+      expect(stopSpy).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe('booleanAttribute coercion', () => {
+    it('should coerce bare interactive, disabled, current attributes to true', async () => {
+      await TestBed.configureTestingModule({
+        imports: [BareAttributeHost],
+      }).compileComponents();
+      const fixture = TestBed.createComponent(BareAttributeHost);
+      fixture.detectChanges();
+
+      const item: HTMLElement = fixture.nativeElement.querySelector('tw-item');
+      expect(item.getAttribute('role')).toBe('button');
+      expect(item.getAttribute('aria-disabled')).toBe('true');
+      expect(item.getAttribute('aria-current')).toBe('true');
+    });
+  });
+
+  describe('consumer class composition', () => {
+    it('should preserve a consumer class alongside the internal computed classes', async () => {
+      await TestBed.configureTestingModule({
+        imports: [ConsumerOverrideHost],
+      }).compileComponents();
+      const fixture = TestBed.createComponent(ConsumerOverrideHost);
+      fixture.detectChanges();
+
+      const item: HTMLElement = fixture.nativeElement.querySelector('tw-item');
+      // Consumer's static class attribute coexists with the host [class] binding.
+      // Tailwind's CSS source order resolves the final winner — the host binding
+      // never overwrites the consumer's class.
+      expect(item.className).toContain('py-4');
+      expect(item.className).toContain('cursor-pointer');
+      expect(item.className).toContain('opacity-50');
     });
   });
 });

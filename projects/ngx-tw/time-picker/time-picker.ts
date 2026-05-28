@@ -1,5 +1,6 @@
 import {
   afterNextRender,
+  booleanAttribute,
   ChangeDetectionStrategy,
   Component,
   computed,
@@ -56,6 +57,7 @@ import {
   TW_FORM_FIELD_CONTROL,
 } from 'ngx-tw/form-field';
 import { DATE_ADAPTER, type DateAdapter } from 'ngx-tw/calendar';
+import { TimePickerIntl } from './time-picker-intl';
 
 // ── Public types ──────────────────────────────────────────────────
 
@@ -102,51 +104,64 @@ export type { TimePickerFormat, TimePickerMeridiem } from 'ngx-tw/core';
 const timePickerVariants = tv(
   {
     slots: {
-      root: 'inline-flex items-center text-fg transition-[color,border-color,box-shadow] duration-200 motion-reduce:transition-none',
+      root: 'inline-flex items-center text-fg transition-[color,border-color,box-shadow] duration-normal motion-reduce:transition-none',
       fieldGroup: 'inline-flex items-center tabular-nums font-medium',
       field:
-        'bg-transparent text-center outline-none border-0 p-0 m-0 text-fg placeholder:text-fg-subtle rounded-md caret-transparent focus-visible:bg-surface-muted',
+        'bg-transparent text-center outline-none border-0 p-0 m-0 text-fg placeholder:text-fg-subtle rounded-md caret-transparent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500',
       separator: 'text-fg-subtle select-none px-0.5',
       stepperGroup: 'flex flex-col ml-0.5',
       stepper:
-        'inline-flex items-center justify-center text-fg-muted hover:text-fg hover:bg-surface-muted rounded-md transition-colors duration-200 motion-reduce:transition-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500 disabled:opacity-40 disabled:pointer-events-none',
+        'inline-flex items-center justify-center text-fg-muted hover:text-fg hover:bg-surface-muted rounded-md transition-colors duration-normal motion-reduce:transition-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500 disabled:opacity-40 disabled:pointer-events-none',
+      stepperIcon: '',
       meridiem:
         'inline-flex items-center rounded-md border border-border overflow-hidden ml-2 shrink-0',
       meridiemButton:
-        'font-medium text-fg-muted hover:bg-surface-muted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500 transition-colors duration-200 motion-reduce:transition-none disabled:opacity-40 disabled:pointer-events-none',
+        'font-medium text-fg-muted hover:bg-surface-muted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500 transition-colors duration-normal motion-reduce:transition-none disabled:opacity-40 disabled:pointer-events-none',
       clearButton:
-        'inline-flex items-center justify-center shrink-0 rounded-md text-fg-muted hover:text-fg hover:bg-surface-muted transition-colors duration-200 motion-reduce:transition-none size-5 ml-1 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500',
+        'inline-flex items-center justify-center shrink-0 rounded-md text-fg-muted hover:text-fg hover:bg-surface-muted transition-colors duration-normal motion-reduce:transition-none size-6 ml-1 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500',
     },
     variants: {
       size: {
         xs: {
           root: 'gap-1 text-xs',
+          // Numeric field width is sized to fit a 2-digit value at the current font scale. Off
+          // the standard width scale because the field is content-driven, not a layout primitive
+          // — see CLAUDE.md spacing scale rationale.
           field: 'w-5 text-xs',
-          stepper: 'size-3',
-          meridiemButton: 'px-1.5 py-0.5 text-2xs',
+          stepper: 'size-6',
+          stepperIcon: 'size-3',
+          meridiemButton: 'px-1.5 py-1 text-2xs',
         },
         sm: {
           root: 'gap-1 text-sm',
+          // sm-density numeric field — sized to fit a 2-digit value at text-sm; see CLAUDE.md spacing scale rationale.
           field: 'w-6 text-sm',
-          stepper: 'size-3.5',
-          meridiemButton: 'px-2 py-0.5 text-xs',
+          stepper: 'size-7',
+          stepperIcon: 'size-3',
+          meridiemButton: 'px-2 py-1 text-xs',
         },
         md: {
           root: 'gap-1.5 text-sm',
+          // md-density numeric field — sized to fit a 2-digit value at text-sm; see CLAUDE.md spacing scale rationale.
           field: 'w-7 text-sm',
-          stepper: 'size-4',
+          stepper: 'size-7',
+          stepperIcon: 'size-3',
           meridiemButton: 'px-2 py-1 text-xs',
         },
         lg: {
           root: 'gap-1.5 text-base',
+          // lg-density numeric field — sized to fit a 2-digit value at text-base; see CLAUDE.md spacing scale rationale.
           field: 'w-8 text-base',
-          stepper: 'size-5',
-          meridiemButton: 'px-2.5 py-1 text-sm',
+          stepper: 'size-8',
+          stepperIcon: 'size-4',
+          meridiemButton: 'px-2.5 py-1.5 text-sm',
         },
         xl: {
           root: 'gap-2 text-base',
+          // xl-density numeric field — sized to fit a 2-digit value at text-base; see CLAUDE.md spacing scale rationale.
           field: 'w-9 text-base',
-          stepper: 'size-5',
+          stepper: 'size-8',
+          stepperIcon: 'size-4',
           meridiemButton: 'px-3 py-1.5 text-sm',
         },
       },
@@ -198,6 +213,20 @@ const timePickerVariants = tv(
   { twMerge: true },
 );
 
+// ── Static active-state color lookup for the AM/PM meridiem button ─────────────
+// Each entry is written out so Tailwind v4's static scanner picks the classes up.
+// Mirrors the lookup-table pattern used by `checkbox.ts` and `radio.ts`.
+const MERIDIEM_ACTIVE_COLOR: Record<TwColor, string> = {
+  primary: 'bg-primary-500 text-on-primary hover:bg-primary-600',
+  secondary: 'bg-secondary-500 text-on-secondary hover:bg-secondary-600',
+  accent: 'bg-accent-500 text-on-accent hover:bg-accent-600',
+  neutral: 'bg-fg text-on-neutral hover:bg-fg/90',
+  info: 'bg-info-500 text-on-info hover:bg-info-600',
+  success: 'bg-success-500 text-on-success hover:bg-success-600',
+  warning: 'bg-warning-500 text-on-warning hover:bg-warning-600',
+  error: 'bg-error-500 text-on-error hover:bg-error-600',
+};
+
 let nextTimePickerId = 0;
 
 /**
@@ -232,7 +261,7 @@ let nextTimePickerId = 0;
         [placeholder]="placeholder() ?? '--'"
         [disabled]="isDisabled()"
         [attr.readonly]="readonlyInput() ? 'true' : null"
-        [attr.aria-label]="'Hours'"
+        [attr.aria-label]="intl.hoursLabel"
         [attr.role]="'spinbutton'"
         [attr.aria-valuemin]="hourMin()"
         [attr.aria-valuemax]="hourMax()"
@@ -260,7 +289,7 @@ let nextTimePickerId = 0;
         [placeholder]="placeholder() ?? '--'"
         [disabled]="isDisabled()"
         [attr.readonly]="readonlyInput() ? 'true' : null"
-        [attr.aria-label]="'Minutes'"
+        [attr.aria-label]="intl.minutesLabel"
         [attr.role]="'spinbutton'"
         [attr.aria-valuemin]="0"
         [attr.aria-valuemax]="59"
@@ -289,7 +318,7 @@ let nextTimePickerId = 0;
           [placeholder]="placeholder() ?? '--'"
           [disabled]="isDisabled()"
           [attr.readonly]="readonlyInput() ? 'true' : null"
-          [attr.aria-label]="'Seconds'"
+          [attr.aria-label]="intl.secondsLabel"
           [attr.role]="'spinbutton'"
           [attr.aria-valuemin]="0"
           [attr.aria-valuemax]="59"
@@ -312,51 +341,57 @@ let nextTimePickerId = 0;
           type="button"
           tabindex="-1"
           [class]="stepperClasses()"
-          [attr.aria-label]="'Increase ' + (focusedField() ?? 'hours')"
+          [attr.aria-label]="intl.increaseLabel(focusedFieldLabel())"
           [disabled]="isDisabled() || readonlyInput()"
           (mousedown)="onStepperMouseDown($event)"
           (click)="onStepperClick(1)"
         >
-          <svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true" width="10" height="10">
-            <path fill-rule="evenodd" d="M14.77 12.79a.75.75 0 0 1-1.06-.02L10 8.94l-3.71 3.83a.75.75 0 1 1-1.08-1.04l4.25-4.39a.75.75 0 0 1 1.08 0l4.25 4.39a.75.75 0 0 1-.02 1.06Z" clip-rule="evenodd" />
-          </svg>
+          <ng-content select="[slot=stepper-up]">
+            <svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true" [class]="stepperIconClasses()">
+              <path fill-rule="evenodd" d="M14.77 12.79a.75.75 0 0 1-1.06-.02L10 8.94l-3.71 3.83a.75.75 0 1 1-1.08-1.04l4.25-4.39a.75.75 0 0 1 1.08 0l4.25 4.39a.75.75 0 0 1-.02 1.06Z" clip-rule="evenodd" />
+            </svg>
+          </ng-content>
         </button>
         <button
           type="button"
           tabindex="-1"
           [class]="stepperClasses()"
-          [attr.aria-label]="'Decrease ' + (focusedField() ?? 'hours')"
+          [attr.aria-label]="intl.decreaseLabel(focusedFieldLabel())"
           [disabled]="isDisabled() || readonlyInput()"
           (mousedown)="onStepperMouseDown($event)"
           (click)="onStepperClick(-1)"
         >
-          <svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true" width="10" height="10">
-            <path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 0 1 1.06.02L10 11.06l3.71-3.83a.75.75 0 1 1 1.08 1.04l-4.25 4.39a.75.75 0 0 1-1.08 0L5.21 8.27a.75.75 0 0 1 .02-1.06Z" clip-rule="evenodd" />
-          </svg>
+          <ng-content select="[slot=stepper-down]">
+            <svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true" [class]="stepperIconClasses()">
+              <path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 0 1 1.06.02L10 11.06l3.71-3.83a.75.75 0 1 1 1.08 1.04l-4.25 4.39a.75.75 0 0 1-1.08 0L5.21 8.27a.75.75 0 0 1 .02-1.06Z" clip-rule="evenodd" />
+            </svg>
+          </ng-content>
         </button>
       </div>
     }
 
     @if (format() === '12h') {
-      <div [class]="meridiemClasses()" role="radiogroup" aria-label="AM or PM">
+      <div [class]="meridiemClasses()" role="radiogroup" [attr.aria-label]="intl.meridiemGroupLabel">
         <button
           type="button"
+          role="radio"
           [class]="meridiemButtonClasses('AM')"
-          [attr.aria-pressed]="meridiem() === 'AM'"
-          [attr.aria-label]="'AM'"
+          [attr.aria-checked]="meridiem() === 'AM'"
+          [attr.aria-label]="intl.amLabel"
           [disabled]="isDisabled() || readonlyInput()"
           (click)="setMeridiem('AM')"
           (keydown)="onMeridiemKeydown($event, 'AM')"
-        >AM</button>
+        >{{ intl.amLabel }}</button>
         <button
           type="button"
+          role="radio"
           [class]="meridiemButtonClasses('PM')"
-          [attr.aria-pressed]="meridiem() === 'PM'"
-          [attr.aria-label]="'PM'"
+          [attr.aria-checked]="meridiem() === 'PM'"
+          [attr.aria-label]="intl.pmLabel"
           [disabled]="isDisabled() || readonlyInput()"
           (click)="setMeridiem('PM')"
           (keydown)="onMeridiemKeydown($event, 'PM')"
-        >PM</button>
+        >{{ intl.pmLabel }}</button>
       </div>
     }
 
@@ -396,13 +431,22 @@ export class TimePickerComponent<D = Date>
   readonly idInput = input<string | undefined>(undefined, { alias: 'id' });
 
   /** When true, the whole component is disabled and every field sets `aria-disabled="true"`. Defaults to `false`. */
-  readonly disabledInput = input<boolean>(false, { alias: 'disabled' });
+  readonly disabledInput = input<boolean, unknown>(false, {
+    alias: 'disabled',
+    transform: booleanAttribute,
+  });
 
   /** When true, exposes `aria-required="true"`. Validators.required on a bound NgControl is also honoured. Defaults to `false`. */
-  readonly requiredInput = input<boolean>(false, { alias: 'required' });
+  readonly requiredInput = input<boolean, unknown>(false, {
+    alias: 'required',
+    transform: booleanAttribute,
+  });
 
   /** When true, blocks typing, stepping, and the AM/PM toggle — the value is still read-only visible. Defaults to `false`. */
-  readonly readonlyInput = input<boolean>(false, { alias: 'readonly' });
+  readonly readonlyInput = input<boolean, unknown>(false, {
+    alias: 'readonly',
+    transform: booleanAttribute,
+  });
 
   /** Controls field height, font size, and stepper density. Defaults to `'md'`. */
   readonly size = input<TwSize>('md');
@@ -428,10 +472,10 @@ export class TimePickerComponent<D = Date>
   /** Amount to add/subtract when stepping seconds. Defaults to `1`. */
   readonly secondStep = input<number>(1);
 
-  /** Earliest accepted time-of-day. Values earlier than this set `errorState`. Defaults to `null`. */
+  /** Earliest accepted time-of-day. Values earlier than this set `errorState`. Defaults to `null`. Note: when `showSeconds` is `false`, the seconds component of any value still participates in the range comparison — supply `minTime` with zeroed seconds to match the 2-field display. */
   readonly minTime = input<D | null>(null);
 
-  /** Latest accepted time-of-day. Values later than this set `errorState`. Defaults to `null`. */
+  /** Latest accepted time-of-day. Values later than this set `errorState`. Defaults to `null`. Note: when `showSeconds` is `false`, the seconds component of any value still participates in the range comparison — supply `maxTime` with zeroed seconds to match the 2-field display. */
   readonly maxTime = input<D | null>(null);
 
   /** Date portion used when the user types a time while `value` is `null`. Defaults to today. */
@@ -441,9 +485,11 @@ export class TimePickerComponent<D = Date>
   readonly placeholder = input<string | undefined>(undefined);
 
   /** Whether to render the up/down stepper column. Defaults to `true`. */
+  // TRUE-default: pointer users expect inline up/down chevrons next to a numeric editor — without them the picker reads as a static display, and consumers must rebuild stepping for every instance.
   readonly showSteppers = input<boolean>(true);
 
   /** Whether to render the clear affordance when a value is set. Defaults to `true`. */
+  // TRUE-default: matches `<tw-date-picker>` and `<tw-input>` clear behaviour; without the inline clear, every form has to wire its own reset surface for an obvious affordance.
   readonly showClear = input<boolean>(true);
 
   /** Accessible label for the clear button. Defaults to `'Clear time'`. */
@@ -488,6 +534,9 @@ export class TimePickerComponent<D = Date>
   private readonly parentForm = inject(NgForm, { optional: true });
   private readonly parentFormGroup = inject(FormGroupDirective, { optional: true });
   private readonly defaultMatcher = inject(TW_ERROR_STATE_MATCHER);
+
+  /** @internal — exposed for the template; consumers configure via `provideTimePickerIntl()`. */
+  protected readonly intl = inject(TimePickerIntl, { optional: true }) ?? new TimePickerIntl();
 
   // ── View refs ──
 
@@ -562,8 +611,9 @@ export class TimePickerComponent<D = Date>
   /** @internal */
   readonly hourValueText = computed(() => {
     const n = this.hourValueNow();
-    if (n === null) return 'Empty';
-    const suffix = this.format() === '12h' ? ` ${this.meridiem()}` : '';
+    if (n === null) return this.intl.emptyValueText;
+    const meridiemLabel = this.meridiem() === 'AM' ? this.intl.amLabel : this.intl.pmLabel;
+    const suffix = this.format() === '12h' ? ` ${meridiemLabel}` : '';
     return `${padTwo(n)}${suffix}`;
   });
 
@@ -572,7 +622,7 @@ export class TimePickerComponent<D = Date>
   /** @internal */
   readonly minuteValueText = computed(() => {
     const n = this.minuteValueNow();
-    return n === null ? 'Empty' : padTwo(n);
+    return n === null ? this.intl.emptyValueText : padTwo(n);
   });
 
   /** @internal */
@@ -580,11 +630,19 @@ export class TimePickerComponent<D = Date>
   /** @internal */
   readonly secondValueText = computed(() => {
     const n = this.secondValueNow();
-    return n === null ? 'Empty' : padTwo(n);
+    return n === null ? this.intl.emptyValueText : padTwo(n);
   });
 
   /** @internal */
-  readonly groupAriaLabel = computed(() => this.ariaLabel() ?? 'Time');
+  readonly groupAriaLabel = computed(() => this.ariaLabel() ?? this.intl.groupLabel);
+
+  /** @internal Label of the currently focused field, used by stepper aria-labels. */
+  readonly focusedFieldLabel = computed(() => {
+    const f = this.focusedField();
+    if (f === 'minute') return this.intl.minutesLabel.toLowerCase();
+    if (f === 'second') return this.intl.secondsLabel.toLowerCase();
+    return this.intl.hoursLabel.toLowerCase();
+  });
 
   /** @internal */
   readonly describedBy = computed(() => {
@@ -620,6 +678,7 @@ export class TimePickerComponent<D = Date>
   /** @internal */ readonly separatorClasses = computed(() => this.variantResult().separator());
   /** @internal */ readonly stepperGroupClasses = computed(() => this.variantResult().stepperGroup());
   /** @internal */ readonly stepperClasses = computed(() => this.variantResult().stepper());
+  /** @internal */ readonly stepperIconClasses = computed(() => this.variantResult().stepperIcon());
   /** @internal */ readonly meridiemClasses = computed(() => this.variantResult().meridiem());
   /** @internal */ readonly clearButtonClasses = computed(() => this.variantResult().clearButton());
 
@@ -627,9 +686,7 @@ export class TimePickerComponent<D = Date>
   meridiemButtonClasses(which: TimePickerMeridiem): string {
     const base = this.variantResult().meridiemButton();
     const active = this.meridiem() === which;
-    return active
-      ? `${base} bg-primary-500 text-primary-50 hover:bg-primary-600`
-      : base;
+    return active ? `${base} ${MERIDIEM_ACTIVE_COLOR[this.color()]}` : base;
   }
 
   // ── FormFieldControl impl ──
@@ -1030,9 +1087,12 @@ export class TimePickerComponent<D = Date>
       this.onChange(next);
       this.onTouched();
       if (next === null) {
-        this.liveAnnouncer.announce('Time cleared', 'polite');
+        this.liveAnnouncer.announce(this.intl.clearedAnnouncement, 'polite');
       } else {
-        this.liveAnnouncer.announce(`${this.formatAnnouncement(next)} selected`, 'polite');
+        this.liveAnnouncer.announce(
+          this.intl.selectedAnnouncement(this.formatAnnouncement(next)),
+          'polite',
+        );
       }
     }
 
@@ -1045,7 +1105,8 @@ export class TimePickerComponent<D = Date>
     const s = this.adapter.getSeconds(v);
     const secPart = this.showSeconds() ? `:${padTwo(s)}` : '';
     if (this.format() === '12h') {
-      return `${padTwo(to12h(h24))}:${padTwo(m)}${secPart} ${h24 >= 12 ? 'PM' : 'AM'}`;
+      const meridiemLabel = h24 >= 12 ? this.intl.pmLabel : this.intl.amLabel;
+      return `${padTwo(to12h(h24))}:${padTwo(m)}${secPart} ${meridiemLabel}`;
     }
     return `${padTwo(h24)}:${padTwo(m)}${secPart}`;
   }

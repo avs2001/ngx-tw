@@ -27,7 +27,7 @@ import { CodeBlockComponent } from 'ngx-tw/code-block';
               <td class="px-4 py-2 font-mono text-xs">twPopover</td>
               <td class="px-4 py-2 font-mono text-xs text-fg-muted">TemplateRef&lt;PopoverTemplateContext&gt; | Type&lt;unknown&gt;</td>
               <td class="px-4 py-2 font-mono text-xs text-fg-muted">—</td>
-              <td class="px-4 py-2 text-fg-muted">Required — content to render; a TemplateRef receives context <code class="font-mono">{{ '{' }} $implicit, close {{ '}' }}</code>, a component class receives <code class="font-mono">POPOVER_DATA</code> / <code class="font-mono">POPOVER_REF</code> via injection.</td>
+              <td class="px-4 py-2 text-fg-muted">The content to render. An <code class="font-mono">ng-template</code> receives context with <code class="font-mono">$implicit</code> (data) and <code class="font-mono">close</code> (function). A component class receives data and a ref via injection tokens.</td>
             </tr>
             <tr>
               <td class="px-4 py-2 font-mono text-xs">
@@ -42,91 +42,91 @@ import { CodeBlockComponent } from 'ngx-tw/code-block';
               <td class="px-4 py-2 font-mono text-xs">twPopoverPosition</td>
               <td class="px-4 py-2 font-mono text-xs text-fg-muted">PopoverPosition</td>
               <td class="px-4 py-2 font-mono text-xs text-fg-muted">'bottom'</td>
-              <td class="px-4 py-2 text-fg-muted">Preferred placement relative to the trigger; CDK falls back to other positions when space is insufficient.</td>
+              <td class="px-4 py-2 text-fg-muted">Preferred placement relative to the trigger. CDK handles fallback when space is insufficient. Defaults to <code class="font-mono">'bottom'</code>.</td>
             </tr>
             <tr>
               <td class="px-4 py-2 font-mono text-xs">twPopoverTriggerOn</td>
               <td class="px-4 py-2 font-mono text-xs text-fg-muted">'click' | 'focus' | 'manual'</td>
               <td class="px-4 py-2 font-mono text-xs text-fg-muted">'click'</td>
-              <td class="px-4 py-2 text-fg-muted">User interaction that opens the popover; <code class="font-mono">'manual'</code> disables all trigger interactions.</td>
+              <td class="px-4 py-2 text-fg-muted">What user interaction opens the popover. <code class="font-mono">'manual'</code> means consumers call <code class="font-mono">open()</code>/<code class="font-mono">close()</code> programmatically. Defaults to <code class="font-mono">'click'</code>.</td>
             </tr>
             <tr>
               <td class="px-4 py-2 font-mono text-xs">twPopoverDisabled</td>
               <td class="px-4 py-2 font-mono text-xs text-fg-muted">boolean</td>
               <td class="px-4 py-2 font-mono text-xs text-fg-muted">false</td>
-              <td class="px-4 py-2 text-fg-muted">Suppresses every trigger interaction and force-closes an open popover.</td>
+              <td class="px-4 py-2 text-fg-muted">When true, all trigger interactions are suppressed. Defaults to <code class="font-mono">false</code>.</td>
             </tr>
             <tr>
               <td class="px-4 py-2 font-mono text-xs">twPopoverSize</td>
               <td class="px-4 py-2 font-mono text-xs text-fg-muted">TwSize</td>
               <td class="px-4 py-2 font-mono text-xs text-fg-muted">'md'</td>
-              <td class="px-4 py-2 text-fg-muted">Controls the panel's padding using the shared size scale.</td>
+              <td class="px-4 py-2 text-fg-muted">Controls panel padding using the standard spacing scale. Defaults to <code class="font-mono">'md'</code>.</td>
             </tr>
             <tr>
               <td class="px-4 py-2 font-mono text-xs">twPopoverColor</td>
               <td class="px-4 py-2 font-mono text-xs text-fg-muted">TwColor | undefined</td>
               <td class="px-4 py-2 font-mono text-xs text-fg-muted">undefined</td>
-              <td class="px-4 py-2 text-fg-muted">Adds a colored top border accent to the panel; omit for neutral information popovers.</td>
+              <td class="px-4 py-2 text-fg-muted">Optional semantic color. When set, adds a colored top border accent to the panel.</td>
             </tr>
             <tr>
               <td class="px-4 py-2 font-mono text-xs">twPopoverOffset</td>
               <td class="px-4 py-2 font-mono text-xs text-fg-muted">number</td>
               <td class="px-4 py-2 font-mono text-xs text-fg-muted">8</td>
-              <td class="px-4 py-2 text-fg-muted">Pixel distance between the trigger and the panel edge.</td>
+              <td class="px-4 py-2 text-fg-muted">Pixel distance between trigger and panel edge. Defaults to <code class="font-mono">8</code>.</td>
             </tr>
             <tr>
               <td class="px-4 py-2 font-mono text-xs">twPopoverArrow</td>
               <td class="px-4 py-2 font-mono text-xs text-fg-muted">boolean</td>
               <td class="px-4 py-2 font-mono text-xs text-fg-muted">true</td>
-              <td class="px-4 py-2 text-fg-muted">Renders a directional arrow pointing at the trigger.</td>
+              <td class="px-4 py-2 text-fg-muted">Whether to render a directional arrow pointing at the trigger. Defaults to <code class="font-mono">true</code>.</td>
             </tr>
             <tr>
               <td class="px-4 py-2 font-mono text-xs">twPopoverBackdrop</td>
               <td class="px-4 py-2 font-mono text-xs text-fg-muted">'transparent' | 'dimmed' | 'none'</td>
               <td class="px-4 py-2 font-mono text-xs text-fg-muted">'transparent'</td>
-              <td class="px-4 py-2 text-fg-muted">Backdrop rendered behind the panel; transparent catches outside clicks invisibly, dimmed adds a semi-transparent overlay, none disables the backdrop.</td>
+              <td class="px-4 py-2 text-fg-muted">Backdrop behavior. <code class="font-mono">'transparent'</code> catches outside clicks invisibly. <code class="font-mono">'dimmed'</code> adds a semi-transparent overlay. <code class="font-mono">'none'</code> disables the backdrop. Defaults to <code class="font-mono">'transparent'</code>.</td>
             </tr>
             <tr>
               <td class="px-4 py-2 font-mono text-xs">twPopoverCloseOnOutside</td>
               <td class="px-4 py-2 font-mono text-xs text-fg-muted">boolean</td>
               <td class="px-4 py-2 font-mono text-xs text-fg-muted">true</td>
-              <td class="px-4 py-2 text-fg-muted">Closes the popover on outside click when <code class="font-mono">backdrop="none"</code>; ignored for other backdrop modes.</td>
+              <td class="px-4 py-2 text-fg-muted">Whether clicking outside the panel closes the popover. Only relevant when backdrop is <code class="font-mono">'none'</code>. Defaults to <code class="font-mono">true</code>.</td>
             </tr>
             <tr>
               <td class="px-4 py-2 font-mono text-xs">twPopoverCloseOnEscape</td>
               <td class="px-4 py-2 font-mono text-xs text-fg-muted">boolean</td>
               <td class="px-4 py-2 font-mono text-xs text-fg-muted">true</td>
-              <td class="px-4 py-2 text-fg-muted">Closes the popover when the user presses Escape inside the panel or on the trigger.</td>
+              <td class="px-4 py-2 text-fg-muted">Whether pressing Escape closes the popover. Defaults to <code class="font-mono">true</code>.</td>
             </tr>
             <tr>
               <td class="px-4 py-2 font-mono text-xs">twPopoverScrollStrategy</td>
-              <td class="px-4 py-2 font-mono text-xs text-fg-muted">'reposition' | 'close' | 'block'</td>
+              <td class="px-4 py-2 font-mono text-xs text-fg-muted">'reposition' | 'close' | 'block' | 'noop'</td>
               <td class="px-4 py-2 font-mono text-xs text-fg-muted">'reposition'</td>
-              <td class="px-4 py-2 text-fg-muted">CDK scroll strategy used by the underlying overlay.</td>
+              <td class="px-4 py-2 text-fg-muted">CDK scroll strategy for the overlay. Defaults to <code class="font-mono">'reposition'</code>.</td>
             </tr>
             <tr>
               <td class="px-4 py-2 font-mono text-xs">twPopoverTrapFocus</td>
               <td class="px-4 py-2 font-mono text-xs text-fg-muted">boolean</td>
               <td class="px-4 py-2 font-mono text-xs text-fg-muted">true</td>
-              <td class="px-4 py-2 text-fg-muted">Traps keyboard focus inside the panel using CDK's FocusTrap.</td>
+              <td class="px-4 py-2 text-fg-muted">Whether to trap focus inside the popover panel using CDK FocusTrapFactory. Defaults to <code class="font-mono">true</code>.</td>
             </tr>
             <tr>
               <td class="px-4 py-2 font-mono text-xs">twPopoverData</td>
               <td class="px-4 py-2 font-mono text-xs text-fg-muted">unknown</td>
               <td class="px-4 py-2 font-mono text-xs text-fg-muted">undefined</td>
-              <td class="px-4 py-2 text-fg-muted">Arbitrary data passed to template context as <code class="font-mono">$implicit</code> or to component content via <code class="font-mono">POPOVER_DATA</code>.</td>
+              <td class="px-4 py-2 text-fg-muted">Arbitrary data passed to template context or component via <code class="font-mono">POPOVER_DATA</code> token.</td>
             </tr>
             <tr>
               <td class="px-4 py-2 font-mono text-xs">twPopoverPanelClass</td>
               <td class="px-4 py-2 font-mono text-xs text-fg-muted">string | string[]</td>
               <td class="px-4 py-2 font-mono text-xs text-fg-muted">''</td>
-              <td class="px-4 py-2 text-fg-muted">Extra CSS classes applied to the overlay panel for consumer customization.</td>
+              <td class="px-4 py-2 text-fg-muted">Additional CSS classes applied to the overlay panel for consumer customization.</td>
             </tr>
             <tr>
               <td class="px-4 py-2 font-mono text-xs">twPopoverAriaLabel</td>
               <td class="px-4 py-2 font-mono text-xs text-fg-muted">string | undefined</td>
               <td class="px-4 py-2 font-mono text-xs text-fg-muted">undefined</td>
-              <td class="px-4 py-2 text-fg-muted">Explicit <code class="font-mono">aria-label</code> for the <code class="font-mono">role="dialog"</code> panel.</td>
+              <td class="px-4 py-2 text-fg-muted">Explicit <code class="font-mono">aria-label</code> for the dialog panel.</td>
             </tr>
           </tbody>
         </table>
@@ -193,6 +193,19 @@ import { CodeBlockComponent } from 'ngx-tw/code-block';
       </div>
     </section>
 
+    <!-- PopoverTitleDirective -->
+    <section class="mb-10">
+      <h2 class="text-sm font-semibold mb-3">PopoverTitleDirective</h2>
+      <p class="text-xs text-fg-muted mb-4 font-mono">Selector: [twPopoverTitle], tw-popover-title</p>
+      <p class="text-sm text-fg-muted leading-relaxed max-w-2xl">
+        Marks the heading inside a popover; registers its id with the host overlay's
+        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">aria-labelledby</code>
+        queue so the dialog is announced by its title. Mirrors the dialog title pattern.
+        When you set <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">twPopoverAriaLabel</code>
+        the explicit label wins and labelledby is suppressed.
+      </p>
+    </section>
+
     <!-- PopoverCloseDirective -->
     <section class="mb-10">
       <h2 class="text-sm font-semibold mb-3">PopoverCloseDirective</h2>
@@ -249,7 +262,7 @@ export class PopoverApi {
   | 'left'   | 'left-start'   | 'left-end'
   | 'right'  | 'right-start'  | 'right-end';
 
-type PopoverScrollStrategy = 'reposition' | 'close' | 'block';
+type PopoverScrollStrategy = 'reposition' | 'close' | 'block' | 'noop';
 type PopoverBackdrop = 'transparent' | 'dimmed' | 'none';
 type PopoverTrigger = 'click' | 'focus' | 'manual';
 

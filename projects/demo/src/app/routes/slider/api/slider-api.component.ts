@@ -71,6 +71,12 @@ import { CodeBlockComponent } from 'ngx-tw/code-block';
               <td class="px-4 py-2 text-fg-muted">Sets aria-required on each thumb for assistive technology.</td>
             </tr>
             <tr>
+              <td class="px-4 py-2 font-mono text-xs">errorStateMatcher</td>
+              <td class="px-4 py-2 font-mono text-xs text-fg-muted">ErrorStateMatcher | undefined</td>
+              <td class="px-4 py-2 font-mono text-xs text-fg-muted">undefined</td>
+              <td class="px-4 py-2 text-fg-muted">Per-instance override of the default <code class="font-mono">TW_ERROR_STATE_MATCHER</code>; when omitted the global matcher is used. Drives <code class="font-mono">aria-invalid</code> on each thumb.</td>
+            </tr>
+            <tr>
               <td class="px-4 py-2 font-mono text-xs">range</td>
               <td class="px-4 py-2 font-mono text-xs text-fg-muted">boolean</td>
               <td class="px-4 py-2 font-mono text-xs text-fg-muted">false</td>

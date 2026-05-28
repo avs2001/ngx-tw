@@ -1,5 +1,6 @@
 import { ChangeDetectionStrategy, Component, signal } from '@angular/core';
 import { type ComponentFixture, TestBed } from '@angular/core/testing';
+import { LiveAnnouncer } from '@angular/cdk/a11y';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   FlipCardComponent,
@@ -50,16 +51,55 @@ class TwoSidedHost {
 })
 class FrontOnlyHost {}
 
+@Component({
+  imports: [FlipCardComponent],
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  template: `
+    <tw-flip-card>
+      <div slot="front">Front</div>
+      @if (showBack()) {
+        <div slot="back">Back</div>
+      }
+    </tw-flip-card>
+  `,
+})
+class DynamicBackHost {
+  readonly showBack = signal(false);
+}
+
+@Component({
+  imports: [FlipCardComponent],
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  template: `
+    <tw-flip-card trigger="manual" [ariaLabel]="ariaLabel()">
+      <div slot="front">Front</div>
+      <div slot="back">Back</div>
+    </tw-flip-card>
+  `,
+})
+class ManualLabelHost {
+  readonly ariaLabel = signal<string | undefined>(undefined);
+}
+
 // ── Helpers ──
 
-async function waitForHasBack(fixture: ComponentFixture<unknown>): Promise<void> {
+async function flushBack(fixture: ComponentFixture<unknown>): Promise<void> {
   fixture.detectChanges();
   await fixture.whenStable();
+  fixture.detectChanges();
+  // MutationObserver fires asynchronously; let microtasks drain.
+  await Promise.resolve();
   fixture.detectChanges();
 }
 
 function host(fixture: ComponentFixture<unknown>): HTMLElement {
   return fixture.nativeElement.querySelector('tw-flip-card') as HTMLElement;
+}
+
+function faces(fixture: ComponentFixture<unknown>): NodeListOf<HTMLElement> {
+  return fixture.nativeElement.querySelectorAll(
+    'tw-flip-card > div > div',
+  ) as NodeListOf<HTMLElement>;
 }
 
 // ── Tests ──
@@ -70,7 +110,7 @@ describe('FlipCardComponent', () => {
       await TestBed.configureTestingModule({ imports: [TwoSidedHost] })
         .compileComponents();
       const fixture = TestBed.createComponent(TwoSidedHost);
-      await waitForHasBack(fixture);
+      await flushBack(fixture);
       expect(host(fixture)).toBeTruthy();
     });
 
@@ -78,7 +118,7 @@ describe('FlipCardComponent', () => {
       await TestBed.configureTestingModule({ imports: [FrontOnlyHost] })
         .compileComponents();
       const fixture = TestBed.createComponent(FrontOnlyHost);
-      await waitForHasBack(fixture);
+      await flushBack(fixture);
       const el = host(fixture);
       expect(el).toBeTruthy();
       expect(el.textContent).toContain('Front only');
@@ -88,10 +128,8 @@ describe('FlipCardComponent', () => {
       await TestBed.configureTestingModule({ imports: [TwoSidedHost] })
         .compileComponents();
       const fixture = TestBed.createComponent(TwoSidedHost);
-      await waitForHasBack(fixture);
-      const face = fixture.nativeElement.querySelector(
-        'tw-flip-card > div > div',
-      ) as HTMLElement;
+      await flushBack(fixture);
+      const face = faces(fixture)[0];
       expect(face.className).toContain('bg-surface');
       expect(face.className).toContain('border');
     });
@@ -101,10 +139,8 @@ describe('FlipCardComponent', () => {
         .compileComponents();
       const fixture = TestBed.createComponent(TwoSidedHost);
       fixture.componentInstance.variant.set('elevated');
-      await waitForHasBack(fixture);
-      const face = fixture.nativeElement.querySelector(
-        'tw-flip-card > div > div',
-      ) as HTMLElement;
+      await flushBack(fixture);
+      const face = faces(fixture)[0];
       expect(face.className).toContain('bg-surface-raised');
       expect(face.className).toContain('shadow');
     });
@@ -114,10 +150,8 @@ describe('FlipCardComponent', () => {
         .compileComponents();
       const fixture = TestBed.createComponent(TwoSidedHost);
       fixture.componentInstance.variant.set('ghost');
-      await waitForHasBack(fixture);
-      const face = fixture.nativeElement.querySelector(
-        'tw-flip-card > div > div',
-      ) as HTMLElement;
+      await flushBack(fixture);
+      const face = faces(fixture)[0];
       expect(face.className).toContain('bg-transparent');
     });
 
@@ -125,7 +159,7 @@ describe('FlipCardComponent', () => {
       await TestBed.configureTestingModule({ imports: [TwoSidedHost] })
         .compileComponents();
       const fixture = TestBed.createComponent(TwoSidedHost);
-      await waitForHasBack(fixture);
+      await flushBack(fixture);
       const inner = fixture.nativeElement.querySelector(
         'tw-flip-card > div',
       ) as HTMLElement;
@@ -135,6 +169,18 @@ describe('FlipCardComponent', () => {
       fixture.detectChanges();
       expect(inner.className).toContain('tw-flip-axis-x');
     });
+
+    it('uses the standard duration-300 token (no arbitrary durations)', async () => {
+      await TestBed.configureTestingModule({ imports: [TwoSidedHost] })
+        .compileComponents();
+      const fixture = TestBed.createComponent(TwoSidedHost);
+      await flushBack(fixture);
+      const inner = fixture.nativeElement.querySelector(
+        'tw-flip-card > div',
+      ) as HTMLElement;
+      expect(inner.className).toContain('duration-300');
+      expect(inner.className).not.toMatch(/duration-\[/);
+    });
   });
 
   describe('inputs', () => {
@@ -143,7 +189,7 @@ describe('FlipCardComponent', () => {
       await TestBed.configureTestingModule({ imports: [TwoSidedHost] })
         .compileComponents();
       fixture = TestBed.createComponent(TwoSidedHost);
-      await waitForHasBack(fixture);
+      await flushBack(fixture);
     });
 
     it('applies tw-flip-rotated on inner when flipped is true', () => {
@@ -172,7 +218,7 @@ describe('FlipCardComponent', () => {
       await TestBed.configureTestingModule({ imports: [TwoSidedHost] })
         .compileComponents();
       fixture = TestBed.createComponent(TwoSidedHost);
-      await waitForHasBack(fixture);
+      await flushBack(fixture);
     });
 
     it('click toggles flipped when trigger is click', () => {
@@ -266,7 +312,7 @@ describe('FlipCardComponent', () => {
       await TestBed.configureTestingModule({ imports: [TwoSidedHost] })
         .compileComponents();
       const fixture = TestBed.createComponent(TwoSidedHost);
-      await waitForHasBack(fixture);
+      await flushBack(fixture);
       fixture.componentInstance.trigger.set('click');
       fixture.detectChanges();
       host(fixture).click();
@@ -277,11 +323,28 @@ describe('FlipCardComponent', () => {
       expect(fixture.componentInstance.flippedChange).toHaveBeenCalledWith(false);
     });
 
+    it('emits flippedChange exactly once per toggle (no double emission)', async () => {
+      await TestBed.configureTestingModule({ imports: [TwoSidedHost] })
+        .compileComponents();
+      const fixture = TestBed.createComponent(TwoSidedHost);
+      await flushBack(fixture);
+      fixture.componentInstance.trigger.set('click');
+      fixture.detectChanges();
+      const spy = fixture.componentInstance.flippedChange;
+      spy.mockClear();
+      host(fixture).click();
+      fixture.detectChanges();
+      expect(spy).toHaveBeenCalledTimes(1);
+      host(fixture).click();
+      fixture.detectChanges();
+      expect(spy).toHaveBeenCalledTimes(2);
+    });
+
     it('does not emit when click happens on front-only card', async () => {
       await TestBed.configureTestingModule({ imports: [FrontOnlyHost] })
         .compileComponents();
       const fixture = TestBed.createComponent(FrontOnlyHost);
-      await waitForHasBack(fixture);
+      await flushBack(fixture);
       host(fixture).click();
       fixture.detectChanges();
       // No observable effect on the host — implicitly, no errors and state
@@ -295,7 +358,7 @@ describe('FlipCardComponent', () => {
       await TestBed.configureTestingModule({ imports: [TwoSidedHost] })
         .compileComponents();
       const fixture = TestBed.createComponent(TwoSidedHost);
-      await waitForHasBack(fixture);
+      await flushBack(fixture);
       const el = host(fixture);
       expect(el.getAttribute('role')).toBe('button');
       expect(el.getAttribute('tabindex')).toBe('0');
@@ -311,7 +374,7 @@ describe('FlipCardComponent', () => {
         .compileComponents();
       const fixture = TestBed.createComponent(TwoSidedHost);
       fixture.componentInstance.trigger.set('manual');
-      await waitForHasBack(fixture);
+      await flushBack(fixture);
       const el = host(fixture);
       expect(el.getAttribute('role')).toBe('region');
       expect(el.getAttribute('tabindex')).toBeNull();
@@ -319,12 +382,63 @@ describe('FlipCardComponent', () => {
       expect(el.getAttribute('aria-pressed')).toBeNull();
     });
 
+    it('manual mode applies a default aria-label so role=region has an accessible name', async () => {
+      await TestBed.configureTestingModule({ imports: [ManualLabelHost] })
+        .compileComponents();
+      const fixture = TestBed.createComponent(ManualLabelHost);
+      await flushBack(fixture);
+      expect(host(fixture).getAttribute('aria-label')).toBe('Flip card');
+    });
+
+    it('ariaLabel input overrides the default region label', async () => {
+      await TestBed.configureTestingModule({ imports: [ManualLabelHost] })
+        .compileComponents();
+      const fixture = TestBed.createComponent(ManualLabelHost);
+      fixture.componentInstance.ariaLabel.set('Invoice summary');
+      await flushBack(fixture);
+      expect(host(fixture).getAttribute('aria-label')).toBe('Invoice summary');
+    });
+
+    it('interactive modes leave aria-label unset by default (accessible name comes from visible face)', async () => {
+      await TestBed.configureTestingModule({ imports: [TwoSidedHost] })
+        .compileComponents();
+      const fixture = TestBed.createComponent(TwoSidedHost);
+      await flushBack(fixture);
+      expect(host(fixture).getAttribute('aria-label')).toBeNull();
+    });
+
     it('front-only card has no tabindex (non-interactive)', async () => {
       await TestBed.configureTestingModule({ imports: [FrontOnlyHost] })
         .compileComponents();
       const fixture = TestBed.createComponent(FrontOnlyHost);
-      await waitForHasBack(fixture);
+      await flushBack(fixture);
       expect(host(fixture).getAttribute('tabindex')).toBeNull();
+    });
+
+    it('hides the back face from assistive tech when not flipped', async () => {
+      await TestBed.configureTestingModule({ imports: [TwoSidedHost] })
+        .compileComponents();
+      const fixture = TestBed.createComponent(TwoSidedHost);
+      await flushBack(fixture);
+      const [front, back] = Array.from(faces(fixture));
+      expect(front.getAttribute('aria-hidden')).toBeNull();
+      expect(back.getAttribute('aria-hidden')).toBe('true');
+      expect(front.getAttribute('inert')).toBeNull();
+      expect(back.getAttribute('inert')).toBe('');
+    });
+
+    it('flips aria-hidden and inert to the front face when flipped', async () => {
+      await TestBed.configureTestingModule({ imports: [TwoSidedHost] })
+        .compileComponents();
+      const fixture = TestBed.createComponent(TwoSidedHost);
+      await flushBack(fixture);
+      fixture.componentInstance.flipped.set(true);
+      fixture.detectChanges();
+      const [front, back] = Array.from(faces(fixture));
+      expect(front.getAttribute('aria-hidden')).toBe('true');
+      expect(back.getAttribute('aria-hidden')).toBeNull();
+      expect(front.getAttribute('inert')).toBe('');
+      expect(back.getAttribute('inert')).toBeNull();
     });
   });
 
@@ -333,25 +447,117 @@ describe('FlipCardComponent', () => {
       await TestBed.configureTestingModule({ imports: [TwoSidedHost] })
         .compileComponents();
       const fixture = TestBed.createComponent(TwoSidedHost);
-      await waitForHasBack(fixture);
-      const faces = fixture.nativeElement.querySelectorAll(
-        'tw-flip-card > div > div',
-      ) as NodeListOf<HTMLElement>;
-      expect(faces.length).toBe(2);
-      expect(faces[0].textContent).toContain('Front');
-      expect(faces[1].textContent).toContain('Back');
+      await flushBack(fixture);
+      const list = faces(fixture);
+      expect(list.length).toBe(2);
+      expect(list[0].textContent).toContain('Front');
+      expect(list[1].textContent).toContain('Back');
     });
 
     it('hides the back wrapper visually when no back content is projected', async () => {
       await TestBed.configureTestingModule({ imports: [FrontOnlyHost] })
         .compileComponents();
       const fixture = TestBed.createComponent(FrontOnlyHost);
-      await waitForHasBack(fixture);
-      const faces = fixture.nativeElement.querySelectorAll(
-        'tw-flip-card > div > div',
-      ) as NodeListOf<HTMLElement>;
-      const back = faces[1];
+      await flushBack(fixture);
+      const back = faces(fixture)[1];
       expect(back.className).toContain('hidden');
+    });
+
+    it('reacts when back content is dynamically projected later', async () => {
+      await TestBed.configureTestingModule({ imports: [DynamicBackHost] })
+        .compileComponents();
+      const fixture = TestBed.createComponent(DynamicBackHost);
+      await flushBack(fixture);
+      const el = host(fixture);
+      expect(el.getAttribute('tabindex')).toBeNull();
+
+      fixture.componentInstance.showBack.set(true);
+      await flushBack(fixture);
+      expect(el.getAttribute('tabindex')).toBe('0');
+      expect(el.getAttribute('role')).toBe('button');
+    });
+  });
+
+  describe('LiveAnnouncer (all interactive modes)', () => {
+    it('announces face transitions in manual mode and skips first render', async () => {
+      const announce = vi.fn();
+      const liveAnnouncerStub = { announce, clear: vi.fn() };
+      await TestBed.configureTestingModule({
+        imports: [TwoSidedHost],
+        providers: [{ provide: LiveAnnouncer, useValue: liveAnnouncerStub }],
+      }).compileComponents();
+      const fixture = TestBed.createComponent(TwoSidedHost);
+      fixture.componentInstance.trigger.set('manual');
+      await flushBack(fixture);
+      expect(announce).not.toHaveBeenCalled();
+
+      fixture.componentInstance.flipped.set(true);
+      fixture.detectChanges();
+      expect(announce).toHaveBeenLastCalledWith('Back face visible');
+
+      fixture.componentInstance.flipped.set(false);
+      fixture.detectChanges();
+      expect(announce).toHaveBeenLastCalledWith('Front face visible');
+      expect(announce).toHaveBeenCalledTimes(2);
+    });
+
+    it('announces face transitions in click mode', async () => {
+      const announce = vi.fn();
+      const liveAnnouncerStub = { announce, clear: vi.fn() };
+      await TestBed.configureTestingModule({
+        imports: [TwoSidedHost],
+        providers: [{ provide: LiveAnnouncer, useValue: liveAnnouncerStub }],
+      }).compileComponents();
+      const fixture = TestBed.createComponent(TwoSidedHost);
+      fixture.componentInstance.trigger.set('click');
+      await flushBack(fixture);
+      expect(announce).not.toHaveBeenCalled();
+
+      host(fixture).click();
+      fixture.detectChanges();
+      expect(announce).toHaveBeenLastCalledWith('Back face visible');
+
+      host(fixture).click();
+      fixture.detectChanges();
+      expect(announce).toHaveBeenLastCalledWith('Front face visible');
+      expect(announce).toHaveBeenCalledTimes(2);
+    });
+
+    it('announces face transitions in hover mode', async () => {
+      const announce = vi.fn();
+      const liveAnnouncerStub = { announce, clear: vi.fn() };
+      await TestBed.configureTestingModule({
+        imports: [TwoSidedHost],
+        providers: [{ provide: LiveAnnouncer, useValue: liveAnnouncerStub }],
+      }).compileComponents();
+      const fixture = TestBed.createComponent(TwoSidedHost);
+      fixture.componentInstance.trigger.set('hover');
+      await flushBack(fixture);
+      expect(announce).not.toHaveBeenCalled();
+
+      host(fixture).dispatchEvent(new MouseEvent('mouseenter'));
+      fixture.detectChanges();
+      expect(announce).toHaveBeenLastCalledWith('Back face visible');
+
+      host(fixture).dispatchEvent(new MouseEvent('mouseleave'));
+      fixture.detectChanges();
+      expect(announce).toHaveBeenLastCalledWith('Front face visible');
+      expect(announce).toHaveBeenCalledTimes(2);
+    });
+
+    it('does not announce when the card has no back face', async () => {
+      const announce = vi.fn();
+      const liveAnnouncerStub = { announce, clear: vi.fn() };
+      await TestBed.configureTestingModule({
+        imports: [FrontOnlyHost],
+        providers: [{ provide: LiveAnnouncer, useValue: liveAnnouncerStub }],
+      }).compileComponents();
+      const fixture = TestBed.createComponent(FrontOnlyHost);
+      await flushBack(fixture);
+      // No back face — clicks don't flip and no announcement happens.
+      host(fixture).click();
+      fixture.detectChanges();
+      expect(announce).not.toHaveBeenCalled();
     });
   });
 });

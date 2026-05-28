@@ -4,6 +4,7 @@ import {
   input,
   output,
   signal,
+  untracked,
 } from '@angular/core';
 
 /**
@@ -14,9 +15,11 @@ import {
   selector: 'tw-split-pane',
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: {
+    '[attr.id]': '_paneId()',
     '[style.flex-basis]': '_basis()',
     '[style.min-width]': '"0"',
     '[style.min-height]': '"0"',
+    '[style.order]': '_index() * 2',
     '[attr.data-split-pane-collapsed]': '_collapsed()',
     class: 'overflow-auto',
   },
@@ -76,4 +79,37 @@ export class SplitPaneComponent {
    * Not part of the public API.
    */
   readonly _collapsed = signal(false);
+
+  /**
+   * @internal
+   * Size recorded immediately before this pane collapses, restored on expand.
+   * `null` whenever the pane is not collapsed or no pre-collapse size was captured.
+   */
+  readonly _preCollapseSize = signal<number | null>(null);
+
+  /**
+   * @internal
+   * Pane's positional index. Drives flex `order` so gutters can interleave via
+   * order = index * 2 + 1.
+   */
+  readonly _index = signal(0);
+
+  /**
+   * @internal
+   * DOM id used by the parent gutter's `aria-controls` reference.
+   * Assigned by the parent SplitComponent on content reconciliation.
+   */
+  readonly _paneId = signal<string | null>(null);
+
+  /**
+   * @internal — idempotent id assignment. Re-using the existing id when the
+   * pane is re-reconciled keeps aria-controls stable across CD. The current
+   * id is read via `untracked` so callers running inside an `effect()` don't
+   * subscribe to `_paneId` and re-fire when it transitions from `null`.
+   */
+  _ensureId(componentId: string, index: number): void {
+    if (untracked(() => this._paneId()) === null) {
+      this._paneId.set(`${componentId}-pane-${index}`);
+    }
+  }
 }

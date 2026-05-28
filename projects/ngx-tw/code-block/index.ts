@@ -1,1 +1,2 @@
-export { CodeBlockComponent, type CodeBlockVariant } from './code-block';
+export { CodeBlockComponent, CodeBlockHeaderDirective } from './code-block';
+export type { CodeBlockVariant, CodeBlockLabels } from './code-block';

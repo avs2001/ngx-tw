@@ -117,6 +117,15 @@ describe('ButtonDirective', () => {
       expect(el.tagName).toBe('A');
       expect(el.className).toContain('inline-flex');
     });
+
+    it('should render canonical focus-visible outline classes', () => {
+      const fixture = TestBed.createComponent(BasicButtonHost);
+      fixture.detectChanges();
+      const cls = getButton(fixture).className;
+      expect(cls).toContain('focus-visible:outline-2');
+      expect(cls).toContain('focus-visible:outline-offset-2');
+      expect(cls).toContain('focus-visible:outline-primary-500');
+    });
   });
 
   describe('variants', () => {
@@ -225,6 +234,13 @@ describe('ButtonDirective', () => {
       expect(event.preventDefault).toHaveBeenCalled();
       expect(event.stopImmediatePropagation).toHaveBeenCalled();
     });
+
+    it('should not set tabindex on a disabled native button', () => {
+      const fixture = TestBed.createComponent(DisabledButtonHost);
+      fixture.componentRef.setInput('isDisabled', true);
+      fixture.detectChanges();
+      expect(getButton(fixture).hasAttribute('tabindex')).toBe(false);
+    });
   });
 
   describe('loading state', () => {
@@ -247,6 +263,19 @@ describe('ButtonDirective', () => {
       fixture.componentRef.setInput('isLoading', true);
       fixture.detectChanges();
       expect(getButton(fixture).className).toContain('pointer-events-none');
+    });
+
+    it('should block click events when loading', () => {
+      const fixture = TestBed.createComponent(LoadingButtonHost);
+      fixture.componentRef.setInput('isLoading', true);
+      fixture.detectChanges();
+      const el = getButton(fixture);
+      const event = new MouseEvent('click', { bubbles: true, cancelable: true });
+      vi.spyOn(event, 'preventDefault');
+      vi.spyOn(event, 'stopImmediatePropagation');
+      el.dispatchEvent(event);
+      expect(event.preventDefault).toHaveBeenCalled();
+      expect(event.stopImmediatePropagation).toHaveBeenCalled();
     });
   });
 
@@ -301,6 +330,22 @@ describe('ButtonIconDirective', () => {
     fixture.detectChanges();
     const icon = fixture.nativeElement.querySelector('[data-testid="icon"]');
     expect(icon.getAttribute('class')).toContain('size-4');
+  });
+
+  it('should apply size-5 for lg button', () => {
+    const fixture = TestBed.createComponent(IconButtonHost);
+    fixture.componentRef.setInput('size', 'lg');
+    fixture.detectChanges();
+    const icon = fixture.nativeElement.querySelector('[data-testid="icon"]');
+    expect(icon.getAttribute('class')).toContain('size-5');
+  });
+
+  it('should apply size-5 for xl button', () => {
+    const fixture = TestBed.createComponent(IconButtonHost);
+    fixture.componentRef.setInput('size', 'xl');
+    fixture.detectChanges();
+    const icon = fixture.nativeElement.querySelector('[data-testid="icon"]');
+    expect(icon.getAttribute('class')).toContain('size-5');
   });
 
   it('should apply order-last for trailing icon', () => {

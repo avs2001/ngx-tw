@@ -3,8 +3,8 @@ import { PLATFORM_ID } from '@angular/core';
 import { DOCUMENT } from '@angular/common';
 import { ThemeService } from './theme.service';
 import { provideTheme, THEME_CONFIG } from './theme.config';
-import { DEFAULT_THEME_CONFIG } from './theme.types';
-import type { Theme } from './theme.types';
+import { DEFAULT_TW_THEME_CONFIG } from './theme.types';
+import type { TwTheme } from './theme.types';
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
 
 describe('ThemeService', () => {
@@ -12,7 +12,7 @@ describe('ThemeService', () => {
   let doc: Document;
 
   function setup(options?: {
-    defaultTheme?: Theme;
+    defaultTheme?: TwTheme;
     storedTheme?: string | null;
     prefersDark?: boolean;
     platform?: string;
@@ -27,7 +27,7 @@ describe('ThemeService', () => {
     // Mock localStorage
     const storage = new Map<string, string>();
     if (storedTheme !== null) {
-      storage.set(DEFAULT_THEME_CONFIG.storageKey, storedTheme);
+      storage.set(DEFAULT_TW_THEME_CONFIG.storageKey, storedTheme);
     }
     vi.stubGlobal('localStorage', {
       getItem: vi.fn((key: string) => storage.get(key) ?? null),
@@ -82,7 +82,7 @@ describe('ThemeService', () => {
     service.setTheme('dark');
     TestBed.flushEffects();
     expect(service.theme()).toBe('dark');
-    expect(storage.get(DEFAULT_THEME_CONFIG.storageKey)).toBe('dark');
+    expect(storage.get(DEFAULT_TW_THEME_CONFIG.storageKey)).toBe('dark');
   });
 
   it('should never return system from resolvedTheme', () => {
@@ -195,14 +195,16 @@ describe('ThemeService', () => {
     setup();
     // Inject the canonical on-role token mappings from _semantic.css onto the
     // documentElement so we can verify them via getComputedStyle. Real apps
-    // pick these up by importing `ngx-tw/theme`. Keep this style block in sync
-    // with the `--color-on-*` block in _semantic.css.
+    // pick these up by importing `ngx-tw/theme`. Style-injection scope: this
+    // checks token *names* are stable and non-empty, not that the actual
+    // values resolve from the CSS asset — that belongs to an e2e contrast pass.
+    // Keep this style block in sync with the `--color-on-*` block in _semantic.css.
     const style = doc.createElement('style');
     style.textContent = `:root {
-      --color-on-info: white;
+      --color-on-info: #082f49;
       --color-on-success: #052e16;
       --color-on-warning: #451a03;
-      --color-on-error: white;
+      --color-on-error: #450a0a;
       --color-on-primary: white;
       --color-on-secondary: white;
       --color-on-accent: white;

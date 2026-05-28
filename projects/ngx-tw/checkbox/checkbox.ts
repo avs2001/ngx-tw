@@ -14,11 +14,27 @@ import {
   type OnInit,
   output,
   signal,
+  type Signal,
 } from '@angular/core';
-import { type ControlValueAccessor, NG_VALUE_ACCESSOR } from '@angular/forms';
+import {
+  type ControlValueAccessor,
+  FormGroupDirective,
+  NgControl,
+  NgForm,
+  Validators,
+} from '@angular/forms';
 import { FocusMonitor } from '@angular/cdk/a11y';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { isObservable, merge } from 'rxjs';
 import { tv } from 'tailwind-variants';
-import type { TwColor, TwSize } from 'ngx-tw/core';
+import {
+  type ErrorStateMatcher,
+  TW_ERROR_STATE_MATCHER,
+  type TwColor,
+  type TwFormSubmitted,
+  type TwSize,
+} from 'ngx-tw/core';
+import { FormFieldControl, TW_FORM_FIELD_CONTROL } from 'ngx-tw/form-field';
 
 /** Visual style of the checkbox when checked or indeterminate. */
 export type CheckboxVariant = 'solid' | 'outline';
@@ -31,9 +47,12 @@ export type CheckboxLabelPosition = 'before' | 'after';
 const checkboxVariants = tv(
   {
     slots: {
-      root: 'inline-flex items-start gap-3 cursor-pointer select-none rounded-md focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500',
-      boxWrap: 'relative inline-flex items-center justify-center shrink-0 mt-0.5',
-      box: 'inline-flex items-center justify-center rounded-[3px] border transition-colors duration-200 motion-reduce:transition-none',
+      // `items-start` aligns the boxWrap with the top of the label container; combined with
+      // a `min-h-N` matching the label's first-line line-height on boxWrap, the box stays
+      // centered on the first line of the label whether it spans one line or many.
+      root: 'relative inline-flex items-start gap-3 cursor-pointer select-none rounded-md focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500',
+      boxWrap: 'relative inline-flex items-center justify-center shrink-0',
+      box: 'inline-flex items-center justify-center rounded-md border transition-colors duration-normal motion-reduce:transition-none',
       icon: 'absolute inset-0 flex items-center justify-center pointer-events-none empty:hidden',
       labelWrap: 'flex flex-col min-w-0 empty:hidden',
       label: 'font-medium text-fg empty:hidden',
@@ -42,34 +61,45 @@ const checkboxVariants = tv(
     variants: {
       size: {
         xs: {
+          // `size-3.5` half-step: aligns with text-xs/leading-4. Codified per CLAUDE.md.
           box: 'size-3.5',
           icon: '[&_svg]:size-3',
-          label: 'text-xs',
-          description: 'text-2xs',
+          boxWrap: 'min-h-4',
+          label: 'text-xs leading-4',
+          description: 'text-2xs leading-4',
         },
         sm: {
           box: 'size-4',
           icon: '[&_svg]:size-3',
-          label: 'text-sm',
-          description: 'text-xs',
+          boxWrap: 'min-h-5',
+          label: 'text-sm leading-5',
+          description: 'text-xs leading-4',
         },
         md: {
           box: 'size-5',
+          // md icon uses `size-3.5` (14px) — proportional inset (70%) of the
+          // size-5 (20px) box; the half-step is the only size that fills the
+          // checkmark without crowding the box edges.
           icon: '[&_svg]:size-3.5',
-          label: 'text-sm',
-          description: 'text-xs',
+          boxWrap: 'min-h-5',
+          label: 'text-sm leading-5',
+          description: 'text-xs leading-4',
         },
         lg: {
           box: 'size-6',
           icon: '[&_svg]:size-4',
-          label: 'text-base',
-          description: 'text-sm',
+          boxWrap: 'min-h-6',
+          label: 'text-base leading-6',
+          description: 'text-sm leading-5',
         },
         xl: {
           box: 'size-7',
           icon: '[&_svg]:size-5',
-          label: 'text-base',
-          description: 'text-sm',
+          // xl box (28px) > default text-base line-height (24px); bump leading to leading-7
+          // so the first line height matches the box and they align cleanly.
+          boxWrap: 'min-h-7',
+          label: 'text-base leading-7',
+          description: 'text-sm leading-5',
         },
       },
       labelPosition: {
@@ -109,14 +139,14 @@ const SOLID_BOX: Record<TwColor, string> = {
 };
 
 const SOLID_ICON: Record<TwColor, string> = {
-  primary: 'text-white',
-  secondary: 'text-white',
-  accent: 'text-white',
-  neutral: 'text-surface',
-  info: 'text-white',
-  success: 'text-white',
-  warning: 'text-black',
-  error: 'text-white',
+  primary: 'text-on-primary',
+  secondary: 'text-on-secondary',
+  accent: 'text-on-accent',
+  neutral: 'text-on-neutral',
+  info: 'text-on-info',
+  success: 'text-on-success',
+  warning: 'text-on-warning',
+  error: 'text-on-error',
 };
 
 const OUTLINE_BOX: Record<TwColor, string> = {
@@ -150,12 +180,21 @@ let nextId = 0;
   changeDetection: ChangeDetectionStrategy.OnPush,
   providers: [
     {
-      provide: NG_VALUE_ACCESSOR,
+      provide: TW_FORM_FIELD_CONTROL,
       useExisting: forwardRef(() => CheckboxComponent),
-      multi: true,
     },
   ],
   template: `
+    <input
+      type="checkbox"
+      class="sr-only"
+      tabindex="-1"
+      aria-hidden="true"
+      [name]="name() || null"
+      [checked]="internalChecked()"
+      [disabled]="isDisabled()"
+    />
+
     <span [class]="boxWrapClasses()">
       <span [class]="boxClasses()">
         <span [class]="iconClasses()">
@@ -191,29 +230,32 @@ let nextId = 0;
     </span>
 
     <span [class]="labelWrapClasses()">
-      <span [id]="labelId" [class]="labelClasses()">
-        <ng-content />
-        @if (label()) {
-          {{ label() }}
-        }
+      <span [id]="labelElementId()" [class]="labelClasses()">
+        <ng-content>
+          @if (label()) {
+            {{ label() }}
+          }
+        </ng-content>
       </span>
-      <span [id]="descriptionId" [class]="descriptionClasses()">
-        <ng-content select="[slot='description']" />
-        @if (description()) {
-          {{ description() }}
-        }
+      <span [id]="descriptionElementId()" [class]="descriptionClasses()">
+        <ng-content select="[slot='description']">
+          @if (description()) {
+            {{ description() }}
+          }
+        </ng-content>
       </span>
     </span>
   `,
   host: {
     'role': 'checkbox',
-    '[id]': 'hostId',
+    '[id]': 'id()',
     '[class]': 'rootClasses()',
     '[attr.data-checked]': 'internalChecked()',
     '[attr.data-indeterminate]': 'internalIndeterminate()',
     '[attr.aria-checked]': 'ariaCheckedValue()',
     '[attr.aria-disabled]': 'isDisabled() || null',
     '[attr.aria-required]': 'required() || null',
+    '[attr.aria-invalid]': 'errorState() || null',
     '[attr.aria-label]': 'ariaLabel() || null',
     '[attr.aria-labelledby]': 'effectiveAriaLabelledby() || null',
     '[attr.aria-describedby]': 'effectiveAriaDescribedby() || null',
@@ -224,7 +266,10 @@ let nextId = 0;
     '(blur)': 'onBlur()',
   },
 })
-export class CheckboxComponent implements ControlValueAccessor, OnInit {
+export class CheckboxComponent
+  extends FormFieldControl<boolean>
+  implements ControlValueAccessor, OnInit
+{
   /** Sets the semantic color for the checked and indeterminate box fill/border. Defaults to `'primary'`. */
   readonly color = input<TwColor>('primary');
 
@@ -238,19 +283,22 @@ export class CheckboxComponent implements ControlValueAccessor, OnInit {
   readonly disabled = input(false);
 
   /** When true, sets `aria-required="true"` so assistive tech announces the control as required. Defaults to `false`. */
-  readonly required = input(false);
+  readonly requiredInput = input(false, { alias: 'required' });
 
-  /** Optional inline label rendered next to the checkbox. Use default content projection for rich label content instead. */
+  /** Optional inline label rendered next to the checkbox. Use default content projection for rich label content instead. Projection takes precedence. */
   readonly label = input<string | undefined>(undefined);
 
-  /** Optional secondary description rendered under the label. Use `[slot="description"]` content projection for rich content instead. */
+  /** Optional secondary description rendered under the label. Use `[slot="description"]` content projection for rich content instead. Projection takes precedence. */
   readonly description = input<string | undefined>(undefined);
 
   /** Position of the label/description relative to the checkbox. Defaults to `'after'`. */
   readonly labelPosition = input<CheckboxLabelPosition>('after');
 
-  /** Optional name attribute, mirrored to the host for form association. */
+  /** Optional name attribute, applied to the hidden native `<input type="checkbox">` so native form submission includes the control. */
   readonly name = input<string | undefined>(undefined);
+
+  /** Id on the host element. Auto-generated as `tw-checkbox-N` when not provided. Used by the form-field's `<label for>` attribute. */
+  readonly idInput = input<string | undefined>(undefined, { alias: 'id' });
 
   /** Accessible name when no visible label is provided. Mirrored to `aria-label`. */
   readonly ariaLabel = input<string | undefined>(undefined, { alias: 'aria-label' });
@@ -258,8 +306,11 @@ export class CheckboxComponent implements ControlValueAccessor, OnInit {
   /** ID of an external element that labels the checkbox. Mirrored to `aria-labelledby`. */
   readonly ariaLabelledby = input<string | undefined>(undefined, { alias: 'aria-labelledby' });
 
-  /** ID of an external element that describes the checkbox. Mirrored to `aria-describedby`. */
+  /** ID of an external element that describes the checkbox. Mirrored to `aria-describedby`. Form-field merges its hint/error ids alongside. */
   readonly ariaDescribedby = input<string | undefined>(undefined, { alias: 'aria-describedby' });
+
+  /** Per-instance override of the {@link ErrorStateMatcher}. When omitted, the directive uses the `TW_ERROR_STATE_MATCHER` token's value. */
+  readonly errorStateMatcher = input<ErrorStateMatcher | undefined>(undefined);
 
   /** Two-way bound checked state. Updates when the user toggles via click or Space. */
   readonly checked = model(false);
@@ -273,17 +324,43 @@ export class CheckboxComponent implements ControlValueAccessor, OnInit {
   private readonly focusMonitor = inject(FocusMonitor);
   private readonly elementRef = inject(ElementRef<HTMLElement>);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly ngControl = inject(NgControl, { optional: true, self: true });
+  private readonly parentForm = inject(NgForm, { optional: true });
+  private readonly parentFormGroup = inject(FormGroupDirective, { optional: true });
+  private readonly defaultMatcher = inject(TW_ERROR_STATE_MATCHER);
 
   private onChange: (value: boolean) => void = () => {};
   private onTouched: () => void = () => {};
   private readonly cvaDisabled = signal(false);
 
+  private readonly _focused = signal(false);
+  private readonly _ngControlRev = signal(0);
+  private readonly _formSubmitRev = signal(0);
+  private readonly describedByIdsSignal = signal<readonly string[]>([]);
+
   private readonly uid = nextId++;
+  /** @internal Fallback id used when the consumer does not set `[id]`. */
   readonly hostId = `tw-checkbox-${this.uid}`;
-  readonly labelId = `${this.hostId}-label`;
-  readonly descriptionId = `${this.hostId}-description`;
+
+  /** @internal Resolved id on the host element. */
+  readonly id: Signal<string> = computed(() => this.idInput() ?? this.hostId);
+
+  /** @internal Id of the internal label `<span>`, derived from the resolved host id. */
+  readonly labelElementId = computed(() => `${this.id()}-label`);
+
+  /** @internal Id of the internal description `<span>`, derived from the resolved host id. */
+  readonly descriptionElementId = computed(() => `${this.id()}-description`);
 
   constructor() {
+    super();
+    // Material-style CVA wiring: declare ourselves as the value accessor on any
+    // host-level `NgControl` (FormControlDirective, NgModel, etc.). This avoids
+    // the circular-DI that a static `NG_VALUE_ACCESSOR` provider would create
+    // because `NgControl` is injected with `self: true` on the same element.
+    if (this.ngControl) {
+      this.ngControl.valueAccessor = this;
+    }
+
     afterNextRender(() => {
       if (isDevMode() && !this.hasAccessibleNameHint()) {
         console.warn(
@@ -293,9 +370,25 @@ export class CheckboxComponent implements ControlValueAccessor, OnInit {
     });
   }
 
+  /** @internal */
   readonly isDisabled = computed(() => this.disabled() || this.cvaDisabled());
 
+  /**
+   * @internal Visible-state mirror of the `checked` model. `linkedSignal` keeps it
+   * synced with parent updates (including `writeValue` from reactive forms), while
+   * also accepting explicit `set()` calls from `toggle()` / `writeValue()` so the
+   * DOM reflects the new state synchronously — before `checkedChange` propagates
+   * through the host binding round-trip. Reading this signal in host bindings
+   * (`aria-checked`, `data-checked`, box classes) decouples render from the
+   * model's notification cadence.
+   */
   readonly internalChecked = linkedSignal(() => this.checked());
+
+  /**
+   * @internal Visible-state mirror of the `indeterminate` model. Same rationale as
+   * `internalChecked` — `toggle()` and `writeValue()` clear it synchronously so
+   * `aria-checked="mixed"` flips off in the same microtask as `aria-checked="true"`.
+   */
   readonly internalIndeterminate = linkedSignal(() => this.indeterminate());
 
   readonly ariaCheckedValue = computed(() => {
@@ -307,16 +400,62 @@ export class CheckboxComponent implements ControlValueAccessor, OnInit {
     const external = this.ariaLabelledby();
     if (external) return external;
     if (this.ariaLabel()) return undefined;
-    return this.labelId;
+    return this.labelElementId();
   });
 
   readonly effectiveAriaDescribedby = computed(() => {
+    const merged: string[] = [];
+    const extra = this.describedByIdsSignal();
+    for (const id of extra) merged.push(id);
     const external = this.ariaDescribedby();
-    if (external) return external;
-    return this.descriptionId;
+    if (external) {
+      for (const id of external.split(/\s+/).filter(Boolean)) merged.push(id);
+    } else if (extra.length === 0) {
+      // Only fall back to the internal description id when no external sources are wired.
+      merged.push(this.descriptionElementId());
+    }
+    return merged.length ? merged.join(' ') : undefined;
   });
 
   private readonly isActive = computed(() => this.internalChecked() || this.internalIndeterminate());
+
+  // ── FormFieldControl signals ──
+
+  /** @internal */
+  readonly value: Signal<boolean | null> = computed(() => this.internalChecked());
+
+  /** @internal */
+  readonly focused: Signal<boolean> = this._focused.asReadonly();
+
+  /** @internal Checkboxes are never empty in the form-field sense — they always have a boolean value. */
+  readonly empty: Signal<boolean> = computed(() => false);
+
+  /** @internal */
+  readonly required: Signal<boolean> = computed(() => {
+    this._ngControlRev();
+    if (this.requiredInput()) return true;
+    const ctrl = this.ngControl?.control;
+    if (!ctrl) return false;
+    return ctrl.hasValidator(Validators.required) || ctrl.hasValidator(Validators.requiredTrue);
+  });
+
+  /** @internal */
+  readonly errorState: Signal<boolean> = computed(() => {
+    this._ngControlRev();
+    this._formSubmitRev();
+    this._focused();
+    const matcher = this.errorStateMatcher() ?? this.defaultMatcher;
+    const form: TwFormSubmitted | null =
+      (this.parentFormGroup as TwFormSubmitted | null) ??
+      (this.parentForm as TwFormSubmitted | null);
+    return matcher.isErrorState(this.ngControl?.control ?? null, form);
+  });
+
+  /** @internal */
+  readonly controlType = 'checkbox';
+
+  /** @internal */
+  readonly userAriaDescribedBy: Signal<string | undefined> = computed(() => this.ariaDescribedby());
 
   private readonly variantResult = computed(() =>
     checkboxVariants({
@@ -336,14 +475,22 @@ export class CheckboxComponent implements ControlValueAccessor, OnInit {
 
   readonly boxClasses = computed(() => {
     const base = this.variantResult().box();
-    if (!this.isActive()) return base;
-    const lookup = this.variant() === 'solid' ? SOLID_BOX : OUTLINE_BOX;
-    return `${base} ${lookup[this.color()]}`;
+    const active = this.isActive();
+    const error = this.errorState();
+    const variant = this.variant();
+    const effectiveColor: TwColor = error ? 'error' : this.color();
+    if (!active) {
+      if (error) return `${base} border-error-500`;
+      return base;
+    }
+    const lookup = variant === 'solid' ? SOLID_BOX : OUTLINE_BOX;
+    return `${base} ${lookup[effectiveColor]}`;
   });
 
   readonly iconColorClasses = computed(() => {
     const lookup = this.variant() === 'solid' ? SOLID_ICON : OUTLINE_ICON;
-    return `inline-flex items-center justify-center ${lookup[this.color()]}`;
+    const effectiveColor: TwColor = this.errorState() ? 'error' : this.color();
+    return `inline-flex items-center justify-center ${lookup[effectiveColor]}`;
   });
 
   // ── Interactions ──────────────────────────────────────────
@@ -373,9 +520,10 @@ export class CheckboxComponent implements ControlValueAccessor, OnInit {
     }
   }
 
-  /** @internal Called on host blur to notify forms the control has been touched. */
+  /** @internal Called on host blur to notify forms the control has been touched and recompute errorState. */
   onBlur(): void {
     this.onTouched();
+    this._ngControlRev.update((n) => n + 1);
   }
 
   // ── ControlValueAccessor ──────────────────────────────────
@@ -400,13 +548,65 @@ export class CheckboxComponent implements ControlValueAccessor, OnInit {
     this.cvaDisabled.set(isDisabled);
   }
 
+  // ── FormFieldControl methods ──
+
+  /** @internal Called by the form-field once it has computed the merged describedby ids. */
+  setDescribedByIds(ids: string[]): void {
+    this.describedByIdsSignal.set([...ids]);
+  }
+
+  /** @internal Called when the form-field container is clicked — focus the host without toggling. */
+  onContainerClick(event: MouseEvent): void {
+    if (this.isDisabled()) return;
+    if (event.defaultPrevented) return;
+    const host = this.elementRef.nativeElement;
+    if (event.target === host || host.contains(event.target as Node)) return;
+    host.focus();
+  }
+
   // ── Lifecycle ─────────────────────────────────────────────
 
   ngOnInit(): void {
-    this.focusMonitor.monitor(this.elementRef);
+    const monitor$ = this.focusMonitor.monitor(this.elementRef);
+    if (isObservable(monitor$)) {
+      monitor$
+        .pipe(takeUntilDestroyed(this.destroyRef))
+        .subscribe((origin) => {
+          const wasFocused = this._focused();
+          this._focused.set(!!origin);
+          if (wasFocused && !origin) {
+            // Blur often flips `touched` on the bound `NgControl`; notify forms
+            // and bump the revision so `errorState` recomputes.
+            this.onTouched();
+            this._ngControlRev.update((n) => n + 1);
+          }
+        });
+    }
     this.destroyRef.onDestroy(() => {
       this.focusMonitor.stopMonitoring(this.elementRef);
     });
+
+    // NgControl's `control` is set by the parent FormControl* directive before
+    // children's `ngOnInit`. Subscribe here so errorState reacts to status/value
+    // changes on the bound control.
+    const ctrl = this.ngControl?.control;
+    if (ctrl) {
+      const streams = [ctrl.statusChanges, ctrl.valueChanges].filter(
+        (s): s is NonNullable<typeof s> => !!s,
+      );
+      if (streams.length) {
+        merge(...streams)
+          .pipe(takeUntilDestroyed(this.destroyRef))
+          .subscribe(() => this._ngControlRev.update((n) => n + 1));
+      }
+    }
+
+    const submit = this.parentFormGroup?.ngSubmit ?? this.parentForm?.ngSubmit;
+    if (submit) {
+      submit
+        .pipe(takeUntilDestroyed(this.destroyRef))
+        .subscribe(() => this._formSubmitRev.update((n) => n + 1));
+    }
   }
 
   private hasAccessibleNameHint(): boolean {

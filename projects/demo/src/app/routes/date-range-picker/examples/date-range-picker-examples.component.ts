@@ -318,6 +318,47 @@ function fmtRangeWithTime(v: TwDateRange<Date> | null): string {
       <tw-code-block [code]="withTimeSnippet" language="html" />
     </section>
 
+    <!-- Length constraints -->
+    <section class="mb-10">
+      <h2 class="text-sm font-semibold mb-3">Length &amp; click behavior</h2>
+      <p class="text-sm text-fg-muted leading-relaxed max-w-2xl mb-4">
+        Forward the calendar's range-mode knobs straight from the picker. Use
+        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">minRangeLength</code>
+        and
+        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">maxRangeLength</code>
+        to enforce stays inside <em>[N, M]</em> days — commits outside the window surface the
+        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">calendarRangeTooShort</code>
+        /
+        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">calendarRangeTooLong</code>
+        validator codes on the bound control.
+        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">rangeClickBehavior</code>
+        controls what happens when the user clicks again after completing a range —
+        <em>restart</em> (default) drops a fresh draft, <em>nearest-edge</em> nudges the
+        closer endpoint, and <em>require-clear</em> blocks the click until the range is cleared.
+      </p>
+      <div class="rounded-lg border border-border p-6 bg-surface-raised mb-4">
+        <div class="max-w-md">
+          <tw-form-field>
+            <label twLabel>Stay (3 – 14 nights)</label>
+            <tw-date-range-picker
+              [formControl]="stayCtrl"
+              [minDate]="today"
+              [minRangeLength]="3"
+              [maxRangeLength]="14"
+              rangeClickBehavior="nearest-edge"
+              aria-label="Stay window"
+            />
+            <span twHint>Pick a window between 3 and 14 nights.</span>
+            <span twError>{{ stayErrorMessage() }}</span>
+          </tw-form-field>
+          <pre data-testid="output-length-constraints" class="text-xs font-mono mt-4 text-fg-muted">{{
+            { value: stayLabel(), errors: stayCtrl.errors } | json
+          }}</pre>
+        </div>
+      </div>
+      <tw-code-block [code]="lengthConstraintsSnippet" language="html" />
+    </section>
+
     <!-- Action bar -->
     <section class="mb-10">
       <h2 class="text-sm font-semibold mb-3">Action bar</h2>
@@ -717,6 +758,27 @@ export class DateRangePickerExamples {
     fmtRangeWithTime(this.bookingWindow()),
   );
 
+  // ── Length-constraint demo ──
+  protected readonly stayCtrl = new FormControl<TwDateRange<Date> | null>(null);
+  protected readonly stayLabel = computed(() => {
+    // Track the picker's value via valueChanges → snapshot signal below.
+    return fmtRange(this.staySnapshot());
+  });
+  protected readonly staySnapshot = signal<TwDateRange<Date> | null>(null);
+  protected stayErrorMessage(): string {
+    const errs = this.stayCtrl.errors;
+    if (!errs) return '';
+    if ('calendarRangeTooShort' in errs) {
+      const { length, min } = errs['calendarRangeTooShort'] as { length: number; min: number };
+      return `Range is ${length} day(s); minimum is ${min}.`;
+    }
+    if ('calendarRangeTooLong' in errs) {
+      const { length, max } = errs['calendarRangeTooLong'] as { length: number; max: number };
+      return `Range is ${length} day(s); maximum is ${max}.`;
+    }
+    return 'Range is invalid.';
+  }
+
   // ── Action-bar demo ──
   protected readonly eventRange = signal<TwDateRange<Date> | null>(null);
   protected readonly eventRangeLabel = computed(() => fmtRange(this.eventRange()));
@@ -744,6 +806,7 @@ export class DateRangePickerExamples {
             },
       );
     });
+    this.stayCtrl.valueChanges.subscribe((v) => this.staySnapshot.set(v ?? null));
   }
 
   protected markReportTouched(): void {
@@ -877,6 +940,20 @@ export class DateRangePickerExamples {
   size="lg"
   aria-label="Event range"
 />`;
+
+  protected readonly lengthConstraintsSnippet = `<tw-form-field>
+  <label twLabel>Stay (3 – 14 nights)</label>
+  <tw-date-range-picker
+    [formControl]="stayCtrl"
+    [minDate]="today"
+    [minRangeLength]="3"
+    [maxRangeLength]="14"
+    rangeClickBehavior="nearest-edge"
+    aria-label="Stay window"
+  />
+  <span twHint>Pick a window between 3 and 14 nights.</span>
+  <span twError>Range is too short or too long.</span>
+</tw-form-field>`;
 
   protected readonly tdTsSnippet = `protected holiday: TwDateRange<Date> | null = null;`;
 

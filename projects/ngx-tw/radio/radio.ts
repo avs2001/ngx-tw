@@ -15,11 +15,25 @@ import {
   type OnInit,
   output,
   signal,
+  type Signal,
 } from '@angular/core';
-import { type ControlValueAccessor, NG_VALUE_ACCESSOR } from '@angular/forms';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import {
+  type ControlValueAccessor,
+  FormGroupDirective,
+  NgControl,
+  NgForm,
+} from '@angular/forms';
 import { FocusMonitor } from '@angular/cdk/a11y';
+import { merge } from 'rxjs';
 import { tv } from 'tailwind-variants';
-import type { TwColor, TwSize } from 'ngx-tw/core';
+import {
+  type ErrorStateMatcher,
+  TW_ERROR_STATE_MATCHER,
+  type TwColor,
+  type TwFormSubmitted,
+  type TwSize,
+} from 'ngx-tw/core';
 
 /** Visual style of the selected radio indicator. */
 export type RadioVariant = 'solid' | 'outline';
@@ -35,10 +49,13 @@ export type RadioLabelPosition = 'before' | 'after';
 const radioVariants = tv(
   {
     slots: {
+      // `items-start` aligns circleWrap with the top of the label container; combined with
+      // a `min-h-N` matching the label's first-line line-height on circleWrap, the circle
+      // stays centered on the first line whether the label spans one line or many.
       root: 'inline-flex items-start gap-3 cursor-pointer select-none rounded-md focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500',
-      circleWrap: 'relative inline-flex items-center justify-center shrink-0 mt-0.5',
+      circleWrap: 'relative inline-flex items-center justify-center shrink-0',
       circle:
-        'inline-flex items-center justify-center rounded-full border bg-surface transition-colors duration-200 motion-reduce:transition-none',
+        'inline-flex items-center justify-center rounded-full border bg-surface transition-colors duration-normal motion-reduce:transition-none',
       dotWrap:
         'inline-flex items-center justify-center pointer-events-none',
       dot: 'inline-block rounded-full',
@@ -49,34 +66,44 @@ const radioVariants = tv(
     variants: {
       size: {
         xs: {
+          // `size-3.5` half-step: aligns with text-xs/leading-4 row metric.
           circle: 'size-3.5',
           dot: 'size-1.5',
-          label: 'text-xs',
-          description: 'text-2xs',
+          circleWrap: 'min-h-4',
+          label: 'text-xs leading-4',
+          description: 'text-2xs leading-4',
         },
         sm: {
           circle: 'size-4',
           dot: 'size-2',
-          label: 'text-sm',
-          description: 'text-xs',
+          circleWrap: 'min-h-5',
+          label: 'text-sm leading-5',
+          description: 'text-xs leading-4',
         },
         md: {
           circle: 'size-5',
           dot: 'size-2.5',
-          label: 'text-sm',
-          description: 'text-xs',
+          circleWrap: 'min-h-5',
+          label: 'text-sm leading-5',
+          description: 'text-xs leading-4',
         },
         lg: {
           circle: 'size-6',
           dot: 'size-3',
-          label: 'text-base',
-          description: 'text-sm',
+          circleWrap: 'min-h-6',
+          label: 'text-base leading-6',
+          description: 'text-sm leading-5',
         },
         xl: {
           circle: 'size-7',
+          // xl density: dot uses `size-3.5` (14px) as the proportionally-sized
+          // selection mark inside the size-7 (28px) circle — exactly 50%.
           dot: 'size-3.5',
-          label: 'text-base',
-          description: 'text-sm',
+          // xl circle (28px) > default text-base line-height (24px); bump leading to
+          // leading-7 so the first line height matches the circle and they align.
+          circleWrap: 'min-h-7',
+          label: 'text-base leading-7',
+          description: 'text-sm leading-5',
         },
       },
       labelPosition: {
@@ -91,12 +118,21 @@ const radioVariants = tv(
         true: { root: 'opacity-50 pointer-events-none cursor-not-allowed' },
         false: { root: '' },
       },
+      errorState: {
+        true: { circle: '', label: 'text-error-700', description: 'text-error-600' },
+        false: { circle: '', label: '', description: '' },
+      },
     },
+    compoundVariants: [
+      // Error state on an unchecked radio repaints the ring with the error color.
+      { errorState: true, checked: false, class: { circle: 'border-error-500 hover:border-error-600' } },
+    ],
     defaultVariants: {
       size: 'md',
       labelPosition: 'after',
       checked: false,
       disabled: false,
+      errorState: false,
     },
   },
   { twMerge: true },
@@ -190,6 +226,7 @@ let nextRadioId = 0;
     '[attr.data-checked]': 'isSelected()',
     '[attr.aria-checked]': 'isSelected() ? "true" : "false"',
     '[attr.aria-disabled]': 'isDisabled() || null',
+    '[attr.aria-invalid]': 'errorState() || null',
     '[attr.aria-label]': 'ariaLabel() || null',
     '[attr.aria-labelledby]': 'effectiveAriaLabelledby() || null',
     '[attr.aria-describedby]': 'effectiveAriaDescribedby() || null',
@@ -200,7 +237,7 @@ let nextRadioId = 0;
     '(blur)': 'onBlur()',
   },
 })
-export class RadioComponent implements OnInit {
+export class RadioComponent implements ControlValueAccessor, OnInit {
   /** The value this radio contributes when selected inside a `tw-radio-group`. Required when nested in a group; ignored when used standalone. */
   readonly value = input<unknown>(undefined);
 
@@ -240,6 +277,9 @@ export class RadioComponent implements OnInit {
   /** Two-way bound checked state. Authoritative only in standalone mode; when inside a `tw-radio-group`, this model reflects group selection but does NOT drive it. */
   readonly checked = model(false);
 
+  /** Per-instance override of the {@link ErrorStateMatcher}. When omitted, the radio uses the `TW_ERROR_STATE_MATCHER` token's value. */
+  readonly errorStateMatcher = input<ErrorStateMatcher | undefined>(undefined);
+
   /** Fires after the checked state changes from a user interaction on this radio. In grouped mode only fires when this radio becomes the selected one. Does not fire when selection is updated programmatically. */
   readonly change = output<boolean>();
 
@@ -247,6 +287,16 @@ export class RadioComponent implements OnInit {
   readonly elementRef = inject(ElementRef<HTMLElement>);
   private readonly destroyRef = inject(DestroyRef);
   private readonly parent = inject(forwardRef(() => RadioGroupComponent), { optional: true });
+  private readonly ngControl = inject(NgControl, { optional: true, self: true });
+  private readonly parentForm = inject(NgForm, { optional: true });
+  private readonly parentFormGroup = inject(FormGroupDirective, { optional: true });
+  private readonly defaultMatcher = inject(TW_ERROR_STATE_MATCHER);
+
+  private onChange: (value: boolean) => void = () => {};
+  private onTouched: () => void = () => {};
+  private readonly cvaDisabled = signal(false);
+  private readonly _ngControlRev = signal(0);
+  private readonly _formSubmitRev = signal(0);
 
   private readonly uid = nextRadioId++;
   readonly hostId = `tw-radio-${this.uid}`;
@@ -279,10 +329,22 @@ export class RadioComponent implements OnInit {
     return this.internalChecked();
   });
 
-  /** Whether this radio is disabled (own disabled OR parent's disabled). */
+  /** Whether this radio is disabled (own disabled OR parent's disabled OR CVA-disabled). */
   readonly isDisabled = computed(
-    () => this.disabled() || (this.parent?.isDisabled() ?? false),
+    () => this.disabled() || this.cvaDisabled() || (this.parent?.isDisabled() ?? false),
   );
+
+  /** Whether the radio is in an error state per the configured `ErrorStateMatcher`. Inherits from the parent group when wrapped; falls back to its own NgControl when standalone. */
+  readonly errorState: Signal<boolean> = computed(() => {
+    this._ngControlRev();
+    this._formSubmitRev();
+    if (this.parent) return this.parent.errorState();
+    const matcher = this.errorStateMatcher() ?? this.defaultMatcher;
+    const form: TwFormSubmitted | null =
+      (this.parentFormGroup as TwFormSubmitted | null) ??
+      (this.parentForm as TwFormSubmitted | null);
+    return matcher.isErrorState(this.ngControl?.control ?? null, form);
+  });
 
   /** Roving tabindex: in a group, only the selected (or first enabled if none selected) radio is focusable. Standalone radios are always focusable unless disabled. */
   readonly isFocusable = computed(() => {
@@ -318,6 +380,7 @@ export class RadioComponent implements OnInit {
       labelPosition: this.labelPosition(),
       checked: this.isSelected(),
       disabled: this.isDisabled(),
+      errorState: this.errorState(),
     }),
   );
 
@@ -342,6 +405,16 @@ export class RadioComponent implements OnInit {
   });
 
   constructor() {
+    // Material-style CVA wiring for standalone `<tw-radio>` use. Mirrors
+    // `checkbox.ts` / `slider.ts` — avoids the circular-DI a static
+    // `NG_VALUE_ACCESSOR` provider would create when `NgControl` is injected
+    // with `self: true` on the same element. When this radio is wrapped in a
+    // `tw-radio-group`, the group owns CVA and child `NgControl` bindings are
+    // not expected (no `[(ngModel)]` on children).
+    if (this.ngControl) {
+      this.ngControl.valueAccessor = this;
+    }
+
     afterNextRender(() => {
       if (isDevMode() && !this.hasAccessibleNameHint()) {
         console.warn(
@@ -366,6 +439,8 @@ export class RadioComponent implements OnInit {
     if (!this.internalChecked()) {
       this.internalChecked.set(true);
       this.checked.set(true);
+      this.onChange(true);
+      this.onTouched();
       this.change.emit(true);
     }
   }
@@ -379,9 +454,15 @@ export class RadioComponent implements OnInit {
     }
   }
 
-  /** @internal Host blur. In a group, notifies the group's CVA touched callback. */
+  /** @internal Host blur. In a group, notifies the group's CVA touched callback; standalone, notifies the local CVA. */
   onBlur(): void {
-    this.parent?.notifyTouched();
+    if (this.parent) {
+      this.parent.notifyTouched();
+    } else {
+      this.onTouched();
+      // Blur flips `touched` on `NgControl`; bump the revision so `errorState` recomputes.
+      this._ngControlRev.update((n) => n + 1);
+    }
   }
 
   /** Focuses the host element. Required for keyboard navigation from the group. */
@@ -389,11 +470,52 @@ export class RadioComponent implements OnInit {
     this.elementRef.nativeElement.focus();
   }
 
+  // ── ControlValueAccessor (standalone use) ──
+
+  writeValue(value: boolean | null | undefined): void {
+    const next = !!value;
+    this.internalChecked.set(next);
+    this.checked.set(next);
+  }
+
+  registerOnChange(fn: (value: boolean) => void): void {
+    this.onChange = fn;
+  }
+
+  registerOnTouched(fn: () => void): void {
+    this.onTouched = fn;
+  }
+
+  setDisabledState(isDisabled: boolean): void {
+    this.cvaDisabled.set(isDisabled);
+  }
+
   ngOnInit(): void {
     this.focusMonitor.monitor(this.elementRef);
     this.destroyRef.onDestroy(() => {
       this.focusMonitor.stopMonitoring(this.elementRef);
     });
+
+    // Track validator status/value changes on a bound NgControl so `errorState`
+    // re-evaluates when status flips. Mirrors `input.ts`'s pattern.
+    const ctrl = this.ngControl?.control;
+    if (ctrl) {
+      const streams = [ctrl.statusChanges, ctrl.valueChanges].filter(
+        (s): s is NonNullable<typeof s> => !!s,
+      );
+      if (streams.length) {
+        merge(...streams)
+          .pipe(takeUntilDestroyed(this.destroyRef))
+          .subscribe(() => this._ngControlRev.update((n) => n + 1));
+      }
+    }
+
+    const submit = this.parentFormGroup?.ngSubmit ?? this.parentForm?.ngSubmit;
+    if (submit) {
+      submit
+        .pipe(takeUntilDestroyed(this.destroyRef))
+        .subscribe(() => this._formSubmitRev.update((n) => n + 1));
+    }
   }
 
   private hasAccessibleNameHint(): boolean {
@@ -434,13 +556,6 @@ let nextGroupId = 0;
   selector: 'tw-radio-group',
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `<ng-content />`,
-  providers: [
-    {
-      provide: NG_VALUE_ACCESSOR,
-      useExisting: forwardRef(() => RadioGroupComponent),
-      multi: true,
-    },
-  ],
   host: {
     'role': 'radiogroup',
     '[id]': 'hostId',
@@ -448,12 +563,20 @@ let nextGroupId = 0;
     '[attr.aria-orientation]': 'orientation()',
     '[attr.aria-disabled]': 'isDisabled() || null',
     '[attr.aria-required]': 'required() || null',
+    '[attr.aria-invalid]': 'errorState() || null',
     '[attr.aria-label]': 'ariaLabel() || null',
     '[attr.aria-labelledby]': 'ariaLabelledby() || null',
     '[attr.aria-describedby]': 'ariaDescribedby() || null',
     '(keydown)': 'onKeydown($event)',
   },
 })
+/**
+ * A keyboard-navigable group of `<tw-radio>` children with shared color, size,
+ * variant, and an owned selected `value`. The `T` type parameter is the type
+ * of each radio's `value` input — typically a string-literal union, but any
+ * value that compares with `===` works. Inferred when consumers bind via
+ * `[(value)]`; explicit on `[formControl]` of `FormControl<T | null>`.
+ */
 export class RadioGroupComponent<T = unknown> implements ControlValueAccessor, OnInit {
   /** Sets the semantic color applied to the selected radio's dot/ring. Propagated to children unless a child overrides it. Defaults to `'primary'`. */
   readonly color = input<TwColor>('primary');
@@ -488,6 +611,9 @@ export class RadioGroupComponent<T = unknown> implements ControlValueAccessor, O
   /** Two-way bound selected value. Updates when the user picks a radio; fires `valueChange`. `null` means no selection. */
   readonly value = model<T | null>(null);
 
+  /** Per-instance override of the {@link ErrorStateMatcher}. When omitted, the group uses the `TW_ERROR_STATE_MATCHER` token's value. */
+  readonly errorStateMatcher = input<ErrorStateMatcher | undefined>(undefined);
+
   /** Fires after the selected value changes from a user interaction. Does not fire when the value is updated programmatically via `writeValue`. */
   readonly change = output<T | null>();
 
@@ -497,15 +623,32 @@ export class RadioGroupComponent<T = unknown> implements ControlValueAccessor, O
   private readonly focusMonitor = inject(FocusMonitor);
   private readonly elementRef = inject(ElementRef<HTMLElement>);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly ngControl = inject(NgControl, { optional: true, self: true });
+  private readonly parentForm = inject(NgForm, { optional: true });
+  private readonly parentFormGroup = inject(FormGroupDirective, { optional: true });
+  private readonly defaultMatcher = inject(TW_ERROR_STATE_MATCHER);
 
   readonly hostId = `tw-radio-group-${nextGroupId++}`;
 
   private onChange: (value: T | null) => void = () => {};
   private onTouched: () => void = () => {};
   private readonly cvaDisabled = signal(false);
+  private readonly _ngControlRev = signal(0);
+  private readonly _formSubmitRev = signal(0);
 
   /** Effective disabled state — input OR CVA disabled. */
   readonly isDisabled = computed(() => this.disabled() || this.cvaDisabled());
+
+  /** Group-level error state per the configured `ErrorStateMatcher`. Reads the bound `NgControl.invalid` through the matcher; child radios inherit from this when wrapped in the group. */
+  readonly errorState: Signal<boolean> = computed(() => {
+    this._ngControlRev();
+    this._formSubmitRev();
+    const matcher = this.errorStateMatcher() ?? this.defaultMatcher;
+    const form: TwFormSubmitted | null =
+      (this.parentFormGroup as TwFormSubmitted | null) ??
+      (this.parentForm as TwFormSubmitted | null);
+    return matcher.isErrorState(this.ngControl?.control ?? null, form);
+  });
 
   readonly activeValue = linkedSignal(() => this.value());
 
@@ -519,6 +662,14 @@ export class RadioGroupComponent<T = unknown> implements ControlValueAccessor, O
   readonly rootClasses = computed(() => this.variantResult());
 
   constructor() {
+    // Material-style CVA wiring: declare ourselves as the value accessor on any
+    // host-level `NgControl` (FormControlDirective, NgModel, etc.). This avoids
+    // the circular-DI that a static `NG_VALUE_ACCESSOR` provider would create
+    // because `NgControl` is injected with `self: true` on the same element.
+    if (this.ngControl) {
+      this.ngControl.valueAccessor = this;
+    }
+
     afterNextRender(() => {
       if (isDevMode() && !this.ariaLabel() && !this.ariaLabelledby()) {
         console.warn(
@@ -543,9 +694,10 @@ export class RadioGroupComponent<T = unknown> implements ControlValueAccessor, O
     this.change.emit(typed);
   }
 
-  /** @internal Called by child radios on blur — propagates to CVA onTouched. */
+  /** @internal Called by child radios on blur — propagates to CVA onTouched and bumps the errorState revision so a blur on a child radio refreshes the group's `aria-invalid`. */
   notifyTouched(): void {
     this.onTouched();
+    this._ngControlRev.update((n) => n + 1);
   }
 
   onKeydown(event: KeyboardEvent): void {
@@ -644,5 +796,27 @@ export class RadioGroupComponent<T = unknown> implements ControlValueAccessor, O
     this.destroyRef.onDestroy(() => {
       this.focusMonitor.stopMonitoring(this.elementRef);
     });
+
+    // NgControl's `control` is set by the parent FormControl* directive before
+    // children's `ngOnInit`. Subscribe here so errorState reacts to status/value
+    // changes on the bound control.
+    const ctrl = this.ngControl?.control;
+    if (ctrl) {
+      const streams = [ctrl.statusChanges, ctrl.valueChanges].filter(
+        (s): s is NonNullable<typeof s> => !!s,
+      );
+      if (streams.length) {
+        merge(...streams)
+          .pipe(takeUntilDestroyed(this.destroyRef))
+          .subscribe(() => this._ngControlRev.update((n) => n + 1));
+      }
+    }
+
+    const submit = this.parentFormGroup?.ngSubmit ?? this.parentForm?.ngSubmit;
+    if (submit) {
+      submit
+        .pipe(takeUntilDestroyed(this.destroyRef))
+        .subscribe(() => this._formSubmitRev.update((n) => n + 1));
+    }
   }
 }

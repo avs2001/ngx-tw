@@ -156,11 +156,13 @@ test.describe('Time Picker', () => {
   });
 
   test.fixme(
-    '@a11y locale: meridiem labels switch per locale (NEEDS-SOURCE-CHANGE)',
+    '@a11y locale: meridiem labels switch per locale (NEEDS-DEMO-WIRING)',
     async () => {
-      // BLOCKED — chapter 08 §1 + REVIEW.md note: `time-picker.ts` has no
-      // `locale` input. Meridiem buttons are hardcoded 'AM' / 'PM'. There is
-      // no `TimePickerIntl` token either. Re-enable when i18n lands.
+      // `TimePickerIntl` (provided via `provideTimePickerIntl`) now controls
+      // the AM/PM labels, group label, and announcements — i18n support has
+      // landed at the library level. This e2e remains `fixme` until the demo
+      // app wires up a locale switcher that re-binds `TimePickerIntl`; the
+      // unit spec (`time-picker.spec.ts → intl`) is the authoritative check.
     },
   );
 });

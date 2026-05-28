@@ -280,6 +280,56 @@ const fuzzyFilter: CommandPaletteFilterFn = (items, query) => {
       <tw-code-block [code]="statesSnippet" language="html" />
     </section>
 
+    <!-- Descriptions -->
+    <section class="mb-10">
+      <h2 class="text-sm font-semibold mb-3">Descriptions</h2>
+      <p class="text-sm text-fg-muted leading-relaxed max-w-2xl mb-4">
+        Each item accepts a
+        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">description</code>
+        — a secondary line that renders under the label in
+        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">text-xs</code>
+        muted type. Use it for short clarifications of what an item does, especially when several
+        commands share a short, ambiguous label. The
+        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">searchAriaLabel</code>
+        input is used here to disambiguate the search input for screen readers (default is
+        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">'Search commands'</code>).
+      </p>
+      <div class="rounded-lg border border-border p-6 bg-surface-raised mb-4">
+        <button twButton variant="outline" (click)="descOpen.set(true)">Open palette</button>
+
+        <tw-command-palette
+          [(open)]="descOpen"
+          searchAriaLabel="Search file actions"
+        >
+          <tw-command-palette-item
+            id="d-new"
+            label="New file"
+            description="Create an empty file in the current folder"
+            [shortcut]="['⌘','N']"
+          >
+            New file
+          </tw-command-palette-item>
+          <tw-command-palette-item
+            id="d-duplicate"
+            label="Duplicate"
+            description="Copy the active file alongside the original"
+            [shortcut]="['⌘','D']"
+          >
+            Duplicate
+          </tw-command-palette-item>
+          <tw-command-palette-item
+            id="d-rename"
+            label="Rename"
+            description="Inline-rename the active file in the explorer"
+            [shortcut]="['F2']"
+          >
+            Rename
+          </tw-command-palette-item>
+        </tw-command-palette>
+      </div>
+      <tw-code-block [code]="descSnippet" language="html" />
+    </section>
+
     <!-- Empty state + footer templates -->
     <section class="mb-10">
       <h2 class="text-sm font-semibold mb-3">Custom empty state &amp; footer</h2>
@@ -460,6 +510,9 @@ export class CommandPaletteExamples {
   protected readonly stayOpen = signal(false);
   protected readonly stayLast = signal<string | null>(null);
 
+  // Descriptions
+  protected readonly descOpen = signal(false);
+
   // Templates
   protected readonly templatesOpen = signal(false);
 
@@ -587,6 +640,28 @@ constructor() {
   [commands]="commands"
   (itemSelected)="last.set($event.label)"
 />`;
+
+  protected readonly descSnippet = `<tw-command-palette
+  [(open)]="open"
+  searchAriaLabel="Search file actions"
+>
+  <tw-command-palette-item
+    id="new"
+    label="New file"
+    description="Create an empty file in the current folder"
+    [shortcut]="['⌘','N']"
+  >
+    New file
+  </tw-command-palette-item>
+  <tw-command-palette-item
+    id="duplicate"
+    label="Duplicate"
+    description="Copy the active file alongside the original"
+    [shortcut]="['⌘','D']"
+  >
+    Duplicate
+  </tw-command-palette-item>
+</tw-command-palette>`;
 
   protected readonly templatesSnippet = `<tw-command-palette [(open)]="open" [commands]="commands">
   <ng-template twCommandPaletteEmpty let-q>

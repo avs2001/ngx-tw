@@ -1,13 +1,24 @@
 import { ChangeDetectionStrategy, Component, signal } from '@angular/core';
-import { CodeBlockComponent, type CodeBlockVariant } from 'ngx-tw/code-block';
+import {
+  CodeBlockComponent,
+  CodeBlockHeaderDirective,
+  type CodeBlockLabels,
+  type CodeBlockVariant,
+} from 'ngx-tw/code-block';
 import { ButtonDirective } from 'ngx-tw/button';
 
 const VARIANTS: CodeBlockVariant[] = ['filled', 'outlined'];
 
+const FRENCH_LABELS: CodeBlockLabels = {
+  copy: 'Copier le code',
+  copied: 'Copié',
+  announcement: 'Copié dans le presse-papier',
+};
+
 @Component({
   selector: 'app-code-block-examples',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [CodeBlockComponent, ButtonDirective],
+  imports: [CodeBlockComponent, CodeBlockHeaderDirective, ButtonDirective],
   template: `
     <!-- Variants -->
     <section class="mb-10">
@@ -33,11 +44,55 @@ const VARIANTS: CodeBlockVariant[] = ['filled', 'outlined'];
       </div>
     </section>
 
+    <!-- Header Slot -->
+    <section class="mb-10">
+      <h2 class="text-sm font-semibold mb-3">Header Slot</h2>
+      <p class="text-xs text-fg-muted mb-3">
+        Project custom content into the header using the
+        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">[twCodeBlockHeader]</code>
+        directive. The slot sits alongside the language label, leaving the copy button on the right.
+      </p>
+      <div class="rounded-lg border border-border p-6 bg-surface-raised space-y-4">
+        <tw-code-block [code]="tsSnippet" language="TypeScript">
+          <span twCodeBlockHeader>
+            <span class="font-mono text-xs text-fg">button.ts</span>
+          </span>
+        </tw-code-block>
+
+        <tw-code-block [code]="cssSnippet" language="CSS" variant="outlined">
+          <span twCodeBlockHeader>
+            <span class="font-mono text-xs text-fg">styles.css</span>
+            <span class="px-1.5 py-0.5 rounded text-2xs font-medium uppercase tracking-wide bg-warning-100 text-warning-800 dark:bg-warning-900/30 dark:text-warning-200">
+              modified
+            </span>
+          </span>
+        </tw-code-block>
+
+        <tw-code-block [code]="shortSnippet" language="Shell">
+          <span twCodeBlockHeader>
+            <span class="font-mono text-xs text-fg">terminal · 1.2.0</span>
+          </span>
+        </tw-code-block>
+      </div>
+    </section>
+
     <!-- Word Wrap -->
     <section class="mb-10">
       <h2 class="text-sm font-semibold mb-3">Word Wrap</h2>
       <div class="rounded-lg border border-border p-6 bg-surface-raised">
-        <tw-code-block [code]="longLine" language="TypeScript" [wrap]="true" />
+        <tw-code-block [code]="longLine" language="TypeScript" wrap />
+      </div>
+    </section>
+
+    <!-- Localized Labels -->
+    <section class="mb-10">
+      <h2 class="text-sm font-semibold mb-3">Localized Labels</h2>
+      <p class="text-xs text-fg-muted mb-3">
+        Override the copy button aria-labels and the screen-reader announcement via the
+        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">labels</code> input.
+      </p>
+      <div class="rounded-lg border border-border p-6 bg-surface-raised">
+        <tw-code-block [code]="shortSnippet" language="Shell" [labels]="frenchLabels" />
       </div>
     </section>
 
@@ -122,6 +177,7 @@ export class CodeBlockExamples {
   protected readonly playVariant = signal<CodeBlockVariant>('filled');
   protected readonly playWrap = signal(false);
   protected readonly playLanguage = signal('TypeScript');
+  protected readonly frenchLabels = FRENCH_LABELS;
 
   protected readonly tsSnippet = `import { Component, input, output, computed } from '@angular/core';
 import { tv } from 'tailwind-variants';
@@ -140,7 +196,7 @@ const buttonVariants = tv({
 
   protected readonly longLine = `const result = await fetch('https://api.example.com/v1/users?page=1&limit=50&sort=created_at&order=desc&include=profile,settings,preferences&filter[status]=active&filter[role]=admin');`;
 
-  protected readonly htmlSnippet = `<tw-code-block [code]="snippet" [wrap]="true" (copied)="onCopied()" />`;
+  protected readonly htmlSnippet = `<tw-code-block [code]="snippet" wrap (copied)="onCopied()" />`;
 
   protected readonly cssSnippet = `@theme {
   --color-primary-500: oklch(0.55 0.2 260);

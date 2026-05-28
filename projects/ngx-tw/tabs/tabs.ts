@@ -7,6 +7,7 @@ import {
   contentChildren,
   DestroyRef,
   Directive,
+  effect,
   ElementRef,
   inject,
   input,
@@ -15,229 +16,129 @@ import {
   output,
   signal,
   TemplateRef,
+  untracked,
   viewChild,
   viewChildren,
   type AfterViewInit,
 } from '@angular/core';
 import { NgTemplateOutlet } from '@angular/common';
-import { LiveAnnouncer } from '@angular/cdk/a11y';
+import { FocusableOption, FocusKeyManager, LiveAnnouncer } from '@angular/cdk/a11y';
 import { tv } from 'tailwind-variants';
 import { twMerge } from 'tailwind-merge';
-import type { TwColor, TwSize } from 'ngx-tw/core';
+import {
+  getActiveTriggerClasses,
+  getInactiveTriggerClasses,
+  tabTriggerVariants,
+  type TabTriggerVariant,
+  type TwColor,
+  type TwSize,
+} from 'ngx-tw/core';
 
 /** Visual style of the tab strip. */
-export type TabsVariant = 'underline' | 'enclosed' | 'pill';
+export type TabsVariant = TabTriggerVariant;
 
-// ── tv() config ──
+// ── tv() config (component-local slots only — trigger config is shared) ──
 
-const tabsVariants = tv({
-  slots: {
-    root: 'flex',
-    tablist: 'relative flex shrink-0',
-    tablistInner: 'flex overflow-x-auto',
-    trigger:
-      'inline-flex items-center gap-1.5 font-medium whitespace-nowrap cursor-pointer transition-colors duration-200 motion-reduce:transition-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500',
-    panel: 'min-w-0 flex-1',
-    scrollButton:
-      'inline-flex items-center justify-center shrink-0 cursor-pointer transition-colors duration-200 motion-reduce:transition-none disabled:opacity-30 disabled:cursor-default hover:bg-surface-muted',
-    closeButton:
-      'inline-flex items-center justify-center size-4 rounded-md cursor-pointer transition-colors duration-200 motion-reduce:transition-none hover:bg-surface-muted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500',
-  },
-  variants: {
-    variant: {
-      underline: {
-        tablist: 'border-b border-border',
-        tablistInner: 'gap-0',
-        trigger: 'border-b-2 border-transparent -mb-px text-fg-muted hover:text-fg',
-        panel: 'pt-4',
+const tabsLayoutVariants = tv(
+  {
+    slots: {
+      root: 'flex',
+      tablist: 'relative flex shrink-0',
+      tablistInner: 'flex overflow-x-auto',
+      panel: 'min-w-0 flex-1',
+      scrollButton:
+        'inline-flex items-center justify-center shrink-0 cursor-pointer transition-colors duration-normal motion-reduce:transition-none disabled:opacity-30 disabled:cursor-default hover:bg-surface-muted',
+      closeButton:
+        'inline-flex items-center justify-center rounded-md cursor-pointer transition-colors duration-normal motion-reduce:transition-none hover:bg-surface-muted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500',
+    },
+    variants: {
+      variant: {
+        underline: {
+          tablist: 'border-b border-border',
+          tablistInner: 'gap-0',
+          panel: 'pt-4',
+        },
+        enclosed: {
+          tablist: 'border-b border-border',
+          tablistInner: 'gap-0',
+          panel: 'pt-4',
+        },
+        pill: {
+          tablist: 'bg-surface-muted rounded-xl p-1',
+          tablistInner: 'gap-1',
+          panel: 'pt-4',
+        },
       },
-      enclosed: {
-        tablist: 'border-b border-border',
-        tablistInner: 'gap-0',
-        trigger:
-          'border border-transparent bg-surface-muted text-fg-muted hover:text-fg -mb-px',
-        panel: 'pt-4',
+      // Square interactive-target scale: see CLAUDE.md "Icon Sizing".
+      size: {
+        xs: { scrollButton: 'size-5', closeButton: 'size-6' },
+        sm: { scrollButton: 'size-5', closeButton: 'size-7' },
+        md: { scrollButton: 'size-6', closeButton: 'size-8' },
+        lg: { scrollButton: 'size-7', closeButton: 'size-9' },
+        xl: { scrollButton: 'size-8', closeButton: 'size-9' },
       },
-      pill: {
-        tablist: 'bg-surface-muted rounded-xl p-1',
-        tablistInner: 'gap-1',
-        trigger: 'rounded-md text-fg-muted hover:text-fg',
-        panel: 'pt-4',
+      orientation: {
+        horizontal: {
+          root: 'flex-col',
+          tablist: '',
+          tablistInner: 'flex-row',
+        },
+        vertical: {
+          root: 'flex-row',
+          tablistInner: 'flex-col overflow-y-auto overflow-x-hidden',
+        },
       },
     },
-    size: {
-      xs: {
-        trigger: 'px-2 py-1 text-xs',
-        scrollButton: 'size-5',
+    compoundVariants: [
+      {
+        variant: 'underline',
+        orientation: 'vertical',
+        class: {
+          tablist: 'border-b-0 border-r border-border',
+          panel: 'pt-0 pl-4',
+        },
       },
-      sm: {
-        trigger: 'px-3 py-1.5 text-sm',
-        scrollButton: 'size-5',
+      {
+        variant: 'enclosed',
+        orientation: 'vertical',
+        class: {
+          tablist: 'border-b-0 border-r border-border',
+          panel: 'pt-0 pl-4',
+        },
       },
-      md: {
-        trigger: 'px-4 py-2 text-sm',
-        scrollButton: 'size-6',
+      {
+        variant: 'pill',
+        orientation: 'vertical',
+        class: {
+          panel: 'pt-0 pl-4',
+        },
       },
-      lg: {
-        trigger: 'px-5 py-2.5 text-base',
-        scrollButton: 'size-7',
-      },
-      xl: {
-        trigger: 'px-6 py-3 text-base',
-        scrollButton: 'size-8',
-      },
-    },
-    orientation: {
-      horizontal: {
-        root: 'flex-col',
-        tablist: '',
-        tablistInner: 'flex-row',
-      },
-      vertical: {
-        root: 'flex-row',
-        tablistInner: 'flex-col overflow-y-auto overflow-x-hidden',
-      },
-    },
-    fitted: {
-      true: {
-        trigger: 'flex-1 justify-center',
-      },
-      false: {},
-    },
-    color: {
-      primary: {},
-      secondary: {},
-      accent: {},
-      neutral: {},
-      info: {},
-      success: {},
-      warning: {},
-      error: {},
-    },
-  },
-  compoundVariants: [
-    // ── Underline vertical ──
-    {
+    ],
+    defaultVariants: {
       variant: 'underline',
-      orientation: 'vertical',
-      class: {
-        tablist: 'border-b-0 border-r border-border',
-        trigger: 'border-b-0 -mb-0 border-r-2 border-transparent -mr-px',
-        panel: 'pt-0 pl-4',
-      },
+      size: 'md',
+      orientation: 'horizontal',
     },
-    // ── Enclosed vertical ──
-    {
-      variant: 'enclosed',
-      orientation: 'vertical',
-      class: {
-        tablist: 'border-b-0 border-r border-border',
-        trigger: '-mb-0 -mr-px',
-        panel: 'pt-0 pl-4',
-      },
-    },
-    // ── Pill vertical ──
-    {
-      variant: 'pill',
-      orientation: 'vertical',
-      class: {
-        panel: 'pt-0 pl-4',
-      },
-    },
-
-    // Active colors are applied dynamically — see getActiveTriggerClasses()
-  ],
-  defaultVariants: {
-    variant: 'underline',
-    color: 'primary',
-    size: 'md',
-    orientation: 'horizontal',
-    fitted: false,
   },
-}, {
-  twMerge: true,
-});
+  { twMerge: true },
+);
 
-// ── Static active trigger class lookups (all classes must be statically written for Tailwind v4) ──
+// ── Per-variant/orientation trigger additions (vertical underline/enclosed
+//    re-route the active border axis, hence these compound overrides). ──
 
-const UNDERLINE_ACTIVE_HORIZONTAL: Record<TwColor, string> = {
-  primary: 'border-b-2 border-primary-500 text-primary-600',
-  secondary: 'border-b-2 border-secondary-500 text-secondary-600',
-  accent: 'border-b-2 border-accent-500 text-accent-600',
-  neutral: 'border-b-2 border-border-strong text-fg',
-  info: 'border-b-2 border-info-500 text-info-600',
-  success: 'border-b-2 border-success-500 text-success-600',
-  warning: 'border-b-2 border-warning-500 text-warning-600',
-  error: 'border-b-2 border-error-500 text-error-600',
-};
-
-const UNDERLINE_ACTIVE_VERTICAL: Record<TwColor, string> = {
-  primary: 'border-r-2 border-primary-500 text-primary-600',
-  secondary: 'border-r-2 border-secondary-500 text-secondary-600',
-  accent: 'border-r-2 border-accent-500 text-accent-600',
-  neutral: 'border-r-2 border-border-strong text-fg',
-  info: 'border-r-2 border-info-500 text-info-600',
-  success: 'border-r-2 border-success-500 text-success-600',
-  warning: 'border-r-2 border-warning-500 text-warning-600',
-  error: 'border-r-2 border-error-500 text-error-600',
-};
-
-const ENCLOSED_ACTIVE_HORIZONTAL: Record<TwColor, string> = {
-  primary: 'bg-surface border border-border border-b-transparent text-primary-700',
-  secondary: 'bg-surface border border-border border-b-transparent text-secondary-700',
-  accent: 'bg-surface border border-border border-b-transparent text-accent-700',
-  neutral: 'bg-surface border border-border border-b-transparent text-fg',
-  info: 'bg-surface border border-border border-b-transparent text-info-700',
-  success: 'bg-surface border border-border border-b-transparent text-success-700',
-  warning: 'bg-surface border border-border border-b-transparent text-warning-700',
-  error: 'bg-surface border border-border border-b-transparent text-error-700',
-};
-
-const ENCLOSED_ACTIVE_VERTICAL: Record<TwColor, string> = {
-  primary: 'bg-surface border border-border border-r-transparent text-primary-700',
-  secondary: 'bg-surface border border-border border-r-transparent text-secondary-700',
-  accent: 'bg-surface border border-border border-r-transparent text-accent-700',
-  neutral: 'bg-surface border border-border border-r-transparent text-fg',
-  info: 'bg-surface border border-border border-r-transparent text-info-700',
-  success: 'bg-surface border border-border border-r-transparent text-success-700',
-  warning: 'bg-surface border border-border border-r-transparent text-warning-700',
-  error: 'bg-surface border border-border border-r-transparent text-error-700',
-};
-
-const PILL_ACTIVE: Record<TwColor, string> = {
-  primary: 'bg-surface shadow-sm text-primary-700',
-  secondary: 'bg-surface shadow-sm text-secondary-700',
-  accent: 'bg-surface shadow-sm text-accent-700',
-  neutral: 'bg-surface shadow-sm text-fg',
-  info: 'bg-surface shadow-sm text-info-700',
-  success: 'bg-surface shadow-sm text-success-700',
-  warning: 'bg-surface shadow-sm text-warning-700',
-  error: 'bg-surface shadow-sm text-error-700',
-};
-
-const INACTIVE_CLASSES: Record<TabsVariant, string> = {
-  underline: 'border-transparent',
-  enclosed: 'border-transparent bg-surface-muted',
-  pill: '',
-};
-
-function getActiveTriggerClasses(variant: TabsVariant, color: TwColor, orientation: 'horizontal' | 'vertical'): string {
+function getTriggerOrientationExtras(
+  variant: TabsVariant,
+  orientation: 'horizontal' | 'vertical',
+): string {
+  if (orientation !== 'vertical') return '';
   switch (variant) {
     case 'underline':
-      return orientation === 'vertical'
-        ? UNDERLINE_ACTIVE_VERTICAL[color]
-        : UNDERLINE_ACTIVE_HORIZONTAL[color];
+      return 'border-b-0 -mb-0 border-r-2 border-transparent -mr-px';
     case 'enclosed':
-      return orientation === 'vertical'
-        ? ENCLOSED_ACTIVE_VERTICAL[color]
-        : ENCLOSED_ACTIVE_HORIZONTAL[color];
+      return '-mb-0 -mr-px';
     case 'pill':
-      return PILL_ACTIVE[color];
+      return '';
   }
-}
-
-function getInactiveTriggerClasses(variant: TabsVariant): string {
-  return INACTIVE_CLASSES[variant];
 }
 
 // ── Directives ──
@@ -300,7 +201,7 @@ export class TabComponent {
     '[attr.tabindex]': 'tabIndex()',
   },
 })
-export class TabTriggerElementDirective {
+export class TabTriggerElementDirective implements FocusableOption {
   readonly elementRef = inject(ElementRef<HTMLElement>);
 
   readonly isActive = input(false);
@@ -310,6 +211,16 @@ export class TabTriggerElementDirective {
 
   focus(): void {
     this.elementRef.nativeElement.focus();
+  }
+
+  /**
+   * FocusableOption getter. NOTE: we cannot expose the `isDisabled` input
+   * signal directly — the signal function itself is always truthy, which would
+   * make FocusKeyManager treat every trigger as disabled. We resolve the
+   * signal here so the manager skips the right items.
+   */
+  get disabled(): boolean {
+    return this.isDisabled();
   }
 }
 
@@ -378,33 +289,41 @@ export class TabsComponent implements AfterViewInit {
 
   // ── Variant classes ──
 
-  private readonly variantResult = computed(() =>
-    tabsVariants({
+  private readonly layoutResult = computed(() =>
+    tabsLayoutVariants({
+      variant: this.variant(),
+      size: this.size(),
+      orientation: this.orientation(),
+    }),
+  );
+
+  private readonly triggerResult = computed(() =>
+    tabTriggerVariants({
       variant: this.variant(),
       color: this.color(),
       size: this.size(),
-      orientation: this.orientation(),
       fitted: this.fitted(),
     }),
   );
 
-  readonly rootClasses = computed(() => this.variantResult().root());
-  readonly tablistClasses = computed(() => this.variantResult().tablist());
-  readonly tablistInnerClasses = computed(() => this.variantResult().tablistInner());
-  readonly baseTriggerClasses = computed(() => this.variantResult().trigger());
-  readonly panelClasses = computed(() => this.variantResult().panel());
-  readonly scrollButtonClasses = computed(() => this.variantResult().scrollButton());
-  readonly closeButtonClasses = computed(() => this.variantResult().closeButton());
+  readonly rootClasses = computed(() => this.layoutResult().root());
+  readonly tablistClasses = computed(() => this.layoutResult().tablist());
+  readonly tablistInnerClasses = computed(() => this.layoutResult().tablistInner());
+  readonly baseTriggerClasses = computed(() => this.triggerResult().trigger());
+  readonly panelClasses = computed(() => this.layoutResult().panel());
+  readonly scrollButtonClasses = computed(() => this.layoutResult().scrollButton());
+  readonly closeButtonClasses = computed(() => this.layoutResult().closeButton());
 
   // ── Per-trigger active/inactive class computation ──
 
   /** @internal Get combined trigger classes for a given tab. */
-  getTriggerClasses(tabValue: string, isActive: boolean): string {
+  getTriggerClasses(_tabValue: string, isActive: boolean): string {
     const base = this.baseTriggerClasses();
-    const extra = isActive
+    const orientationExtras = getTriggerOrientationExtras(this.variant(), this.orientation());
+    const state = isActive
       ? getActiveTriggerClasses(this.variant(), this.color(), this.orientation())
       : getInactiveTriggerClasses(this.variant());
-    return twMerge(base, extra);
+    return twMerge(base, orientationExtras, state);
   }
 
   // ── ID generation ──
@@ -454,8 +373,11 @@ export class TabsComponent implements AfterViewInit {
     );
   }
 
-  closeTab(tab: TabComponent, event: MouseEvent): void {
+  closeTab(tab: TabComponent, event: Event): void {
     event.stopPropagation();
+    if (event instanceof KeyboardEvent) {
+      event.preventDefault();
+    }
     const val = tab.value();
     this.closed.emit(val);
 
@@ -481,57 +403,63 @@ export class TabsComponent implements AfterViewInit {
     return null;
   }
 
-  // ── Keyboard navigation ──
+  // ── Keyboard navigation (CDK FocusKeyManager) ──
 
+  private keyManager: FocusKeyManager<TabTriggerElementDirective> | null = null;
+
+  /**
+   * @internal Handles keyboard navigation. The manager handles Arrow/Home/End;
+   * we layer Enter/Space to select the focused tab (the wrapper is a `<div role="tab">`
+   * so we lose the native button activation) and Delete to close a closable tab.
+   */
   onKeydown(event: KeyboardEvent): void {
-    const tabsArr = this.tabs();
-    if (tabsArr.length === 0) return;
+    if (!this.keyManager) return;
+    const triggers = this.triggerElements();
+    if (triggers.length === 0) return;
 
-    const isHorizontal = this.orientation() === 'horizontal';
-    const nextKey = isHorizontal ? 'ArrowRight' : 'ArrowDown';
-    const prevKey = isHorizontal ? 'ArrowLeft' : 'ArrowUp';
-
-    let targetIndex = -1;
-    const currentIdx = tabsArr.findIndex(t => t.value() === this.activeValue());
-
-    switch (event.key) {
-      case nextKey:
-        targetIndex = this.findNextEnabledIndex(tabsArr, currentIdx, 1);
-        break;
-      case prevKey:
-        targetIndex = this.findNextEnabledIndex(tabsArr, currentIdx, -1);
-        break;
-      case 'Home':
-        targetIndex = tabsArr.findIndex(t => !t.disabled());
-        break;
-      case 'End':
-        for (let i = tabsArr.length - 1; i >= 0; i--) {
-          if (!tabsArr[i].disabled()) { targetIndex = i; break; }
-        }
-        break;
-      default:
-        return; // Don't prevent default for unhandled keys
+    // Sync active item with the trigger DOM-focused by the user. We accept
+    // either `event.target` (which works under shadow DOM) or the currently
+    // active tab's index as a safety net (e.g. when the event was dispatched
+    // on the tablist container itself, not a trigger).
+    const focusedIdx = triggers.findIndex(
+      t => t.elementRef.nativeElement === event.target,
+    );
+    const activeIdx = focusedIdx >= 0
+      ? focusedIdx
+      : this.tabs().findIndex(t => t.value() === this.activeValue());
+    if (activeIdx >= 0 && activeIdx !== this.keyManager.activeItemIndex) {
+      this.keyManager.setActiveItem(activeIdx);
     }
 
-    if (targetIndex >= 0 && targetIndex < tabsArr.length) {
-      event.preventDefault();
-      this.selectTab(tabsArr[targetIndex]);
-      // Focus the trigger element
-      const triggers = this.triggerElements();
-      if (triggers[targetIndex]) {
-        triggers[targetIndex].focus();
+    // Enter / Space select the focused tab (we no longer get this for free
+    // because the trigger is a div, not a button — see DOM restructure below).
+    if (event.key === 'Enter' || event.key === ' ') {
+      if (focusedIdx >= 0) {
+        event.preventDefault();
+        this.selectTab(this.tabs()[focusedIdx]);
+      }
+      return;
+    }
+
+    // Delete on a closable tab dismisses it (APG-recommended). Keyboard users
+    // who don't want to traverse to the close button can dismiss inline.
+    if (event.key === 'Delete' && focusedIdx >= 0) {
+      const tab = this.tabs()[focusedIdx];
+      if (tab.closable() && !tab.disabled()) {
+        event.preventDefault();
+        this.closeTab(tab, event);
+        return;
       }
     }
-  }
 
-  private findNextEnabledIndex(tabs: readonly TabComponent[], from: number, direction: 1 | -1): number {
-    const len = tabs.length;
-    let idx = from;
-    for (let i = 0; i < len; i++) {
-      idx = (idx + direction + len) % len;
-      if (!tabs[idx].disabled()) return idx;
+    // Let the manager handle arrow/home/end navigation.
+    const before = this.keyManager.activeItemIndex;
+    this.keyManager.onKeydown(event);
+    const after = this.keyManager.activeItemIndex;
+    if (after !== null && after !== before && after >= 0) {
+      // Automatic activation pattern (APG): selection follows focus.
+      this.selectTab(this.tabs()[after]);
     }
-    return -1;
   }
 
   // ── Scrolling ──
@@ -579,6 +507,40 @@ export class TabsComponent implements AfterViewInit {
   constructor() {
     afterNextRender(() => {
       this.setupScrollDetection();
+    });
+
+    // Rebuild FocusKeyManager whenever triggers or orientation change.
+    effect((onCleanup) => {
+      const triggers = this.triggerElements();
+      const orientation = this.orientation();
+      if (triggers.length === 0) {
+        this.keyManager = null;
+        return;
+      }
+      const manager = new FocusKeyManager(triggers)
+        .withWrap()
+        .withHomeAndEnd();
+      if (orientation === 'vertical') {
+        manager.withVerticalOrientation();
+      } else {
+        manager.withHorizontalOrientation('ltr');
+      }
+      this.keyManager = manager;
+
+      // Initialise the manager's active index to the active tab so the first
+      // arrow press moves from the active item, not from -1.
+      untracked(() => {
+        const activeVal = this.activeValue();
+        const tabs = this.tabs();
+        const idx = tabs.findIndex(t => t.value() === activeVal);
+        if (idx >= 0) {
+          manager.setActiveItem(idx);
+        }
+      });
+
+      onCleanup(() => {
+        manager.destroy();
+      });
     });
 
     this.destroyRef.onDestroy(() => {

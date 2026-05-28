@@ -52,8 +52,17 @@ import { CodeBlockComponent } from 'ngx-tw/code-block';
       <ul class="list-disc list-inside text-sm text-fg-muted space-y-1.5">
         <li>Automatic content cascade: image &rarr; initials &rarr; projected or default fallback</li>
         <li>5 sizes (<code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">xs</code>–<code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">xl</code>) and 8 semantic colors for the initials/icon surface</li>
-        <li>3 shape options: <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">full</code> (circle), <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">lg</code> (rounded square), <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">none</code> (sharp square)</li>
-        <li>Optional status dot: <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">online</code>, <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">busy</code>, <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">away</code>, <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">offline</code> — position adapts to the shape</li>
+        <li>
+          <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">appearance</code>
+          bundle for decorative axes: 3 shape options
+          (<code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">full</code>,
+          <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">lg</code>,
+          <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">none</code>) and an optional status dot
+          (<code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">online</code>,
+          <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">busy</code>,
+          <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">away</code>,
+          <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">offline</code>) whose position adapts to the shape
+        </li>
         <li>Content projection replaces the default silhouette with a custom icon or SVG</li>
         <li><code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">tw-avatar-group</code> stacks avatars with overlap, propagates a single size, and renders a "+N" overflow indicator via the <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">max</code> input</li>
         <li>Accessible by default: <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">role="img"</code> with <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">aria-label</code> for non-image avatars, and <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">aria-hidden</code> when no name is provided</li>

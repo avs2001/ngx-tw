@@ -15,15 +15,19 @@ const toastVariants = tv(
   {
     slots: {
       root:
-        'pointer-events-auto relative flex items-start gap-3 w-full max-w-sm p-4 rounded-lg border shadow-md text-sm will-change-transform transition-colors duration-200 motion-reduce:transition-none',
+        'pointer-events-auto relative flex items-start gap-3 w-full max-w-sm p-4 rounded-lg border shadow-md text-sm will-change-transform transition-colors duration-normal motion-reduce:transition-none',
       icon: 'size-5 shrink-0 mt-0.5',
       title: 'text-sm font-semibold',
       description: 'text-sm',
       content: 'flex-1 min-w-0',
       action:
-        'inline-flex items-center justify-center px-3 py-1.5 rounded-md text-sm font-medium cursor-pointer transition-colors duration-200 motion-reduce:transition-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500',
+        'inline-flex items-center justify-center px-3 py-1.5 rounded-md text-sm font-medium cursor-pointer transition-colors duration-normal motion-reduce:transition-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500',
+      // Dismiss container is `size-6` (24px — xs square-interactive-target
+      // scale per CLAUDE.md icon sub-scale). The inner SVG is `size-4` (16px
+      // glyph scale), centred via flex; the larger container gives the
+      // touch/click affordance without enlarging the visual glyph.
       dismiss:
-        'absolute top-3 right-3 inline-flex items-center justify-center size-5 rounded-md cursor-pointer transition-colors duration-200 motion-reduce:transition-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500',
+        'absolute top-3 right-3 inline-flex items-center justify-center size-6 rounded-md cursor-pointer transition-colors duration-normal motion-reduce:transition-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500',
     },
     variants: {
       severity: {
@@ -34,63 +38,25 @@ const toastVariants = tv(
         neutral: {},
       },
     },
-    compoundVariants: [
-      {
-        severity: 'info',
+    // Color slot tokens (`{role}-soft`, `-soft-fg`, `-icon`, …) own light/dark
+    // contrast — components consume the slot only. See `_semantic.css`.
+    // Slot-token safelist: see `projects/ngx-tw/theme/index.css` `@source inline(...)`
+    // — Tailwind v4's JIT cannot scan template-literal class names, so every
+    // `bg-${severity}-soft` / `text-${severity}-icon` permutation below must be
+    // enumerated there.
+    compoundVariants: (['info', 'success', 'warning', 'error', 'neutral'] as const).map(
+      (severity) => ({
+        severity,
         class: {
-          root: 'bg-info-50 text-info-800 border-info-300',
-          icon: 'text-info-500',
-          title: 'text-info-800',
-          description: 'text-info-700',
-          action: 'text-info-700 hover:bg-info-100',
-          dismiss: 'text-info-500 hover:bg-info-100',
+          root: `bg-${severity}-soft text-${severity}-soft-fg-muted border-${severity}-border`,
+          icon: `text-${severity}-icon`,
+          title: `text-${severity}-soft-fg`,
+          description: `text-${severity}-soft-fg-muted`,
+          action: `text-${severity}-soft-fg hover:bg-${severity}-soft-hover`,
+          dismiss: `text-${severity}-icon hover:bg-${severity}-soft-hover`,
         },
-      },
-      {
-        severity: 'success',
-        class: {
-          root: 'bg-success-50 text-success-800 border-success-300',
-          icon: 'text-success-500',
-          title: 'text-success-800',
-          description: 'text-success-700',
-          action: 'text-success-700 hover:bg-success-100',
-          dismiss: 'text-success-500 hover:bg-success-100',
-        },
-      },
-      {
-        severity: 'warning',
-        class: {
-          root: 'bg-warning-50 text-warning-800 border-warning-300',
-          icon: 'text-warning-500',
-          title: 'text-warning-800',
-          description: 'text-warning-700',
-          action: 'text-warning-700 hover:bg-warning-100',
-          dismiss: 'text-warning-500 hover:bg-warning-100',
-        },
-      },
-      {
-        severity: 'error',
-        class: {
-          root: 'bg-error-50 text-error-800 border-error-300',
-          icon: 'text-error-500',
-          title: 'text-error-800',
-          description: 'text-error-700',
-          action: 'text-error-700 hover:bg-error-100',
-          dismiss: 'text-error-500 hover:bg-error-100',
-        },
-      },
-      {
-        severity: 'neutral',
-        class: {
-          root: 'bg-surface-raised text-fg border-border',
-          icon: 'text-fg-muted',
-          title: 'text-fg',
-          description: 'text-fg-muted',
-          action: 'text-fg hover:bg-surface-muted',
-          dismiss: 'text-fg-muted hover:bg-surface-muted',
-        },
-      },
-    ],
+      }),
+    ),
     defaultVariants: {
       severity: 'info',
     },
@@ -220,7 +186,7 @@ export class ToastActionDirective {
         [class]="dismissClasses()"
         (click)="dismissed.emit()"
       >
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" class="size-full">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" class="size-4">
           <path d="M5.28 4.22a.75.75 0 0 0-1.06 1.06L6.94 8l-2.72 2.72a.75.75 0 1 0 1.06 1.06L8 9.06l2.72 2.72a.75.75 0 1 0 1.06-1.06L9.06 8l2.72-2.72a.75.75 0 0 0-1.06-1.06L8 6.94 5.28 4.22Z"/>
         </svg>
       </button>
@@ -231,6 +197,8 @@ export class ToastComponent {
   /** Severity variant. Drives color palette, default icon, and ARIA role / live politeness. Defaults to `'info'`. */
   readonly severity = input<ToastSeverity>('info');
 
+  // Default true: mirrors `ToastConfig.dismissible` — toasts must offer an escape
+  // hatch by default; opt-out only for ephemeral progress markers paired with `duration`.
   /** Whether to render the close button. Defaults to `true`. */
   readonly dismissible = input<boolean>(true);
 
@@ -238,6 +206,8 @@ export class ToastComponent {
    * Icon override. Pass a string to render as text inside the icon slot, or
    * `false` to hide the built-in severity icon. Ignored when a `[twToastIcon]`
    * child is projected. When omitted, the severity-default icon renders.
+   *
+   * For arbitrary icon markup, project a `[twToastIcon]` child instead.
    */
   readonly icon = input<string | false | undefined>(undefined);
 

@@ -28,38 +28,54 @@ body {
   -webkit-user-select: none;
 }
 
-/* ── Animation keyframes ── */
-
-@keyframes fade-out {
-  from { opacity: 1; }
-  to { opacity: 0; }
-}
-.fade-out {
-  animation: fade-out 150ms ease-out;
-}
+/* ── Animation keyframes ──
+ *
+ * Timing scale (single source of truth — keep paired enter/leave consistent):
+ *   100ms — bare-fade leave (tooltip-style exits)
+ *   120ms — overlay leave (scale-out, accelerate curve)
+ *   140ms — overlay enter (scale-in, expo-out curve)
+ *   150ms — content transitions (collapsible, toast slide, step panel, check pop)
+ *   300ms — full transforms (flip-card)
+ *
+ * Convention: enter uses ease-out / expo-out (decelerate into rest);
+ *             leave uses ease-in / accelerate (get out of the way fast).
+ *             leave duration ≤ enter duration.
+ */
 
 @keyframes fade-in {
   from { opacity: 0; }
   to { opacity: 1; }
 }
 .fade-in {
-  animation: fade-in 150ms ease-in;
+  animation: fade-in 120ms ease-out;
+}
+
+@keyframes fade-out {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+.fade-out {
+  animation: fade-out 100ms ease-out;
 }
 
 @keyframes scale-in {
-  from { opacity: 0; transform: scale(0.95); }
-  to { opacity: 1; transform: scale(1); }
+  from { opacity: 0; transform: translateY(-4px) scale(0.97); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
 }
 .scale-in {
-  animation: scale-in 150ms ease-out;
+  animation: scale-in 140ms cubic-bezier(0.16, 1, 0.3, 1);
+  transform-origin: top;
+  will-change: opacity, transform;
 }
 
 @keyframes scale-out {
-  from { opacity: 1; transform: scale(1); }
-  to { opacity: 0; transform: scale(0.95); }
+  from { opacity: 1; transform: translateY(0) scale(1); }
+  to { opacity: 0; transform: translateY(-4px) scale(0.97); }
 }
 .scale-out {
-  animation: scale-out 150ms ease-in;
+  animation: scale-out 120ms cubic-bezier(0.4, 0, 1, 1);
+  transform-origin: top;
+  will-change: opacity, transform;
 }
 
 @keyframes collapsible-enter {
@@ -107,6 +123,16 @@ body {
   transition: opacity 150ms ease-out;
 }
 .tw-dialog-backdrop.cdk-overlay-backdrop-showing {
+  opacity: 1;
+}
+
+/* Sheet backdrop fades in/out with CDK's backdrop-showing class. */
+.tw-sheet-backdrop {
+  background-color: rgb(0 0 0 / 0.5);
+  opacity: 0;
+  transition: opacity 200ms ease-out;
+}
+.tw-sheet-backdrop.cdk-overlay-backdrop-showing {
   opacity: 1;
 }
 
@@ -199,6 +225,35 @@ body {
 }
 .step-panel-enter-backward {
   animation: step-panel-enter-backward 150ms ease-out;
+}
+
+/* ── Timeline — item enter ── */
+
+@keyframes timeline-item-enter {
+  from { opacity: 0; transform: translateY(-4px); }
+  to   { opacity: 1; transform: none; }
+}
+.timeline-item-enter {
+  animation: timeline-item-enter 200ms ease-out;
+}
+
+@keyframes timeline-item-enter-horizontal {
+  from { opacity: 0; transform: translateX(-4px); }
+  to   { opacity: 1; transform: none; }
+}
+.timeline-item-enter-horizontal {
+  animation: timeline-item-enter-horizontal 200ms ease-out;
+}
+
+/* ── Carousel — loop-jump opacity mask ── */
+
+@keyframes tw-carousel-loop-jump {
+  0%   { opacity: 1; }
+  40%  { opacity: 0.55; }
+  100% { opacity: 1; }
+}
+.tw-carousel-loop-jump {
+  animation: tw-carousel-loop-jump 200ms ease-in-out;
 }
 
 /* ── Flip card — 3D transform primitives ── */
@@ -301,7 +356,11 @@ body {
   .check-in { animation-duration: 0ms; }
   .step-panel-enter-forward,
   .step-panel-enter-backward { animation-duration: 0ms; }
+  .timeline-item-enter,
+  .timeline-item-enter-horizontal { animation-duration: 0ms; transform: none; }
+  .tw-carousel-loop-jump { animation-duration: 0ms; }
   .tw-dialog-backdrop { transition-duration: 0ms; }
+  .tw-sheet-backdrop { transition-duration: 0ms; }
   .tw-spinner-dot,
   .tw-spinner-bar { animation-duration: 0ms; animation-iteration-count: 1; }
   .tw-flip-inner { transition-duration: 0ms; }

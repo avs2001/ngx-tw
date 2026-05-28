@@ -29,6 +29,7 @@ export const yearsPerPage = YEARS_PER_PAGE;
       role="grid"
       [attr.aria-label]="gridLabel()"
       [attr.aria-multiselectable]="multiSelectable() || null"
+      [attr.aria-readonly]="readonlyGrid() || null"
       (mouseleave)="onGridMouseLeave()"
     >
       @for (row of cells(); track $index) {
@@ -143,10 +144,16 @@ export class YearsViewComponent<D> extends CalendarViewBase<D> {
         this.focusCell(end);
         break;
       case 'pageUp':
-        newDate = this.dateAdapter.addYears(event.cell.value, -YEARS_PER_PAGE);
+        newDate = this.dateAdapter.addYears(
+          event.cell.value,
+          event.shiftKey ? -YEARS_PER_PAGE * 10 : -YEARS_PER_PAGE,
+        );
         break;
       case 'pageDown':
-        newDate = this.dateAdapter.addYears(event.cell.value, YEARS_PER_PAGE);
+        newDate = this.dateAdapter.addYears(
+          event.cell.value,
+          event.shiftKey ? YEARS_PER_PAGE * 10 : YEARS_PER_PAGE,
+        );
         break;
     }
     if (newDate) this.activeDateChange.emit(newDate);

@@ -5,7 +5,6 @@ import {
   computed,
   DestroyRef,
   ElementRef,
-  forwardRef,
   inject,
   input,
   isDevMode,
@@ -14,11 +13,25 @@ import {
   type OnInit,
   output,
   signal,
+  type Signal,
 } from '@angular/core';
-import { type ControlValueAccessor, NG_VALUE_ACCESSOR } from '@angular/forms';
+import {
+  type ControlValueAccessor,
+  FormGroupDirective,
+  NgControl,
+  NgForm,
+} from '@angular/forms';
 import { FocusMonitor } from '@angular/cdk/a11y';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { merge } from 'rxjs';
 import { tv } from 'tailwind-variants';
-import type { TwColor, TwSize } from 'ngx-tw/core';
+import {
+  type ErrorStateMatcher,
+  TW_ERROR_STATE_MATCHER,
+  type TwColor,
+  type TwFormSubmitted,
+  type TwSize,
+} from 'ngx-tw/core';
 
 /** Position of the label relative to the switch control. */
 export type SwitchLabelPosition = 'before' | 'after';
@@ -31,9 +44,9 @@ const switchVariants = tv(
       root: 'inline-flex items-center gap-3 cursor-pointer select-none rounded-md focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500',
       switchEl: 'relative inline-flex items-center shrink-0',
       track:
-        'relative inline-flex items-center rounded-full border border-transparent transition-colors duration-200 motion-reduce:transition-none',
+        'relative inline-flex items-center rounded-full border border-transparent transition-colors duration-normal motion-reduce:transition-none',
       thumb:
-        'absolute left-0.5 inline-flex items-center justify-center bg-surface rounded-full shadow-sm transition-transform duration-200 motion-reduce:transition-none',
+        'absolute left-0.5 inline-flex items-center justify-center bg-surface rounded-full shadow-sm transition-transform duration-normal motion-reduce:transition-none',
       iconWrap:
         'absolute inset-0 flex items-center justify-between px-1 pointer-events-none empty:hidden',
       labelWrap: 'flex flex-col min-w-0 empty:hidden',
@@ -85,12 +98,27 @@ const switchVariants = tv(
         true: { root: 'opacity-50 pointer-events-none cursor-not-allowed' },
         false: { root: '' },
       },
+      errorState: {
+        true: { label: 'text-error-700', description: 'text-error-600' },
+        false: { label: '', description: '' },
+      },
     },
+    compoundVariants: [
+      // Error state on an off (unchecked) switch repaints the rail with the error color.
+      // The on (checked) track is dominated by CHECKED_TRACK[color]; consumers wanting an
+      // error appearance on a checked switch should set `color="error"` directly.
+      {
+        errorState: true,
+        checked: false,
+        class: { track: 'bg-error-100 ring-1 ring-inset ring-error-300' },
+      },
+    ],
     defaultVariants: {
       size: 'md',
       labelPosition: 'after',
       checked: false,
       disabled: false,
+      errorState: false,
     },
   },
   { twMerge: true },
@@ -110,14 +138,14 @@ const CHECKED_TRACK: Record<TwColor, string> = {
 };
 
 const CHECKED_ICON_COLOR: Record<TwColor, string> = {
-  primary: 'text-white',
-  secondary: 'text-white',
-  accent: 'text-white',
-  neutral: 'text-surface',
-  info: 'text-white',
-  success: 'text-white',
-  warning: 'text-black',
-  error: 'text-white',
+  primary: 'text-on-primary',
+  secondary: 'text-on-secondary',
+  accent: 'text-on-accent',
+  neutral: 'text-on-neutral',
+  info: 'text-on-info',
+  success: 'text-on-success',
+  warning: 'text-on-warning',
+  error: 'text-on-error',
 };
 
 let nextId = 0;
@@ -127,13 +155,6 @@ let nextId = 0;
 @Component({
   selector: 'tw-switch',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  providers: [
-    {
-      provide: NG_VALUE_ACCESSOR,
-      useExisting: forwardRef(() => SwitchComponent),
-      multi: true,
-    },
-  ],
   template: `
     <span [class]="switchClasses()">
       <span [class]="trackClasses()">
@@ -171,6 +192,7 @@ let nextId = 0;
     '[attr.data-checked]': 'internalChecked()',
     '[attr.aria-checked]': 'internalChecked()',
     '[attr.aria-disabled]': 'isDisabled() || null',
+    '[attr.aria-invalid]': 'errorState() || null',
     '[attr.aria-required]': 'required() || null',
     '[attr.aria-label]': 'ariaLabel() || null',
     '[attr.aria-labelledby]': 'effectiveAriaLabelledby() || null',
@@ -216,8 +238,11 @@ export class SwitchComponent implements ControlValueAccessor, OnInit {
   /** ID of an external element that describes the switch. Mirrored to `aria-describedby`. */
   readonly ariaDescribedby = input<string | undefined>(undefined, { alias: 'aria-describedby' });
 
-  /** Two-way bound checked state. Updates when the user toggles via click, Space, or Enter. */
+  /** Two-way bound checked state. Updates when the user toggles via click or Space. */
   readonly checked = model(false);
+
+  /** Per-instance override of the {@link ErrorStateMatcher}. When omitted, the switch uses the `TW_ERROR_STATE_MATCHER` token's value. */
+  readonly errorStateMatcher = input<ErrorStateMatcher | undefined>(undefined);
 
   /** Fires after the checked state changes from a user interaction. Does not fire when the value is updated programmatically via `writeValue`. */
   readonly change = output<boolean>();
@@ -225,10 +250,16 @@ export class SwitchComponent implements ControlValueAccessor, OnInit {
   private readonly focusMonitor = inject(FocusMonitor);
   private readonly elementRef = inject(ElementRef<HTMLElement>);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly ngControl = inject(NgControl, { optional: true, self: true });
+  private readonly parentForm = inject(NgForm, { optional: true });
+  private readonly parentFormGroup = inject(FormGroupDirective, { optional: true });
+  private readonly defaultMatcher = inject(TW_ERROR_STATE_MATCHER);
 
   private onChange: (value: boolean) => void = () => {};
   private onTouched: () => void = () => {};
   private readonly cvaDisabled = signal(false);
+  private readonly _ngControlRev = signal(0);
+  private readonly _formSubmitRev = signal(0);
 
   private readonly uid = nextId++;
   readonly hostId = `tw-switch-${this.uid}`;
@@ -236,6 +267,14 @@ export class SwitchComponent implements ControlValueAccessor, OnInit {
   readonly descriptionId = `${this.hostId}-description`;
 
   constructor() {
+    // Material-style CVA wiring: declare ourselves as the value accessor on any
+    // host-level `NgControl` (FormControlDirective, NgModel, etc.). This avoids
+    // the circular-DI that a static `NG_VALUE_ACCESSOR` provider would create
+    // because `NgControl` is injected with `self: true` on the same element.
+    if (this.ngControl) {
+      this.ngControl.valueAccessor = this;
+    }
+
     afterNextRender(() => {
       if (isDevMode() && !this.hasAccessibleNameHint()) {
         console.warn(
@@ -246,6 +285,17 @@ export class SwitchComponent implements ControlValueAccessor, OnInit {
   }
 
   readonly isDisabled = computed(() => this.disabled() || this.cvaDisabled());
+
+  /** Whether the switch is in an error state per the configured `ErrorStateMatcher`. Reads the bound `NgControl.invalid` through the matcher. */
+  readonly errorState: Signal<boolean> = computed(() => {
+    this._ngControlRev();
+    this._formSubmitRev();
+    const matcher = this.errorStateMatcher() ?? this.defaultMatcher;
+    const form: TwFormSubmitted | null =
+      (this.parentFormGroup as TwFormSubmitted | null) ??
+      (this.parentForm as TwFormSubmitted | null);
+    return matcher.isErrorState(this.ngControl?.control ?? null, form);
+  });
 
   readonly internalChecked = linkedSignal(() => this.checked());
 
@@ -268,6 +318,7 @@ export class SwitchComponent implements ControlValueAccessor, OnInit {
       labelPosition: this.labelPosition(),
       checked: this.internalChecked(),
       disabled: this.isDisabled(),
+      errorState: this.errorState(),
     }),
   );
 
@@ -286,7 +337,7 @@ export class SwitchComponent implements ControlValueAccessor, OnInit {
 
   readonly onIconClasses = computed(() => {
     const base =
-      'inline-flex items-center justify-center transition-opacity duration-200 motion-reduce:transition-none empty:hidden';
+      'inline-flex items-center justify-center transition-opacity duration-normal motion-reduce:transition-none empty:hidden';
     const visibility = this.internalChecked() ? 'opacity-100' : 'opacity-0';
     const color = this.internalChecked() ? CHECKED_ICON_COLOR[this.color()] : 'text-fg-muted';
     return `${base} ${visibility} ${color}`;
@@ -294,7 +345,7 @@ export class SwitchComponent implements ControlValueAccessor, OnInit {
 
   readonly offIconClasses = computed(() => {
     const base =
-      'inline-flex items-center justify-center transition-opacity duration-200 motion-reduce:transition-none text-fg-muted empty:hidden';
+      'inline-flex items-center justify-center transition-opacity duration-normal motion-reduce:transition-none text-fg-muted empty:hidden';
     const visibility = this.internalChecked() ? 'opacity-0' : 'opacity-100';
     return `${base} ${visibility}`;
   });
@@ -312,18 +363,19 @@ export class SwitchComponent implements ControlValueAccessor, OnInit {
     this.change.emit(next);
   }
 
-  /** Handles keyboard activation. Space and Enter toggle the switch. */
+  /** Handles keyboard activation. Space toggles the switch — matches the ARIA `switch` role pattern (Enter is intentionally NOT handled, mirroring `<tw-checkbox>`). */
   onKeydown(event: KeyboardEvent): void {
     if (this.isDisabled()) return;
-    if (event.key === ' ' || event.key === 'Spacebar' || event.key === 'Enter') {
+    if (event.key === ' ' || event.key === 'Spacebar') {
       event.preventDefault();
       this.toggle();
     }
   }
 
-  /** @internal Called on host blur to notify forms the control has been touched. */
+  /** @internal Called on host blur to notify forms the control has been touched and recompute errorState. */
   onBlur(): void {
     this.onTouched();
+    this._ngControlRev.update((n) => n + 1);
   }
 
   // ── ControlValueAccessor ──────────────────────────────────
@@ -353,6 +405,28 @@ export class SwitchComponent implements ControlValueAccessor, OnInit {
     this.destroyRef.onDestroy(() => {
       this.focusMonitor.stopMonitoring(this.elementRef);
     });
+
+    // NgControl's `control` is set by the parent FormControl* directive before
+    // children's `ngOnInit`. Subscribe here so errorState reacts to status/value
+    // changes on the bound control.
+    const ctrl = this.ngControl?.control;
+    if (ctrl) {
+      const streams = [ctrl.statusChanges, ctrl.valueChanges].filter(
+        (s): s is NonNullable<typeof s> => !!s,
+      );
+      if (streams.length) {
+        merge(...streams)
+          .pipe(takeUntilDestroyed(this.destroyRef))
+          .subscribe(() => this._ngControlRev.update((n) => n + 1));
+      }
+    }
+
+    const submit = this.parentFormGroup?.ngSubmit ?? this.parentForm?.ngSubmit;
+    if (submit) {
+      submit
+        .pipe(takeUntilDestroyed(this.destroyRef))
+        .subscribe(() => this._formSubmitRev.update((n) => n + 1));
+    }
   }
 
   private hasAccessibleNameHint(): boolean {

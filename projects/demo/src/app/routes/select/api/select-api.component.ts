@@ -27,49 +27,49 @@ import { CodeBlockComponent } from 'ngx-tw/code-block';
               <td class="px-4 py-2 font-mono text-xs">options</td>
               <td class="px-4 py-2 font-mono text-xs text-fg-muted">readonly unknown[]</td>
               <td class="px-4 py-2 font-mono text-xs text-fg-muted">[]</td>
-              <td class="px-4 py-2 text-fg-muted">Array of options to render — either <code class="font-mono">TwSelectOption&lt;T&gt;</code> objects or arbitrary records read via the accessor inputs.</td>
+              <td class="px-4 py-2 text-fg-muted">Array of options to render in the panel. Accepts either <code class="font-mono">TwSelectOption&lt;T&gt;</code> objects or arbitrary records read via the accessor inputs. Defaults to an empty array.</td>
             </tr>
             <tr>
               <td class="px-4 py-2 font-mono text-xs">optionLabel</td>
               <td class="px-4 py-2 font-mono text-xs text-fg-muted">(o: unknown) =&gt; string</td>
               <td class="px-4 py-2 font-mono text-xs text-fg-muted">reads <code class="font-mono">.label</code></td>
-              <td class="px-4 py-2 text-fg-muted">Accessor returning the visible label for an option.</td>
+              <td class="px-4 py-2 text-fg-muted">Accessor returning the visible label for an option. Override when passing arbitrary objects.</td>
             </tr>
             <tr>
               <td class="px-4 py-2 font-mono text-xs">optionValue</td>
               <td class="px-4 py-2 font-mono text-xs text-fg-muted">(o: unknown) =&gt; T</td>
               <td class="px-4 py-2 font-mono text-xs text-fg-muted">reads <code class="font-mono">.value</code></td>
-              <td class="px-4 py-2 text-fg-muted">Accessor returning the value stored in <code class="font-mono">value</code> for an option.</td>
+              <td class="px-4 py-2 text-fg-muted">Accessor returning the value for an option. The result is what <code class="font-mono">value</code> / <code class="font-mono">valueChange</code> emit.</td>
             </tr>
             <tr>
               <td class="px-4 py-2 font-mono text-xs">optionDisabled</td>
               <td class="px-4 py-2 font-mono text-xs text-fg-muted">(o: unknown) =&gt; boolean</td>
               <td class="px-4 py-2 font-mono text-xs text-fg-muted">reads <code class="font-mono">.disabled</code></td>
-              <td class="px-4 py-2 text-fg-muted">Accessor returning whether an option is disabled.</td>
+              <td class="px-4 py-2 text-fg-muted">Accessor returning the disabled state for an option. Defaults to reading <code class="font-mono">.disabled</code>.</td>
             </tr>
             <tr>
               <td class="px-4 py-2 font-mono text-xs">optionGroup</td>
               <td class="px-4 py-2 font-mono text-xs text-fg-muted">(o: unknown) =&gt; string | undefined</td>
               <td class="px-4 py-2 font-mono text-xs text-fg-muted">reads <code class="font-mono">.group</code></td>
-              <td class="px-4 py-2 text-fg-muted">Accessor returning the group name for an option; options sharing a group render under a <code class="font-mono">role="group"</code> region.</td>
+              <td class="px-4 py-2 text-fg-muted">Accessor returning the group name for an option. Options sharing a group render under a labelled <code class="font-mono">role="group"</code> region.</td>
             </tr>
             <tr>
               <td class="px-4 py-2 font-mono text-xs">multiple</td>
               <td class="px-4 py-2 font-mono text-xs text-fg-muted">boolean</td>
               <td class="px-4 py-2 font-mono text-xs text-fg-muted">false</td>
-              <td class="px-4 py-2 text-fg-muted">Enables multi-selection; the value becomes <code class="font-mono">T[]</code>.</td>
+              <td class="px-4 py-2 text-fg-muted">When true, enables multi-selection. The <code class="font-mono">value</code> model becomes a <code class="font-mono">T[]</code> and the panel renders checkable options. Defaults to <code class="font-mono">false</code>.</td>
             </tr>
             <tr>
               <td class="px-4 py-2 font-mono text-xs">searchable</td>
               <td class="px-4 py-2 font-mono text-xs text-fg-muted">boolean</td>
               <td class="px-4 py-2 font-mono text-xs text-fg-muted">false</td>
-              <td class="px-4 py-2 text-fg-muted">Renders a search input at the top of the panel.</td>
+              <td class="px-4 py-2 text-fg-muted">When true, renders a search input at the top of the panel that filters options using <code class="font-mono">filterPredicate</code>. Defaults to <code class="font-mono">false</code>.</td>
             </tr>
             <tr>
               <td class="px-4 py-2 font-mono text-xs">filterPredicate</td>
               <td class="px-4 py-2 font-mono text-xs text-fg-muted">(o: unknown, s: string) =&gt; boolean</td>
               <td class="px-4 py-2 font-mono text-xs text-fg-muted">label includes</td>
-              <td class="px-4 py-2 text-fg-muted">Custom filter function for the search input.</td>
+              <td class="px-4 py-2 text-fg-muted">Custom filter function for the search input. Defaults to a case-insensitive substring match on the option label.</td>
             </tr>
             <tr>
               <td class="px-4 py-2 font-mono text-xs">placeholder</td>
@@ -81,37 +81,37 @@ import { CodeBlockComponent } from 'ngx-tw/code-block';
               <td class="px-4 py-2 font-mono text-xs">disabled</td>
               <td class="px-4 py-2 font-mono text-xs text-fg-muted">boolean</td>
               <td class="px-4 py-2 font-mono text-xs text-fg-muted">false</td>
-              <td class="px-4 py-2 text-fg-muted">Blocks trigger activation and panel open.</td>
+              <td class="px-4 py-2 text-fg-muted">When true, the trigger cannot be activated and the panel cannot open. Defaults to <code class="font-mono">false</code>.</td>
             </tr>
             <tr>
               <td class="px-4 py-2 font-mono text-xs">required</td>
               <td class="px-4 py-2 font-mono text-xs text-fg-muted">boolean</td>
               <td class="px-4 py-2 font-mono text-xs text-fg-muted">false</td>
-              <td class="px-4 py-2 text-fg-muted">Sets <code class="font-mono">aria-required="true"</code> on the trigger.</td>
+              <td class="px-4 py-2 text-fg-muted">When true, exposes <code class="font-mono">aria-required="true"</code> on the trigger. Defaults to <code class="font-mono">false</code>.</td>
             </tr>
             <tr>
               <td class="px-4 py-2 font-mono text-xs">size</td>
               <td class="px-4 py-2 font-mono text-xs text-fg-muted">TwSize</td>
               <td class="px-4 py-2 font-mono text-xs text-fg-muted">'md'</td>
-              <td class="px-4 py-2 text-fg-muted">Controls the trigger padding, font size, and option density.</td>
+              <td class="px-4 py-2 text-fg-muted">Controls trigger padding, font size, and panel option density. Defaults to <code class="font-mono">'md'</code>.</td>
             </tr>
             <tr>
               <td class="px-4 py-2 font-mono text-xs">color</td>
               <td class="px-4 py-2 font-mono text-xs text-fg-muted">TwColor</td>
               <td class="px-4 py-2 font-mono text-xs text-fg-muted">'primary'</td>
-              <td class="px-4 py-2 text-fg-muted">Tints the focused border, the active-option background, and the selected check mark.</td>
+              <td class="px-4 py-2 text-fg-muted">Semantic color for focused trigger border, active-option background, and checkmarks. Defaults to <code class="font-mono">'primary'</code>.</td>
             </tr>
             <tr>
               <td class="px-4 py-2 font-mono text-xs">variant</td>
               <td class="px-4 py-2 font-mono text-xs text-fg-muted">SelectVariant | undefined</td>
               <td class="px-4 py-2 font-mono text-xs text-fg-muted">undefined</td>
-              <td class="px-4 py-2 text-fg-muted">Auto-resolves to <code class="font-mono">'naked'</code> when nested in <code class="font-mono">tw-form-field</code>, otherwise <code class="font-mono">'default'</code>.</td>
+              <td class="px-4 py-2 text-fg-muted">Visual style of the trigger. When inside a <code class="font-mono">tw-form-field</code> and left unset, auto-resolves to <code class="font-mono">'naked'</code>. Otherwise defaults to <code class="font-mono">'default'</code>.</td>
             </tr>
             <tr>
               <td class="px-4 py-2 font-mono text-xs">panelWidth</td>
               <td class="px-4 py-2 font-mono text-xs text-fg-muted">'trigger' | 'auto' | number | string</td>
               <td class="px-4 py-2 font-mono text-xs text-fg-muted">'trigger'</td>
-              <td class="px-4 py-2 text-fg-muted">Overlay panel width strategy.</td>
+              <td class="px-4 py-2 text-fg-muted">Overlay panel width. <code class="font-mono">'trigger'</code> matches the trigger's measured width; <code class="font-mono">'auto'</code> lets content decide; a number is applied as pixels; a string is passed through as a CSS length. Defaults to <code class="font-mono">'trigger'</code>.</td>
             </tr>
             <tr>
               <td class="px-4 py-2 font-mono text-xs">panelClass</td>
@@ -123,25 +123,25 @@ import { CodeBlockComponent } from 'ngx-tw/code-block';
               <td class="px-4 py-2 font-mono text-xs">panelMaxHeight</td>
               <td class="px-4 py-2 font-mono text-xs text-fg-muted">number</td>
               <td class="px-4 py-2 font-mono text-xs text-fg-muted">256</td>
-              <td class="px-4 py-2 text-fg-muted">Maximum height of the listbox scroll region, in pixels.</td>
+              <td class="px-4 py-2 text-fg-muted">Maximum height of the listbox scroll region in pixels. Defaults to <code class="font-mono">256</code>.</td>
             </tr>
             <tr>
               <td class="px-4 py-2 font-mono text-xs">closeOnSelect</td>
               <td class="px-4 py-2 font-mono text-xs text-fg-muted">boolean | undefined</td>
               <td class="px-4 py-2 font-mono text-xs text-fg-muted">undefined</td>
-              <td class="px-4 py-2 text-fg-muted">When unset, defaults to <code class="font-mono">true</code> for single-select and <code class="font-mono">false</code> for multi-select.</td>
+              <td class="px-4 py-2 text-fg-muted">Whether the panel closes after a selection is made. When unset, resolves to <code class="font-mono">true</code> for single-select and <code class="font-mono">false</code> for multi-select.</td>
             </tr>
             <tr>
               <td class="px-4 py-2 font-mono text-xs">scrollStrategy</td>
               <td class="px-4 py-2 font-mono text-xs text-fg-muted">'reposition' | 'close' | 'block'</td>
               <td class="px-4 py-2 font-mono text-xs text-fg-muted">'reposition'</td>
-              <td class="px-4 py-2 text-fg-muted">CDK scroll strategy for the overlay.</td>
+              <td class="px-4 py-2 text-fg-muted">CDK scroll strategy for the overlay. Defaults to <code class="font-mono">'reposition'</code>.</td>
             </tr>
             <tr>
               <td class="px-4 py-2 font-mono text-xs">offset</td>
               <td class="px-4 py-2 font-mono text-xs text-fg-muted">number</td>
               <td class="px-4 py-2 font-mono text-xs text-fg-muted">4</td>
-              <td class="px-4 py-2 text-fg-muted">Pixel distance between the trigger and the panel.</td>
+              <td class="px-4 py-2 text-fg-muted">Pixel distance between trigger and panel. Defaults to <code class="font-mono">4</code>.</td>
             </tr>
             <tr>
               <td class="px-4 py-2 font-mono text-xs">emptyMessage</td>
@@ -193,13 +193,13 @@ import { CodeBlockComponent } from 'ngx-tw/code-block';
               <td class="px-4 py-2 font-mono text-xs">value</td>
               <td class="px-4 py-2 font-mono text-xs text-fg-muted">T | readonly T[] | null</td>
               <td class="px-4 py-2 font-mono text-xs text-fg-muted">null</td>
-              <td class="px-4 py-2 text-fg-muted">Selected value; <code class="font-mono">T | null</code> for single-select and <code class="font-mono">readonly T[]</code> for multi-select.</td>
+              <td class="px-4 py-2 text-fg-muted">Two-way bound selected value(s). Single-select: <code class="font-mono">T | null</code>. Multi-select: <code class="font-mono">T[]</code>.</td>
             </tr>
             <tr>
               <td class="px-4 py-2 font-mono text-xs">open</td>
               <td class="px-4 py-2 font-mono text-xs text-fg-muted">boolean</td>
               <td class="px-4 py-2 font-mono text-xs text-fg-muted">false</td>
-              <td class="px-4 py-2 text-fg-muted">Open state of the panel.</td>
+              <td class="px-4 py-2 text-fg-muted">Two-way bound open state of the panel.</td>
             </tr>
           </tbody>
         </table>

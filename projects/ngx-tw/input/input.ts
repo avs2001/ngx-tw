@@ -13,6 +13,7 @@ import {
   type OnInit,
   signal,
   type Signal,
+  untracked,
   type WritableSignal,
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
@@ -31,6 +32,7 @@ import {
   type ErrorStateMatcher,
   TW_ERROR_STATE_MATCHER,
   type TwFormSubmitted,
+  type TwSize,
 } from 'ngx-tw/core';
 import {
   FormFieldComponent,
@@ -76,7 +78,14 @@ const inputVariants = tv(
       inFormField: {
         true: 'border-0 p-0 shadow-none focus:outline-none focus-visible:outline-none',
         false:
-          'rounded-md border border-border px-4 py-2 text-sm transition-[color,border-color,box-shadow] duration-200 motion-reduce:transition-none hover:border-border-strong focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500',
+          'rounded-md border border-border transition-[color,border-color,box-shadow] duration-normal motion-reduce:transition-none hover:border-border-strong focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500',
+      },
+      size: {
+        xs: '',
+        sm: '',
+        md: '',
+        lg: '',
+        xl: '',
       },
       errorState: {
         true: '',
@@ -88,6 +97,13 @@ const inputVariants = tv(
       },
     },
     compoundVariants: [
+      // Standalone density × size — inline padding + font scale.
+      { inFormField: false, size: 'xs', class: 'px-2 py-1 text-xs' },
+      { inFormField: false, size: 'sm', class: 'px-3 py-1.5 text-sm' },
+      { inFormField: false, size: 'md', class: 'px-4 py-2 text-sm' },
+      { inFormField: false, size: 'lg', class: 'px-5 py-2.5 text-base' },
+      { inFormField: false, size: 'xl', class: 'px-6 py-3 text-base' },
+      // Standalone error state — colored border and focus ring.
       {
         inFormField: false,
         errorState: true,
@@ -96,6 +112,7 @@ const inputVariants = tv(
     ],
     defaultVariants: {
       inFormField: false,
+      size: 'md',
       errorState: false,
       disabled: false,
     },
@@ -180,6 +197,9 @@ export class InputDirective
   /** Native HTML input `type`. Defaults to `'text'`. Dev-mode throws on unsupported values (`checkbox`, `radio`, `submit`, etc.) — use the dedicated component instead. Ignored on `<textarea>`. */
   readonly type = input<string>('text');
 
+  /** Density of a standalone field. Maps to the inline-padding scale (`px-2 py-1` xs … `px-6 py-3` xl) and font scale (`text-xs` xs, `text-sm` sm/md, `text-base` lg/xl). Ignored inside a `<tw-form-field>` — the wrapper's `size` carries density. Defaults to `'md'`. */
+  readonly size = input<TwSize>('md');
+
   /** Disables the control. Also reflects `ngControl.disabled` when the element is bound to a reactive form. Defaults to `false`. */
   readonly disabledInput = input<boolean, unknown>(false, {
     alias: 'disabled',
@@ -202,8 +222,13 @@ export class InputDirective
   readonly errorStateMatcher = input<ErrorStateMatcher | undefined>(undefined);
 
   /** Consumer-supplied `aria-describedby` ids. The form-field preserves these when merging hint and error ids. Alias: `aria-describedby`. */
-  readonly userAriaDescribedByInput = input<string | undefined>(undefined, {
+  override readonly userAriaDescribedBy = input<string | undefined>(undefined, {
     alias: 'aria-describedby',
+  });
+
+  /** Consumer-supplied `aria-labelledby` ids. The form-field preserves these when merging in the projected label id. Alias: `aria-labelledby`. */
+  override readonly userAriaLabelledby = input<string | undefined>(undefined, {
+    alias: 'aria-labelledby',
   });
 
   // ── Internal state signals ──
@@ -258,15 +283,17 @@ export class InputDirective
     return matcher.isErrorState(this.ngControl?.control ?? null, form);
   });
 
-  /** @internal */
-  readonly userAriaDescribedBy = computed(() =>
-    this.userAriaDescribedByInput(),
-  );
+  /** @internal Active validation errors map from the bound `NgControl` (or `null` when the control reports none / is unbound). Recomputes on every `_ngControlRev` tick so `[twError match="…"]` reacts to validator transitions, including rules that fire/clear without flipping `VALID`/`INVALID`. */
+  override readonly errors = computed<Record<string, unknown> | null>(() => {
+    this._ngControlRev();
+    return (this.ngControl?.control?.errors as Record<string, unknown> | null) ?? null;
+  });
 
   /** @internal */
   readonly classes = computed(() =>
     inputVariants({
       inFormField: !!this.formField,
+      size: this.size(),
       errorState: this.errorState(),
       disabled: this.disabled(),
     }),
@@ -295,7 +322,7 @@ export class InputDirective
     if (this.valueAccessor && isSignal(this.valueAccessor.value)) {
       effect(() => {
         const v = (this.valueAccessor!.value as Signal<unknown>)();
-        this._value.set(this._stringify(v));
+        untracked(() => this._value.set(this._stringify(v)));
       });
     }
 
@@ -370,6 +397,20 @@ export class InputDirective
       el.setAttribute('aria-describedby', ids.join(' '));
     } else {
       el.removeAttribute('aria-describedby');
+    }
+  }
+
+  /** @internal Called when `<tw-form-field>` has computed the merged labelledby ids. The native `<label for>` association covers most cases; this attribute is mainly useful when a consumer also supplies `aria-labelledby` for an external label. */
+  override setLabelledByIds(ids: string[]): void {
+    const el = this.elementRef.nativeElement;
+    // Skip applying the projected label id by itself — native `<label for=>` already wires it
+    // and a redundant `aria-labelledby` can cause double-announcements in some screen readers.
+    // Only apply when the consumer supplied additional ids via `aria-labelledby`.
+    const userIds = this.userAriaLabelledby();
+    if (userIds || (ids.length > 1)) {
+      el.setAttribute('aria-labelledby', ids.join(' '));
+    } else {
+      el.removeAttribute('aria-labelledby');
     }
   }
 

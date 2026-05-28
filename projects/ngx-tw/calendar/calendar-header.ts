@@ -15,9 +15,9 @@ const headerVariants = tv(
     slots: {
       root: 'flex items-center justify-between px-2 py-1 mb-2',
       navButton:
-        'inline-flex items-center justify-center select-none h-9 w-9 rounded-full text-fg hover:bg-surface-muted transition-colors duration-200 motion-reduce:transition-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500 disabled:cursor-not-allowed disabled:text-fg-subtle disabled:hover:bg-transparent',
+        'inline-flex items-center justify-center select-none h-9 w-9 rounded-full text-fg hover:bg-surface-muted transition-colors duration-normal motion-reduce:transition-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500 disabled:cursor-not-allowed disabled:text-fg-subtle disabled:hover:bg-transparent',
       periodButton:
-        'inline-flex items-center justify-center select-none px-3 py-1.5 text-sm font-semibold rounded-md text-fg hover:bg-surface-muted transition-colors duration-200 motion-reduce:transition-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500 disabled:cursor-not-allowed disabled:text-fg-subtle disabled:hover:bg-transparent',
+        'inline-flex items-center justify-center select-none px-3 py-1.5 text-sm font-semibold rounded-md text-fg hover:bg-surface-muted transition-colors duration-normal motion-reduce:transition-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500 disabled:cursor-not-allowed disabled:text-fg-subtle disabled:hover:bg-transparent',
     },
     variants: {},
     defaultVariants: {},
@@ -43,7 +43,7 @@ const headerVariants = tv(
         (click)="prevClicked.emit()"
       >
         <svg
-          class="h-5 w-5"
+          class="size-5"
           viewBox="0 0 24 24"
           fill="none"
           stroke="currentColor"
@@ -76,7 +76,7 @@ const headerVariants = tv(
         (click)="nextClicked.emit()"
       >
         <svg
-          class="h-5 w-5"
+          class="size-5"
           viewBox="0 0 24 24"
           fill="none"
           stroke="currentColor"
@@ -113,6 +113,9 @@ export class CalendarHeaderComponent {
   readonly nextDisabled: InputSignal<boolean> = input<boolean>(false);
 
   /** When false, the period button is disabled (e.g. when already at the top view). */
+  // TRUE-default: the period button is the calendar header's primary drill-up
+  // affordance; disabling it is reserved for the top view where there's nowhere
+  // to drill up to.
   readonly canSwitchView: InputSignal<boolean> = input<boolean>(true);
 
   /** Fires on previous button click. */

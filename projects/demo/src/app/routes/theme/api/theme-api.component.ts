@@ -22,17 +22,17 @@ import { ChangeDetectionStrategy, Component } from '@angular/core';
           <tbody class="divide-y divide-border-muted">
             <tr>
               <td class="px-4 py-2 font-mono text-xs">theme()</td>
-              <td class="px-4 py-2 font-mono text-xs text-fg-muted">Signal&lt;Theme&gt;</td>
+              <td class="px-4 py-2 font-mono text-xs text-fg-muted">Signal&lt;TwTheme&gt;</td>
               <td class="px-4 py-2 text-fg-muted">User-selected theme. May be 'system'.</td>
             </tr>
             <tr>
               <td class="px-4 py-2 font-mono text-xs">resolvedTheme()</td>
-              <td class="px-4 py-2 font-mono text-xs text-fg-muted">Signal&lt;ResolvedTheme&gt;</td>
+              <td class="px-4 py-2 font-mono text-xs text-fg-muted">Signal&lt;TwResolvedTheme&gt;</td>
               <td class="px-4 py-2 text-fg-muted">Actual theme applied to the DOM. Never 'system'.</td>
             </tr>
             <tr>
               <td class="px-4 py-2 font-mono text-xs">systemTheme()</td>
-              <td class="px-4 py-2 font-mono text-xs text-fg-muted">Signal&lt;ResolvedTheme&gt;</td>
+              <td class="px-4 py-2 font-mono text-xs text-fg-muted">Signal&lt;TwResolvedTheme&gt;</td>
               <td class="px-4 py-2 text-fg-muted">OS color scheme preference.</td>
             </tr>
             <tr>
@@ -67,7 +67,7 @@ import { ChangeDetectionStrategy, Component } from '@angular/core';
           <tbody class="divide-y divide-border-muted">
             <tr>
               <td class="px-4 py-2 font-mono text-xs">setTheme</td>
-              <td class="px-4 py-2 font-mono text-xs text-fg-muted">(theme: Theme) => void</td>
+              <td class="px-4 py-2 font-mono text-xs text-fg-muted">(theme: TwTheme) => void</td>
               <td class="px-4 py-2 text-fg-muted">Sets the active theme and persists to localStorage.</td>
             </tr>
             <tr>
@@ -98,7 +98,7 @@ import { ChangeDetectionStrategy, Component } from '@angular/core';
           <tbody class="divide-y divide-border-muted">
             <tr>
               <td class="px-4 py-2 font-mono text-xs">twTheme</td>
-              <td class="px-4 py-2 font-mono text-xs text-fg-muted">ResolvedTheme</td>
+              <td class="px-4 py-2 font-mono text-xs text-fg-muted">TwResolvedTheme</td>
               <td class="px-4 py-2 text-fg-muted">Sets data-theme attribute on the host element.</td>
             </tr>
           </tbody>
@@ -110,11 +110,11 @@ import { ChangeDetectionStrategy, Component } from '@angular/core';
     <section>
       <h2 class="text-sm font-semibold mb-3">Types</h2>
       <div class="bg-surface-sunken border border-border rounded-lg p-4">
-        <pre class="text-sm font-mono whitespace-pre text-fg"><code>type Theme = 'light' | 'dark' | 'high-contrast' | 'system';
-type ResolvedTheme = 'light' | 'dark' | 'high-contrast';
+        <pre class="text-sm font-mono whitespace-pre text-fg"><code>type TwTheme = 'light' | 'dark' | 'high-contrast' | 'system';
+type TwResolvedTheme = 'light' | 'dark' | 'high-contrast';
 
-interface ThemeConfig {{ '{' }}
-  defaultTheme: Theme;     // default: 'system'
+interface TwThemeConfig {{ '{' }}
+  defaultTheme: TwTheme;   // default: 'system'
   storageKey: string;      // default: 'ngx-tw-theme'
   attribute: string;       // default: 'data-theme'
   target: 'documentElement' | 'body';  // default: 'documentElement'

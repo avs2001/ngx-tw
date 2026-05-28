@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { ChangeDetectionStrategy, Component, signal } from '@angular/core';
 import { type ComponentFixture, TestBed } from '@angular/core/testing';
-import { FormControl, FormsModule, ReactiveFormsModule } from '@angular/forms';
+import { FormControl, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
 import { form, FormField } from '@angular/forms/signals';
 import { FocusMonitor } from '@angular/cdk/a11y';
 import { RadioComponent, RadioGroupComponent } from './radio';
@@ -721,6 +721,51 @@ describe('RadioComponent standalone', () => {
     expect(logged).toContain('tw-radio');
     warnSpy.mockRestore();
   });
+
+  it('should round-trip the value via template-driven [(ngModel)] (standalone CVA)', async () => {
+    @Component({
+      imports: [RadioComponent, FormsModule],
+      changeDetection: ChangeDetectionStrategy.OnPush,
+      template: `<tw-radio [(ngModel)]="checked" label="Confirm" />`,
+    })
+    class TdHost {
+      checked = false;
+    }
+    const fixture = TestBed.createComponent(TdHost);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    // Click — the CVA's onChange must propagate to the bound ngModel.
+    fixture.nativeElement.querySelector('tw-radio').click();
+    fixture.detectChanges();
+    await fixture.whenStable();
+    expect(fixture.componentInstance.checked).toBe(true);
+  });
+
+  it('should round-trip the value via reactive [formControl] (standalone CVA)', () => {
+    @Component({
+      imports: [RadioComponent, ReactiveFormsModule],
+      changeDetection: ChangeDetectionStrategy.OnPush,
+      template: `<tw-radio [formControl]="control" label="Confirm" />`,
+    })
+    class ReactiveStandaloneHost {
+      control = new FormControl<boolean>(false);
+    }
+    const fixture = TestBed.createComponent(ReactiveStandaloneHost);
+    fixture.detectChanges();
+    const radio = fixture.nativeElement.querySelector('tw-radio');
+
+    // Programmatic write through the control.
+    fixture.componentInstance.control.setValue(true);
+    fixture.detectChanges();
+    expect(radio.getAttribute('aria-checked')).toBe('true');
+
+    // setDisabledState should set aria-disabled.
+    fixture.componentInstance.control.disable();
+    fixture.detectChanges();
+    expect(radio.getAttribute('aria-disabled')).toBe('true');
+  });
 });
 
 // ── ControlValueAccessor ──────────────────────────────────────────
@@ -826,5 +871,75 @@ describe('RadioGroupComponent signal forms', () => {
     getRadios(fixture)[0].dispatchEvent(new Event('blur'));
     fixture.detectChanges();
     expect(fixture.componentInstance.radioForm.plan().touched()).toBe(true);
+  });
+});
+
+// ── Error state matcher ──
+
+@Component({
+  imports: [RadioGroupComponent, RadioComponent, ReactiveFormsModule],
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  template: `
+    <tw-radio-group [formControl]="control" aria-label="Required">
+      <tw-radio value="a" label="A" />
+      <tw-radio value="b" label="B" />
+    </tw-radio-group>
+  `,
+})
+class RequiredGroupHost {
+  control = new FormControl<string | null>(null, Validators.required);
+}
+
+describe('RadioGroupComponent errorState', () => {
+  const focusMonitorSpy = {
+    monitor: vi.fn(),
+    stopMonitoring: vi.fn(),
+  };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    TestBed.configureTestingModule({
+      providers: [{ provide: FocusMonitor, useValue: focusMonitorSpy }],
+    });
+  });
+
+  it('does not set aria-invalid before the control is touched', () => {
+    const fixture = TestBed.createComponent(RequiredGroupHost);
+    fixture.detectChanges();
+    expect(fixture.componentInstance.control.invalid).toBe(true);
+    expect(getGroup(fixture).getAttribute('aria-invalid')).toBe(null);
+  });
+
+  it('sets aria-invalid on the group host once the FormControl is touched + invalid', () => {
+    const fixture = TestBed.createComponent(RequiredGroupHost);
+    fixture.detectChanges();
+    fixture.componentInstance.control.markAsTouched();
+    fixture.componentInstance.control.updateValueAndValidity();
+    fixture.detectChanges();
+    expect(getGroup(fixture).getAttribute('aria-invalid')).toBe('true');
+  });
+
+  it('propagates errorState to child radios', () => {
+    const fixture = TestBed.createComponent(RequiredGroupHost);
+    fixture.detectChanges();
+    fixture.componentInstance.control.markAsTouched();
+    fixture.componentInstance.control.updateValueAndValidity();
+    fixture.detectChanges();
+    const radios = getRadios(fixture);
+    expect(radios[0].getAttribute('aria-invalid')).toBe('true');
+    expect(radios[1].getAttribute('aria-invalid')).toBe('true');
+  });
+
+  it('clears aria-invalid once the user selects a radio and the control becomes valid', () => {
+    const fixture = TestBed.createComponent(RequiredGroupHost);
+    fixture.detectChanges();
+    fixture.componentInstance.control.markAsTouched();
+    fixture.componentInstance.control.updateValueAndValidity();
+    fixture.detectChanges();
+    expect(getGroup(fixture).getAttribute('aria-invalid')).toBe('true');
+    getRadios(fixture)[0].click();
+    fixture.detectChanges();
+    expect(fixture.componentInstance.control.valid).toBe(true);
+    expect(getGroup(fixture).getAttribute('aria-invalid')).toBe(null);
   });
 });

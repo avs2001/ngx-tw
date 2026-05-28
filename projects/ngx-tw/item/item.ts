@@ -1,4 +1,5 @@
 import {
+  booleanAttribute,
   ChangeDetectionStrategy,
   Component,
   computed,
@@ -72,13 +73,19 @@ const itemVariants = tv(
       },
       interactive: {
         true: {
-          root: '-mx-2 cursor-pointer rounded-md px-2 transition-colors duration-200 hover:bg-surface-muted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500 motion-reduce:transition-none',
+          root: '-mx-2 cursor-pointer rounded-md px-2 transition-colors duration-normal hover:bg-surface-muted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500 motion-reduce:transition-none',
         },
         false: {},
       },
       disabled: {
         true: {
           root: 'pointer-events-none opacity-50',
+        },
+        false: {},
+      },
+      current: {
+        true: {
+          root: 'bg-primary-soft ring-2 ring-inset ring-primary-border',
         },
         false: {},
       },
@@ -93,6 +100,7 @@ const itemVariants = tv(
       align: 'start',
       interactive: false,
       disabled: false,
+      current: false,
     },
   },
   { twMerge: true },
@@ -106,6 +114,7 @@ const itemVariants = tv(
     '[attr.role]': 'interactive() ? "button" : null',
     '[attr.tabindex]': 'interactive() && !disabled() ? 0 : null',
     '[attr.aria-disabled]': 'disabled() ? "true" : null',
+    '[attr.aria-current]': 'current() ? "true" : null',
     '(click)': 'onActivate($event)',
     '(keydown)': 'onKeydown($event)',
   },
@@ -125,11 +134,20 @@ export class ItemComponent implements OnInit {
   /** Vertical alignment of the leading and trailing slots relative to the content stack. `'start'` aligns them with the title baseline (recommended when a description is present). `'center'` vertically centers them on the whole block (recommended for single-line items). Defaults to `'start'`. */
   readonly align = input<ItemAlign>('start');
 
-  /** When `true`, the item is keyboard-activatable: adds `role="button"`, `tabindex="0"`, a hover background, pointer cursor, and a visible focus ring. Click and Enter/Space emit `selected`. Defaults to `false`. */
-  readonly interactive = input(false);
+  /**
+   * When `true`, the item is keyboard-activatable: adds `role="button"`, `tabindex="0"`, a hover background, pointer cursor, and a visible focus ring. Click and Enter/Space emit `selected`. Defaults to `false`.
+   *
+   * Do not project additional focusable elements (buttons, links, inputs) into `[twItemLeading]` or `[twItemTrailing]` when this is `true` — they create nested interactive controls that fail AXE. For action-row patterns, keep `interactive` as `false` and let the projected control carry the semantics instead.
+   *
+   * For `role="menuitem"`, `role="option"`, or other listbox/menu semantics, do not use `tw-item` — the menu, select, and command-palette components own those roles and the keyboard contracts that come with them.
+   */
+  readonly interactive = input(false, { transform: booleanAttribute });
 
   /** Disables an interactive item. Applies `opacity-50`, `pointer-events-none`, and sets `aria-disabled`. Only meaningful when `interactive` is `true`. Defaults to `false`. */
-  readonly disabled = input(false);
+  readonly disabled = input(false, { transform: booleanAttribute });
+
+  /** When `true`, marks the item as the visually highlighted "current" row (e.g. selected list entry, active settings tab). Applies a low-prominence primary tint, an inset ring, and `aria-current="true"`. Stacks cleanly with `interactive` (the focus ring sits on top of the current ring). Defaults to `false`. */
+  readonly current = input(false, { transform: booleanAttribute });
 
   /** Fires when an interactive item is activated via click, Enter, or Space. Payload is the originating DOM event. Does not emit when `interactive` is `false` or `disabled` is `true`. */
   readonly selected = output<Event>();
@@ -144,6 +162,7 @@ export class ItemComponent implements OnInit {
       align: this.align(),
       interactive: this.interactive(),
       disabled: this.disabled(),
+      current: this.current(),
     }),
   );
 
@@ -168,7 +187,7 @@ export class ItemComponent implements OnInit {
 
   onKeydown(event: KeyboardEvent): void {
     if (!this.interactive() || this.disabled()) return;
-    if (event.key === 'Enter' || event.key === ' ' || event.key === 'Spacebar') {
+    if (event.key === 'Enter' || event.key === ' ') {
       event.preventDefault();
       this.selected.emit(event);
     }

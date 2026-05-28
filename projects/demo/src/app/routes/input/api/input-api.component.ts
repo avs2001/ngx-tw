@@ -36,6 +36,12 @@ import { CodeBlockComponent } from 'ngx-tw/code-block';
               <td class="px-4 py-2 text-fg-muted">Native HTML input type; dev mode throws on unsupported values (<code class="font-mono">checkbox</code>, <code class="font-mono">radio</code>, <code class="font-mono">submit</code>, etc.) and the attribute is ignored on textarea.</td>
             </tr>
             <tr>
+              <td class="px-4 py-2 font-mono text-xs">size</td>
+              <td class="px-4 py-2 font-mono text-xs text-fg-muted">TwSize</td>
+              <td class="px-4 py-2 font-mono text-xs text-fg-muted">'md'</td>
+              <td class="px-4 py-2 text-fg-muted">Density of a <em>standalone</em> field. Maps to the inline-padding scale (<code class="font-mono">px-2 py-1</code> xs … <code class="font-mono">px-6 py-3</code> xl) and font scale (<code class="font-mono">text-xs</code> xs, <code class="font-mono">text-sm</code> sm/md, <code class="font-mono">text-base</code> lg/xl). Ignored inside <code class="font-mono">tw-form-field</code> — the wrapper's <code class="font-mono">size</code> carries density.</td>
+            </tr>
+            <tr>
               <td class="px-4 py-2 font-mono text-xs">disabled</td>
               <td class="px-4 py-2 font-mono text-xs text-fg-muted">boolean</td>
               <td class="px-4 py-2 font-mono text-xs text-fg-muted">false</td>

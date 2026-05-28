@@ -63,6 +63,8 @@ export class ToastConfig<D = unknown, R = unknown> {
   /** Auto-dismiss duration in ms. `0` disables auto-dismiss. Defaults to `5000`. */
   duration?: number = 5000;
 
+  // Default true: toasts must offer an escape hatch — sticky / long-duration toasts
+  // otherwise trap users; opt-out only for ephemeral progress markers paired with `duration`.
   /** When true, renders a close (×) button. Defaults to `true`. */
   dismissible?: boolean = true;
 
@@ -83,15 +85,22 @@ export class ToastConfig<D = unknown, R = unknown> {
   panelClass?: string | string[];
 
   /**
-   * Icon override. Pass a string (treated as text glyph / icon name), a
-   * `TemplateRef` to render arbitrary markup, or `false` to hide the icon.
-   * When omitted the severity-default icon is used.
+   * Icon override. Pass a string (treated as text glyph / icon name) or
+   * `false` to hide the icon. When omitted the severity-default icon is used.
+   *
+   * Note: To render arbitrary icon markup, pass a `TemplateRef` to `show()`
+   * itself (the whole toast is a custom template) — the icon slot accepts only
+   * primitives for the string-content path.
    */
-  icon?: string | TemplateRef<void> | false;
+  icon?: string | false;
 
+  // Default true: matches Material/Radix/Sonner conventions — prevents a toast from
+  // disappearing mid-read; opt-out only for fully ambient progress indicators.
   /** When true, pause the auto-dismiss timer while the toast is hovered or holds focus. Defaults to `true`. */
   pauseOnInteraction?: boolean = true;
 
+  // Default true: matches mobile-platform expectations and gives non-precise pointers
+  // (touch) an easy dismiss gesture; opt-out only if the gesture conflicts with content.
   /** Enable horizontal swipe-to-dismiss via pointer gestures. Defaults to `true`. */
   swipeToDismiss?: boolean = true;
 

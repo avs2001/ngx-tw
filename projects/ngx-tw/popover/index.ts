@@ -6,6 +6,7 @@ export {
   type PopoverTrigger,
 } from './popover';
 export { PopoverCloseDirective } from './popover-close';
+export { PopoverTitleDirective } from './popover-title';
 export {
   POPOVER_DATA,
   POPOVER_REF,

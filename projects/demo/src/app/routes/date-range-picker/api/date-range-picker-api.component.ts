@@ -43,7 +43,7 @@ import { CodeBlockComponent } from 'ngx-tw/code-block';
             </tr>
             <tr>
               <td class="px-4 py-2 font-mono text-xs">dateFilter</td>
-              <td class="px-4 py-2 font-mono text-xs text-fg-muted">TwDateFilter&lt;D&gt; | null</td>
+              <td class="px-4 py-2 font-mono text-xs text-fg-muted">DateFilterFn&lt;D&gt; | null</td>
               <td class="px-4 py-2 font-mono text-xs text-fg-muted">null</td>
               <td class="px-4 py-2 text-fg-muted">Per-date predicate applied in both calendars; return <code class="font-mono">false</code> to disable a cell.</td>
             </tr>
@@ -228,6 +228,61 @@ import { CodeBlockComponent } from 'ngx-tw/code-block';
               <td class="px-4 py-2 text-fg-muted">Accessible label for the trigger-side clear button.</td>
             </tr>
             <tr>
+              <td class="px-4 py-2 font-mono text-xs">minRangeLength</td>
+              <td class="px-4 py-2 font-mono text-xs text-fg-muted">number | null</td>
+              <td class="px-4 py-2 font-mono text-xs text-fg-muted">null</td>
+              <td class="px-4 py-2 text-fg-muted">Minimum range length in days (inclusive). Commits below the floor surface <code class="font-mono">calendarRangeTooShort</code>.</td>
+            </tr>
+            <tr>
+              <td class="px-4 py-2 font-mono text-xs">maxRangeLength</td>
+              <td class="px-4 py-2 font-mono text-xs text-fg-muted">number | null</td>
+              <td class="px-4 py-2 font-mono text-xs text-fg-muted">null</td>
+              <td class="px-4 py-2 text-fg-muted">Maximum range length in days (inclusive). Commits above the ceiling surface <code class="font-mono">calendarRangeTooLong</code>.</td>
+            </tr>
+            <tr>
+              <td class="px-4 py-2 font-mono text-xs">rangeBehavior</td>
+              <td class="px-4 py-2 font-mono text-xs text-fg-muted">Partial&lt;RangeBehaviorConfig&gt;</td>
+              <td class="px-4 py-2 font-mono text-xs text-fg-muted">&#123;&#125;</td>
+              <td class="px-4 py-2 text-fg-muted">
+                Range-mode behavior knobs forwarded to the embedded calendar as a single config object. Unset fields use the defaults documented on
+                <code class="font-mono">RangeBehaviorConfig</code>:
+                <code class="font-mono">allowSingleDayRange: true</code>,
+                <code class="font-mono">persistPartialRange: true</code>,
+                <code class="font-mono">allowBackwardRange: false</code>,
+                <code class="font-mono">disableRangesCrossingDisabledDates: false</code>.
+              </td>
+            </tr>
+            <tr>
+              <td class="px-4 py-2 font-mono text-xs">rangeClickBehavior</td>
+              <td class="px-4 py-2 font-mono text-xs text-fg-muted">'restart' | 'nearest-edge' | 'require-clear'</td>
+              <td class="px-4 py-2 font-mono text-xs text-fg-muted">'restart'</td>
+              <td class="px-4 py-2 text-fg-muted">How the calendar reacts to a click after a complete range — start fresh, move the nearer endpoint, or block until cleared.</td>
+            </tr>
+            <tr>
+              <td class="px-4 py-2 font-mono text-xs">firstDayOfWeek</td>
+              <td class="px-4 py-2 font-mono text-xs text-fg-muted">number | null</td>
+              <td class="px-4 py-2 font-mono text-xs text-fg-muted">null</td>
+              <td class="px-4 py-2 text-fg-muted">Override first day of week (0=Sun, 1=Mon) on the embedded calendar. Falls back to the adapter's default.</td>
+            </tr>
+            <tr>
+              <td class="px-4 py-2 font-mono text-xs">locale</td>
+              <td class="px-4 py-2 font-mono text-xs text-fg-muted">string | null</td>
+              <td class="px-4 py-2 font-mono text-xs text-fg-muted">null</td>
+              <td class="px-4 py-2 text-fg-muted">Per-instance locale override forwarded to the embedded calendar and the underlying adapter. Falls back to Angular <code class="font-mono">LOCALE_ID</code>.</td>
+            </tr>
+            <tr>
+              <td class="px-4 py-2 font-mono text-xs">dateClass</td>
+              <td class="px-4 py-2 font-mono text-xs text-fg-muted">DateClassFn&lt;D&gt; | null</td>
+              <td class="px-4 py-2 font-mono text-xs text-fg-muted">null</td>
+              <td class="px-4 py-2 text-fg-muted">Function producing per-cell CSS classes on the embedded calendar.</td>
+            </tr>
+            <tr>
+              <td class="px-4 py-2 font-mono text-xs">cellTemplate</td>
+              <td class="px-4 py-2 font-mono text-xs text-fg-muted">TemplateRef&lt;…&gt; | null</td>
+              <td class="px-4 py-2 font-mono text-xs text-fg-muted">null</td>
+              <td class="px-4 py-2 text-fg-muted">Cell-content template forwarded to the embedded calendar; customizes cell visuals beyond <code class="font-mono">dateClass</code>.</td>
+            </tr>
+            <tr>
               <td class="px-4 py-2 font-mono text-xs">errorStateMatcher</td>
               <td class="px-4 py-2 font-mono text-xs text-fg-muted">ErrorStateMatcher</td>
               <td class="px-4 py-2 font-mono text-xs text-fg-muted">injected</td>
@@ -397,7 +452,6 @@ export type DateRangePickerChangeSource =
   | 'time'
   | 'apply'
   | 'clear'
-  | 'today'
   | 'programmatic';
 
 /** Reason the overlay closed. */

@@ -2,8 +2,11 @@ import { describe, expect, it, vi } from 'vitest';
 import { ChangeDetectionStrategy, Component, signal, type Type } from '@angular/core';
 import { type ComponentFixture, TestBed } from '@angular/core/testing';
 import { FormControl, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
+import { form, FormField, required } from '@angular/forms/signals';
 import { provideNativeDateAdapter } from 'ngx-tw/calendar';
+import type { TwColor } from 'ngx-tw/core';
 import { TimePickerComponent } from './time-picker';
+import { provideTimePickerIntl, TimePickerIntl } from './time-picker-intl';
 import type {
   TimePickerChangeEvent,
   TimePickerFormat,
@@ -27,6 +30,7 @@ import type {
       [hourStep]="hourStep()"
       [minuteStep]="minuteStep()"
       [secondStep]="secondStep()"
+      [referenceDate]="referenceDate()"
       [aria-label]="ariaLabel()"
       (timeChange)="changeSpy($event)"
       (timeInput)="inputSpy($event)"
@@ -45,6 +49,7 @@ class BasicHost {
   hourStep = signal(1);
   minuteStep = signal(1);
   secondStep = signal(1);
+  referenceDate = signal<Date | null>(null);
   ariaLabel = signal<string | undefined>('Test time');
   changeSpy = vi.fn();
   inputSpy = vi.fn();
@@ -68,11 +73,42 @@ class TemplateHost {
   value: Date | null = null;
 }
 
+@Component({
+  imports: [TimePickerComponent, FormField],
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  template: `<tw-time-picker
+    aria-label="Signal"
+    [formField]="model.time"
+    [minuteStep]="15"
+  />`,
+})
+class SignalHost {
+  protected readonly state = signal<{ time: Date | null }>({ time: null });
+  protected readonly model = form(this.state, (path) => {
+    required(path.time, { message: 'Time is required.' });
+  });
+}
+
+@Component({
+  imports: [TimePickerComponent],
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  template: `<tw-time-picker
+    aria-label="Color"
+    format="12h"
+    [color]="color()"
+    [value]="value()"
+  />`,
+})
+class ColorHost {
+  color = signal<TwColor>('primary');
+  value = signal<Date | null>(new Date(2026, 0, 1, 14, 30, 0));
+}
+
 // ── Helpers ───────────────────────────────────────────────────────
 
-function setup<T>(host: Type<T>): ComponentFixture<T> {
+function setup<T>(host: Type<T>, extraProviders: unknown[] = []): ComponentFixture<T> {
   TestBed.configureTestingModule({
-    providers: [provideNativeDateAdapter()],
+    providers: [provideNativeDateAdapter(), ...(extraProviders as never[])],
   });
   const fixture = TestBed.createComponent(host);
   fixture.detectChanges();
@@ -149,6 +185,25 @@ describe('TimePickerComponent', () => {
       expect(queryField(fixture, 'Hours').value).toBe('09');
       expect(queryField(fixture, 'Minutes').value).toBe('05');
     });
+
+    it('preserves seconds when toggling showSeconds after a value is set', () => {
+      const fixture = setup(BasicHost);
+      fixture.componentInstance.showSeconds.set(true);
+      fixture.componentInstance.value.set(new Date(2026, 0, 1, 10, 20, 30));
+      fixture.detectChanges();
+      expect(queryField(fixture, 'Seconds').value).toBe('30');
+
+      fixture.componentInstance.showSeconds.set(false);
+      fixture.detectChanges();
+      const hidden = (fixture.nativeElement as HTMLElement).querySelector(
+        'input[aria-label="Seconds"]',
+      );
+      expect(hidden).toBeNull();
+
+      fixture.componentInstance.showSeconds.set(true);
+      fixture.detectChanges();
+      expect(queryField(fixture, 'Seconds').value).toBe('30');
+    });
   });
 
   describe('inputs & outputs', () => {
@@ -201,6 +256,33 @@ describe('TimePickerComponent', () => {
       expect(fixture.componentInstance.value()?.getHours()).toBe(23);
     });
 
+    it('shift+ArrowUp multiplies the step by 2', () => {
+      const fixture = setup(BasicHost);
+      fixture.componentInstance.value.set(new Date(2026, 0, 1, 10, 0, 0));
+      fixture.componentInstance.minuteStep.set(5);
+      fixture.detectChanges();
+
+      const minute = queryField(fixture, 'Minutes');
+      minute.focus();
+      keydown(minute, 'ArrowUp', { shiftKey: true });
+      fixture.detectChanges();
+
+      expect(fixture.componentInstance.value()?.getMinutes()).toBe(10);
+    });
+
+    it('hourStep larger than 1 steps by the configured amount', () => {
+      const fixture = setup(BasicHost);
+      fixture.componentInstance.value.set(new Date(2026, 0, 1, 9, 0, 0));
+      fixture.componentInstance.hourStep.set(3);
+      fixture.detectChanges();
+
+      const hour = queryField(fixture, 'Hours');
+      hour.focus();
+      keydown(hour, 'ArrowUp');
+      fixture.detectChanges();
+      expect(fixture.componentInstance.value()?.getHours()).toBe(12);
+    });
+
     it('AM/PM toggle flips the stored hour by 12', () => {
       const fixture = setup(BasicHost);
       fixture.componentInstance.format.set('12h');
@@ -243,6 +325,113 @@ describe('TimePickerComponent', () => {
       fixture.componentInstance.format.set('12h');
       fixture.detectChanges();
       expect(queryField(fixture, 'Hours').value).toBe('03');
+    });
+  });
+
+  describe('keyboard navigation', () => {
+    it('ArrowLeft at caret-start moves focus to the previous field', () => {
+      const fixture = setup(BasicHost);
+      fixture.componentInstance.value.set(new Date(2026, 0, 1, 10, 30, 0));
+      fixture.detectChanges();
+
+      const hour = queryField(fixture, 'Hours');
+      const minute = queryField(fixture, 'Minutes');
+      minute.focus();
+      minute.setSelectionRange(0, 0);
+      keydown(minute, 'ArrowLeft');
+      fixture.detectChanges();
+
+      expect(document.activeElement).toBe(hour);
+    });
+
+    it('ArrowRight at caret-end moves focus to the next field', () => {
+      const fixture = setup(BasicHost);
+      fixture.componentInstance.value.set(new Date(2026, 0, 1, 10, 30, 0));
+      fixture.detectChanges();
+
+      const hour = queryField(fixture, 'Hours');
+      const minute = queryField(fixture, 'Minutes');
+      hour.focus();
+      hour.setSelectionRange(hour.value.length, hour.value.length);
+      keydown(hour, 'ArrowRight');
+      fixture.detectChanges();
+
+      expect(document.activeElement).toBe(minute);
+    });
+
+    it('Home/End clamp the focused field to min/max', () => {
+      const fixture = setup(BasicHost);
+      fixture.componentInstance.value.set(new Date(2026, 0, 1, 10, 30, 0));
+      fixture.detectChanges();
+
+      const minute = queryField(fixture, 'Minutes');
+      minute.focus();
+      keydown(minute, 'End');
+      fixture.detectChanges();
+      expect(fixture.componentInstance.value()?.getMinutes()).toBe(59);
+
+      keydown(minute, 'Home');
+      fixture.detectChanges();
+      expect(fixture.componentInstance.value()?.getMinutes()).toBe(0);
+    });
+
+    it('terminal-digit auto-advances to the next field', () => {
+      const fixture = setup(BasicHost);
+      fixture.detectChanges();
+
+      const hour = queryField(fixture, 'Hours');
+      const minute = queryField(fixture, 'Minutes');
+      // Typing "3" in a 24h hour field cannot grow into a two-digit value (max 23 → 3X is invalid).
+      // The buffer should auto-advance to the minute field after the single digit.
+      typeDigit(hour, '3');
+      fixture.detectChanges();
+      expect(document.activeElement).toBe(minute);
+    });
+  });
+
+  describe('referenceDate', () => {
+    it('uses today as the date portion when value is null and no reference is set', () => {
+      const fixture = setup(BasicHost);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      fixture.detectChanges();
+
+      const hour = queryField(fixture, 'Hours');
+      typeDigit(hour, '1');
+      typeDigit(hour, '0');
+      fixture.detectChanges();
+      const minute = queryField(fixture, 'Minutes');
+      typeDigit(minute, '0');
+      typeDigit(minute, '0');
+      fixture.detectChanges();
+
+      const v = fixture.componentInstance.value();
+      expect(v).not.toBeNull();
+      expect(v?.getFullYear()).toBe(today.getFullYear());
+      expect(v?.getMonth()).toBe(today.getMonth());
+      expect(v?.getDate()).toBe(today.getDate());
+    });
+
+    it('uses referenceDate as the date portion when value is null', () => {
+      const fixture = setup(BasicHost);
+      fixture.componentInstance.referenceDate.set(new Date(2030, 5, 15, 0, 0, 0));
+      fixture.detectChanges();
+
+      const hour = queryField(fixture, 'Hours');
+      typeDigit(hour, '0');
+      typeDigit(hour, '7');
+      fixture.detectChanges();
+      const minute = queryField(fixture, 'Minutes');
+      typeDigit(minute, '4');
+      typeDigit(minute, '5');
+      fixture.detectChanges();
+
+      const v = fixture.componentInstance.value();
+      expect(v?.getFullYear()).toBe(2030);
+      expect(v?.getMonth()).toBe(5);
+      expect(v?.getDate()).toBe(15);
+      expect(v?.getHours()).toBe(7);
+      expect(v?.getMinutes()).toBe(45);
     });
   });
 
@@ -316,6 +505,25 @@ describe('TimePickerComponent', () => {
       expect(hour.getAttribute('aria-valuetext')).toBe('02 PM');
     });
 
+    it('meridiem buttons expose role="radio" with aria-checked', () => {
+      const fixture = setup(BasicHost);
+      fixture.componentInstance.format.set('12h');
+      fixture.componentInstance.value.set(new Date(2026, 0, 1, 14, 30, 0));
+      fixture.detectChanges();
+
+      const am = (fixture.nativeElement as HTMLElement).querySelector(
+        'button[aria-label="AM"]',
+      ) as HTMLButtonElement;
+      const pm = (fixture.nativeElement as HTMLElement).querySelector(
+        'button[aria-label="PM"]',
+      ) as HTMLButtonElement;
+      expect(am.getAttribute('role')).toBe('radio');
+      expect(pm.getAttribute('role')).toBe('radio');
+      expect(pm.getAttribute('aria-checked')).toBe('true');
+      expect(am.getAttribute('aria-checked')).toBe('false');
+      expect(am.getAttribute('aria-pressed')).toBeNull();
+    });
+
     it('host exposes aria-disabled when disabled', () => {
       const fixture = setup(BasicHost);
       fixture.componentInstance.disabled.set(true);
@@ -324,6 +532,97 @@ describe('TimePickerComponent', () => {
         'tw-time-picker',
       ) as HTMLElement;
       expect(host.getAttribute('aria-disabled')).toBe('true');
+    });
+
+    it('field uses the canonical focus-visible outline ring class', () => {
+      const fixture = setup(BasicHost);
+      fixture.detectChanges();
+      const hour = queryField(fixture, 'Hours');
+      expect(hour.className).toContain('focus-visible:outline-2');
+      expect(hour.className).toContain('focus-visible:outline-primary-500');
+      expect(hour.className).not.toContain('focus-visible:bg-surface-muted');
+    });
+
+    it('active meridiem button uses the text-on-primary semantic token', () => {
+      const fixture = setup(BasicHost);
+      fixture.componentInstance.format.set('12h');
+      fixture.componentInstance.value.set(new Date(2026, 0, 1, 14, 30, 0));
+      fixture.detectChanges();
+
+      const pm = (fixture.nativeElement as HTMLElement).querySelector(
+        'button[aria-label="PM"]',
+      ) as HTMLButtonElement;
+      expect(pm.className).toContain('text-on-primary');
+      expect(pm.className).not.toContain('text-primary-50');
+    });
+
+    it('active meridiem button routes through the color input across every semantic color', () => {
+      const fixture = setup(ColorHost);
+      const colors: ReadonlyArray<{ color: TwColor; bg: string; text: string }> = [
+        { color: 'primary', bg: 'bg-primary-500', text: 'text-on-primary' },
+        { color: 'secondary', bg: 'bg-secondary-500', text: 'text-on-secondary' },
+        { color: 'accent', bg: 'bg-accent-500', text: 'text-on-accent' },
+        { color: 'neutral', bg: 'bg-fg', text: 'text-on-neutral' },
+        { color: 'info', bg: 'bg-info-500', text: 'text-on-info' },
+        { color: 'success', bg: 'bg-success-500', text: 'text-on-success' },
+        { color: 'warning', bg: 'bg-warning-500', text: 'text-on-warning' },
+        { color: 'error', bg: 'bg-error-500', text: 'text-on-error' },
+      ];
+      for (const { color, bg, text } of colors) {
+        fixture.componentInstance.color.set(color);
+        fixture.detectChanges();
+        const pm = (fixture.nativeElement as HTMLElement).querySelector(
+          'button[aria-label="PM"]',
+        ) as HTMLButtonElement;
+        expect(pm.className, `active background for ${color}`).toContain(bg);
+        expect(pm.className, `active foreground for ${color}`).toContain(text);
+      }
+    });
+  });
+
+  describe('intl', () => {
+    it('uses provided TimePickerIntl labels in the DOM', () => {
+      const fixture = setup(BasicHost, [
+        provideTimePickerIntl({
+          hoursLabel: 'Heures',
+          minutesLabel: 'Min',
+          groupLabel: 'Heure',
+          meridiemGroupLabel: 'AM ou PM',
+          amLabel: 'Matin',
+          pmLabel: 'Soir',
+        }),
+      ]);
+      fixture.componentInstance.format.set('12h');
+      fixture.componentInstance.value.set(new Date(2026, 0, 1, 14, 30, 0));
+      fixture.componentInstance.ariaLabel.set(undefined);
+      fixture.detectChanges();
+
+      const hostEl = fixture.nativeElement as HTMLElement;
+      expect(hostEl.querySelector('input[aria-label="Heures"]')).toBeTruthy();
+      expect(hostEl.querySelector('input[aria-label="Min"]')).toBeTruthy();
+      expect(
+        hostEl.querySelector('[role="group"]')?.getAttribute('aria-label'),
+      ).toBe('Heure');
+      expect(
+        hostEl.querySelector('[role="radiogroup"]')?.getAttribute('aria-label'),
+      ).toBe('AM ou PM');
+      expect(hostEl.querySelector('button[aria-label="Soir"]')).toBeTruthy();
+      // The displayed button text should also use the override.
+      const pm = hostEl.querySelector(
+        'button[aria-label="Soir"]',
+      ) as HTMLButtonElement;
+      expect(pm.textContent?.trim()).toBe('Soir');
+    });
+
+    it('defaults preserve the English labels when no intl is provided', () => {
+      const fixture = setup(BasicHost);
+      fixture.componentInstance.format.set('12h');
+      fixture.detectChanges();
+
+      const intl = TestBed.runInInjectionContext(() => new TimePickerIntl());
+      expect(intl.hoursLabel).toBe('Hours');
+      expect(intl.minutesLabel).toBe('Minutes');
+      expect(intl.amLabel).toBe('AM');
     });
   });
 
@@ -357,6 +656,17 @@ describe('TimePickerComponent', () => {
       expect(hour.disabled).toBe(true);
     });
 
+    it('reactive form: writeValue("not-a-date") clears fields and flips aria-invalid', () => {
+      const fixture = setup(ReactiveHost);
+      // FormControl coerces strings to the value as-is — adapter rejects.
+      fixture.componentInstance.control.setValue('not-a-date' as unknown as Date);
+      fixture.detectChanges();
+      const hour = queryField(fixture, 'Hours');
+      expect(hour.value).toBe('');
+      // rangeError forces errorState → aria-invalid.
+      expect(hour.getAttribute('aria-invalid')).toBe('true');
+    });
+
     it('template-driven form: ngModel round-trips', async () => {
       const fixture = setup(TemplateHost);
       // Typing into the control should push through ngModel to the host value.
@@ -371,6 +681,23 @@ describe('TimePickerComponent', () => {
       await fixture.whenStable();
       expect(fixture.componentInstance.value?.getHours()).toBe(11);
       expect(fixture.componentInstance.value?.getMinutes()).toBe(15);
+    });
+
+    it('signal forms: typing into the field updates the bound state', () => {
+      const fixture = setup(SignalHost);
+      const hour = queryField(fixture, 'Hours');
+      typeDigit(hour, '0');
+      typeDigit(hour, '9');
+      fixture.detectChanges();
+      const minute = queryField(fixture, 'Minutes');
+      typeDigit(minute, '4');
+      typeDigit(minute, '5');
+      fixture.detectChanges();
+
+      // The host's `state` signal should receive the value via the form-field
+      // binding. We assert through the DOM since `state` is private.
+      expect(queryField(fixture, 'Hours').value).toBe('09');
+      expect(queryField(fixture, 'Minutes').value).toBe('45');
     });
   });
 });

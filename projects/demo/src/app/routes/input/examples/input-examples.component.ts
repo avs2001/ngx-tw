@@ -12,7 +12,8 @@ import {
   Validators,
 } from '@angular/forms';
 import { form, FormField, minLength, required } from '@angular/forms/signals';
-import type { ErrorStateMatcher } from 'ngx-tw/core';
+import { CdkTextareaAutosize } from '@angular/cdk/text-field';
+import type { ErrorStateMatcher, TwSize } from 'ngx-tw/core';
 import {
   ErrorDirective,
   FormFieldComponent,
@@ -68,6 +69,7 @@ class UppercaseValueDirective {
     UppercaseValueDirective,
     ButtonDirective,
     CodeBlockComponent,
+    CdkTextareaAutosize,
   ],
   template: `
     <!-- Standalone vs form-field -->
@@ -103,6 +105,26 @@ class UppercaseValueDirective {
         </div>
       </div>
       <tw-code-block [code]="standaloneVsFieldSnippet" language="html" />
+    </section>
+
+    <!-- Size -->
+    <section class="mb-10">
+      <h2 class="text-sm font-semibold mb-3">Size</h2>
+      <p class="text-sm text-fg-muted leading-relaxed max-w-2xl mb-4">
+        Standalone inputs accept a
+        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">size</code>
+        input that maps to the canonical inline-padding scale plus a matching font step. Inside a
+        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">tw-form-field</code>
+        the directive strips its own chrome — the wrapper's own
+        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">size</code>
+        carries density there.
+      </p>
+      <div class="rounded-lg border border-border p-6 bg-surface-raised mb-4 space-y-3 max-w-md">
+        @for (s of sizes; track s) {
+          <input twInput [size]="s" [placeholder]="'size=&quot;' + s + '&quot;'" />
+        }
+      </div>
+      <tw-code-block [code]="sizeSnippet" language="html" />
     </section>
 
     <!-- Types -->
@@ -143,9 +165,9 @@ class UppercaseValueDirective {
       <h2 class="text-sm font-semibold mb-3">Prefix &amp; Suffix</h2>
       <p class="text-sm text-fg-muted leading-relaxed max-w-2xl mb-4">
         Project content into the form-field's
-        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">[slot="prefix"]</code>
+        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">[twPrefix]</code>
         or
-        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">[slot="suffix"]</code>
+        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">[twSuffix]</code>
         to flank the input with inline adornments — currency symbols, unit labels, URL schemes,
         icon buttons. Prefix / suffix content is visual only; always pair icons with a real label
         for assistive tech.
@@ -153,13 +175,13 @@ class UppercaseValueDirective {
       <div class="rounded-lg border border-border p-6 bg-surface-raised mb-4 space-y-6">
         <tw-form-field>
           <label twLabel>Amount</label>
-          <span slot="prefix">$</span>
+          <span twPrefix>$</span>
           <input twInput type="number" />
-          <span slot="suffix">USD</span>
+          <span twSuffix>USD</span>
         </tw-form-field>
         <tw-form-field>
           <label twLabel>Website</label>
-          <span slot="prefix">https://</span>
+          <span twPrefix>https://</span>
           <input twInput placeholder="example.com" />
         </tw-form-field>
       </div>
@@ -189,6 +211,70 @@ class UppercaseValueDirective {
         <textarea twInput rows="4" placeholder="Standalone textarea — default chrome."></textarea>
       </div>
       <tw-code-block [code]="textareaSnippet" language="html" />
+    </section>
+
+    <!-- Textarea autosize (CDK) -->
+    <section class="mb-10">
+      <h2 class="text-sm font-semibold mb-3">Textarea Autosize</h2>
+      <p class="text-sm text-fg-muted leading-relaxed max-w-2xl mb-4">
+        For textareas that grow with their content, compose Angular CDK's
+        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">cdkTextareaAutosize</code>
+        directive — there's no library wrapper, just stack the two attributes. Cap the growth with
+        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">cdkAutosizeMinRows</code>
+        and
+        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">cdkAutosizeMaxRows</code>
+        so the field doesn't run off the page.
+      </p>
+      <div class="rounded-lg border border-border p-6 bg-surface-raised mb-4">
+        <tw-form-field>
+          <label twLabel>Release notes</label>
+          <textarea
+            twInput
+            cdkTextareaAutosize
+            cdkAutosizeMinRows="2"
+            cdkAutosizeMaxRows="8"
+            placeholder="Type to see it grow…"
+          ></textarea>
+          <span twHint>Grows between 2 and 8 rows.</span>
+        </tw-form-field>
+      </div>
+      <tw-code-block [code]="autosizeSnippet" language="html" />
+    </section>
+
+    <!-- Clear button affordance -->
+    <section class="mb-10">
+      <h2 class="text-sm font-semibold mb-3">Clear Button (Composition)</h2>
+      <p class="text-sm text-fg-muted leading-relaxed max-w-2xl mb-4">
+        The directive doesn't ship a built-in
+        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">clearable</code>
+        affordance — compose one with the form-field's
+        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">[twSuffix]</code>
+        and a ghost button that resets the control. This keeps the input directive minimal and
+        lets the consumer choose the icon, ARIA label, and reset behavior.
+      </p>
+      <div class="rounded-lg border border-border p-6 bg-surface-raised mb-4">
+        <tw-form-field>
+          <label twLabel>Search</label>
+          <input twInput type="search" [formControl]="clearableCtrl" placeholder="Project, ticket, person…" />
+          @if (clearableCtrl.value) {
+            <button
+              twSuffix
+              type="button"
+              twButton
+              variant="ghost"
+              color="neutral"
+              size="xs"
+              aria-label="Clear search"
+              (click)="clearableCtrl.reset('')"
+            >
+              <svg class="size-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.28 7.22a.75.75 0 00-1.06 1.06L8.94 10l-1.72 1.72a.75.75 0 101.06 1.06L10 11.06l1.72 1.72a.75.75 0 101.06-1.06L11.06 10l1.72-1.72a.75.75 0 00-1.06-1.06L10 8.94 8.28 7.22z" clip-rule="evenodd" />
+              </svg>
+            </button>
+          }
+        </tw-form-field>
+      </div>
+      <tw-code-block [code]="clearableSnippet" language="html" />
     </section>
 
     <!-- Disabled & read-only -->
@@ -558,6 +644,8 @@ export class InputExamples {
   protected readonly displayName = signal('');
   protected readonly displayNameDisabled = signal(false);
   protected readonly bio = signal('');
+  protected readonly sizes: readonly TwSize[] = ['xs', 'sm', 'md', 'lg', 'xl'];
+  protected readonly clearableCtrl = new FormControl<string>('', { nonNullable: true });
 
   protected readonly usernameCtrl = new FormControl<string>('', {
     nonNullable: true,
@@ -625,14 +713,14 @@ export class InputExamples {
 
   protected readonly prefixSuffixSnippet = `<tw-form-field>
   <label twLabel>Amount</label>
-  <span slot="prefix">$</span>
+  <span twPrefix>$</span>
   <input twInput type="number" />
-  <span slot="suffix">USD</span>
+  <span twSuffix>USD</span>
 </tw-form-field>
 
 <tw-form-field>
   <label twLabel>Website</label>
-  <span slot="prefix">https://</span>
+  <span twPrefix>https://</span>
   <input twInput placeholder="example.com" />
 </tw-form-field>`;
 
@@ -645,6 +733,50 @@ export class InputExamples {
 
 <!-- Standalone textarea — default chrome -->
 <textarea twInput rows="4" placeholder="…"></textarea>`;
+
+  protected readonly sizeSnippet = `<input twInput size="xs" placeholder="xs" />
+<input twInput size="sm" placeholder="sm" />
+<input twInput size="md" placeholder="md (default)" />
+<input twInput size="lg" placeholder="lg" />
+<input twInput size="xl" placeholder="xl" />
+
+<!-- Inside a form-field, the wrapper's size carries density: -->
+<tw-form-field size="sm">
+  <label twLabel>Compact</label>
+  <input twInput />
+</tw-form-field>`;
+
+  protected readonly autosizeSnippet = `import { CdkTextareaAutosize } from '@angular/cdk/text-field';
+// add CdkTextareaAutosize to the component's \`imports\` array
+
+<tw-form-field>
+  <label twLabel>Release notes</label>
+  <textarea
+    twInput
+    cdkTextareaAutosize
+    cdkAutosizeMinRows="2"
+    cdkAutosizeMaxRows="8"
+  ></textarea>
+</tw-form-field>`;
+
+  protected readonly clearableSnippet = `<tw-form-field>
+  <label twLabel>Search</label>
+  <input twInput type="search" [formControl]="searchCtrl" />
+  @if (searchCtrl.value) {
+    <button
+      twSuffix
+      type="button"
+      twButton
+      variant="ghost"
+      color="neutral"
+      size="xs"
+      aria-label="Clear search"
+      (click)="searchCtrl.reset('')"
+    >
+      <svg class="size-4" viewBox="0 0 20 20" fill="currentColor">…</svg>
+    </button>
+  }
+</tw-form-field>`;
 
   protected readonly disabledSnippet = `<!-- Read-only: focusable and copyable, not editable -->
 <tw-form-field>

@@ -1,11 +1,23 @@
 import { ChangeDetectionStrategy, Component, computed, signal } from '@angular/core';
-import { FormControl, FormsModule, ReactiveFormsModule } from '@angular/forms';
+import {
+  FormControl,
+  FormGroup,
+  FormsModule,
+  ReactiveFormsModule,
+  Validators,
+} from '@angular/forms';
 import { form, FormField, required } from '@angular/forms/signals';
 import { CheckboxComponent } from 'ngx-tw/checkbox';
 import type { CheckboxLabelPosition, CheckboxVariant } from 'ngx-tw/checkbox';
 import { ButtonDirective } from 'ngx-tw/button';
 import { CodeBlockComponent } from 'ngx-tw/code-block';
 import type { TwColor, TwSize } from 'ngx-tw/core';
+import {
+  ErrorDirective,
+  FormFieldComponent,
+  HintDirective,
+  LabelDirective,
+} from 'ngx-tw/form-field';
 
 const COLORS: TwColor[] = ['primary', 'secondary', 'accent', 'neutral', 'info', 'success', 'warning', 'error'];
 const SIZES: TwSize[] = ['xs', 'sm', 'md', 'lg', 'xl'];
@@ -34,6 +46,10 @@ const PERMISSIONS: readonly Permission[] = [
     ReactiveFormsModule,
     FormsModule,
     FormField,
+    FormFieldComponent,
+    LabelDirective,
+    HintDirective,
+    ErrorDirective,
   ],
   template: `
     <!-- Variants -->
@@ -197,6 +213,38 @@ const PERMISSIONS: readonly Permission[] = [
         </div>
       </div>
       <tw-code-block [code]="descriptionSnippet" language="html" />
+    </section>
+
+    <!-- Long & multi-line labels -->
+    <section class="mb-10">
+      <h2 class="text-sm font-semibold mb-3">Long &amp; multi-line labels</h2>
+      <p class="text-sm text-fg-muted leading-relaxed max-w-2xl mb-4">
+        Labels that wrap to two or more lines stay aligned to the
+        <em>first line</em> of text — the box never floats to the visual centre of the
+        whole block. The same rule applies across every size, so a long consent statement
+        next to an
+        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">xl</code>
+        checkbox reads the same as a short one next to an
+        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">xs</code>
+        one.
+      </p>
+      <div class="rounded-lg border border-border p-6 bg-surface-raised mb-4">
+        <div class="max-w-md space-y-4">
+          @for (s of sizes; track s) {
+            <div class="flex items-start gap-3">
+              <span class="w-10 text-xs text-fg-muted font-mono pt-1">{{ s }}</span>
+              <tw-checkbox
+                [size]="s"
+                [(checked)]="multilineValues[s]"
+                label="I agree to receive transactional emails about my account, billing reminders, security alerts, and occasional product updates from the team."
+                description="You can change this preference any time from the notification settings page in your dashboard."
+                color="primary"
+              />
+            </div>
+          }
+        </div>
+      </div>
+      <tw-code-block [code]="multilineSnippet" language="html" />
     </section>
 
     <!-- Label position -->
@@ -405,6 +453,118 @@ const PERMISSIONS: readonly Permission[] = [
       </div>
     </section>
 
+    <!-- Inside tw-form-field -->
+    <section class="mb-10">
+      <h2 class="text-sm font-semibold mb-3">Inside tw-form-field</h2>
+      <p class="text-sm text-fg-muted leading-relaxed max-w-2xl mb-4">
+        Wrap the checkbox in
+        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">&lt;tw-form-field&gt;</code>
+        when the row needs a hint or error message alongside the control. The
+        checkbox registers itself as the field's
+        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">FormFieldControl</code>,
+        so the
+        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">&lt;label twLabel&gt;</code>
+        gets a correct
+        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">for</code>
+        attribute and hint / error ids merge into
+        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">aria-describedby</code>
+        automatically.
+      </p>
+      <div class="rounded-lg border border-border p-6 bg-surface-raised mb-4">
+        <form [formGroup]="termsGroup" (ngSubmit)="submitTerms()" class="max-w-md space-y-4">
+          <tw-form-field>
+            <label twLabel>I accept the privacy policy</label>
+            <tw-checkbox formControlName="accepted" color="primary" />
+            <span twHint>Required to create the account.</span>
+            <span twError>You must accept the policy before continuing.</span>
+          </tw-form-field>
+          <div class="flex items-center gap-2">
+            <button twButton type="submit" color="primary" size="sm">Create account</button>
+            <button twButton type="button" variant="outline" color="neutral" size="sm" (click)="resetTerms()">Reset</button>
+          </div>
+          <p class="text-xs text-fg-muted font-mono">
+            value = {{ termsGroup.controls.accepted.value }} ·
+            invalid = {{ termsGroup.controls.accepted.invalid }} ·
+            touched = {{ termsGroup.controls.accepted.touched }}
+          </p>
+        </form>
+      </div>
+      <tw-code-block [code]="formFieldSnippet" language="html" />
+    </section>
+
+    <!-- Error state -->
+    <section class="mb-10">
+      <h2 class="text-sm font-semibold mb-3">Error state</h2>
+      <p class="text-sm text-fg-muted leading-relaxed max-w-2xl mb-4">
+        Provide an
+        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">errorStateMatcher</code>
+        (or override the global
+        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">TW_ERROR_STATE_MATCHER</code>
+        token) to control when the checkbox renders as invalid. The default
+        matcher flips the state once the bound
+        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">FormControl</code>
+        is invalid AND the user has interacted with it (or the parent form
+        was submitted). The box border switches to
+        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">error-500</code>
+        and the host exposes
+        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">aria-invalid="true"</code>.
+      </p>
+      <div class="rounded-lg border border-border p-6 bg-surface-raised mb-4">
+        <div class="max-w-md space-y-4">
+          <tw-checkbox
+            label="Confirm the destructive action"
+            description="Required — the operation cannot be undone."
+            color="error"
+            [formControl]="confirmDestructive"
+          />
+          <p class="text-xs text-fg-muted font-mono">
+            invalid = {{ confirmDestructive.invalid }} ·
+            touched = {{ confirmDestructive.touched }} ·
+            errorState = {{ confirmDestructive.invalid && confirmDestructive.touched }}
+          </p>
+          <div class="flex gap-2">
+            <button twButton variant="outline" color="neutral" size="xs" (click)="confirmDestructive.markAsTouched()">Mark touched</button>
+            <button twButton variant="outline" color="neutral" size="xs" (click)="confirmDestructive.reset()">Reset</button>
+          </div>
+        </div>
+      </div>
+      <tw-code-block [code]="errorStateSnippet" language="ts" />
+    </section>
+
+    <!-- Native form submission via hidden input -->
+    <section class="mb-10">
+      <h2 class="text-sm font-semibold mb-3">Native form submission</h2>
+      <p class="text-sm text-fg-muted leading-relaxed max-w-2xl mb-4">
+        The component renders a visually hidden
+        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">&lt;input type="checkbox"&gt;</code>
+        inside the host. When you set
+        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">name</code>,
+        the hidden input picks it up so submitting a plain HTML form (no Angular
+        bindings) sends the checkbox value alongside the other fields. The
+        hidden input mirrors
+        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">checked</code>
+        and
+        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">disabled</code>
+        and is excluded from the tab order.
+      </p>
+      <div class="rounded-lg border border-border p-6 bg-surface-raised mb-4">
+        <form #nativeForm (submit)="captureNativeSubmit($event, nativeForm)" class="space-y-4 max-w-md">
+          <tw-checkbox name="newsletter" label="Subscribe" [(checked)]="nativeNewsletter" />
+          <tw-checkbox name="terms" label="Accept terms" [(checked)]="nativeTerms" color="primary" />
+          <button twButton type="submit" size="sm" color="primary">Submit (no Angular)</button>
+          @if (nativeSubmittedEntries().length) {
+            <div class="text-xs font-mono text-fg-muted bg-surface-sunken rounded-md p-3 space-y-0.5">
+              <p class="font-semibold text-fg-muted">FormData entries:</p>
+              @for (entry of nativeSubmittedEntries(); track entry.key) {
+                <p>{{ entry.key }} = {{ entry.value }}</p>
+              }
+            </div>
+          }
+        </form>
+      </div>
+      <tw-code-block [code]="nativeFormSnippet" language="html" />
+    </section>
+
     <!-- Playground -->
     <section class="mb-10">
       <h2 class="text-sm font-semibold mb-3">Playground</h2>
@@ -569,6 +729,14 @@ export class CheckboxExamples {
     xl: signal(true),
   };
 
+  protected readonly multilineValues: Record<TwSize, ReturnType<typeof signal<boolean>>> = {
+    xs: signal(false),
+    sm: signal(false),
+    md: signal(true),
+    lg: signal(false),
+    xl: signal(false),
+  };
+
   protected readonly labelPosValues: Record<CheckboxLabelPosition, ReturnType<typeof signal<boolean>>> = {
     after: signal(true),
     before: signal(false),
@@ -615,6 +783,46 @@ export class CheckboxExamples {
   protected readonly signalForm = form(this.signalModel, (p) => {
     required(p.accepted);
   });
+
+  // Form-field row backed by a reactive FormGroup with requiredTrue validation.
+  protected readonly termsGroup = new FormGroup({
+    accepted: new FormControl<boolean>(false, {
+      nonNullable: true,
+      validators: [Validators.requiredTrue],
+    }),
+  });
+
+  protected submitTerms(): void {
+    this.termsGroup.controls.accepted.markAsTouched();
+    this.termsGroup.controls.accepted.updateValueAndValidity();
+  }
+
+  protected resetTerms(): void {
+    this.termsGroup.reset();
+  }
+
+  // Standalone reactive control demonstrating error-state without form-field chrome.
+  protected readonly confirmDestructive = new FormControl<boolean>(false, {
+    nonNullable: true,
+    validators: [Validators.requiredTrue],
+  });
+
+  // Native HTML form (no Angular bindings) — values flow via the hidden <input>.
+  protected readonly nativeNewsletter = signal(true);
+  protected readonly nativeTerms = signal(false);
+  protected readonly nativeSubmittedEntries = signal<readonly { key: string; value: string }[]>(
+    [],
+  );
+
+  protected captureNativeSubmit(event: Event, formEl: HTMLFormElement): void {
+    event.preventDefault();
+    const data = new FormData(formEl);
+    const entries: { key: string; value: string }[] = [];
+    data.forEach((value, key) => {
+      entries.push({ key, value: String(value) });
+    });
+    this.nativeSubmittedEntries.set(entries);
+  }
 
   protected toggleRememberDisabled(): void {
     if (this.rememberControl.disabled) {
@@ -694,6 +902,14 @@ protected toggleAll(next: boolean): void {
   [(checked)]="newsletter"
 />`;
 
+  protected readonly multilineSnippet = `<!-- Box stays aligned to the first line of the label regardless of length. -->
+<tw-checkbox
+  size="md"
+  label="I agree to receive transactional emails about my account, billing reminders, security alerts, and occasional product updates from the team."
+  description="You can change this preference any time from the notification settings page in your dashboard."
+  [(checked)]="agreed"
+/>`;
+
   protected readonly labelPositionSnippet = `<tw-checkbox
   labelPosition="after"
   label="Send me product updates"
@@ -753,4 +969,35 @@ protected readonly termsForm = form(this.model, (p) => {
   description="Required to continue."
   [formField]="termsForm.accepted"
 />`;
+
+  protected readonly formFieldSnippet = `<form [formGroup]="termsGroup" (ngSubmit)="submit()">
+  <tw-form-field>
+    <label twLabel>I accept the privacy policy</label>
+    <tw-checkbox formControlName="accepted" color="primary" />
+    <span twHint>Required to create the account.</span>
+    <span twError>You must accept the policy before continuing.</span>
+  </tw-form-field>
+</form>`;
+
+  protected readonly errorStateSnippet = `protected readonly confirmDestructive = new FormControl<boolean>(false, {
+  nonNullable: true,
+  validators: [Validators.requiredTrue],
+});
+
+// In the template
+<tw-checkbox
+  label="Confirm the destructive action"
+  description="Required — the operation cannot be undone."
+  color="error"
+  [formControl]="confirmDestructive"
+/>`;
+
+  protected readonly nativeFormSnippet = `<form>
+  <tw-checkbox name="newsletter" label="Subscribe" [(checked)]="newsletter" />
+  <tw-checkbox name="terms" label="Accept terms" [(checked)]="terms" />
+  <button type="submit">Submit</button>
+</form>
+
+<!-- The hidden <input type="checkbox" name="..."> ensures
+     FormData includes both fields on submit. -->`;
 }

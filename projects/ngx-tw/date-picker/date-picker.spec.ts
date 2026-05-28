@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { ChangeDetectionStrategy, Component, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, LOCALE_ID, signal } from '@angular/core';
 import { type ComponentFixture, TestBed } from '@angular/core/testing';
 import {
   FormControl,
@@ -7,6 +7,7 @@ import {
   ReactiveFormsModule,
   Validators,
 } from '@angular/forms';
+import { form, FormField, required } from '@angular/forms/signals';
 import { OverlayModule } from '@angular/cdk/overlay';
 import { provideNativeDateAdapter } from 'ngx-tw/calendar';
 import {
@@ -21,6 +22,8 @@ import type {
   DatePickerCloseReason,
   DatePickerInputEvent,
   DatePickerOpenedEvent,
+  DatePickerPreset,
+  DatePickerTimeConfig,
 } from './date-picker';
 
 // ── Test hosts ────────────────────────────────────────────────────
@@ -420,12 +423,47 @@ describe('DatePickerComponent', () => {
       expect(dialog!.getAttribute('aria-label')).toBe('Birthday');
     });
 
-    it('emits opened when the overlay opens', async () => {
-      const fixture = TestBed.createComponent(BasicHost);
-      fixture.detectChanges();
-      getTrigger(fixture).click();
-      await advance(fixture);
-      expect(fixture.componentInstance.openedSpy).toHaveBeenCalled();
+    it('emits opened after the enter animation completes', async () => {
+      vi.useFakeTimers();
+      try {
+        const fixture = TestBed.createComponent(BasicHost);
+        fixture.detectChanges();
+        getTrigger(fixture).click();
+        fixture.detectChanges();
+        // opened$ fires after PICKER_ENTER_DURATION (140ms) — synchronous
+        // emission was the audit's Medium-finding bug; we now defer.
+        expect(fixture.componentInstance.openedSpy).not.toHaveBeenCalled();
+        vi.advanceTimersByTime(200);
+        await Promise.resolve();
+        fixture.detectChanges();
+        expect(fixture.componentInstance.openedSpy).toHaveBeenCalled();
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+
+    it('reopens cleanly after a full close cycle', async () => {
+      vi.useFakeTimers();
+      try {
+        const fixture = TestBed.createComponent(BasicHost);
+        fixture.detectChanges();
+        getTrigger(fixture).click();
+        fixture.detectChanges();
+        expect(getOverlayPanel()).toBeTruthy();
+        // First close — wait for leave-animation timer.
+        dispatchKeyOn(getInput(fixture), 'Escape');
+        fixture.detectChanges();
+        vi.advanceTimersByTime(200);
+        await Promise.resolve();
+        fixture.detectChanges();
+        expect(getOverlayPanel()).toBeFalsy();
+        // Re-open — coordinator must build a fresh OverlayRef.
+        getTrigger(fixture).click();
+        fixture.detectChanges();
+        expect(getOverlayPanel()).toBeTruthy();
+      } finally {
+        vi.useRealTimers();
+      }
     });
 
     it('closes on Escape and restores previous value', async () => {
@@ -680,6 +718,327 @@ describe('DatePickerComponent', () => {
       fixture.detectChanges();
       expect(warnSpy).toHaveBeenCalled();
       warnSpy.mockRestore();
+    });
+  });
+
+  // ── dateInput parsed payload ──
+
+  describe('dateInput parsed payload', () => {
+    it('emits parsed=null while the input is unparseable', () => {
+      const fixture = TestBed.createComponent(BasicHost);
+      fixture.detectChanges();
+      typeInto(getInput(fixture), 'not a date');
+      const ev = fixture.componentInstance.dateInputSpy.mock.calls[0][0] as DatePickerInputEvent<Date>;
+      expect(ev.parsed).toBeNull();
+    });
+
+    it('emits parsed=<Date> as soon as the input parses cleanly', () => {
+      const fixture = TestBed.createComponent(BasicHost);
+      fixture.detectChanges();
+      typeInto(getInput(fixture), '2026-04-21');
+      const calls = fixture.componentInstance.dateInputSpy.mock.calls;
+      const last = calls[calls.length - 1][0] as DatePickerInputEvent<Date>;
+      expect(last.parsed).toBeInstanceOf(Date);
+    });
+
+    it('rejects out-of-range typed values with parsed=null', () => {
+      const fixture = TestBed.createComponent(BasicHost);
+      fixture.componentInstance.minDate.set(new Date(2026, 0, 1));
+      fixture.componentInstance.maxDate.set(new Date(2026, 11, 31));
+      fixture.detectChanges();
+      typeInto(getInput(fixture), '2020-01-01');
+      const last = fixture.componentInstance.dateInputSpy.mock.calls.at(-1)![0] as DatePickerInputEvent<Date>;
+      expect(last.parsed).toBeNull();
+    });
+  });
+
+  // ── Time config (timeConfig + back-compat) ──
+
+  describe('timeConfig', () => {
+    @Component({
+      imports: [DatePickerComponent],
+      changeDetection: ChangeDetectionStrategy.OnPush,
+      template: `
+        <tw-date-picker
+          [(value)]="value"
+          [(open)]="open"
+          [timeConfig]="cfg()"
+          aria-label="Time-mode"
+        />
+      `,
+    })
+    class TimeConfigHost {
+      value = signal<Date | null>(null);
+      open = signal(false);
+      cfg = signal<DatePickerTimeConfig<Date> | null>(null);
+    }
+
+    it('renders the time-picker inside the overlay when timeConfig is non-null', async () => {
+      const fixture = TestBed.createComponent(TimeConfigHost);
+      fixture.componentInstance.cfg.set({});
+      fixture.detectChanges();
+      fixture.componentInstance.open.set(true);
+      await advance(fixture);
+      expect(document.querySelector('tw-time-picker')).toBeTruthy();
+    });
+
+    it('hides the time-picker when timeConfig is null', async () => {
+      const fixture = TestBed.createComponent(TimeConfigHost);
+      fixture.detectChanges();
+      fixture.componentInstance.open.set(true);
+      await advance(fixture);
+      expect(document.querySelector('tw-time-picker')).toBeNull();
+    });
+
+    it('no longer exposes the deprecated standalone time inputs (S19 removal)', () => {
+      @Component({
+        imports: [DatePickerComponent],
+        changeDetection: ChangeDetectionStrategy.OnPush,
+        template: `<tw-date-picker aria-label="Plain" />`,
+      })
+      class PlainHost {}
+      const fixture = TestBed.createComponent(PlainHost);
+      fixture.detectChanges();
+      const picker = fixture.debugElement
+        .query((el) => el.componentInstance instanceof DatePickerComponent)
+        ?.componentInstance as unknown as Record<string, unknown>;
+      expect(picker).toBeTruthy();
+      // All 8 deprecated inputs are gone in v1; only `timeConfig` remains.
+      for (const name of [
+        'withTimeInput',
+        'timeFormat',
+        'showSeconds',
+        'hourStep',
+        'minuteStep',
+        'secondStep',
+        'minTime',
+        'maxTime',
+      ]) {
+        expect(picker[name]).toBeUndefined();
+      }
+    });
+  });
+
+  // ── Locale propagation ──
+
+  describe('locale', () => {
+    it('forwards a per-instance locale to the embedded calendar', async () => {
+      @Component({
+        imports: [DatePickerComponent],
+        changeDetection: ChangeDetectionStrategy.OnPush,
+        template: `<tw-date-picker [(open)]="open" locale="de-DE" aria-label="Locale" />`,
+      })
+      class LocaleHost {
+        open = signal(false);
+      }
+      const fixture = TestBed.createComponent(LocaleHost);
+      fixture.detectChanges();
+      fixture.componentInstance.open.set(true);
+      await advance(fixture);
+      // The calendar's header renders the month name through the adapter's locale.
+      // For May in de-DE, expect "mai" (German). English would render "may".
+      const headerText = (document.querySelector('tw-calendar')?.textContent ?? '').toLowerCase();
+      expect(headerText).toMatch(/(januar|februar|märz|april|mai|juni|juli|august|september|oktober|november|dezember)/);
+    });
+
+    it('falls back to LOCALE_ID when locale input is null', async () => {
+      TestBed.resetTestingModule();
+      TestBed.configureTestingModule({
+        imports: [OverlayModule],
+        providers: [provideNativeDateAdapter(), { provide: LOCALE_ID, useValue: 'en-US' }],
+      });
+      @Component({
+        imports: [DatePickerComponent],
+        changeDetection: ChangeDetectionStrategy.OnPush,
+        template: `<tw-date-picker [(open)]="open" aria-label="No-locale" />`,
+      })
+      class NoLocaleHost {
+        open = signal(false);
+      }
+      const fixture = TestBed.createComponent(NoLocaleHost);
+      fixture.detectChanges();
+      fixture.componentInstance.open.set(true);
+      await advance(fixture);
+      expect(document.querySelector('tw-calendar')).toBeTruthy();
+    });
+  });
+
+  // ── Presets ──
+
+  describe('presets', () => {
+    @Component({
+      imports: [DatePickerComponent],
+      changeDetection: ChangeDetectionStrategy.OnPush,
+      template: `
+        <tw-date-picker
+          [(value)]="value"
+          [(open)]="open"
+          [presets]="presets"
+          aria-label="With presets"
+          (presetSelected)="presetSpy($event)"
+        />
+      `,
+    })
+    class PresetsHost {
+      value = signal<Date | null>(null);
+      open = signal(false);
+      presets: DatePickerPreset<Date>[] = [
+        { id: 'today', label: 'Today', date: () => new Date(2026, 3, 21) },
+        { id: 'tomorrow', label: 'Tomorrow', date: () => new Date(2026, 3, 22) },
+      ];
+      presetSpy = vi.fn();
+    }
+
+    it('renders the preset list inside the overlay', async () => {
+      const fixture = TestBed.createComponent(PresetsHost);
+      fixture.detectChanges();
+      fixture.componentInstance.open.set(true);
+      await advance(fixture);
+      const listbox = document.querySelector('[role="listbox"][aria-label="Preset dates"]');
+      expect(listbox).toBeTruthy();
+      expect(listbox?.querySelectorAll('button').length).toBe(2);
+    });
+
+    it('commits the preset value and emits presetSelected when clicked', async () => {
+      vi.useFakeTimers();
+      try {
+        const fixture = TestBed.createComponent(PresetsHost);
+        fixture.detectChanges();
+        fixture.componentInstance.open.set(true);
+        fixture.detectChanges();
+        const todayBtn = Array.from(document.querySelectorAll('button')).find(
+          (b) => b.textContent?.trim() === 'Today',
+        ) as HTMLButtonElement | undefined;
+        expect(todayBtn).toBeTruthy();
+        todayBtn!.click();
+        fixture.detectChanges();
+        vi.advanceTimersByTime(200);
+        await Promise.resolve();
+        fixture.detectChanges();
+        expect(fixture.componentInstance.value()?.getDate()).toBe(21);
+        expect(fixture.componentInstance.presetSpy).toHaveBeenCalled();
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+
+    it('hides the preset list when presets is empty', async () => {
+      @Component({
+        imports: [DatePickerComponent],
+        changeDetection: ChangeDetectionStrategy.OnPush,
+        template: `<tw-date-picker [(open)]="open" [presets]="[]" aria-label="No presets" />`,
+      })
+      class EmptyPresetsHost {
+        open = signal(false);
+      }
+      const fixture = TestBed.createComponent(EmptyPresetsHost);
+      fixture.detectChanges();
+      fixture.componentInstance.open.set(true);
+      await advance(fixture);
+      expect(document.querySelector('[role="listbox"][aria-label="Preset dates"]')).toBeNull();
+    });
+  });
+
+  // ── Custom trigger projection ──
+
+  describe('custom trigger projection', () => {
+    @Component({
+      imports: [DatePickerComponent],
+      changeDetection: ChangeDetectionStrategy.OnPush,
+      template: `
+        <tw-date-picker [(value)]="value" [(open)]="open" aria-label="Custom">
+          <button slot="trigger" type="button" data-testid="rich-trigger">
+            Pick a date please
+          </button>
+        </tw-date-picker>
+      `,
+    })
+    class CustomTriggerHost {
+      value = signal<Date | null>(null);
+      open = signal(false);
+    }
+
+    it('renders the projected trigger and hides the default input chrome', async () => {
+      const fixture = TestBed.createComponent(CustomTriggerHost);
+      fixture.detectChanges();
+      await fixture.whenStable();
+      fixture.detectChanges();
+      const rich = fixture.nativeElement.querySelector('[data-testid="rich-trigger"]');
+      expect(rich).toBeTruthy();
+      const input = getInput(fixture);
+      // Input must remain in DOM for form integration, but be sr-only.
+      expect(input.className).toMatch(/sr-only/);
+      // The default trigger button should not render.
+      const defaults = fixture.nativeElement.querySelectorAll('button[aria-haspopup="dialog"]');
+      expect(defaults.length).toBe(0);
+    });
+
+    it('opens the overlay when the projected trigger is clicked', async () => {
+      const fixture = TestBed.createComponent(CustomTriggerHost);
+      fixture.detectChanges();
+      await fixture.whenStable();
+      fixture.detectChanges();
+      const rich = fixture.nativeElement.querySelector('[data-testid="rich-trigger"]') as HTMLButtonElement;
+      rich.click();
+      await advance(fixture);
+      expect(getOverlayPanel()).toBeTruthy();
+    });
+  });
+
+  // ── Focus restore ──
+
+  describe('focus restore', () => {
+    it('returns focus to the trigger after Escape closes the overlay', async () => {
+      vi.useFakeTimers();
+      try {
+        const fixture = TestBed.createComponent(BasicHost);
+        fixture.detectChanges();
+        document.body.appendChild(fixture.nativeElement);
+        const trigger = getTrigger(fixture);
+        trigger.click();
+        fixture.detectChanges();
+        dispatchKeyOn(getInput(fixture), 'Escape');
+        fixture.detectChanges();
+        vi.advanceTimersByTime(200);
+        await Promise.resolve();
+        fixture.detectChanges();
+        expect(document.activeElement).toBe(trigger);
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+  });
+
+  // ── Signal forms ──
+
+  describe('signal forms', () => {
+    @Component({
+      imports: [DatePickerComponent, FormField],
+      changeDetection: ChangeDetectionStrategy.OnPush,
+      template: `
+        <tw-date-picker [formField]="shipForm.shipDate" aria-label="Signal" />
+      `,
+    })
+    class SignalHost {
+      shipModel = signal<{ shipDate: Date | null }>({ shipDate: null });
+      shipForm = form(this.shipModel, (path) => {
+        required(path.shipDate, { message: 'required' });
+      });
+    }
+
+    it('mounts with a signal-form bound field', () => {
+      const fixture = TestBed.createComponent(SignalHost);
+      fixture.detectChanges();
+      expect(getInput(fixture)).toBeTruthy();
+    });
+
+    it('typed input flows back into the signal model', async () => {
+      const fixture = TestBed.createComponent(SignalHost);
+      fixture.detectChanges();
+      typeInto(getInput(fixture), '2026-04-21');
+      getInput(fixture).dispatchEvent(new Event('blur'));
+      await advance(fixture);
+      expect(fixture.componentInstance.shipModel().shipDate).toBeInstanceOf(Date);
     });
   });
 });

@@ -95,9 +95,9 @@ export class TimePickerPage {
     return root.getByRole('radiogroup', { name: 'AM or PM' });
   }
 
-  /** Button labelled `AM` or `PM`. Only present in 12h mode. */
+  /** Radio labelled `AM` or `PM` inside the meridiem radiogroup. Only present in 12h mode. */
   meridiemButton(root: Locator, label: 'AM' | 'PM'): Locator {
-    return this.meridiemGroup(root).getByRole('button', { name: label, exact: true });
+    return this.meridiemGroup(root).getByRole('radio', { name: label, exact: true });
   }
 
   /**

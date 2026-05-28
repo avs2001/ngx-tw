@@ -66,15 +66,14 @@ import { CodeBlockComponent } from 'ngx-tw/code-block';
           <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">ariaLabel</code>
           is provided
         </li>
-        <li>Configurable
-          <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">strokeWidth</code>
-          with optional
+        <li>SVG-author config grouped under a single
+          <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">svg</code>
+          input —
+          <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">strokeWidth</code>,
           <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">absoluteStrokeWidth</code>
-          compensation across sizes
-        </li>
-        <li>Custom
+          compensation, and custom
           <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">viewBox</code>
-          support for non-24×24 icon sources
+          for non-24×24 icon sources
         </li>
         <li>SVG caching: the DOM only rebuilds when the underlying icon data changes</li>
         <li>Dev-mode warnings when an icon name is not registered</li>

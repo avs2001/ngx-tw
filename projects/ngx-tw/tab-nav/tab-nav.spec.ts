@@ -5,7 +5,9 @@ import {
   viewChild,
 } from '@angular/core';
 import { type ComponentFixture, TestBed } from '@angular/core/testing';
-import { describe, it, expect, beforeEach } from 'vitest';
+import { LiveAnnouncer } from '@angular/cdk/a11y';
+import { provideRouter, Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import type { TwColor, TwSize } from 'ngx-tw/core';
 import {
   TabNavComponent,
@@ -118,6 +120,81 @@ class TabPatternHost {
   readonly panel = viewChild.required(TabNavPanel);
   activeLink = signal('a');
 }
+
+@Component({
+  imports: [TabNavComponent, TabLinkDirective, TabNavPanel],
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  template: `
+    <nav twTabNav>
+      <a
+        twTabLink
+        linkId="link-a"
+        href="#a"
+        [active]="activeLink() === 'a'"
+        (click)="activeLink.set('a'); $event.preventDefault()"
+      >
+        A
+      </a>
+      <a
+        twTabLink
+        linkId="link-b"
+        href="#b"
+        [active]="activeLink() === 'b'"
+        (click)="activeLink.set('b'); $event.preventDefault()"
+      >
+        B
+      </a>
+      <tw-tab-nav-panel id="projected-panel">Inner panel content</tw-tab-nav-panel>
+    </nav>
+  `,
+})
+class ProjectedPanelHost {
+  activeLink = signal('a');
+}
+
+@Component({
+  imports: [TabNavComponent, TabLinkDirective],
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  template: `
+    <nav
+      twTabNav
+      [navClass]="navClass()"
+      [linkClass]="linkClass()"
+    >
+      <a twTabLink href="#a" [active]="true">A</a>
+      <a twTabLink href="#b">B</a>
+    </nav>
+  `,
+})
+class SlotClassHost {
+  navClass = signal('custom-nav');
+  linkClass = signal('custom-link');
+}
+
+@Component({
+  imports: [RouterLink, RouterLinkActive, TabNavComponent, TabLinkDirective, RouterOutlet],
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  template: `
+    <nav twTabNav>
+      <a twTabLink routerLink="/alpha" routerLinkActive #alphaActive="routerLinkActive" [active]="alphaActive.isActive">Alpha</a>
+      <a twTabLink routerLink="/beta" routerLinkActive #betaActive="routerLinkActive" [active]="betaActive.isActive">Beta</a>
+    </nav>
+    <router-outlet />
+  `,
+})
+class RouterIntegrationHost {}
+
+@Component({
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  template: '<p>Alpha route</p>',
+})
+class AlphaRoute {}
+
+@Component({
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  template: '<p>Beta route</p>',
+})
+class BetaRoute {}
 
 // ── Tests ──
 
@@ -265,6 +342,40 @@ describe('TabNavComponent', () => {
     });
   });
 
+  describe('panel auto-discovery via content projection', () => {
+    let fixture: ComponentFixture<ProjectedPanelHost>;
+
+    beforeEach(async () => {
+      await TestBed.configureTestingModule({
+        imports: [ProjectedPanelHost],
+      }).compileComponents();
+      fixture = TestBed.createComponent(ProjectedPanelHost);
+      fixture.detectChanges();
+    });
+
+    it('should activate the tabs pattern when a panel is projected as a child', () => {
+      const nav = fixture.nativeElement.querySelector('nav');
+      expect(nav.getAttribute('role')).toBe('tablist');
+    });
+
+    it('should give links role="tab" when the panel is projected', () => {
+      const links = fixture.nativeElement.querySelectorAll('a[twTabLink]');
+      for (const link of Array.from(links)) {
+        expect((link as HTMLElement).getAttribute('role')).toBe('tab');
+      }
+    });
+
+    it('should wire aria-controls to the projected panel id', () => {
+      const link = fixture.nativeElement.querySelector('a[twTabLink]');
+      expect(link.getAttribute('aria-controls')).toBe('projected-panel');
+    });
+
+    it('should set the projected panel aria-labelledby to the active link id', () => {
+      const panel = fixture.nativeElement.querySelector('[role="tabpanel"]') as HTMLElement;
+      expect(panel.getAttribute('aria-labelledby')).toBe('link-a');
+    });
+  });
+
   describe('disabled links', () => {
     let fixture: ComponentFixture<BasicHost>;
 
@@ -338,6 +449,29 @@ describe('TabNavComponent', () => {
         expect(links.length).toBe(3);
       });
     }
+
+    it('should consume slot tokens on the active link for underline variant', () => {
+      fixture.componentInstance.variant.set('underline');
+      fixture.componentInstance.color.set('primary');
+      fixture.detectChanges();
+      const activeLink = fixture.nativeElement.querySelector(
+        'a[twTabLink]',
+      ) as HTMLElement;
+      expect(activeLink.className).toContain('border-primary-border-strong');
+      expect(activeLink.className).toContain('text-primary-fg');
+      expect(activeLink.className).not.toMatch(/\bdark:/);
+    });
+
+    it('should consume slot tokens on the active link for pill variant', () => {
+      fixture.componentInstance.variant.set('pill');
+      fixture.componentInstance.color.set('success');
+      fixture.detectChanges();
+      const activeLink = fixture.nativeElement.querySelector(
+        'a[twTabLink]',
+      ) as HTMLElement;
+      expect(activeLink.className).toContain('text-success-fg');
+      expect(activeLink.className).not.toMatch(/\bdark:/);
+    });
   });
 
   describe('sizes', () => {
@@ -456,7 +590,7 @@ describe('TabNavComponent', () => {
       fixture.detectChanges();
 
       links[0].dispatchEvent(
-        new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true }),
+        new KeyboardEvent('keydown', { key: 'ArrowRight', keyCode: 39, bubbles: true }),
       );
       fixture.detectChanges();
 
@@ -472,7 +606,7 @@ describe('TabNavComponent', () => {
 
       // ArrowRight from link B should skip disabled C and wrap to A
       links[1].dispatchEvent(
-        new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true }),
+        new KeyboardEvent('keydown', { key: 'ArrowRight', keyCode: 39, bubbles: true }),
       );
       fixture.detectChanges();
 
@@ -487,7 +621,7 @@ describe('TabNavComponent', () => {
       fixture.detectChanges();
 
       links[1].dispatchEvent(
-        new KeyboardEvent('keydown', { key: 'ArrowLeft', bubbles: true }),
+        new KeyboardEvent('keydown', { key: 'ArrowLeft', keyCode: 37, bubbles: true }),
       );
       fixture.detectChanges();
 
@@ -502,7 +636,7 @@ describe('TabNavComponent', () => {
       fixture.detectChanges();
 
       links[1].dispatchEvent(
-        new KeyboardEvent('keydown', { key: 'Home', bubbles: true }),
+        new KeyboardEvent('keydown', { key: 'Home', keyCode: 36, bubbles: true }),
       );
       fixture.detectChanges();
 
@@ -517,12 +651,210 @@ describe('TabNavComponent', () => {
       fixture.detectChanges();
 
       links[0].dispatchEvent(
-        new KeyboardEvent('keydown', { key: 'End', bubbles: true }),
+        new KeyboardEvent('keydown', { key: 'End', keyCode: 35, bubbles: true }),
       );
       fixture.detectChanges();
 
       // Disabled C is skipped — End should land on B (last enabled).
       expect(document.activeElement).toBe(links[1]);
+    });
+  });
+
+  describe('Space-key activation on links', () => {
+    let fixture: ComponentFixture<BasicHost>;
+
+    beforeEach(async () => {
+      await TestBed.configureTestingModule({
+        imports: [BasicHost],
+      }).compileComponents();
+      fixture = TestBed.createComponent(BasicHost);
+      fixture.detectChanges();
+    });
+
+    it('should call click() on the link when Space is pressed', () => {
+      const links = fixture.nativeElement.querySelectorAll(
+        'a[twTabLink]',
+      ) as NodeListOf<HTMLAnchorElement>;
+      const clickSpy = vi.spyOn(links[1], 'click');
+
+      const event = new KeyboardEvent('keydown', {
+        key: ' ',
+        bubbles: true,
+        cancelable: true,
+      });
+      links[1].dispatchEvent(event);
+
+      expect(clickSpy).toHaveBeenCalledTimes(1);
+      expect(event.defaultPrevented).toBe(true);
+    });
+
+    it('should not call click() on disabled link when Space is pressed', () => {
+      const links = fixture.nativeElement.querySelectorAll(
+        'a[twTabLink]',
+      ) as NodeListOf<HTMLAnchorElement>;
+      const clickSpy = vi.spyOn(links[2], 'click');
+
+      const event = new KeyboardEvent('keydown', {
+        key: ' ',
+        bubbles: true,
+        cancelable: true,
+      });
+      links[2].dispatchEvent(event);
+
+      expect(clickSpy).not.toHaveBeenCalled();
+      expect(event.defaultPrevented).toBe(true);
+    });
+  });
+
+  describe('per-slot class hooks', () => {
+    let fixture: ComponentFixture<SlotClassHost>;
+
+    beforeEach(async () => {
+      await TestBed.configureTestingModule({
+        imports: [SlotClassHost],
+      }).compileComponents();
+      fixture = TestBed.createComponent(SlotClassHost);
+      fixture.detectChanges();
+    });
+
+    it('should merge navClass onto the nav host', () => {
+      const nav = fixture.nativeElement.querySelector('nav');
+      expect(nav.className).toContain('custom-nav');
+    });
+
+    it('should merge linkClass onto every link', () => {
+      const links = fixture.nativeElement.querySelectorAll('a[twTabLink]');
+      for (const link of Array.from(links)) {
+        expect((link as HTMLElement).className).toContain('custom-link');
+      }
+    });
+
+    it('should preserve internal classes when navClass is empty', () => {
+      fixture.componentInstance.navClass.set('');
+      fixture.detectChanges();
+      const nav = fixture.nativeElement.querySelector('nav');
+      expect(nav.className).toContain('flex');
+      expect(nav.className).not.toContain('custom-nav');
+    });
+  });
+
+  describe('LiveAnnouncer announcements in tabs pattern', () => {
+    let fixture: ComponentFixture<TabPatternHost>;
+    let mockAnnouncer: { announce: ReturnType<typeof vi.fn> };
+
+    beforeEach(async () => {
+      mockAnnouncer = { announce: vi.fn() };
+      await TestBed.configureTestingModule({
+        imports: [TabPatternHost],
+        providers: [{ provide: LiveAnnouncer, useValue: mockAnnouncer }],
+      }).compileComponents();
+      fixture = TestBed.createComponent(TabPatternHost);
+      fixture.detectChanges();
+    });
+
+    it('should not announce on initial render', () => {
+      expect(mockAnnouncer.announce).not.toHaveBeenCalled();
+    });
+
+    it('should announce when the active link changes', () => {
+      fixture.componentInstance.activeLink.set('b');
+      fixture.detectChanges();
+
+      expect(mockAnnouncer.announce).toHaveBeenCalledTimes(1);
+      expect(mockAnnouncer.announce.mock.calls[0][0]).toContain('B');
+      expect(mockAnnouncer.announce.mock.calls[0][0]).toContain('2 of 3');
+    });
+
+    it('should not re-announce when the active link does not actually change', () => {
+      fixture.componentInstance.activeLink.set('b');
+      fixture.detectChanges();
+      fixture.detectChanges();
+      // The signal is set to the same value — the effect re-runs but the id is unchanged.
+      fixture.componentInstance.activeLink.set('b');
+      fixture.detectChanges();
+
+      expect(mockAnnouncer.announce).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe('LiveAnnouncer with custom label formatter', () => {
+    @Component({
+      imports: [TabNavComponent, TabLinkDirective, TabNavPanel],
+      changeDetection: ChangeDetectionStrategy.OnPush,
+      template: `
+        <nav twTabNav [tabPanel]="panel()" [labels]="labels">
+          <a twTabLink linkId="link-a" href="#a" [active]="activeLink() === 'a'">Alpha</a>
+          <a twTabLink linkId="link-b" href="#b" [active]="activeLink() === 'b'">Bravo</a>
+        </nav>
+        <tw-tab-nav-panel id="panel-2">Content</tw-tab-nav-panel>
+      `,
+    })
+    class CustomLabelsHost {
+      readonly panel = viewChild.required(TabNavPanel);
+      activeLink = signal('a');
+      labels = {
+        activeTabAnnouncement: (label: string, index: number, total: number) =>
+          `Tab ${index}/${total}: ${label}`,
+      };
+    }
+
+    let fixture: ComponentFixture<CustomLabelsHost>;
+    let mockAnnouncer: { announce: ReturnType<typeof vi.fn> };
+
+    beforeEach(async () => {
+      mockAnnouncer = { announce: vi.fn() };
+      await TestBed.configureTestingModule({
+        imports: [CustomLabelsHost],
+        providers: [{ provide: LiveAnnouncer, useValue: mockAnnouncer }],
+      }).compileComponents();
+      fixture = TestBed.createComponent(CustomLabelsHost);
+      fixture.detectChanges();
+    });
+
+    it('should use the consumer formatter for the announcement', () => {
+      fixture.componentInstance.activeLink.set('b');
+      fixture.detectChanges();
+      expect(mockAnnouncer.announce).toHaveBeenCalledWith('Tab 2/2: Bravo');
+    });
+  });
+
+  describe('router integration', () => {
+    let fixture: ComponentFixture<RouterIntegrationHost>;
+    let router: Router;
+
+    beforeEach(async () => {
+      await TestBed.configureTestingModule({
+        imports: [RouterIntegrationHost],
+        providers: [
+          provideRouter([
+            { path: 'alpha', component: AlphaRoute },
+            { path: 'beta', component: BetaRoute },
+          ]),
+        ],
+      }).compileComponents();
+      fixture = TestBed.createComponent(RouterIntegrationHost);
+      router = TestBed.inject(Router);
+      await router.navigateByUrl('/alpha');
+      fixture.detectChanges();
+      await fixture.whenStable();
+      fixture.detectChanges();
+    });
+
+    it('should set aria-current="page" on the matching route link', () => {
+      const links = fixture.nativeElement.querySelectorAll('a[twTabLink]');
+      expect(links[0].getAttribute('aria-current')).toBe('page');
+      expect(links[1].getAttribute('aria-current')).toBeNull();
+    });
+
+    it('should flip aria-current when the URL changes', async () => {
+      await router.navigateByUrl('/beta');
+      fixture.detectChanges();
+      await fixture.whenStable();
+      fixture.detectChanges();
+
+      const links = fixture.nativeElement.querySelectorAll('a[twTabLink]');
+      expect(links[0].getAttribute('aria-current')).toBeNull();
+      expect(links[1].getAttribute('aria-current')).toBe('page');
     });
   });
 

@@ -80,6 +80,54 @@ class MinMaxHost {}
 })
 class PixelHost {}
 
+@Component({
+  imports: [SplitComponent, SplitPaneComponent],
+  template: `
+    <tw-split>
+      <tw-split-pane [defaultSize]="40" [minSize]="20" [collapsible]="true" [collapsedSize]="5" [snapSize]="3">A</tw-split-pane>
+      <tw-split-pane [defaultSize]="60">B</tw-split-pane>
+    </tw-split>
+  `,
+})
+class CollapsibleHost {}
+
+@Component({
+  imports: [SplitComponent, SplitPaneComponent],
+  template: `
+    <tw-split [disabled]="disabled">
+      <tw-split-pane>A</tw-split-pane>
+      <tw-split-pane>B</tw-split-pane>
+    </tw-split>
+  `,
+})
+class DisabledHost {
+  disabled = true;
+}
+
+@Component({
+  imports: [SplitComponent, SplitPaneComponent],
+  template: `
+    <tw-split [rtl]="true">
+      <tw-split-pane [defaultSize]="40">A</tw-split-pane>
+      <tw-split-pane [defaultSize]="60">B</tw-split-pane>
+    </tw-split>
+  `,
+})
+class RtlHost {}
+
+@Component({
+  imports: [SplitComponent, SplitPaneComponent],
+  template: `
+    <tw-split [storageKey]="key">
+      <tw-split-pane [defaultSize]="50">A</tw-split-pane>
+      <tw-split-pane [defaultSize]="50">B</tw-split-pane>
+    </tw-split>
+  `,
+})
+class StorageHost {
+  key: string | null = null;
+}
+
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -657,21 +705,100 @@ describe('SplitComponent (Phase 1 scaffold)', () => {
     });
   });
 
-  describe('stub methods (§3.2 — not yet implemented)', () => {
-    let split: SplitComponent;
-
-    beforeEach(() => {
-      const fixture = TestBed.createComponent(SplitComponent);
+  describe('collapse / expand', () => {
+    it('collapse() out of range throws', async () => {
+      const fixture = TestBed.createComponent(TwoPaneHost);
       fixture.detectChanges();
-      split = fixture.componentInstance;
+      await fixture.whenStable();
+      const split = fixture.debugElement.query(e => e.componentInstance instanceof SplitComponent)
+        ?.componentInstance as SplitComponent;
+      expect(() => split.collapse(99)).toThrow(/out of range/);
     });
 
-    it('collapse throws "not implemented"', () => {
-      expect(() => split.collapse(0)).toThrow('not implemented');
+    it('collapse() on a non-collapsible pane throws', async () => {
+      const fixture = TestBed.createComponent(TwoPaneHost);
+      fixture.detectChanges();
+      await fixture.whenStable();
+      const split = fixture.debugElement.query(e => e.componentInstance instanceof SplitComponent)
+        ?.componentInstance as SplitComponent;
+      expect(() => split.collapse(0)).toThrow(/not marked collapsible/);
     });
 
-    it('expand throws "not implemented"', () => {
-      expect(() => split.expand(0)).toThrow('not implemented');
+    it('collapse() sets the pane size to collapsedSize and emits collapseChange', async () => {
+      const fixture = TestBed.createComponent(CollapsibleHost);
+      fixture.detectChanges();
+      await fixture.whenStable();
+      const split = fixture.debugElement.query(e => e.componentInstance instanceof SplitComponent)
+        ?.componentInstance as SplitComponent;
+
+      const events: Array<{ paneIndex: number; collapsed: boolean; cause: string }> = [];
+      split.collapseChange.subscribe(e => events.push(e));
+
+      split.collapse(0);
+      fixture.detectChanges();
+
+      const sizes = split._sizes();
+      expect(sizes[0]).toBeCloseTo(5, 1);
+      expect(sumIsClose(sizes, 100)).toBe(true);
+      expect(events).toHaveLength(1);
+      expect(events[0]).toMatchObject({ paneIndex: 0, collapsed: true, cause: 'programmatic' });
+    });
+
+    it('expand() restores the previous size and emits collapseChange', async () => {
+      const fixture = TestBed.createComponent(CollapsibleHost);
+      fixture.detectChanges();
+      await fixture.whenStable();
+      const split = fixture.debugElement.query(e => e.componentInstance instanceof SplitComponent)
+        ?.componentInstance as SplitComponent;
+
+      const sizeBefore = split._sizes()[0];
+      split.collapse(0);
+      fixture.detectChanges();
+
+      const events: Array<{ paneIndex: number; collapsed: boolean }> = [];
+      split.collapseChange.subscribe(e => events.push(e));
+
+      split.expand(0);
+      fixture.detectChanges();
+
+      expect(split._sizes()[0]).toBeCloseTo(sizeBefore, 1);
+      expect(events).toHaveLength(1);
+      expect(events[0].collapsed).toBe(false);
+    });
+
+    it('per-pane collapsedChange fires on collapse and expand', async () => {
+      const fixture = TestBed.createComponent(CollapsibleHost);
+      fixture.detectChanges();
+      await fixture.whenStable();
+      const split = fixture.debugElement.query(e => e.componentInstance instanceof SplitComponent)
+        ?.componentInstance as SplitComponent;
+      const pane = fixture.debugElement
+        .queryAll(e => e.componentInstance instanceof SplitPaneComponent)
+        .map(d => d.componentInstance as SplitPaneComponent)[0];
+
+      const emitted: boolean[] = [];
+      pane.collapsedChange.subscribe(v => emitted.push(v));
+
+      split.collapse(0);
+      split.expand(0);
+      expect(emitted).toEqual([true, false]);
+    });
+
+    it('reset() clears collapsed state on all panes', async () => {
+      const fixture = TestBed.createComponent(CollapsibleHost);
+      fixture.detectChanges();
+      await fixture.whenStable();
+      const split = fixture.debugElement.query(e => e.componentInstance instanceof SplitComponent)
+        ?.componentInstance as SplitComponent;
+      const pane = fixture.debugElement
+        .queryAll(e => e.componentInstance instanceof SplitPaneComponent)
+        .map(d => d.componentInstance as SplitPaneComponent)[0];
+
+      split.collapse(0);
+      expect(pane._collapsed()).toBe(true);
+
+      split.reset();
+      expect(pane._collapsed()).toBe(false);
     });
   });
 
@@ -812,6 +939,314 @@ describe('SplitComponent (Phase 1 scaffold)', () => {
       const sizesAfterRemove = split._sizes();
       expect(sizesAfterRemove).toHaveLength(2);
       expect(sumIsClose(sizesAfterRemove, 100)).toBe(true);
+    });
+  });
+
+  describe('gutter rendering & ARIA', () => {
+    it('renders one separator between adjacent panes', async () => {
+      const fixture = TestBed.createComponent(ThreePaneHost);
+      fixture.detectChanges();
+      await fixture.whenStable();
+      fixture.detectChanges();
+      const separators = fixture.nativeElement.querySelectorAll('[role="separator"]');
+      expect(separators.length).toBe(2);
+    });
+
+    it('renders no separator when only one pane is present', async () => {
+      const fixture = TestBed.createComponent(OnePaneHost);
+      fixture.detectChanges();
+      await fixture.whenStable();
+      fixture.detectChanges();
+      const separators = fixture.nativeElement.querySelectorAll('[role="separator"]');
+      expect(separators.length).toBe(0);
+    });
+
+    it('sets aria-orientation matching direction', async () => {
+      const fixture = TestBed.createComponent(TwoPaneHost);
+      fixture.detectChanges();
+      await fixture.whenStable();
+      fixture.detectChanges();
+      const sep = fixture.nativeElement.querySelector('[role="separator"]') as HTMLElement;
+      expect(sep.getAttribute('aria-orientation')).toBe('horizontal');
+    });
+
+    it('sets aria-valuemin / aria-valuemax / aria-valuenow', async () => {
+      const fixture = TestBed.createComponent(DefaultSizePercentHost);
+      fixture.detectChanges();
+      await fixture.whenStable();
+      fixture.detectChanges();
+      const sep = fixture.nativeElement.querySelector('[role="separator"]') as HTMLElement;
+      expect(sep.getAttribute('aria-valuemin')).toBe('0');
+      expect(sep.getAttribute('aria-valuemax')).toBe('100');
+      expect(sep.getAttribute('aria-valuenow')).toBe('30');
+    });
+
+    it('sets aria-controls referencing the two adjacent pane ids', async () => {
+      const fixture = TestBed.createComponent(TwoPaneHost);
+      fixture.detectChanges();
+      await fixture.whenStable();
+      fixture.detectChanges();
+      const sep = fixture.nativeElement.querySelector('[role="separator"]') as HTMLElement;
+      const controls = sep.getAttribute('aria-controls');
+      expect(controls).toBeTruthy();
+      const ids = controls!.split(/\s+/);
+      expect(ids).toHaveLength(2);
+      const panes = fixture.nativeElement.querySelectorAll('tw-split-pane');
+      expect(panes[0].id).toBe(ids[0]);
+      expect(panes[1].id).toBe(ids[1]);
+    });
+
+    it('exposes an accessible name on the separator', async () => {
+      const fixture = TestBed.createComponent(TwoPaneHost);
+      fixture.detectChanges();
+      await fixture.whenStable();
+      fixture.detectChanges();
+      const sep = fixture.nativeElement.querySelector('[role="separator"]') as HTMLElement;
+      expect(sep.getAttribute('aria-label')).toMatch(/Resize column/);
+    });
+
+    it('makes the separator focusable by default', async () => {
+      const fixture = TestBed.createComponent(TwoPaneHost);
+      fixture.detectChanges();
+      await fixture.whenStable();
+      fixture.detectChanges();
+      const sep = fixture.nativeElement.querySelector('[role="separator"]') as HTMLElement;
+      expect(sep.getAttribute('tabindex')).toBe('0');
+    });
+  });
+
+  describe('keyboard resize', () => {
+    it('ArrowRight grows the left pane by keyboardStep (percent)', async () => {
+      const fixture = TestBed.createComponent(TwoPaneHost);
+      fixture.detectChanges();
+      await fixture.whenStable();
+      fixture.detectChanges();
+      const split = fixture.debugElement.query(e => e.componentInstance instanceof SplitComponent)
+        ?.componentInstance as SplitComponent;
+      const before = split._sizes()[0];
+      const sep = fixture.nativeElement.querySelector('[role="separator"]') as HTMLElement;
+      sep.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight' }));
+      fixture.detectChanges();
+      expect(split._sizes()[0]).toBeCloseTo(before + 10, 1);
+    });
+
+    it('ArrowLeft shrinks the left pane by keyboardStep', async () => {
+      const fixture = TestBed.createComponent(DefaultSizePercentHost);
+      fixture.detectChanges();
+      await fixture.whenStable();
+      fixture.detectChanges();
+      const split = fixture.debugElement.query(e => e.componentInstance instanceof SplitComponent)
+        ?.componentInstance as SplitComponent;
+      const before = split._sizes()[0];
+      const sep = fixture.nativeElement.querySelector('[role="separator"]') as HTMLElement;
+      sep.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowLeft' }));
+      fixture.detectChanges();
+      expect(split._sizes()[0]).toBeCloseTo(before - 10, 1);
+    });
+
+    it('Home minimises the left pane', async () => {
+      const fixture = TestBed.createComponent(DefaultSizePercentHost);
+      fixture.detectChanges();
+      await fixture.whenStable();
+      fixture.detectChanges();
+      const split = fixture.debugElement.query(e => e.componentInstance instanceof SplitComponent)
+        ?.componentInstance as SplitComponent;
+      const sep = fixture.nativeElement.querySelector('[role="separator"]') as HTMLElement;
+      sep.dispatchEvent(new KeyboardEvent('keydown', { key: 'Home' }));
+      fixture.detectChanges();
+      expect(split._sizes()[0]).toBeLessThan(5);
+    });
+
+    it('End maximises the left pane', async () => {
+      const fixture = TestBed.createComponent(DefaultSizePercentHost);
+      fixture.detectChanges();
+      await fixture.whenStable();
+      fixture.detectChanges();
+      const split = fixture.debugElement.query(e => e.componentInstance instanceof SplitComponent)
+        ?.componentInstance as SplitComponent;
+      const sep = fixture.nativeElement.querySelector('[role="separator"]') as HTMLElement;
+      sep.dispatchEvent(new KeyboardEvent('keydown', { key: 'End' }));
+      fixture.detectChanges();
+      expect(split._sizes()[0]).toBeGreaterThan(95);
+    });
+
+    it('Enter toggles collapse on a collapsible left pane', async () => {
+      const fixture = TestBed.createComponent(CollapsibleHost);
+      fixture.detectChanges();
+      await fixture.whenStable();
+      fixture.detectChanges();
+      const split = fixture.debugElement.query(e => e.componentInstance instanceof SplitComponent)
+        ?.componentInstance as SplitComponent;
+      const events: Array<{ collapsed: boolean; cause: string }> = [];
+      split.collapseChange.subscribe(e => events.push(e));
+
+      const sep = fixture.nativeElement.querySelector('[role="separator"]') as HTMLElement;
+      sep.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter' }));
+      fixture.detectChanges();
+      expect(events).toHaveLength(1);
+      expect(events[0]).toMatchObject({ collapsed: true, cause: 'keyboard' });
+    });
+
+    it('emits resizeStart and resizeEnd on every arrow stroke', async () => {
+      const fixture = TestBed.createComponent(TwoPaneHost);
+      fixture.detectChanges();
+      await fixture.whenStable();
+      fixture.detectChanges();
+      const split = fixture.debugElement.query(e => e.componentInstance instanceof SplitComponent)
+        ?.componentInstance as SplitComponent;
+      const startSpy = vi.fn();
+      const endSpy = vi.fn();
+      split.resizeStart.subscribe(startSpy);
+      split.resizeEnd.subscribe(endSpy);
+
+      const sep = fixture.nativeElement.querySelector('[role="separator"]') as HTMLElement;
+      sep.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight' }));
+      expect(startSpy).toHaveBeenCalledTimes(1);
+      expect(endSpy).toHaveBeenCalledTimes(1);
+      expect(startSpy.mock.calls[0][0].cause).toBe('keyboard');
+    });
+  });
+
+  describe('disabled', () => {
+    it('removes the gutter from tab order and ignores arrow keys', async () => {
+      const fixture = TestBed.createComponent(DisabledHost);
+      fixture.detectChanges();
+      await fixture.whenStable();
+      fixture.detectChanges();
+      const split = fixture.debugElement.query(e => e.componentInstance instanceof SplitComponent)
+        ?.componentInstance as SplitComponent;
+      const sep = fixture.nativeElement.querySelector('[role="separator"]') as HTMLElement;
+      expect(sep.getAttribute('tabindex')).toBe('-1');
+      expect(sep.getAttribute('aria-disabled')).toBe('true');
+
+      const before = [...split._sizes()];
+      sep.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight' }));
+      fixture.detectChanges();
+      expect(split._sizes()).toEqual(before);
+    });
+  });
+
+  describe('RTL', () => {
+    it('ArrowLeft grows the left pane when rtl=true (horizontal)', async () => {
+      const fixture = TestBed.createComponent(RtlHost);
+      fixture.detectChanges();
+      await fixture.whenStable();
+      fixture.detectChanges();
+      const split = fixture.debugElement.query(e => e.componentInstance instanceof SplitComponent)
+        ?.componentInstance as SplitComponent;
+      const before = split._sizes()[0];
+      const sep = fixture.nativeElement.querySelector('[role="separator"]') as HTMLElement;
+      sep.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowLeft' }));
+      fixture.detectChanges();
+      expect(split._sizes()[0]).toBeCloseTo(before + 10, 1);
+    });
+
+    it('ArrowRight shrinks the left pane when rtl=true', async () => {
+      const fixture = TestBed.createComponent(RtlHost);
+      fixture.detectChanges();
+      await fixture.whenStable();
+      fixture.detectChanges();
+      const split = fixture.debugElement.query(e => e.componentInstance instanceof SplitComponent)
+        ?.componentInstance as SplitComponent;
+      const before = split._sizes()[0];
+      const sep = fixture.nativeElement.querySelector('[role="separator"]') as HTMLElement;
+      sep.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight' }));
+      fixture.detectChanges();
+      expect(split._sizes()[0]).toBeCloseTo(before - 10, 1);
+    });
+  });
+
+  describe('storageKey persistence', () => {
+    const KEY = 'tw-split-test-key';
+
+    beforeEach(() => {
+      if (typeof localStorage !== 'undefined') localStorage.removeItem(KEY);
+    });
+
+    it('writes sizes on commit when storageKey is set', async () => {
+      const fixture = TestBed.createComponent(StorageHost);
+      fixture.componentInstance.key = KEY;
+      fixture.detectChanges();
+      await fixture.whenStable();
+      const split = fixture.debugElement.query(e => e.componentInstance instanceof SplitComponent)
+        ?.componentInstance as SplitComponent;
+
+      split.setSizes([40, 60]);
+      const raw = localStorage.getItem(KEY);
+      expect(raw).toBeTruthy();
+      const parsed = JSON.parse(raw!);
+      expect(parsed[0]).toBeCloseTo(40, 1);
+      expect(parsed[1]).toBeCloseTo(60, 1);
+    });
+
+    it('hydrates sizes from localStorage on init', async () => {
+      localStorage.setItem(KEY, JSON.stringify([25, 75]));
+      const fixture = TestBed.createComponent(StorageHost);
+      fixture.componentInstance.key = KEY;
+      fixture.detectChanges();
+      await fixture.whenStable();
+      const split = fixture.debugElement.query(e => e.componentInstance instanceof SplitComponent)
+        ?.componentInstance as SplitComponent;
+      const sizes = split._sizes();
+      expect(sizes[0]).toBeCloseTo(25, 1);
+      expect(sizes[1]).toBeCloseTo(75, 1);
+    });
+
+    it('ignores localStorage when the parsed array length differs from pane count', async () => {
+      localStorage.setItem(KEY, JSON.stringify([10, 20, 70]));
+      const fixture = TestBed.createComponent(StorageHost);
+      fixture.componentInstance.key = KEY;
+      fixture.detectChanges();
+      await fixture.whenStable();
+      const split = fixture.debugElement.query(e => e.componentInstance instanceof SplitComponent)
+        ?.componentInstance as SplitComponent;
+      // Falls back to declared defaults (50 / 50)
+      expect(split._sizes()[0]).toBeCloseTo(50, 1);
+    });
+
+    it('reset() clears the persisted entry', async () => {
+      localStorage.setItem(KEY, JSON.stringify([20, 80]));
+      const fixture = TestBed.createComponent(StorageHost);
+      fixture.componentInstance.key = KEY;
+      fixture.detectChanges();
+      await fixture.whenStable();
+      const split = fixture.debugElement.query(e => e.componentInstance instanceof SplitComponent)
+        ?.componentInstance as SplitComponent;
+      split.reset();
+      expect(localStorage.getItem(KEY)).toBeNull();
+    });
+
+    it('does not touch localStorage when storageKey is null', async () => {
+      const fixture = TestBed.createComponent(StorageHost);
+      fixture.componentInstance.key = null;
+      fixture.detectChanges();
+      await fixture.whenStable();
+      const split = fixture.debugElement.query(e => e.componentInstance instanceof SplitComponent)
+        ?.componentInstance as SplitComponent;
+      split.setSizes([30, 70]);
+      expect(localStorage.getItem(KEY)).toBeNull();
+    });
+  });
+
+  describe('per-pane sizeChange', () => {
+    it('emits sizeChange on each pane whose size actually changed', async () => {
+      const fixture = TestBed.createComponent(TwoPaneHost);
+      fixture.detectChanges();
+      await fixture.whenStable();
+      const split = fixture.debugElement.query(e => e.componentInstance instanceof SplitComponent)
+        ?.componentInstance as SplitComponent;
+      const panes = fixture.debugElement
+        .queryAll(e => e.componentInstance instanceof SplitPaneComponent)
+        .map(d => d.componentInstance as SplitPaneComponent);
+
+      const emittedA: number[] = [];
+      const emittedB: number[] = [];
+      panes[0].sizeChange.subscribe(v => emittedA.push(v));
+      panes[1].sizeChange.subscribe(v => emittedB.push(v));
+
+      split.setSizes([30, 70]);
+      expect(emittedA[emittedA.length - 1]).toBeCloseTo(30, 1);
+      expect(emittedB[emittedB.length - 1]).toBeCloseTo(70, 1);
     });
   });
 });

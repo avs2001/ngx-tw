@@ -3,9 +3,12 @@ import {
   Component,
   computed,
   Directive,
+  effect,
   inject,
   input,
+  output,
 } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import {
   CdkContextMenuTrigger,
   CdkMenu,
@@ -24,6 +27,10 @@ const menuVariants = tv(
   {
     base: 'min-w-48 flex flex-col max-h-96 rounded-lg bg-surface-overlay border border-border shadow-md overflow-y-auto text-fg',
     variants: {
+      // Menu panels intentionally use sub-`p-1` padding at xs/sm because items
+      // carry their own inline padding — the codified `p-2`/`p-3`/`p-4` container
+      // scale would over-pad the panel gutter. The size axis here scales the panel
+      // border-to-item gap only, not item density.
       size: {
         xs: 'p-0.5 [&>tw-separator]:-mx-0.5 [&>tw-separator]:my-0.5',
         sm: 'p-0.5 [&>tw-separator]:-mx-0.5 [&>tw-separator]:my-0.5',
@@ -42,7 +49,7 @@ const menuVariants = tv(
 // "Focus Rings → Menu-item carve-out" section in CLAUDE.md.
 const menuItemVariants = tv(
   {
-    base: 'relative flex w-full flex-wrap items-center gap-2 rounded-md cursor-pointer select-none transition-colors duration-200 motion-reduce:transition-none text-fg outline-none focus-visible:bg-surface-muted hover:bg-surface-muted',
+    base: 'relative flex w-full flex-wrap items-center gap-2 rounded-md cursor-pointer select-none transition-colors duration-normal motion-reduce:transition-none text-fg outline-none focus-visible:bg-surface-muted hover:bg-surface-muted',
     variants: {
       size: {
         xs: 'px-1.5 py-0.5 text-xs',
@@ -51,28 +58,28 @@ const menuItemVariants = tv(
         lg: 'px-4 py-2 text-sm',
         xl: 'px-5 py-2.5 text-base',
       },
+      // Slot tokens own light/dark contrast — no `dark:`, no shade picks.
+      // `undefined` (the default) leaves the base text-fg styling untouched.
       color: {
-        default: '',
-        primary:
-          'text-primary-700 hover:bg-primary-50 focus-visible:bg-primary-50 dark:text-primary-300 dark:hover:bg-primary-950 dark:focus-visible:bg-primary-950',
-        secondary:
-          'text-secondary-700 hover:bg-secondary-50 focus-visible:bg-secondary-50 dark:text-secondary-300 dark:hover:bg-secondary-950 dark:focus-visible:bg-secondary-950',
-        accent:
-          'text-accent-700 hover:bg-accent-50 focus-visible:bg-accent-50 dark:text-accent-300 dark:hover:bg-accent-950 dark:focus-visible:bg-accent-950',
-        info: 'text-info-700 hover:bg-info-50 focus-visible:bg-info-50 dark:text-info-300 dark:hover:bg-info-950 dark:focus-visible:bg-info-950',
-        success:
-          'text-success-700 hover:bg-success-50 focus-visible:bg-success-50 dark:text-success-300 dark:hover:bg-success-950 dark:focus-visible:bg-success-950',
-        warning:
-          'text-warning-700 hover:bg-warning-50 focus-visible:bg-warning-50 dark:text-warning-300 dark:hover:bg-warning-950 dark:focus-visible:bg-warning-950',
-        error:
-          'text-error-700 hover:bg-error-50 focus-visible:bg-error-50 dark:text-error-300 dark:hover:bg-error-950 dark:focus-visible:bg-error-950',
+        primary: 'text-primary-fg hover:bg-primary-soft focus-visible:bg-primary-soft',
+        secondary: 'text-secondary-fg hover:bg-secondary-soft focus-visible:bg-secondary-soft',
+        accent: 'text-accent-fg hover:bg-accent-soft focus-visible:bg-accent-soft',
+        info: 'text-info-fg hover:bg-info-soft focus-visible:bg-info-soft',
+        success: 'text-success-fg hover:bg-success-soft focus-visible:bg-success-soft',
+        warning: 'text-warning-fg hover:bg-warning-soft focus-visible:bg-warning-soft',
+        error: 'text-error-fg hover:bg-error-soft focus-visible:bg-error-soft',
         neutral: 'text-fg-muted hover:bg-surface-muted focus-visible:bg-surface-muted',
       },
+      // `cursor-not-allowed` is layered so a programmatically-focused disabled item
+      // still reads as disabled — `pointer-events-none` blocks pointer activation, but
+      // the cursor cue communicates the state if focus lands here via CDK's own paths.
+      // CDK's `FocusableOption` honours `cdkItem.disabled` (synced via the effect below)
+      // and skips disabled items in keyboard navigation automatically.
       disabled: {
-        true: 'opacity-50 pointer-events-none',
+        true: 'opacity-50 pointer-events-none cursor-not-allowed',
       },
     },
-    defaultVariants: { size: 'md', color: 'default', disabled: false },
+    defaultVariants: { size: 'md', disabled: false },
   },
   { twMerge: true },
 );
@@ -111,6 +118,26 @@ const menuItemIndicatorVariants = tv(
   { twMerge: true },
 );
 
+// Submenu indicator (trailing chevron). Keeps the `ml-auto pl-2` layout intent
+// separate from the leading-icon scale; size axis follows the glyph scale per
+// CLAUDE.md "Icon Sizing" so the chevron scales with the parent menu's density.
+const menuItemSubmenuIndicatorVariants = tv(
+  {
+    base: 'ml-auto pl-2 shrink-0 text-fg-muted',
+    variants: {
+      size: {
+        xs: 'size-3',
+        sm: 'size-4',
+        md: 'size-4',
+        lg: 'size-5',
+        xl: 'size-5',
+      },
+    },
+    defaultVariants: { size: 'md' },
+  },
+  { twMerge: true },
+);
+
 // ── MenuComponent ──
 
 @Component({
@@ -124,14 +151,22 @@ const menuItemIndicatorVariants = tv(
   ],
   host: {
     '[class]': 'classes()',
-    '[animate.enter]': '"scale-in fade-in"',
-    '[animate.leave]': '"scale-out fade-out"',
+    '[attr.aria-label]': 'ariaLabel() ?? null',
+    '[attr.aria-labelledby]': 'ariaLabel() ? null : (ariaLabelledBy() ?? null)',
+    '[animate.enter]': '"scale-in"',
+    '[animate.leave]': '"scale-out"',
   },
   template: `<ng-content />`,
 })
 export class MenuComponent {
   /** Controls item density and padding. Defaults to `'md'`. */
   readonly size = input<TwSize>('md');
+
+  /** Accessible label for the menu panel. Use when no visible heading describes the menu (e.g. a kebab-icon trigger). */
+  readonly ariaLabel = input<string | undefined>(undefined, { alias: 'aria-label' });
+
+  /** ID of an element that labels the menu panel. Ignored when `ariaLabel` is set. */
+  readonly ariaLabelledBy = input<string | undefined>(undefined, { alias: 'aria-labelledby' });
 
   readonly classes = computed(() => menuVariants({ size: this.size() }));
 }
@@ -143,7 +178,14 @@ export class MenuComponent {
   hostDirectives: [
     {
       directive: CdkMenuTrigger,
-      inputs: ['cdkMenuTriggerFor: twMenuTrigger'],
+      inputs: [
+        'cdkMenuTriggerFor: twMenuTrigger',
+        // Forward CDK's positioning so consumers can anchor the menu (e.g. bottom-end vs bottom-start).
+        // Accepts `ConnectedPosition[]` from `@angular/cdk/overlay`.
+        'cdkMenuPosition: position',
+        // Forward menu context data so consumers can parameterise the template.
+        'cdkMenuTriggerData: data',
+      ],
       outputs: ['cdkMenuOpened: opened', 'cdkMenuClosed: closed'],
     },
   ],
@@ -160,6 +202,10 @@ export class MenuTriggerDirective {}
       inputs: [
         'cdkContextMenuTriggerFor: twContextMenuTrigger',
         'cdkContextMenuDisabled: disabled',
+        // Context menus open at pointer coordinates; `position` here tunes the
+        // `ConnectedPosition[]` fallback list once CDK has anchored the overlay.
+        'cdkContextMenuPosition: position',
+        'cdkContextMenuTriggerData: data',
       ],
       outputs: ['cdkContextMenuOpened: opened', 'cdkContextMenuClosed: closed'],
     },
@@ -174,7 +220,6 @@ export class ContextMenuTriggerDirective {}
   hostDirectives: [
     {
       directive: CdkMenuItem,
-      inputs: ['cdkMenuItemDisabled: disabled'],
       outputs: ['cdkMenuItemTriggered: triggered'],
     },
   ],
@@ -183,13 +228,27 @@ export class ContextMenuTriggerDirective {}
   },
 })
 export class MenuItemDirective {
-  /** Semantic color of the item. Use `'error'` for destructive actions. Defaults to `'default'`. */
-  readonly color = input<'default' | TwColor>('default');
+  /**
+   * Semantic role tint applied to the item. Use `'error'` for destructive actions.
+   * Defaults to `undefined` — no role tint is applied and the item inherits the
+   * base `text-fg` styling at full prominence; `'neutral'` (the explicit muted
+   * variant) is a distinct value with `text-fg-muted` + `bg-surface-muted` hovers.
+   */
+  readonly color = input<TwColor | undefined>(undefined);
 
   /** Whether this item is disabled. Defaults to `false`. */
   readonly disabled = input(false);
 
   private readonly menu = inject(MenuComponent, { optional: true });
+  private readonly cdkItem = inject(CdkMenuItem);
+
+  constructor() {
+    // Single source of truth: the local `disabled` signal drives both visual state
+    // and the underlying CDK directive's behavior (`disabled` is a plain property on CDK).
+    effect(() => {
+      this.cdkItem.disabled = this.disabled();
+    });
+  }
 
   readonly classes = computed(() =>
     menuItemVariants({
@@ -208,7 +267,7 @@ export class MenuItemDirective {
   hostDirectives: [
     {
       directive: CdkMenuItemCheckbox,
-      inputs: ['cdkMenuItemDisabled: disabled', 'cdkMenuItemChecked: checked'],
+      inputs: ['cdkMenuItemChecked: checked'],
       outputs: ['cdkMenuItemTriggered: triggered'],
     },
   ],
@@ -230,10 +289,23 @@ export class MenuItemCheckboxComponent {
   /** Whether this item is disabled. Defaults to `false`. */
   readonly disabled = input(false);
 
+  /** Fires when the item is activated, carrying the new `checked` value after CDK toggles it. */
+  readonly checkedChange = output<boolean>();
+
   protected readonly cdkCheckbox = inject(CdkMenuItemCheckbox);
   private readonly menu = inject(MenuComponent, { optional: true });
 
   private readonly resolvedSize = computed(() => this.menu?.size() ?? 'md');
+
+  constructor() {
+    effect(() => {
+      this.cdkCheckbox.disabled = this.disabled();
+    });
+    // CDK fires `triggered` BEFORE updating `checked`; emit the post-toggle value.
+    this.cdkCheckbox.triggered
+      .pipe(takeUntilDestroyed())
+      .subscribe(() => this.checkedChange.emit(!this.cdkCheckbox.checked));
+  }
 
   readonly classes = computed(() =>
     menuItemVariants({
@@ -255,7 +327,7 @@ export class MenuItemCheckboxComponent {
   hostDirectives: [
     {
       directive: CdkMenuItemRadio,
-      inputs: ['cdkMenuItemDisabled: disabled', 'cdkMenuItemChecked: checked'],
+      inputs: ['cdkMenuItemChecked: checked'],
       outputs: ['cdkMenuItemTriggered: triggered'],
     },
   ],
@@ -277,10 +349,23 @@ export class MenuItemRadioComponent {
   /** Whether this item is disabled. Defaults to `false`. */
   readonly disabled = input(false);
 
+  /** Fires when the item is activated, carrying the new `checked` value after CDK selects it. */
+  readonly checkedChange = output<boolean>();
+
   protected readonly cdkRadio = inject(CdkMenuItemRadio);
   private readonly menu = inject(MenuComponent, { optional: true });
 
   private readonly resolvedSize = computed(() => this.menu?.size() ?? 'md');
+
+  constructor() {
+    effect(() => {
+      this.cdkRadio.disabled = this.disabled();
+    });
+    // Radio activation always selects the item; emit `true` (the post-trigger checked state).
+    this.cdkRadio.triggered
+      .pipe(takeUntilDestroyed())
+      .subscribe(() => this.checkedChange.emit(true));
+  }
 
   readonly classes = computed(() =>
     menuItemVariants({
@@ -341,7 +426,13 @@ export class MenuItemShortcutDirective {}
 @Directive({
   selector: '[twMenuItemSubmenuIcon]',
   host: {
-    class: 'ml-auto pl-2 size-4 shrink-0 text-fg-muted',
+    '[class]': 'classes()',
   },
 })
-export class MenuItemSubmenuIndicatorDirective {}
+export class MenuItemSubmenuIndicatorDirective {
+  private readonly menu = inject(MenuComponent, { optional: true });
+
+  readonly classes = computed(() =>
+    menuItemSubmenuIndicatorVariants({ size: this.menu?.size() ?? 'md' }),
+  );
+}

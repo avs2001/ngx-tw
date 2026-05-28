@@ -65,7 +65,6 @@
 
       <!-- Nav buttons region -->
       <div
-        #navGroup
         [class]="navGroupClasses()"
         (keydown)="onKeydown($event)"
       >
@@ -75,6 +74,7 @@
           @if (linkFactory()) {
             <a
               data-tw-paginator-focusable
+              [isDisabled]="firstDisabled"
               data-tw-paginator-nav="first"
               [class]="navButtonClasses()"
               [attr.href]="firstDisabled ? null : hrefFor(1)"
@@ -107,6 +107,7 @@
             <button
               type="button"
               data-tw-paginator-focusable
+              [isDisabled]="firstDisabled"
               data-tw-paginator-nav="first"
               [class]="navButtonClasses()"
               [disabled]="firstDisabled"
@@ -142,6 +143,7 @@
         @if (linkFactory()) {
           <a
             data-tw-paginator-focusable
+            [isDisabled]="prevDisabled"
             data-tw-paginator-nav="prev"
             [class]="navButtonClasses()"
             [attr.href]="prevDisabled ? null : hrefFor(prevTarget)"
@@ -174,6 +176,7 @@
           <button
             type="button"
             data-tw-paginator-focusable
+            [isDisabled]="prevDisabled"
             data-tw-paginator-nav="prev"
             [class]="navButtonClasses()"
             [disabled]="prevDisabled"
@@ -220,6 +223,7 @@
                 @if (linkFactory()) {
                   <a
                     data-tw-paginator-focusable
+                    [isDisabled]="pageDisabled"
                     data-tw-paginator-nav="page"
                     [class]="pageButtonClasses(isActive)"
                     [attr.href]="pageDisabled ? null : hrefFor(pageNumber)"
@@ -237,6 +241,7 @@
                   <button
                     type="button"
                     data-tw-paginator-focusable
+                    [isDisabled]="pageDisabled"
                     data-tw-paginator-nav="page"
                     [class]="pageButtonClasses(isActive)"
                     [disabled]="pageDisabled"
@@ -260,6 +265,7 @@
         @if (linkFactory()) {
           <a
             data-tw-paginator-focusable
+            [isDisabled]="nextDisabled"
             data-tw-paginator-nav="next"
             [class]="navButtonClasses()"
             [attr.href]="nextDisabled ? null : hrefFor(nextTargetPage)"
@@ -292,6 +298,7 @@
           <button
             type="button"
             data-tw-paginator-focusable
+            [isDisabled]="nextDisabled"
             data-tw-paginator-nav="next"
             [class]="navButtonClasses()"
             [disabled]="nextDisabled"
@@ -326,6 +333,7 @@
           @if (linkFactory()) {
             <a
               data-tw-paginator-focusable
+              [isDisabled]="lastDisabled"
               data-tw-paginator-nav="last"
               [class]="navButtonClasses()"
               [attr.href]="lastDisabled ? null : hrefFor(totalPages())"
@@ -358,6 +366,7 @@
             <button
               type="button"
               data-tw-paginator-focusable
+              [isDisabled]="lastDisabled"
               data-tw-paginator-nav="last"
               [class]="navButtonClasses()"
               [disabled]="lastDisabled"

@@ -10,6 +10,16 @@ import { CodeBlockComponent } from 'ngx-tw/code-block';
     <section class="mb-10">
       <h2 class="text-sm font-semibold mb-3">RadioGroupComponent&lt;T&gt;</h2>
       <p class="text-xs text-fg-muted mb-4 font-mono">Selector: tw-radio-group</p>
+      <p class="text-sm text-fg-muted mb-4">
+        The <code class="font-mono">T</code> type parameter is the type of each
+        radio's <code class="font-mono">value</code> input — typically a
+        string-literal union such as <code class="font-mono">'a' | 'b' | 'c'</code>,
+        but anything that compares with <code class="font-mono">===</code>
+        works. <code class="font-mono">T</code> is inferred when consumers
+        bind via <code class="font-mono">[(value)]</code>; with reactive
+        forms, the bound <code class="font-mono">FormControl&lt;T | null&gt;</code>
+        determines the type explicitly.
+      </p>
 
       <h3 class="text-xs font-semibold text-fg-muted uppercase tracking-wide mb-2">Inputs</h3>
       <div class="overflow-x-auto border border-border rounded-lg mb-6">

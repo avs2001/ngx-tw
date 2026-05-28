@@ -6,6 +6,7 @@ import {
   SheetCloseDirective,
   SheetContentDirective,
   SheetHeaderDirective,
+  SheetIconDirective,
   SheetSubtitleDirective,
   SheetTitleDirective,
   type SheetSide,
@@ -14,7 +15,7 @@ import {
 import { ButtonDirective } from 'ngx-tw/button';
 import { InputDirective } from 'ngx-tw/input';
 import { FormFieldComponent, LabelDirective } from 'ngx-tw/form-field';
-import { CardComponent } from 'ngx-tw/card';
+import { IconComponent } from 'ngx-tw/icon';
 
 const SIDES: SheetSide[] = ['top', 'right', 'bottom', 'left'];
 const SIZES: SheetSize[] = ['xs', 'sm', 'md', 'lg', 'xl', 'full'];
@@ -175,6 +176,42 @@ class SheetSideDemoContent {
   protected readonly data = inject<{ side: SheetSide }>(SHEET_DATA);
 }
 
+/** Destructive-confirmation sheet — demonstrates SheetIconDirective with a semantic color. */
+@Component({
+  selector: 'app-sheet-destructive',
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  imports: [
+    ButtonDirective,
+    IconComponent,
+    SheetHeaderDirective,
+    SheetIconDirective,
+    SheetTitleDirective,
+    SheetSubtitleDirective,
+    SheetContentDirective,
+    SheetActionsDirective,
+    SheetCloseDirective,
+  ],
+  template: `
+    <div twSheetHeader>
+      <div twSheetIcon color="error">
+        <tw-icon name="alert-triangle" size="sm" />
+      </div>
+      <div class="flex-1 min-w-0">
+        <h2 twSheetTitle>Delete workspace</h2>
+        <p twSheetSubtitle>This action permanently removes the workspace and all of its data.</p>
+      </div>
+    </div>
+    <div twSheetContent>
+      <p>Type the workspace name to confirm. Members will lose access immediately.</p>
+    </div>
+    <div twSheetActions>
+      <button twButton variant="ghost" twSheetClose>Cancel</button>
+      <button twButton color="error" [twSheetClose]="'deleted'">Delete workspace</button>
+    </div>
+  `,
+})
+class SheetDestructiveContent {}
+
 /** Receives the requested size via SHEET_DATA. */
 @Component({
   selector: 'app-sheet-size-demo',
@@ -210,100 +247,138 @@ class SheetSizeDemoContent {
 @Component({
   selector: 'app-sheet-examples',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [ButtonDirective, CardComponent],
+  imports: [ButtonDirective],
   template: `
-    <div class="space-y-10">
-      <!-- ── Sides ─────────────────────────────────────────────────── -->
-      <section>
-        <h2 class="text-sm font-semibold mb-2">Sides</h2>
-        <p class="text-sm text-fg-muted mb-4">Each button opens a sheet anchored to that edge.</p>
-        <tw-card variant="outlined" class="p-6">
-          <div class="flex flex-wrap gap-2">
-            @for (side of sides; track side) {
-              <button twButton variant="outline" (click)="openSide(side)">{{ labelFor(side) }}</button>
-            }
-          </div>
-        </tw-card>
-      </section>
-
-      <!-- ── Sizes (right-anchored) ────────────────────────────────── -->
-      <section>
-        <h2 class="text-sm font-semibold mb-2">Sizes</h2>
-        <p class="text-sm text-fg-muted mb-4">Sizes for right-anchored sheets control width.</p>
-        <tw-card variant="outlined" class="p-6">
-          <div class="flex flex-wrap gap-2">
-            @for (size of sizes; track size) {
-              <button twButton variant="outline" (click)="openSize(size)">{{ size }}</button>
-            }
-          </div>
-        </tw-card>
-      </section>
-
-      <!-- ── Form content ──────────────────────────────────────────── -->
-      <section>
-        <h2 class="text-sm font-semibold mb-2">Form content</h2>
-        <p class="text-sm text-fg-muted mb-4">
-          Focus traps inside the sheet and moves to the first input on open. Tab cycles among
-          the form fields; Shift + Tab walks back. Escape closes and returns focus to the trigger.
-        </p>
-        <tw-card variant="outlined" class="p-6">
-          <button twButton (click)="openForm()">Open contact form</button>
-        </tw-card>
-      </section>
-
-      <!-- ── Footer actions ────────────────────────────────────────── -->
-      <section>
-        <h2 class="text-sm font-semibold mb-2">Footer actions</h2>
-        <p class="text-sm text-fg-muted mb-4">
-          Use <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">twSheetActions</code>
-          to host Cancel / Confirm buttons pinned beneath the scrollable content.
-        </p>
-        <tw-card variant="outlined" class="p-6">
-          <button twButton (click)="openWithActions()">Open with actions</button>
-          @if (lastResult()) {
-            <p class="mt-3 text-xs text-fg-muted">Last result: <code class="font-mono">{{ lastResult() }}</code></p>
+    <!-- ── Sides ───────────────────────────────────────────────────── -->
+    <section class="mb-10">
+      <h2 class="text-sm font-semibold mb-3">Sides</h2>
+      <p class="text-sm text-fg-muted leading-relaxed max-w-2xl mb-4">
+        The <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">side</code>
+        option anchors the sheet against one of the four viewport edges. Right-anchored is the
+        default for inspector and form-editor patterns; bottom-anchored fits action sheets and
+        mobile-friendly menus; left and top are useful for navigation drawers and command bars.
+      </p>
+      <div class="rounded-lg border border-border p-6 bg-surface-raised">
+        <div class="flex flex-wrap gap-2">
+          @for (side of sides; track side) {
+            <button twButton variant="outline" (click)="openSide(side)">{{ labelFor(side) }}</button>
           }
-        </tw-card>
-      </section>
+        </div>
+      </div>
+    </section>
 
-      <!-- ── Non-modal ─────────────────────────────────────────────── -->
-      <section>
-        <h2 class="text-sm font-semibold mb-2">Non-modal</h2>
-        <p class="text-sm text-fg-muted mb-4">
-          Pass <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">ariaModal: false</code>
-          and <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">hasBackdrop: false</code>
-          to let the user interact with the page while the sheet is open (no scrim, no inert).
-        </p>
-        <tw-card variant="outlined" class="p-6">
-          <button twButton variant="outline" (click)="openNonModal()">Open non-modal</button>
-        </tw-card>
-      </section>
+    <!-- ── Sizes (right-anchored) ──────────────────────────────────── -->
+    <section class="mb-10">
+      <h2 class="text-sm font-semibold mb-3">Sizes</h2>
+      <p class="text-sm text-fg-muted leading-relaxed max-w-2xl mb-4">
+        Sizing is axis-aware: on left/right sheets the
+        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">size</code>
+        preset controls width; on top/bottom sheets it controls height. Use
+        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">md</code>
+        for forms,
+        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">lg</code>
+        / <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">xl</code> for
+        inspector panels with dense content, and
+        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">full</code>
+        for task-takeover flows.
+      </p>
+      <div class="rounded-lg border border-border p-6 bg-surface-raised">
+        <div class="flex flex-wrap gap-2">
+          @for (size of sizes; track size) {
+            <button twButton variant="outline" (click)="openSize(size)">{{ size }}</button>
+          }
+        </div>
+      </div>
+    </section>
 
-      <!-- ── Long content (scroll) ─────────────────────────────────── -->
-      <section>
-        <h2 class="text-sm font-semibold mb-2">Long content</h2>
-        <p class="text-sm text-fg-muted mb-4">
-          The body uses <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">twSheetContent</code>
-          which inherits <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">CdkScrollable</code>
-          and scrolls independently of the header and action bar.
-        </p>
-        <tw-card variant="outlined" class="p-6">
-          <button twButton variant="outline" (click)="openScrollable()">Open scrolling sheet</button>
-        </tw-card>
-      </section>
+    <!-- ── Form content ────────────────────────────────────────────── -->
+    <section class="mb-10">
+      <h2 class="text-sm font-semibold mb-3">Form content</h2>
+      <p class="text-sm text-fg-muted leading-relaxed max-w-2xl mb-4">
+        Focus traps inside the sheet and moves to the first input on open. Tab cycles among
+        the form fields; Shift + Tab walks back. Escape closes and returns focus to the trigger.
+      </p>
+      <div class="rounded-lg border border-border p-6 bg-surface-raised">
+        <button twButton (click)="openForm()">Open contact form</button>
+      </div>
+    </section>
 
-      <!-- ── Suppress close ────────────────────────────────────────── -->
-      <section>
-        <h2 class="text-sm font-semibold mb-2">Suppress close</h2>
-        <p class="text-sm text-fg-muted mb-4">
-          Split close-behavior flags let you disable Escape and backdrop dismissal independently
-          while keeping an explicit close button.
-        </p>
-        <tw-card variant="outlined" class="p-6">
-          <button twButton variant="outline" (click)="openSuppress()">Open wizard sheet</button>
-        </tw-card>
-      </section>
-    </div>
+    <!-- ── Footer actions ──────────────────────────────────────────── -->
+    <section class="mb-10">
+      <h2 class="text-sm font-semibold mb-3">Footer actions</h2>
+      <p class="text-sm text-fg-muted leading-relaxed max-w-2xl mb-4">
+        Use <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">twSheetActions</code>
+        to host Cancel / Confirm buttons pinned beneath the scrollable content. The bar reads the
+        close result back through <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">afterClosed()</code>.
+      </p>
+      <div class="rounded-lg border border-border p-6 bg-surface-raised">
+        <button twButton (click)="openWithActions()">Open with actions</button>
+        @if (lastResult()) {
+          <p class="mt-3 text-xs text-fg-muted">
+            Last result: <code class="font-mono">{{ lastResult() }}</code>
+          </p>
+        }
+      </div>
+    </section>
+
+    <!-- ── Destructive (alertdialog) ───────────────────────────────── -->
+    <section class="mb-10">
+      <h2 class="text-sm font-semibold mb-3">Destructive confirmation</h2>
+      <p class="text-sm text-fg-muted leading-relaxed max-w-2xl mb-4">
+        For irreversible actions, pair a
+        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">role: 'alertdialog'</code>
+        sheet with a leading
+        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">twSheetIcon</code>
+        in the
+        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">error</code>
+        color. The role signals urgency to assistive tech; the icon gives the visual cue.
+      </p>
+      <div class="rounded-lg border border-border p-6 bg-surface-raised">
+        <button twButton variant="outline" color="error" (click)="openDestructive()">
+          Delete workspace…
+        </button>
+      </div>
+    </section>
+
+    <!-- ── Non-modal ───────────────────────────────────────────────── -->
+    <section class="mb-10">
+      <h2 class="text-sm font-semibold mb-3">Non-modal</h2>
+      <p class="text-sm text-fg-muted leading-relaxed max-w-2xl mb-4">
+        Pass <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">ariaModal: false</code>
+        and <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">hasBackdrop: false</code>
+        to let the user interact with the page while the sheet is open (no scrim, no inert).
+        Useful for inspector panels that live alongside the main canvas.
+      </p>
+      <div class="rounded-lg border border-border p-6 bg-surface-raised">
+        <button twButton variant="outline" (click)="openNonModal()">Open non-modal</button>
+      </div>
+    </section>
+
+    <!-- ── Long content (scroll) ───────────────────────────────────── -->
+    <section class="mb-10">
+      <h2 class="text-sm font-semibold mb-3">Long content</h2>
+      <p class="text-sm text-fg-muted leading-relaxed max-w-2xl mb-4">
+        The body uses <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">twSheetContent</code>
+        which inherits <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">CdkScrollable</code>
+        and scrolls independently of the header and action bar.
+      </p>
+      <div class="rounded-lg border border-border p-6 bg-surface-raised">
+        <button twButton variant="outline" (click)="openScrollable()">Open scrolling sheet</button>
+      </div>
+    </section>
+
+    <!-- ── Suppress close ──────────────────────────────────────────── -->
+    <section>
+      <h2 class="text-sm font-semibold mb-3">Suppress close</h2>
+      <p class="text-sm text-fg-muted leading-relaxed max-w-2xl mb-4">
+        Split close-behavior flags let you disable Escape and backdrop dismissal independently
+        while keeping an explicit close button — useful for multi-step wizards where accidental
+        dismissal would lose progress.
+      </p>
+      <div class="rounded-lg border border-border p-6 bg-surface-raised">
+        <button twButton variant="outline" (click)="openSuppress()">Open wizard sheet</button>
+      </div>
+    </section>
   `,
 })
 export class SheetExamples {
@@ -336,6 +411,14 @@ export class SheetExamples {
       data: { side: 'right' as SheetSide },
     });
     ref.afterClosed().subscribe((result) => this.lastResult.set(result ?? 'dismissed'));
+  }
+
+  protected openDestructive(): void {
+    this.sheet.open(SheetDestructiveContent, {
+      side: 'right',
+      size: 'md',
+      role: 'alertdialog',
+    });
   }
 
   protected openNonModal(): void {

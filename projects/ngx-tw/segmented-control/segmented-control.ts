@@ -3,20 +3,18 @@ import {
   Component,
   computed,
   contentChildren,
-  DestroyRef,
   ElementRef,
   forwardRef,
   inject,
   input,
+  isDevMode,
   linkedSignal,
   model,
-  type OnInit,
   signal,
 } from '@angular/core';
 import { type ControlValueAccessor, NG_VALUE_ACCESSOR } from '@angular/forms';
-import { FocusMonitor } from '@angular/cdk/a11y';
 import { tv } from 'tailwind-variants';
-import type { TwColor, TwSize } from 'ngx-tw/core';
+import type { TwColor, TwOrientation, TwSize } from 'ngx-tw/core';
 
 /** Visual style of the active indicator. */
 export type SegmentedControlVariant = 'surface' | 'filled' | 'outline';
@@ -25,12 +23,17 @@ export type SegmentedControlVariant = 'surface' | 'filled' | 'outline';
 export type SegmentedControlRounded = 'pill' | 'md';
 
 // ── tv() config ──
+// All slot styling — base, size, orientation, rounded, variant × color × active,
+// disabled — flows through this single config. Static literal class strings are
+// required so the Tailwind v4 JIT scanner picks them up; new
+// `{role}-{solid,fg,border-strong}` combinations need a matching entry in
+// `theme/index.css`'s `@source inline(...)` safelist.
 
 const segmentedControlVariants = tv({
   slots: {
     root: 'inline-flex bg-surface-muted p-1',
     option:
-      'inline-flex items-center justify-center gap-1.5 font-medium whitespace-nowrap cursor-pointer transition-colors duration-200 motion-reduce:transition-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500',
+      'inline-flex items-center justify-center gap-1.5 font-medium whitespace-nowrap cursor-pointer transition-colors duration-normal motion-reduce:transition-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500',
   },
   variants: {
     size: {
@@ -48,56 +51,73 @@ const segmentedControlVariants = tv({
       pill: { root: 'rounded-full', option: 'rounded-full' },
       md: { root: 'rounded-md', option: 'rounded-md' },
     },
+    // `variant` and `color` participate only via `compoundVariants` below —
+    // their per-axis entries are intentionally empty so the cartesian product
+    // (3 variants × 8 colors × 2 active states = 48 compound entries) owns
+    // all active styling without per-axis defaults bleeding through.
+    variant: {
+      surface: {},
+      filled: {},
+      outline: {},
+    },
+    color: {
+      primary: {},
+      secondary: {},
+      accent: {},
+      neutral: {},
+      info: {},
+      success: {},
+      warning: {},
+      error: {},
+    },
+    active: {
+      true: {},
+      false: { option: 'text-fg-muted hover:text-fg' },
+    },
+    disabled: {
+      true: { option: 'opacity-50 pointer-events-none cursor-default' },
+      false: {},
+    },
   },
+  compoundVariants: [
+    // surface × color × active=true
+    { variant: 'surface', color: 'primary', active: true, class: { option: 'bg-surface shadow-sm text-primary-fg' } },
+    { variant: 'surface', color: 'secondary', active: true, class: { option: 'bg-surface shadow-sm text-secondary-fg' } },
+    { variant: 'surface', color: 'accent', active: true, class: { option: 'bg-surface shadow-sm text-accent-fg' } },
+    { variant: 'surface', color: 'neutral', active: true, class: { option: 'bg-surface shadow-sm text-fg' } },
+    { variant: 'surface', color: 'info', active: true, class: { option: 'bg-surface shadow-sm text-info-fg' } },
+    { variant: 'surface', color: 'success', active: true, class: { option: 'bg-surface shadow-sm text-success-fg' } },
+    { variant: 'surface', color: 'warning', active: true, class: { option: 'bg-surface shadow-sm text-warning-fg' } },
+    { variant: 'surface', color: 'error', active: true, class: { option: 'bg-surface shadow-sm text-error-fg' } },
+    // filled × color × active=true
+    { variant: 'filled', color: 'primary', active: true, class: { option: 'bg-primary-solid text-primary-solid-fg shadow-sm' } },
+    { variant: 'filled', color: 'secondary', active: true, class: { option: 'bg-secondary-solid text-secondary-solid-fg shadow-sm' } },
+    { variant: 'filled', color: 'accent', active: true, class: { option: 'bg-accent-solid text-accent-solid-fg shadow-sm' } },
+    { variant: 'filled', color: 'neutral', active: true, class: { option: 'bg-neutral-solid text-neutral-solid-fg shadow-sm' } },
+    { variant: 'filled', color: 'info', active: true, class: { option: 'bg-info-solid text-info-solid-fg shadow-sm' } },
+    { variant: 'filled', color: 'success', active: true, class: { option: 'bg-success-solid text-success-solid-fg shadow-sm' } },
+    { variant: 'filled', color: 'warning', active: true, class: { option: 'bg-warning-solid text-warning-solid-fg shadow-sm' } },
+    { variant: 'filled', color: 'error', active: true, class: { option: 'bg-error-solid text-error-solid-fg shadow-sm' } },
+    // outline × color × active=true
+    { variant: 'outline', color: 'primary', active: true, class: { option: 'ring-2 ring-primary-border-strong text-primary-fg' } },
+    { variant: 'outline', color: 'secondary', active: true, class: { option: 'ring-2 ring-secondary-border-strong text-secondary-fg' } },
+    { variant: 'outline', color: 'accent', active: true, class: { option: 'ring-2 ring-accent-border-strong text-accent-fg' } },
+    { variant: 'outline', color: 'neutral', active: true, class: { option: 'ring-2 ring-border-strong text-fg' } },
+    { variant: 'outline', color: 'info', active: true, class: { option: 'ring-2 ring-info-border-strong text-info-fg' } },
+    { variant: 'outline', color: 'success', active: true, class: { option: 'ring-2 ring-success-border-strong text-success-fg' } },
+    { variant: 'outline', color: 'warning', active: true, class: { option: 'ring-2 ring-warning-border-strong text-warning-fg' } },
+    { variant: 'outline', color: 'error', active: true, class: { option: 'ring-2 ring-error-border-strong text-error-fg' } },
+  ],
   defaultVariants: {
     size: 'md',
     orientation: 'horizontal',
     rounded: 'pill',
+    variant: 'surface',
+    color: 'primary',
+    active: false,
+    disabled: false,
   },
 }, { twMerge: true });
-
-// ── Static active class lookups (all classes written statically for Tailwind v4 scanning) ──
-
-const SURFACE_ACTIVE: Record<TwColor, string> = {
-  primary: 'bg-surface shadow-sm text-primary-700 dark:text-primary-300',
-  secondary: 'bg-surface shadow-sm text-secondary-700 dark:text-secondary-300',
-  accent: 'bg-surface shadow-sm text-accent-700 dark:text-accent-300',
-  neutral: 'bg-surface shadow-sm text-fg',
-  info: 'bg-surface shadow-sm text-info-700 dark:text-info-300',
-  success: 'bg-surface shadow-sm text-success-700 dark:text-success-300',
-  warning: 'bg-surface shadow-sm text-warning-700 dark:text-warning-300',
-  error: 'bg-surface shadow-sm text-error-700 dark:text-error-300',
-};
-
-const FILLED_ACTIVE: Record<TwColor, string> = {
-  primary: 'bg-primary-600 text-white shadow-sm',
-  secondary: 'bg-secondary-600 text-white shadow-sm',
-  accent: 'bg-accent-600 text-white shadow-sm',
-  neutral: 'bg-surface-muted text-fg shadow-sm',
-  info: 'bg-info-600 text-white shadow-sm',
-  success: 'bg-success-600 text-white shadow-sm',
-  warning: 'bg-warning-500 text-black shadow-sm',
-  error: 'bg-error-600 text-white shadow-sm',
-};
-
-const OUTLINE_ACTIVE: Record<TwColor, string> = {
-  primary: 'ring-2 ring-primary-500 text-primary-700',
-  secondary: 'ring-2 ring-secondary-500 text-secondary-700',
-  accent: 'ring-2 ring-accent-500 text-accent-700',
-  neutral: 'ring-2 ring-border-strong text-fg',
-  info: 'ring-2 ring-info-500 text-info-700',
-  success: 'ring-2 ring-success-500 text-success-700',
-  warning: 'ring-2 ring-warning-500 text-warning-700',
-  error: 'ring-2 ring-error-500 text-error-700',
-};
-
-const ACTIVE_CLASSES: Record<SegmentedControlVariant, Record<TwColor, string>> = {
-  surface: SURFACE_ACTIVE,
-  filled: FILLED_ACTIVE,
-  outline: OUTLINE_ACTIVE,
-};
-
-const INACTIVE_CLASSES = 'text-fg-muted hover:text-fg';
 
 // ── SegmentedControlOptionComponent ──
 
@@ -125,19 +145,35 @@ export class SegmentedControlOptionComponent {
   readonly disabled = input(false);
 
   readonly elementRef = inject(ElementRef<HTMLElement>);
-  private readonly parent = inject(forwardRef(() => SegmentedControlComponent));
+  // `{ optional: true }` so the dev-mode guard below can fire a clearer
+  // error than a raw DI failure when the option is rendered outside a
+  // `<tw-segmented-control>`. All downstream reads use `this.parent?.` so
+  // production misconfiguration degrades cleanly to a non-interactive option
+  // (the dev `console.error` makes the cause obvious during development).
+  private readonly parent: SegmentedControlComponent | null = inject(
+    forwardRef(() => SegmentedControlComponent),
+    { optional: true },
+  );
 
   readonly id = `tw-segmented-option-${nextId++}`;
 
-  readonly isActive = computed(() => this.parent.activeValue() === this.value());
+  constructor() {
+    if (isDevMode() && !this.parent) {
+      console.error(
+        '<tw-segmented-option> must be a child of <tw-segmented-control>.',
+      );
+    }
+  }
 
-  readonly isDisabled = computed(() => this.disabled() || this.parent.isDisabled());
+  readonly isActive = computed(() => this.parent?.activeValue() === this.value());
+
+  readonly isDisabled = computed(() => this.disabled() || (this.parent?.isDisabled() ?? false));
 
   readonly isFocusable = computed(() => {
     if (this.isDisabled()) return false;
     if (this.isActive()) return true;
     // If no option is active, first non-disabled option gets focus
-    if (this.parent.activeValue() === null) {
+    if (this.parent?.activeValue() === null) {
       const opts = this.parent.options();
       const first = opts.find((o: SegmentedControlOptionComponent) => !o.isDisabled());
       return first?.value() === this.value();
@@ -146,19 +182,21 @@ export class SegmentedControlOptionComponent {
   });
 
   readonly classes = computed(() => {
-    const base = this.parent.baseOptionClasses();
-    if (this.isDisabled()) {
-      return `${base} opacity-50 pointer-events-none cursor-default`;
-    }
-    const state = this.isActive()
-      ? ACTIVE_CLASSES[this.parent.variant() as SegmentedControlVariant][this.parent.color() as TwColor]
-      : INACTIVE_CLASSES;
-    return `${base} ${state}`;
+    const result = segmentedControlVariants({
+      size: this.parent?.size() ?? 'md',
+      orientation: this.parent?.orientation() ?? 'horizontal',
+      rounded: this.parent?.effectiveRounded() ?? 'pill',
+      variant: this.parent?.variant() ?? 'surface',
+      color: this.parent?.color() ?? 'primary',
+      active: this.isActive(),
+      disabled: this.isDisabled(),
+    });
+    return result.option();
   });
 
   select(): void {
     if (this.isDisabled()) return;
-    this.parent.selectOption(this.value());
+    this.parent?.selectOption(this.value());
   }
 
   focus(): void {
@@ -187,7 +225,7 @@ export class SegmentedControlOptionComponent {
     '(keydown)': 'onKeydown($event)',
   },
 })
-export class SegmentedControlComponent implements ControlValueAccessor, OnInit {
+export class SegmentedControlComponent implements ControlValueAccessor {
   /** Controls the active indicator style. `'surface'` shows a raised white pill; `'filled'` shows a solid colored background; `'outline'` shows a colored ring border. Defaults to `'surface'`. */
   readonly variant = input<SegmentedControlVariant>('surface');
 
@@ -198,7 +236,7 @@ export class SegmentedControlComponent implements ControlValueAccessor, OnInit {
   readonly size = input<TwSize>('md');
 
   /** Layout direction of the control. Defaults to `'horizontal'`. */
-  readonly orientation = input<'horizontal' | 'vertical'>('horizontal');
+  readonly orientation = input<TwOrientation>('horizontal');
 
   /** Controls the border-radius shape of the container and options. `'pill'` uses fully rounded corners; `'md'` uses standard radius. Vertical orientation forces `'md'`. Defaults to `'pill'`. */
   readonly rounded = input<SegmentedControlRounded>('pill');
@@ -208,10 +246,6 @@ export class SegmentedControlComponent implements ControlValueAccessor, OnInit {
 
   /** The value of the currently selected option. Two-way bound. Updates on user selection. */
   readonly value = model<string | null>(null);
-
-  private readonly focusMonitor = inject(FocusMonitor);
-  private readonly elementRef = inject(ElementRef<HTMLElement>);
-  private readonly destroyRef = inject(DestroyRef);
 
   /** @internal */
   readonly options = contentChildren(SegmentedControlOptionComponent);
@@ -224,7 +258,8 @@ export class SegmentedControlComponent implements ControlValueAccessor, OnInit {
 
   readonly activeValue = linkedSignal(() => this.value());
 
-  private readonly effectiveRounded = computed<SegmentedControlRounded>(() =>
+  /** @internal Read by `SegmentedControlOptionComponent.classes` to resolve the option's tv() bucket. Vertical orientation forces `'md'` regardless of input. */
+  readonly effectiveRounded = computed<SegmentedControlRounded>(() =>
     this.orientation() === 'vertical' ? 'md' : this.rounded(),
   );
 
@@ -238,11 +273,10 @@ export class SegmentedControlComponent implements ControlValueAccessor, OnInit {
 
   readonly rootClasses = computed(() => {
     const base = this.variantResult().root();
-    return this.isDisabled() ? `${base} opacity-50 pointer-events-none` : base;
+    return this.isDisabled()
+      ? `${base} opacity-50 pointer-events-none`
+      : base;
   });
-
-  /** @internal */
-  readonly baseOptionClasses = computed(() => this.variantResult().option());
 
   // ── Selection ──
 
@@ -324,14 +358,5 @@ export class SegmentedControlComponent implements ControlValueAccessor, OnInit {
 
   setDisabledState(isDisabled: boolean): void {
     this.cvaDisabled.set(isDisabled);
-  }
-
-  // ── Lifecycle ──
-
-  ngOnInit(): void {
-    this.focusMonitor.monitor(this.elementRef);
-    this.destroyRef.onDestroy(() => {
-      this.focusMonitor.stopMonitoring(this.elementRef);
-    });
   }
 }

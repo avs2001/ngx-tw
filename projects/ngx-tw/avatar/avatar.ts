@@ -8,7 +8,10 @@ import {
   InjectionToken,
   inject,
   input,
+  isDevMode,
   linkedSignal,
+  output,
+  signal,
 } from '@angular/core';
 import { tv } from 'tailwind-variants';
 import type { TwColor, TwSize } from 'ngx-tw/core';
@@ -18,6 +21,14 @@ export type AvatarStatus = 'online' | 'busy' | 'away' | 'offline';
 
 /** Border radius shape for the avatar. */
 export type AvatarRounded = 'full' | 'lg' | 'none';
+
+/** Decorative axes bundled into a single avatar input. */
+export interface AvatarAppearance {
+  /** Border-radius shape. Defaults to `'full'`. */
+  rounded?: AvatarRounded;
+  /** Status indicator dot. Defaults to `null` (no indicator). */
+  status?: AvatarStatus | null;
+}
 
 /**
  * Injection token used by `AvatarGroupComponent` to propagate its size
@@ -29,7 +40,11 @@ const avatarVariants = tv({
   slots: {
     root: 'relative inline-flex items-center justify-center overflow-hidden shrink-0',
     img: 'size-full object-cover',
-    initials: 'font-medium select-none',
+    initials: 'font-medium select-none uppercase',
+    // size-[60%]: keeps the fallback glyph proportional to the avatar; no Tailwind size token expresses a percentage of parent.
+    // Container scale — avatars are surfaces, not glyphs (see CLAUDE.md icon sizing).
+    // The fallback child glyph is sized as a percentage of the avatar container
+    // so it scales proportionally across every TwSize.
     fallback: 'size-[60%] text-fg-subtle',
     status: 'absolute rounded-full ring-2 ring-surface',
   },
@@ -39,6 +54,9 @@ const avatarVariants = tv({
       sm: { root: 'size-8 text-xs', status: 'size-2' },
       md: { root: 'size-10 text-sm', status: 'size-2.5' },
       lg: { root: 'size-12 text-sm', status: 'size-3' },
+      // Container scale — avatars are surfaces, not glyphs (see CLAUDE.md icon sizing).
+      // The xl avatar lands at 64px, which sits above the glyph scale's ceiling
+      // (size-10 / 40px) because avatars host imagery, initials, or icon glyphs.
       xl: { root: 'size-16 text-base', status: 'size-3' },
     },
     rounded: {
@@ -80,7 +98,11 @@ const statusColorMap: Record<AvatarStatus, string> = {
     '[class]': 'rootClasses()',
     '[attr.role]': 'displayMode() !== "image" ? "img" : null',
     '[attr.aria-label]': 'displayMode() !== "image" && alt() ? alt() : null',
-    '[attr.aria-hidden]': '!alt() ? "true" : null',
+    // Only hide non-image avatars without alt text from AT. Image-mode avatars
+    // expose their `alt` attribute directly on the underlying `<img>`; hiding
+    // the host would suppress the image from assistive tech entirely.
+    '[attr.aria-hidden]': 'displayMode() !== "image" && !alt() ? "true" : null',
+    '[attr.hidden]': 'groupHidden() ? "" : null',
   },
   template: `
     @switch (displayMode()) {
@@ -90,7 +112,7 @@ const statusColorMap: Record<AvatarStatus, string> = {
           [alt]="alt()"
           [class]="imgClasses()"
           (load)="imageLoaded.set(true)"
-          (error)="imageLoaded.set(false)"
+          (error)="onImageError($event)"
         />
       }
       @case ('initials') {
@@ -104,7 +126,7 @@ const statusColorMap: Record<AvatarStatus, string> = {
         </ng-content>
       }
     }
-    @if (status()) {
+    @if (resolvedStatus()) {
       <span [class]="statusClasses()" aria-hidden="true"></span>
     }
   `,
@@ -116,7 +138,7 @@ export class AvatarComponent {
   /** Alt text for the avatar image. Also used as `aria-label` for non-image avatars. Defaults to `''`. */
   readonly alt = input('');
 
-  /** Text initials displayed when no image is available (1-2 characters). Defaults to `null`. */
+  /** Text initials displayed when no image is available (1-2 characters). Rendered uppercase regardless of input casing. Defaults to `null`. */
   readonly initials = input<string | null>(null);
 
   /** Semantic color for the initials/icon background. Only applies when no image is shown. Defaults to `'neutral'`. */
@@ -125,18 +147,40 @@ export class AvatarComponent {
   /** Controls the avatar dimensions. Defaults to `'md'`. */
   readonly size = input<TwSize>('md');
 
-  /** Border radius shape. `'full'` for circle, `'lg'` for rounded square, `'none'` for sharp square. Defaults to `'full'`. */
-  readonly rounded = input<AvatarRounded>('full');
+  /** Bundles decorative axes: `rounded` (shape) and `status` (indicator dot). Defaults to `{ rounded: 'full', status: null }`. */
+  readonly appearance = input<AvatarAppearance>({});
 
-  /** Shows a status indicator dot. Position adapts to the rounded shape. Defaults to `null` (no indicator). */
-  readonly status = input<AvatarStatus | null>(null);
+  /** Fires when the avatar image fails to load. Payload is the native `Event` from the `<img>` `error` event. */
+  readonly imageError = output<Event>();
 
   /** @internal */
   readonly elementRef = inject(ElementRef<HTMLElement>);
 
+  /**
+   * @internal
+   * Toggled by `AvatarGroupComponent` to hide overflow avatars. Drives the
+   * host `[attr.hidden]` binding so the group's effect stays declarative
+   * (no direct `style.display` mutation).
+   */
+  readonly groupHidden = signal(false);
+
   private readonly groupSize = inject(AVATAR_GROUP_SIZE, { optional: true });
 
+  constructor() {
+    if (isDevMode()) {
+      effect(() => {
+        if (this.displayMode() === 'image' && !this.alt()) {
+          console.warn(
+            '<tw-avatar> rendered as image without alt text — provide alt for accessibility',
+          );
+        }
+      });
+    }
+  }
+
   readonly resolvedSize = computed(() => this.groupSize ? this.groupSize() : this.size());
+  readonly resolvedRounded = computed<AvatarRounded>(() => this.appearance().rounded ?? 'full');
+  readonly resolvedStatus = computed<AvatarStatus | null>(() => this.appearance().status ?? null);
 
   readonly imageLoaded = linkedSignal<string | null, boolean | null>({
     source: this.src,
@@ -152,7 +196,7 @@ export class AvatarComponent {
   private readonly variantResult = computed(() =>
     avatarVariants({
       size: this.resolvedSize(),
-      rounded: this.rounded(),
+      rounded: this.resolvedRounded(),
       color: this.color(),
     }),
   );
@@ -164,10 +208,15 @@ export class AvatarComponent {
 
   readonly statusClasses = computed(() => {
     const base = this.variantResult().status();
-    const statusValue = this.status();
+    const statusValue = this.resolvedStatus();
     if (!statusValue) return base;
     return `${base} ${statusColorMap[statusValue]}`;
   });
+
+  protected onImageError(event: Event): void {
+    this.imageLoaded.set(false);
+    this.imageError.emit(event);
+  }
 }
 
 const groupOverlapMap: Record<TwSize, string> = {
@@ -209,7 +258,7 @@ export class AvatarGroupComponent {
   /** Maximum number of avatars to display. Remaining count is shown as a "+N" overflow indicator. Defaults to `null` (show all). */
   readonly max = input<number | null>(null);
 
-  /** Accessible label for the avatar group. Defaults to `'Avatar group'`. */
+  /** Accessible label for the avatar group. Defaults to `'Avatar group'` (English) — override for localisation. */
   readonly ariaLabel = input('Avatar group');
 
   private readonly avatars = contentChildren(AvatarComponent);
@@ -236,8 +285,7 @@ export class AvatarGroupComponent {
     const all = this.avatars();
     const maxVal = this.max();
     all.forEach((avatar, index) => {
-      const el = avatar.elementRef.nativeElement;
-      el.style.display = maxVal !== null && index >= maxVal ? 'none' : '';
+      avatar.groupHidden.set(maxVal !== null && index >= maxVal);
     });
   });
 }

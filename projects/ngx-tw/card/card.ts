@@ -23,7 +23,7 @@ const cardVariants = tv({
   variants: {
     variant: {
       elevated: {
-        root: 'bg-surface-raised shadow transition-shadow duration-200 motion-reduce:transition-none',
+        root: 'bg-surface-raised shadow hover:shadow-md transition-shadow duration-normal motion-reduce:transition-none',
       },
       outlined: {
         root: 'bg-surface border border-border',

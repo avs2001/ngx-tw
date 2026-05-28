@@ -148,6 +148,7 @@ const TRIGGERS: FlipCardTrigger[] = ['click', 'hover', 'both', 'manual'];
             <tw-flip-card
               trigger="manual"
               variant="elevated"
+              ariaLabel="Invoice #00412 summary"
               [(flipped)]="manualFlipped"
               class="h-full w-full"
             >
@@ -371,6 +372,7 @@ export class FlipCardExamples {
   protected readonly manualHtmlSnippet = `<tw-flip-card
   trigger="manual"
   variant="elevated"
+  ariaLabel="Invoice #00412 summary"
   [(flipped)]="manualFlipped"
   class="h-48 w-72"
 >

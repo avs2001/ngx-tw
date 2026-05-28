@@ -114,19 +114,3 @@ export { TwDateRange, toTwDateRange } from './date-range';
 export type { TwDateRangeInput } from './date-range';
 
 export * from './selection';
-
-// -----------------------------------------------------------------------------
-// Deprecated type aliases. Retained through the refactor so downstream
-// consumers in the same workspace (date-picker, date-range-picker) keep
-// building. Phase 10 replaces the pickers with a `[calendarTrigger]` overlay
-// composition and these aliases can be removed.
-// -----------------------------------------------------------------------------
-
-/** @deprecated Use `CalendarViewState`. */
-export type { CalendarViewState as CalendarView } from './calendar.types';
-/** @deprecated Use `CalendarViewState`. */
-export type { CalendarViewState as TwCalendarView } from './calendar.types';
-/** @deprecated Use `DateFilterFn<D>`. */
-export type { DateFilterFn as TwDateFilter } from './calendar.types';
-/** @deprecated Use `DateClassFn<D>`. */
-export type { DateClassFn as TwCalendarCellClassFn } from './calendar.types';

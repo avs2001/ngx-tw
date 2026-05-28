@@ -30,8 +30,8 @@ import type {
   imports: [NgTemplateOutlet],
   host: {
     '[class]': 'panelClasses()',
-    '[animate.enter]': '"scale-in fade-in"',
-    '[animate.leave]': '"scale-out fade-out"',
+    '[animate.enter]': '"scale-in"',
+    '[animate.leave]': '"scale-out"',
   },
   template: `
     @if (headerTemplate(); as tpl) {
@@ -49,7 +49,7 @@ import type {
           [attr.aria-label]="'Search'"
           [attr.aria-controls]="listboxId()"
           [value]="search()"
-          class="w-full px-3 py-1.5 rounded-md border border-border bg-surface text-fg placeholder:text-fg-subtle focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500 transition-colors duration-200 motion-reduce:transition-none text-sm"
+          class="w-full px-3 py-1.5 rounded-md border border-border bg-surface text-fg placeholder:text-fg-subtle focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500 transition-colors duration-normal motion-reduce:transition-none text-sm"
           placeholder="Search…"
           (input)="onSearchInputEvent($event)"
           (keydown)="onSearchKeydown($event)"
@@ -214,6 +214,8 @@ export class SelectOverlayComponent<T = unknown> {
 
   /** @internal */
   readonly checkmarkClasses = computed(() => {
+    // xs/sm densities use `size-3.5` (14px) for the checkmark — the half-step
+    // is the only icon size that aligns with the surrounding text-xs metric.
     const size = this.size() === 'xs' || this.size() === 'sm' ? 'size-3.5' : 'size-4';
     return `${size} shrink-0 ml-auto ${this.checkmarkColorClass()}`;
   });

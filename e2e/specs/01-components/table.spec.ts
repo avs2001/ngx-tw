@@ -114,15 +114,72 @@ test.describe('Table', () => {
     await expect(stateTable).toHaveAttribute('aria-label', 'State demo');
   });
 
-  test.fixme(
-    '@interaction row selection (checkbox column) tracks correctly with select-all',
-    async () => {
-      // BLOCKED for v1. See docs/e2e/REVIEW.md §table — selection API is
-      // declared (`setSelected()`/`isSelected()`) but the default cell
-      // template ships no checkbox column. Renders in v2. Re-enable once
-      // the v2 selection-rendering work lands.
-    },
-  );
+  test('@interaction row selection (checkbox column) tracks correctly with select-all', async ({
+    page,
+  }) => {
+    const t = new TablePage(page);
+    await t.goto();
+
+    const section = t.selectionSection;
+    const masterCheckbox = section.locator('thead tw-checkbox').first();
+    const rowCheckboxes = section.locator('tbody tw-checkbox');
+
+    // Initial state: nothing selected.
+    await expect(masterCheckbox).toHaveAttribute('aria-checked', 'false');
+    await expect(rowCheckboxes.first()).toHaveAttribute('aria-checked', 'false');
+
+    // Toggle one row → master becomes mixed; the row reports aria-checked=true.
+    await rowCheckboxes.first().click();
+    await expect(masterCheckbox).toHaveAttribute('aria-checked', 'mixed');
+    await expect(rowCheckboxes.first()).toHaveAttribute('aria-checked', 'true');
+
+    // Click master to select all.
+    await masterCheckbox.click();
+    await expect(masterCheckbox).toHaveAttribute('aria-checked', 'true');
+    const rowCount = await rowCheckboxes.count();
+    for (let i = 0; i < rowCount; i++) {
+      await expect(rowCheckboxes.nth(i)).toHaveAttribute('aria-checked', 'true');
+    }
+
+    // Click master again to clear.
+    await masterCheckbox.click();
+    await expect(masterCheckbox).toHaveAttribute('aria-checked', 'false');
+    for (let i = 0; i < rowCount; i++) {
+      await expect(rowCheckboxes.nth(i)).toHaveAttribute('aria-checked', 'false');
+    }
+  });
+
+  test('@a11y selected rows expose aria-selected on the data <tr>', async ({ page }) => {
+    const t = new TablePage(page);
+    await t.goto();
+
+    const section = t.selectionSection;
+    const rows = section.locator('tbody > tr');
+    const rowCheckboxes = section.locator('tbody tw-checkbox');
+
+    // Every data row reports aria-selected when selection is enabled.
+    await expect(rows.first()).toHaveAttribute('aria-selected', 'false');
+
+    await rowCheckboxes.nth(1).click();
+    await expect(rows.nth(1)).toHaveAttribute('aria-selected', 'true');
+    await expect(rows.first()).toHaveAttribute('aria-selected', 'false');
+  });
+
+  test('@a11y aria-sort flows onto the active column header <th>', async ({ page }) => {
+    const t = new TablePage(page);
+    await t.goto();
+
+    const idHeader = t.sortableSection
+      .locator('thead th[data-column="customer"]')
+      .first();
+
+    // No sort active yet — no aria-sort on the header.
+    await expect(idHeader).not.toHaveAttribute('aria-sort', /.+/);
+
+    // Click the sort trigger inside the customer column to activate sort.
+    await t.sortableSection.locator('[tw-sort-header][id="customer"]').click();
+    await expect(idHeader).toHaveAttribute('aria-sort', 'ascending');
+  });
 
   test.fixme(
     '@a11y keyboard nav across cells follows the WAI-ARIA grid pattern',

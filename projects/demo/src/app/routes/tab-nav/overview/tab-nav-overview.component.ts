@@ -148,6 +148,39 @@ import { CodeBlockComponent } from 'ngx-tw/code-block';
     </section>
 
     <section class="mb-10">
+      <h2 class="text-sm font-semibold mb-3">Router Integration (canonical recipe)</h2>
+      <p class="text-sm text-fg-muted leading-relaxed max-w-2xl mb-4">
+        Tab Nav is intentionally router-agnostic — the directive has no
+        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">routerLink</code>
+        coupling, so it works with any routing strategy (Angular Router, custom history wrappers,
+        anchor-only navigation). When pairing it with
+        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">&#64;angular/router</code>,
+        attach
+        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">routerLinkActive</code>
+        on each link and forward its
+        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">isActive</code>
+        signal to
+        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">[active]</code>:
+      </p>
+      <tw-code-block [code]="routerRecipeSnippet" language="html" />
+      <p class="text-sm text-fg-muted leading-relaxed max-w-2xl mt-4">
+        Use
+        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">[routerLinkActiveOptions]="&#123; exact: true &#125;"</code>
+        for exact-match routes (e.g. the "All" tab at
+        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">/</code>
+        should not stay active on
+        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">/archived</code>).
+        The active link automatically receives
+        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">aria-current="page"</code>
+        in the navigation pattern, or
+        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">aria-selected="true"</code>
+        when a
+        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">tabPanel</code>
+        is associated.
+      </p>
+    </section>
+
+    <section class="mb-10">
       <h2 class="text-sm font-semibold mb-3">Import</h2>
       <tw-code-block [code]="importSnippet" language="ts" />
     </section>
@@ -212,4 +245,29 @@ export class TabNavOverview {
   TabLinkDirective,
   TabNavPanel,
 } from 'ngx-tw/tab-nav';`;
+
+  protected readonly routerRecipeSnippet = `<nav twTabNav aria-label="Docs">
+  <a
+    twTabLink
+    routerLink="overview"
+    routerLinkActive
+    #overviewActive="routerLinkActive"
+    [active]="overviewActive.isActive"
+  >Overview</a>
+  <a
+    twTabLink
+    routerLink="examples"
+    routerLinkActive
+    #examplesActive="routerLinkActive"
+    [active]="examplesActive.isActive"
+  >Examples</a>
+  <a
+    twTabLink
+    routerLink="api"
+    routerLinkActive
+    #apiActive="routerLinkActive"
+    [active]="apiActive.isActive"
+  >API</a>
+</nav>
+<router-outlet />`;
 }

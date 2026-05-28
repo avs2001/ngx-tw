@@ -1,22 +1,13 @@
 import {
-  afterNextRender,
   booleanAttribute,
   ChangeDetectionStrategy,
   Component,
   computed,
-  contentChildren,
-  effect,
   forwardRef,
   input,
-  model,
 } from '@angular/core';
-import { FocusKeyManager } from '@angular/cdk/a11y';
 import { tv } from 'tailwind-variants';
-import {
-  CollapsibleComponent,
-  CollapsibleGroupComponent,
-  CollapsibleTriggerDirective,
-} from 'ngx-tw/collapsible';
+import { CollapsibleGroupComponent } from 'ngx-tw/collapsible';
 
 /** Open mode of the accordion. */
 export type AccordionType = 'single' | 'multiple';
@@ -55,13 +46,30 @@ const accordionVariants = tv(
 
 // ── AccordionComponent ──
 
+/**
+ * Accordion — single- or multiple-open-panel group built on top of
+ * `<tw-collapsible>` children. Extends `CollapsibleGroupComponent` to inherit
+ * the keyboard navigation, value-sync, and toggle wiring; overrides the
+ * virtual `isAccordionMode()` / `canCollapseSingleMode()` hooks so the
+ * single-mode behaviour is driven from the local `type` + `collapsible`
+ * inputs instead of the parent's `accordion` input. The `hostRole` and
+ * `hostClasses` signals are also overridden so the accordion drops APG's
+ * `role="group"` and renders the variant-driven container classes.
+ *
+ * The `providers` block exposes the accordion instance to its descendant
+ * collapsibles via the `CollapsibleGroupComponent` DI token — Angular DI
+ * uses class identity rather than the prototype chain, so the explicit
+ * `useExisting` is required even though `AccordionComponent extends
+ * CollapsibleGroupComponent`.
+ */
 @Component({
   selector: 'tw-accordion',
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: {
-    'role': 'group',
-    '[class]': 'rootClasses()',
-    '[attr.aria-multiselectable]': "type() === 'multiple' || null",
+    // `[class]` + `[attr.role]` are inherited from the parent's host metadata
+    // and read the overridden `hostClasses` / `hostRole` computeds below.
+    // We only need to add accordion-specific bindings here.
+    '[attr.aria-multiselectable]': "type() === 'multiple' ? 'true' : 'false'",
     '[attr.aria-label]': 'ariaLabel() ?? null',
     '[attr.aria-labelledby]': 'ariaLabelledby() ?? null',
   },
@@ -73,18 +81,15 @@ const accordionVariants = tv(
     },
   ],
 })
-export class AccordionComponent {
+export class AccordionComponent extends CollapsibleGroupComponent {
   /** Open mode. `'single'` allows one panel open at a time; `'multiple'` allows many. Defaults to `'single'`. */
   readonly type = input<AccordionType>('single');
 
   /** Visual style of the accordion container. Defaults to `'default'`. */
   readonly variant = input<AccordionVariant>('default');
 
-  /** In `'single'` mode, whether re-clicking the open panel closes it. Defaults to `true`. */
+  /** In `'single'` mode, whether re-clicking the open panel closes it. Defaults to `true` — accordions are collapsible by definition; opt-out only. */
   readonly collapsible = input(true, { transform: booleanAttribute });
-
-  /** Open panel value(s). String in `'single'` mode, string[] in `'multiple'` mode. Two-way bindable. */
-  readonly value = model<string | string[]>('');
 
   /** Accessible name for the accordion. Use when surrounding context doesn't make the purpose obvious. */
   readonly ariaLabel = input<string | undefined>(undefined, { alias: 'aria-label' });
@@ -92,119 +97,25 @@ export class AccordionComponent {
   /** ID(s) of element(s) that label the accordion. Use instead of `aria-label` when a visible heading is available. */
   readonly ariaLabelledby = input<string | undefined>(undefined, { alias: 'aria-labelledby' });
 
-  /** @internal */
-  readonly items = contentChildren(CollapsibleComponent);
+  // ── Inherited-binding overrides ──
 
-  /** @internal */
-  readonly triggers = contentChildren(CollapsibleTriggerDirective, { descendants: true });
+  /** @internal APG: accordions don't carry `role="group"`. */
+  override readonly hostRole = computed<string | null>(() => null);
 
-  /** @internal */
-  readonly rootClasses = computed(() =>
+  /** @internal Variant-driven container classes; replaces the parent's default group string. */
+  override readonly hostClasses = computed(() =>
     accordionVariants({ variant: this.variant() }).root(),
   );
 
-  private keyManager: FocusKeyManager<CollapsibleTriggerDirective> | null = null;
+  // ── Virtual-hook overrides ──
 
-  constructor() {
-    afterNextRender(() => {
-      this.syncChildrenFromValue();
-    });
-
-    effect(() => {
-      const val = this.value();
-      const items = this.items();
-      if (items.length === 0) return;
-
-      const isSingle = this.type() === 'single';
-      for (const item of items) {
-        const itemValue = item.value();
-        if (isSingle) {
-          item.setOpen(itemValue === val);
-        } else {
-          const openValues = Array.isArray(val) ? val : [];
-          item.setOpen(openValues.includes(itemValue));
-        }
-      }
-    });
-
-    // Rebuild FocusKeyManager whenever the trigger set changes
-    effect((onCleanup) => {
-      const triggers = this.triggers();
-      if (triggers.length === 0) {
-        this.keyManager = null;
-        return;
-      }
-      this.keyManager = new FocusKeyManager(triggers)
-        .withWrap()
-        .withHomeAndEnd()
-        .withVerticalOrientation()
-        .withTypeAhead();
-
-      onCleanup(() => {
-        this.keyManager?.destroy();
-      });
-    });
+  /** @internal Drive single-open-panel behaviour from `type`, ignoring the inherited `accordion` input. */
+  protected override isAccordionMode(): boolean {
+    return this.type() === 'single';
   }
 
-  private syncChildrenFromValue(): void {
-    const val = this.value();
-    const items = this.items();
-    const isSingle = this.type() === 'single';
-    for (const item of items) {
-      const itemValue = item.value();
-      if (isSingle) {
-        item.setOpen(itemValue === val);
-      } else {
-        const openValues = Array.isArray(val) ? val : [];
-        item.setOpen(openValues.includes(itemValue));
-      }
-    }
-  }
-
-  /** @internal Called by a child collapsible when it is toggled. */
-  toggleItem(item: CollapsibleComponent): void {
-    const itemValue = item.value();
-    const isCurrentlyOpen = item.open();
-    const next = !isCurrentlyOpen;
-
-    if (this.type() === 'single') {
-      if (next) {
-        for (const child of this.items()) {
-          if (child !== item) child.setOpen(false);
-        }
-        item.setOpen(true);
-        this.value.set(itemValue);
-      } else {
-        if (!this.collapsible()) return;
-        item.setOpen(false);
-        this.value.set('');
-      }
-    } else {
-      item.setOpen(next);
-      const currentOpen = this.items()
-        .filter(i => i.open())
-        .map(i => i.value());
-      this.value.set(currentOpen);
-    }
-
-    item.toggled.emit(next);
-    item.announceState(next);
-  }
-
-  /** @internal Handle keyboard navigation within the accordion. */
-  onTriggerKeydown(event: KeyboardEvent): void {
-    if (!this.keyManager) return;
-
-    // Sync active item with the currently focused trigger.
-    // Use event.target (not document.activeElement) so this works under shadow DOM.
-    const triggers = this.triggers();
-    const focusedIdx = triggers.findIndex(
-      t => t.elementRef.nativeElement === event.target,
-    );
-    if (focusedIdx >= 0 && focusedIdx !== this.keyManager.activeItemIndex) {
-      this.keyManager.setActiveItem(focusedIdx);
-    }
-
-    this.keyManager.onKeydown(event);
+  /** @internal Honour the `collapsible` opt-out in single mode. */
+  protected override canCollapseSingleMode(): boolean {
+    return this.collapsible();
   }
 }

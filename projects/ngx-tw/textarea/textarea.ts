@@ -95,13 +95,13 @@ export class TextareaDirective extends InputDirective {
     optional: true,
   });
 
-  // Re-declares the `size` input inherited from `InputDirective` so it lands
-  // on this directive's own `ɵdir` input metadata. ng-packagr emits `ɵdir`
-  // with only the child's directly declared inputs, so without this the
+  // @internal Re-declares the `size` input inherited from `InputDirective` so
+  // it lands on this directive's own `ɵdir` input metadata. ng-packagr emits
+  // `ɵdir` with only the child's directly declared inputs, so without this the
   // consumer-side strict template-check rejects `<textarea twTextarea
-  // [size]="…">` with NG8002. Both signals share the same `'md'` default
-  // and the inherited `classes()` computed reads through polymorphism, so
-  // runtime behaviour is unchanged.
+  // [size]="…">` with NG8002. Both signals share the same `'md'` default and
+  // the inherited `classes()` computed reads through polymorphism, so runtime
+  // behaviour is unchanged.
   //
   // The `@ts-ignore` is needed for a CI-only quirk: under
   // `noImplicitOverride`, partial compilation resolves `InputDirective`

@@ -1,6 +1,6 @@
 import { ChangeDetectionStrategy, Component, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
-import { ColumnComponent, TableComponent, TwCellDefDirective } from 'ngx-tw/table';
+import { ColumnComponent, TableComponent, CellDefDirective } from 'ngx-tw/table';
 import { CodeBlockComponent } from 'ngx-tw/code-block';
 
 interface TeamMember {
@@ -20,7 +20,7 @@ const TEAM: readonly TeamMember[] = [
 @Component({
   selector: 'app-table-overview',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [TableComponent, ColumnComponent, TwCellDefDirective, CodeBlockComponent, RouterLink],
+  imports: [TableComponent, ColumnComponent, CellDefDirective, CodeBlockComponent, RouterLink],
   template: `
     <section class="mb-10">
       <h2 class="text-sm font-semibold mb-3">Description</h2>
@@ -89,6 +89,14 @@ const TEAM: readonly TeamMember[] = [
               <td class="px-4 py-2 text-fg-muted">Expand toggles carry <code class="font-mono">aria-expanded</code> and localized labels via the <code class="font-mono">labels</code> input.</td>
             </tr>
             <tr>
+              <td class="px-4 py-2 font-mono text-xs">Selection</td>
+              <td class="px-4 py-2 text-fg-muted">When <code class="font-mono">selection.enabled</code> is true, rows carry <code class="font-mono">aria-selected</code> and a master tri-state checkbox announces <code class="font-mono">aria-checked="mixed"</code> on partial selection.</td>
+            </tr>
+            <tr>
+              <td class="px-4 py-2 font-mono text-xs">Sortable headers</td>
+              <td class="px-4 py-2 text-fg-muted">Wrapping the table in <code class="font-mono">[twSort]</code> automatically projects <code class="font-mono">aria-sort</code> onto the active column's <code class="font-mono">&lt;th&gt;</code>; explicit <code class="font-mono">sortState</code> input overrides per column.</td>
+            </tr>
+            <tr>
               <td class="px-4 py-2 font-mono text-xs">Reduced motion</td>
               <td class="px-4 py-2 text-fg-muted">Row hover, loading, and expansion transitions respect <code class="font-mono">prefers-reduced-motion</code>.</td>
             </tr>
@@ -135,6 +143,8 @@ const TEAM: readonly TeamMember[] = [
         <li>3 responsive modes: <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">scroll</code> (default), <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">stack</code> (card-per-row below a breakpoint), <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">hide</code> (per-column <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">display.hideBelow</code>)</li>
         <li>Loading / error / empty state overlays with projectable fallbacks</li>
         <li>Row expansion via <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">*twRowExpansion</code> + <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">[(expandedRows)]</code></li>
+        <li>Built-in selection column (<code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">selection.enabled</code>) with a tri-state master checkbox and row-level <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">aria-selected</code></li>
+        <li>Automatic <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">aria-sort</code> on column headers when wrapped with <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">[twSort]</code></li>
         <li>Slot-based chrome: <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">caption</code> / <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">toolbar</code> / <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">footer</code> / <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">pagination</code> / <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">empty</code> / <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">loading</code> / <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">error</code></li>
         <li>Row-click suppression inside interactive descendants (buttons, links, inputs)</li>
         <li>Composes with <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">[twSort]</code> for sortable headers and <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">&lt;tw-paginator&gt;</code> for pagination — no table-level glue code</li>
@@ -192,10 +202,10 @@ export class TableOverview {
   protected readonly importSnippet = `import {
   TableComponent,
   ColumnComponent,
-  TwCellDefDirective,
-  TwHeaderCellDefDirective,
-  TwFooterCellDefDirective,
-  TwNoDataRowDirective,
-  TwRowExpansionDirective,
+  CellDefDirective,
+  HeaderCellDefDirective,
+  FooterCellDefDirective,
+  NoDataRowDirective,
+  RowExpansionDirective,
 } from 'ngx-tw/table';`;
 }

@@ -63,6 +63,7 @@ import type {
   ViewChangeEvent,
 } from './calendar.types';
 import { emptyCalendarValue, YEARS_PER_PAGE } from './calendar.types';
+import type { RangeBehaviorConfig } from 'ngx-tw/core';
 import {
   deriveSelectionStateFromValue,
   isEmptyCalendarValue,
@@ -156,7 +157,7 @@ const calendarVariants = tv(
   template: `
     <div
       [class]="rootClasses()"
-      role="application"
+      role="group"
       [attr.aria-label]="effectiveIntl().calendarLabel"
     >
       <tw-calendar-header
@@ -193,6 +194,7 @@ const calendarVariants = tv(
               [invalidFlashDate]="invalidFlashDate()"
               [gridIndex]="0"
               [multiSelectable]="multiSelectable()"
+              [readonlyGrid]="effectiveReadonly()"
               (selectedChange)="onDateSelected($event)"
               (activeDateChange)="onActiveDateChange($event, 0)"
               (previewChange)="onPreviewChange($event)"
@@ -214,6 +216,7 @@ const calendarVariants = tv(
                 [invalidFlashDate]="invalidFlashDate()"
                 [gridIndex]="1"
                 [multiSelectable]="multiSelectable()"
+                [readonlyGrid]="effectiveReadonly()"
                 (selectedChange)="onDateSelected($event)"
                 (activeDateChange)="onActiveDateChange($event, 1)"
                 (previewChange)="onPreviewChange($event)"
@@ -232,6 +235,7 @@ const calendarVariants = tv(
             [previewStart]="previewRange()?.start ?? null"
             [previewEnd]="previewRange()?.end ?? null"
             [multiSelectable]="multiSelectable()"
+            [readonlyGrid]="effectiveReadonly()"
             (selectedChange)="onMonthSelected($event)"
             (activeDateChange)="onActiveDateChange($event)"
             (previewChange)="onPreviewChange($event)"
@@ -248,6 +252,7 @@ const calendarVariants = tv(
             [previewStart]="previewRange()?.start ?? null"
             [previewEnd]="previewRange()?.end ?? null"
             [multiSelectable]="multiSelectable()"
+            [readonlyGrid]="effectiveReadonly()"
             (selectedChange)="onYearSelected($event)"
             (activeDateChange)="onActiveDateChange($event)"
             (previewChange)="onPreviewChange($event)"
@@ -387,13 +392,6 @@ export class CalendarComponent<
   readonly errorAriaDescribedBy: InputSignal<string | null> = input<string | null>(null);
 
   /**
-   * `[REC] [COULD]` Phase 4 placeholder: blocks committing a range that violates
-   * `min`/`maxRangeLength`. Currently a no-op + dev warning per the plan; the
-   * actual behavior lands with the §43 v1.1 decision.
-   */
-  readonly blockInvalidRangeCommit: InputSignal<boolean> = input<boolean>(false);
-
-  /**
    * How `mode: 'range'` reacts to a click after a complete range (§21.2):
    * - `'restart'` (default): start a new range with the clicked cell, emit `selectionRestart`.
    * - `'nearest-edge'`: move the closer endpoint (start vs end) to the clicked date and re-commit (§21.3); emits `selectionComplete({reason: 'nearest-edge'})`.
@@ -403,33 +401,12 @@ export class CalendarComponent<
     input<RangeClickBehavior>('restart');
 
   /**
-   * When `true`, `mode: 'range'` accepts ranges with `start > end` and skips
-   * the auto-swap path (§21.5). Default `false` — backward clicks normalize.
+   * Range-mode behavior knobs. Accepts a partial object — unset fields use the
+   * defaults documented on each property of `RangeBehaviorConfig`. Defaults:
+   * `{ allowSingleDayRange: true, persistPartialRange: true, allowBackwardRange: false, disableRangesCrossingDisabledDates: false }`.
    */
-  readonly allowBackwardRange: InputSignal<boolean> = input<boolean>(false);
-
-  /**
-   * When `true`, clicking the same cell as `draft.start` commits a single-day
-   * range `{ start, end: start }`. When `false`, the click is rejected with
-   * `data-state-invalid-flash`. Default `true`.
-   */
-  readonly allowSingleDayRange: InputSignal<boolean> = input<boolean>(true);
-
-  /**
-   * When `true`, the in-flight range draft (`internalDraftValue`) survives
-   * across view navigation (next/prev month, drill-up/down). When `false`,
-   * navigation during SELECTING discards the draft and emits
-   * `selectionCleared({reason: 'programmatic'})`. Default `true`.
-   */
-  readonly persistPartialRange: InputSignal<boolean> = input<boolean>(true);
-
-  /**
-   * When `true`, a range commit that would span any disabled date in its
-   * interior is rejected with `data-state-invalid-flash`. The committed
-   * value is left unchanged. Default `false`.
-   */
-  readonly disableRangesCrossingDisabledDates: InputSignal<boolean> =
-    input<boolean>(false);
+  readonly rangeBehavior: InputSignal<Partial<RangeBehaviorConfig>> =
+    input<Partial<RangeBehaviorConfig>>({});
 
   /** Function producing per-cell CSS classes. */
   readonly dateClass: InputSignal<DateClassFn<D> | null> = input<DateClassFn<D> | null>(null);
@@ -521,21 +498,12 @@ export class CalendarComponent<
   /** Fires when the displayed year changes (month/year-view nav or year-page scroll). Payload carries the new `year`. */
   readonly yearChange: OutputEmitterRef<{ year: number }> = output<{ year: number }>();
 
-  /** Fires when the overlay completes its open transition. No payload. (Phase 10 wires the lifecycle; never emits in inline mode.) */
-  readonly opened: OutputEmitterRef<void> = output<void>();
-
-  /** Fires when the overlay completes its close transition. No payload. (Phase 10 wires the lifecycle; never emits in inline mode.) */
-  readonly closed: OutputEmitterRef<void> = output<void>();
-
   /** Fires on every pointer click of any cell, including disabled ones — analytics only. Payload carries the clicked `date` and the underlying `PointerEvent`. Does NOT indicate a selection; subscribe to `valueChange` for that. */
   readonly cellClick: OutputEmitterRef<{ date: D; event: PointerEvent }> =
     output<{ date: D; event: PointerEvent }>();
 
   /** Fires on every pointer hover of any cell — analytics only. Payload carries the hovered `date`. Does NOT indicate a preview; subscribe to `rangePreview` for range-mode hover state. */
   readonly cellHover: OutputEmitterRef<{ date: D }> = output<{ date: D }>();
-
-  /** Fires when the responsive pane count resolves to a new value (e.g. viewport resize). Payload is the resolved month-pane count currently being rendered. (Phase 9.) */
-  readonly renderedMonthsCount: OutputEmitterRef<number> = output<number>();
 
   /** Fires when `mode` changes at runtime, in canonical order `selectionCleared` → `modeChange` → `valueChange` (§11.2). Payload carries `{ from, to }` modes. */
   readonly modeChange: OutputEmitterRef<ModeChangeEvent> = output<ModeChangeEvent>();
@@ -650,6 +618,21 @@ export class CalendarComponent<
     () => this.readonly() || this.cvaReadonly(),
   );
 
+  /**
+   * @internal Resolved range-behavior config. Merges the consumer-supplied
+   * `Partial<RangeBehaviorConfig>` over the documented defaults so internal
+   * call sites read each field directly without re-applying fallbacks.
+   */
+  private readonly _resolvedRangeBehavior: Signal<RangeBehaviorConfig> = computed(
+    () => ({
+      allowBackwardRange: false,
+      allowSingleDayRange: true,
+      persistPartialRange: true,
+      disableRangesCrossingDisabledDates: false,
+      ...this.rangeBehavior(),
+    }),
+  );
+
   /** @internal Dev-mode warning guard so each mismatched write warns only once per instance. */
   private _warnedShapeMismatch = false;
 
@@ -657,6 +640,12 @@ export class CalendarComponent<
   private _hadValueBeforeLastWrite = false;
 
   constructor() {
+    this.destroyRef.onDestroy(() => {
+      if (this._invalidFlashTimer !== null) {
+        clearTimeout(this._invalidFlashTimer);
+        this._invalidFlashTimer = null;
+      }
+    });
     // Runtime `mode` changes clear state and emit the canonical event order
     // per §11.2: selectionCleared({reason: 'mode-change'}) → modeChange → valueChange.
     // We read `mode()` via `linkedSignal` in a tracked effect so the prior value
@@ -684,20 +673,6 @@ export class CalendarComponent<
       this.maxSelections();
       untracked(() => this.validatorOnChange());
     });
-
-    // Phase 4 — `blockInvalidRangeCommit` is a v1.1 hook (§43); warn once if a
-    // consumer enables it so they know it's not yet wired.
-    if (isDevMode()) {
-      let warned = false;
-      effect(() => {
-        if (this.blockInvalidRangeCommit() && !warned) {
-          warned = true;
-          console.warn(
-            '[tw-calendar] `blockInvalidRangeCommit` is a v1.1 placeholder and is currently a no-op — invalid ranges still commit. Subscribe to `rangePreview.invalidPreview` and the `calendarRangeTooShort` / `calendarRangeTooLong` validator codes to react to violations in v1.',
-          );
-        }
-      });
-    }
 
     // Push the resolved locale into the date adapter so `Intl.DateTimeFormat`
     // calls (month/weekday names, format()) align with `LOCALE_ID` or the
@@ -1343,7 +1318,8 @@ export class CalendarComponent<
    * Phase 4 — `true` when a tentative range hover would commit an invalid value.
    * Reasons: crosses a disabled date, or length violates `min`/`maxRangeLength`.
    * The flag is informational — does NOT block the commit on its own (§4 default
-   * is permissive; `blockInvalidRangeCommit` is the v1.1 hardening hook).
+   * is permissive). Subscribe to `rangePreview.invalidPreview` together with the
+   * `calendarRangeTooShort` / `calendarRangeTooLong` validator codes to react.
    */
   private isPreviewInvalid(start: D, end: D): boolean {
     const constraints = this.resolvedConstraints();
@@ -1491,9 +1467,10 @@ export class CalendarComponent<
     // ─── SELECTING → COMPLETE: commit the range. ────────────────────────────
     const start = draft.start;
     const cmp = this.dateAdapter.compare(date, start);
+    const behavior = this._resolvedRangeBehavior();
 
     // `allowSingleDayRange = false` rejects clicking the same cell twice.
-    if (cmp === 0 && !this.allowSingleDayRange()) {
+    if (cmp === 0 && !behavior.allowSingleDayRange) {
       this.flashInvalid(date);
       return;
     }
@@ -1502,7 +1479,7 @@ export class CalendarComponent<
     let rangeEnd: D;
     let reason: SelectionCompleteEvent<M, D>['reason'] = 'commit';
     if (cmp < 0) {
-      if (this.allowBackwardRange()) {
+      if (behavior.allowBackwardRange) {
         // Preserve user-clicked order; do not normalize.
         rangeStart = start;
         rangeEnd = date;
@@ -1519,7 +1496,7 @@ export class CalendarComponent<
 
     // §21.4 disable-crossing guard: if any interior date is disabled, reject.
     if (
-      this.disableRangesCrossingDisabledDates() &&
+      behavior.disableRangesCrossingDisabledDates &&
       rangeCrossesDisabled(
         rangeStart,
         rangeEnd,
@@ -1546,6 +1523,7 @@ export class CalendarComponent<
     } else {
       this.selectionStart.emit({ start: date });
     }
+    this.announceRangeStart(date);
   }
 
   /**
@@ -1583,7 +1561,7 @@ export class CalendarComponent<
       }
     }
     if (
-      this.disableRangesCrossingDisabledDates() &&
+      this._resolvedRangeBehavior().disableRangesCrossingDisabledDates &&
       rangeCrossesDisabled(
         nextStart,
         nextEnd,
@@ -1599,10 +1577,16 @@ export class CalendarComponent<
     this.commitValue(committed, 'nearest-edge');
   }
 
+  /** Pending invalid-flash clear timer; tracked so we can cancel on destroy. */
+  private _invalidFlashTimer: ReturnType<typeof setTimeout> | null = null;
+
   /** Sets the invalid-flash anchor and schedules a clear after 200ms. */
   private flashInvalid(date: D): void {
     this._invalidFlashDate.set(date);
-    setTimeout(() => {
+    this.announceRejection();
+    if (this._invalidFlashTimer !== null) clearTimeout(this._invalidFlashTimer);
+    this._invalidFlashTimer = setTimeout(() => {
+      this._invalidFlashTimer = null;
       // Only clear if we're still flashing this exact date (a new flash may have superseded).
       if (this._invalidFlashDate() === date) {
         this._invalidFlashDate.set(null);
@@ -1622,6 +1606,7 @@ export class CalendarComponent<
     this.cvaOnTouched();
     this.valueChange.emit(newValue);
     this.selectionComplete.emit({ value: newValue, reason });
+    this.announceSelectionComplete(newValue);
   }
 
   // ---------------------------------------------------------------------------
@@ -1731,6 +1716,50 @@ export class CalendarComponent<
     const intl = this.effectiveIntl();
     if (intl.skipAnnouncement) return;
     this.liveAnnouncer.announce(intl.navigatedTo(direction, this.periodLabel()), 'polite');
+  }
+
+  /** Announces a committed selection for AT users. Branches on mode so the message matches the §19.4 intl strings. */
+  private announceSelectionComplete(value: CalendarValue<M, D>): void {
+    const intl = this.effectiveIntl();
+    if (intl.skipAnnouncement) return;
+    const mode = this.mode();
+    if (mode === 'single') {
+      const single = value as D | null;
+      if (!single) return;
+      this.liveAnnouncer.announce(intl.selectedAnnouncement(this.formatDate(single)), 'polite');
+      return;
+    }
+    if (mode === 'multiple') {
+      const arr = (value as unknown as D[] | null) ?? [];
+      this.liveAnnouncer.announce(intl.multipleSelectionAnnouncement(arr.length), 'polite');
+      return;
+    }
+    const range = value as unknown as { start: D | null; end: D | null } | null;
+    if (!range?.start || !range?.end) return;
+    const length = rangeLengthDays(range.start, range.end, this.dateAdapter);
+    this.liveAnnouncer.announce(
+      intl.rangeUpdateAnnouncement(this.formatDate(range.start), this.formatDate(range.end), length),
+      'polite',
+    );
+  }
+
+  /** Announces the start of a range pick for AT users. */
+  private announceRangeStart(date: D): void {
+    const intl = this.effectiveIntl();
+    if (intl.skipAnnouncement) return;
+    this.liveAnnouncer.announce(intl.rangeStartAnnouncement(this.formatDate(date)), 'polite');
+  }
+
+  /** Announces that a click was rejected (require-clear, disable-cross commit, single-day disallowed). */
+  private announceRejection(): void {
+    const intl = this.effectiveIntl();
+    if (intl.skipAnnouncement) return;
+    this.liveAnnouncer.announce(intl.selectionRejectedAnnouncement, 'polite');
+  }
+
+  /** Locale-aware long-form date format used in announcements (e.g. "Wednesday, April 15, 2026"). */
+  private formatDate(date: D): string {
+    return this.dateAdapter.format(date, { dateTimeFormat: { dateStyle: 'full' } });
   }
 
 }

@@ -1,4 +1,5 @@
 import { ChangeDetectionStrategy, Component, signal } from '@angular/core';
+import { RouterLink } from '@angular/router';
 import {
   ItemComponent,
   ItemLeadingDirective,
@@ -28,6 +29,13 @@ interface Person {
   readonly status: 'active' | 'invited' | 'suspended';
 }
 
+interface SettingsRoute {
+  readonly id: string;
+  readonly icon: string;
+  readonly label: string;
+  readonly description: string;
+}
+
 const ROWS: readonly Row[] = [
   { id: '1', title: 'Billing export', code: 'BIL-52T22G5R-EIHR', owner: 'alice', updatedAt: 'Feb 23, 2026' },
   { id: '2', title: 'Production deployment', code: 'PRD-91XX83G-2ABCD', owner: 'marco', updatedAt: 'Mar 04, 2026' },
@@ -41,6 +49,13 @@ const PEOPLE: readonly Person[] = [
   { name: 'Margaret Hamilton', initials: 'MH', role: 'Software Architect', status: 'suspended' },
 ];
 
+const ROUTES: readonly SettingsRoute[] = [
+  { id: 'general', icon: 'settings', label: 'General', description: 'Workspace name, locale, timezone' },
+  { id: 'notifications', icon: 'notifications', label: 'Notifications', description: 'Email digest cadence and channels' },
+  { id: 'security', icon: 'lock', label: 'Security', description: 'Single sign-on, sessions, audit log' },
+  { id: 'about', icon: 'info', label: 'About', description: 'Version, terms, support contact' },
+];
+
 const SIZES: ItemSize[] = ['sm', 'md', 'lg'];
 const ALIGNS: ItemAlign[] = ['start', 'center'];
 
@@ -48,6 +63,7 @@ const ALIGNS: ItemAlign[] = ['start', 'center'];
   selector: 'app-item-examples',
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
+    RouterLink,
     ItemComponent,
     ItemLeadingDirective,
     ItemTitleDirective,
@@ -248,6 +264,54 @@ const ALIGNS: ItemAlign[] = ['start', 'center'];
       <tw-code-block [code]="tableSnippet" language="html" />
     </section>
 
+    <!-- Current / selected state -->
+    <section class="mb-10">
+      <h2 class="text-sm font-semibold mb-3">Current / selected state</h2>
+      <p class="text-sm text-fg-muted leading-relaxed max-w-2xl mb-4">
+        Setting
+        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">[current]="true"</code>
+        marks the row as the visually highlighted entry — the canonical pattern for the
+        active settings tab, the currently routed nav item, or the selected list row in a
+        people picker. It applies a low-prominence primary tint with an inset ring and
+        adds <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">aria-current="true"</code>
+        so assistive tech can announce the active row. The current ring stacks cleanly
+        with <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">interactive</code>
+        — the focus ring sits on top when the row is keyboard-focused.
+      </p>
+      <div class="rounded-lg border border-border bg-surface-raised overflow-hidden mb-4">
+        <ul class="divide-y divide-border">
+          @for (route of routes; track route.id) {
+            <li class="px-4">
+              <tw-item
+                align="center"
+                [interactive]="true"
+                [current]="activeRoute() === route.id"
+                (selected)="activeRoute.set(route.id)"
+              >
+                <tw-icon twItemLeading [name]="route.icon" size="sm" color="neutral" />
+                <span twItemTitle>{{ route.label }}</span>
+                <span twItemDescription>{{ route.description }}</span>
+              </tw-item>
+            </li>
+          }
+        </ul>
+      </div>
+      <tw-code-block [code]="currentSnippet" language="html" />
+      <p class="text-sm text-fg-muted leading-relaxed max-w-2xl mt-4">
+        Keep
+        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">current</code>
+        for visual highlighting only. For listbox or menu semantics — a true
+        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">role="option"</code>
+        or <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">role="menuitem"</code>
+        with <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">aria-selected</code>
+        — use the
+        <a routerLink="/select" class="text-primary-600 hover:underline">select</a>,
+        <a routerLink="/menu" class="text-primary-600 hover:underline">menu</a>, or
+        <a routerLink="/command-palette" class="text-primary-600 hover:underline">command palette</a>
+        components.
+      </p>
+    </section>
+
     <!-- Rich content in slots -->
     <section class="mb-10">
       <h2 class="text-sm font-semibold mb-3">Rich content in slots</h2>
@@ -342,6 +406,15 @@ const ALIGNS: ItemAlign[] = ['start', 'center'];
               (click)="playDisabled.update(v => !v)"
             >{{ playDisabled() ? 'on' : 'off' }}</button>
           </div>
+          <div>
+            <label class="block text-xs font-medium text-fg-muted mb-1">Current</label>
+            <button
+              twButton variant="ghost" color="neutral" size="xs"
+              [class.!bg-primary-100]="playCurrent()"
+              [class.!text-primary-700]="playCurrent()"
+              (click)="playCurrent.update(v => !v)"
+            >{{ playCurrent() ? 'on' : 'off' }}</button>
+          </div>
         </div>
         <div class="p-6 rounded-lg bg-surface-sunken">
           <tw-item
@@ -349,6 +422,7 @@ const ALIGNS: ItemAlign[] = ['start', 'center'];
             [align]="playAlign()"
             [interactive]="playInteractive()"
             [disabled]="playDisabled()"
+            [current]="playCurrent()"
             (selected)="playSelectedCount.update(c => c + 1)"
           >
             <div
@@ -370,14 +444,17 @@ const ALIGNS: ItemAlign[] = ['start', 'center'];
 export class ItemExamples {
   protected readonly rows = ROWS;
   protected readonly people = PEOPLE;
+  protected readonly routes = ROUTES;
   protected readonly sizes = SIZES;
   protected readonly aligns = ALIGNS;
 
   protected readonly lastSelected = signal<string | null>(null);
+  protected readonly activeRoute = signal<string>('general');
   protected readonly playSize = signal<ItemSize>('md');
   protected readonly playAlign = signal<ItemAlign>('start');
   protected readonly playInteractive = signal(false);
   protected readonly playDisabled = signal(false);
+  protected readonly playCurrent = signal(false);
   protected readonly playSelectedCount = signal(0);
 
   protected onSelect(person: Person): void {
@@ -467,6 +544,24 @@ export class ItemExamples {
     }
   </tbody>
 </table>`.trim();
+
+  protected readonly currentSnippet = `
+<ul class="divide-y divide-border rounded-lg border border-border bg-surface-raised overflow-hidden">
+  @for (route of routes; track route.id) {
+    <li class="px-4">
+      <tw-item
+        align="center"
+        [interactive]="true"
+        [current]="activeRoute() === route.id"
+        (selected)="activeRoute.set(route.id)"
+      >
+        <tw-icon twItemLeading [name]="route.icon" size="sm" color="neutral" />
+        <span twItemTitle>{{ route.label }}</span>
+        <span twItemDescription>{{ route.description }}</span>
+      </tw-item>
+    </li>
+  }
+</ul>`.trim();
 
   protected readonly richSlotsSnippet = `<tw-item align="center">
   <div twItemLeading class="flex size-10 items-center justify-center rounded-lg bg-success-50 text-success-600">

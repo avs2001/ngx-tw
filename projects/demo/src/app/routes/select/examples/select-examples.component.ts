@@ -8,6 +8,7 @@ import {
   SelectHeaderTemplateDirective,
   SelectOptionTemplateDirective,
   SelectTriggerTemplateDirective,
+  type SelectVariant,
 } from 'ngx-tw/select';
 import { ButtonDirective } from 'ngx-tw/button';
 import {
@@ -78,6 +79,7 @@ const COLORS: TwColor[] = [
   'primary', 'secondary', 'accent', 'neutral', 'info', 'success', 'warning', 'error',
 ];
 const SIZES: TwSize[] = ['xs', 'sm', 'md', 'lg', 'xl'];
+const VARIANTS: SelectVariant[] = ['default', 'naked'];
 
 @Component({
   selector: 'app-select-examples',
@@ -99,6 +101,42 @@ const SIZES: TwSize[] = ['xs', 'sm', 'md', 'lg', 'xl'];
     JsonPipe,
   ],
   template: `
+    <!-- Variants -->
+    <section class="mb-10">
+      <h2 class="text-sm font-semibold mb-3">Variants</h2>
+      <p class="text-sm text-fg-muted leading-relaxed max-w-2xl mb-4">
+        The
+        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">variant</code>
+        input controls the trigger's chrome.
+        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">default</code>
+        renders the full standalone trigger — border, padding, focus ring — and is the right
+        choice anywhere the select stands on its own.
+        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">naked</code>
+        strips every piece of chrome so a host shell (typically
+        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">tw-form-field</code>)
+        can own the border, label, and hint regions. The naked variant is auto-applied when the
+        select is nested inside a form-field, so you rarely set it explicitly.
+      </p>
+      <div class="rounded-lg border border-border p-6 bg-surface-raised mb-4">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+          @for (v of variants; track v) {
+            <div class="space-y-2">
+              <p class="text-xs font-medium text-fg-muted mb-2 uppercase tracking-wide">{{ v }}</p>
+              <tw-select
+                [options]="simple"
+                [variant]="v"
+                [(value)]="variantValues[v]"
+                placeholder="Choose a fruit"
+                [attr.aria-label]="'Variant ' + v"
+                class="w-64"
+              />
+            </div>
+          }
+        </div>
+      </div>
+      <tw-code-block [code]="variantsSnippet" language="html" />
+    </section>
+
     <!-- Colors -->
     <section class="mb-10">
       <h2 class="text-sm font-semibold mb-3">Colors</h2>
@@ -659,6 +697,13 @@ export class SelectExamples {
   protected readonly users = USERS;
   protected readonly colors = COLORS;
   protected readonly sizes = SIZES;
+  protected readonly variants = VARIANTS;
+
+  // Variant-value bindings
+  protected readonly variantValues: Record<SelectVariant, WritableSignal<string | readonly string[] | null>> = {
+    default: signal<string | readonly string[] | null>('apple'),
+    naked: signal<string | readonly string[] | null>('banana'),
+  };
 
   // Single-value bindings
   protected readonly sizeValues: Record<TwSize, WritableSignal<string | readonly string[] | null>> = {
@@ -727,6 +772,17 @@ export class SelectExamples {
   }
 
   // ── Code snippets ──
+
+  protected readonly variantsSnippet = `
+@for (v of variants; track v) {
+  <tw-select
+    [options]="simple"
+    [variant]="v"
+    [(value)]="variantValues[v]"
+    placeholder="Choose a fruit"
+    [attr.aria-label]="'Variant ' + v"
+  />
+}`.trim();
 
   protected readonly colorsSnippet = `
 @for (c of colors; track c) {

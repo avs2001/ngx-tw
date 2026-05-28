@@ -131,6 +131,7 @@ import { CodeBlockComponent } from 'ngx-tw/code-block';
           (vertical center, for single-line rows)
         </li>
         <li>Optional interactive mode adds <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">role="button"</code>, a hover background, pointer cursor, focus ring, and Enter/Space activation</li>
+        <li>Optional <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">current</code> highlight with <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">aria-current="true"</code> for the active settings tab, routed nav item, or selected list row</li>
         <li>Layout-only leading slot — project any icon, avatar, checkbox, or bullet and style it yourself</li>
         <li>Title and description accept inline children (badges, chips, inline icons)</li>
         <li>Uses surface, foreground, and border semantic tokens — works with any consumer theme and supports dark mode automatically</li>

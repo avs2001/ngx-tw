@@ -2,6 +2,7 @@ import { Component, signal, viewChild } from '@angular/core';
 import { type ComponentFixture, TestBed } from '@angular/core/testing';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { OverlayModule } from '@angular/cdk/overlay';
+import { LiveAnnouncer } from '@angular/cdk/a11y';
 import {
   CommandPaletteComponent,
   CommandPaletteEmptyDirective,
@@ -62,6 +63,23 @@ class DataDrivenPaletteHost {
     { id: 'paste', label: 'Paste', keywords: ['clipboard'] },
   ];
   onSelected = vi.fn();
+}
+
+@Component({
+  imports: [CommandPaletteComponent],
+  template: `
+    <tw-command-palette [(open)]="isOpen" [commands]="commands()" />
+  `,
+})
+class MutableCommandsHost {
+  readonly palette = viewChild.required(CommandPaletteComponent);
+  isOpen = signal(false);
+  // Signal-backed so we can re-emit a fresh-reference array with identical ids.
+  readonly commands = signal<CommandPaletteItem[]>([
+    { id: 'one', label: 'One' },
+    { id: 'two', label: 'Two' },
+    { id: 'three', label: 'Three' },
+  ]);
 }
 
 @Component({
@@ -170,6 +188,80 @@ class FooterTemplateHost {
 class GroupedPaletteHost {
   readonly palette = viewChild.required(CommandPaletteComponent);
   isOpen = signal(false);
+}
+
+@Component({
+  imports: [CommandPaletteComponent],
+  template: `
+    <tw-command-palette
+      [(open)]="isOpen"
+      [searchAriaLabel]="searchAriaLabel"
+    />
+  `,
+})
+class SearchAriaLabelHost {
+  readonly palette = viewChild.required(CommandPaletteComponent);
+  isOpen = signal(false);
+  searchAriaLabel = 'Search commands';
+}
+
+@Component({
+  imports: [CommandPaletteComponent, CommandPaletteItemDirective],
+  template: `
+    <tw-command-palette [(open)]="isOpen">
+      <tw-command-palette-item
+        id="declarative-with-desc"
+        label="Find"
+        description="Find in current file"
+      >
+        Find
+      </tw-command-palette-item>
+    </tw-command-palette>
+  `,
+})
+class DeclarativeDescriptionHost {
+  readonly palette = viewChild.required(CommandPaletteComponent);
+  isOpen = signal(false);
+}
+
+@Component({
+  imports: [CommandPaletteComponent],
+  template: `
+    <tw-command-palette [(open)]="isOpen" [commands]="commands" />
+  `,
+})
+class DataDescriptionHost {
+  readonly palette = viewChild.required(CommandPaletteComponent);
+  isOpen = signal(false);
+  commands: CommandPaletteItem[] = [
+    { id: 'find', label: 'Find', description: 'Find in current file' },
+  ];
+}
+
+@Component({
+  imports: [CommandPaletteComponent],
+  template: `
+    <tw-command-palette [(open)]="isOpen" [commands]="commands" />
+  `,
+})
+class DualKeyShortcutHost {
+  readonly palette = viewChild.required(CommandPaletteComponent);
+  isOpen = signal(false);
+  commands: CommandPaletteItem[] = [
+    { id: 'save', label: 'Save', shortcut: ['⌘', 'S'] },
+  ];
+}
+
+@Component({
+  imports: [CommandPaletteComponent],
+  template: `
+    <tw-command-palette [(open)]="isOpen" [panelClass]="panelClass" />
+  `,
+})
+class PanelClassHost {
+  readonly palette = viewChild.required(CommandPaletteComponent);
+  isOpen = signal(false);
+  panelClass: string | string[] = ['custom-panel', 'extra-shadow'];
 }
 
 // ── Helpers ──
@@ -425,6 +517,99 @@ describe('CommandPaletteComponent', () => {
       dispatchKey('End');
       fixture.detectChanges();
       expect(getSearchInput()!.getAttribute('aria-activedescendant')).toBe('settings');
+    });
+
+    it('does NOT close the palette on Tab (FocusTrap cycles focus inside the modal)', () => {
+      const fixture = TestBed.configureTestingModule({
+        imports: [BasicPaletteHost, OverlayModule],
+      }).createComponent(BasicPaletteHost);
+      fixture.detectChanges();
+
+      openPalette(fixture);
+      expect(getOverlay()).toBeTruthy();
+
+      dispatchKey('Tab');
+      fixture.detectChanges();
+      // CRITICAL: flush the close-animation timer. The previous `case 'Tab'` handler
+      // called `hide()` which scheduled overlay detach inside a setTimeout — without
+      // flushing fake timers, the overlay would still appear attached even under the
+      // OLD behavior and the test would not discriminate. After the fix no setTimeout
+      // is scheduled, so flushing is a no-op and the overlay remains.
+      flushClose(fixture);
+
+      expect(getOverlay()).toBeTruthy();
+      expect(fixture.componentInstance.isOpen()).toBe(true);
+    });
+  });
+
+  describe('activeIndex preservation', () => {
+    it('preserves the active index when filteredItems re-emits with identical ids', () => {
+      const fixture = TestBed.configureTestingModule({
+        imports: [MutableCommandsHost, OverlayModule],
+      }).createComponent(MutableCommandsHost);
+      fixture.detectChanges();
+
+      openPalette(fixture);
+
+      // Default is index 0 (`one`). ArrowDown twice → index 2 (`three`).
+      dispatchKey('ArrowDown');
+      fixture.detectChanges();
+      dispatchKey('ArrowDown');
+      fixture.detectChanges();
+      expect(getSearchInput()!.getAttribute('aria-activedescendant')).toBe('three');
+
+      // Re-emit the commands array as a NEW reference with identical ids.
+      // Without the linkedSignal id-keyed rewrite this would reset active to 0.
+      const current = fixture.componentInstance.commands();
+      fixture.componentInstance.commands.set(current.map((c) => ({ ...c })));
+      fixture.detectChanges();
+
+      expect(getSearchInput()!.getAttribute('aria-activedescendant')).toBe('three');
+    });
+
+    it('falls back to the first enabled item when the active id is removed', () => {
+      const fixture = TestBed.configureTestingModule({
+        imports: [MutableCommandsHost, OverlayModule],
+      }).createComponent(MutableCommandsHost);
+      fixture.detectChanges();
+
+      openPalette(fixture);
+      dispatchKey('ArrowDown'); // index 1 = 'two'
+      fixture.detectChanges();
+      expect(getSearchInput()!.getAttribute('aria-activedescendant')).toBe('two');
+
+      // Replace the list so the active id is gone entirely.
+      fixture.componentInstance.commands.set([
+        { id: 'alpha', label: 'Alpha' },
+        { id: 'beta', label: 'Beta' },
+      ]);
+      fixture.detectChanges();
+
+      expect(getSearchInput()!.getAttribute('aria-activedescendant')).toBe('alpha');
+    });
+  });
+
+  describe('active option visual distinction', () => {
+    it('renders the active option with bg-surface-sunken (distinct from hovered non-active)', () => {
+      const fixture = TestBed.configureTestingModule({
+        imports: [BasicPaletteHost, OverlayModule],
+      }).createComponent(BasicPaletteHost);
+      fixture.detectChanges();
+
+      openPalette(fixture);
+
+      const items = getItems();
+      expect(items.length).toBeGreaterThan(1);
+      const activeClass = items[0].className;
+      const inactiveClass = items[1].className;
+
+      // Active uses the recessed token; hover on non-active uses the muted token.
+      // The two MUST resolve to different background classes per the
+      // activedescendant carve-out (CLAUDE.md "Focus Rings").
+      expect(activeClass).toMatch(/bg-surface-sunken/);
+      expect(activeClass).not.toMatch(/hover:bg-surface-muted/);
+      expect(inactiveClass).not.toMatch(/bg-surface-sunken/);
+      expect(inactiveClass).toMatch(/hover:bg-surface-muted/);
     });
   });
 
@@ -846,6 +1031,132 @@ describe('CommandPaletteComponent', () => {
       flushClose(fixture);
 
       expect(onClosed).toHaveBeenCalledOnce();
+    });
+  });
+
+  describe('searchAriaLabel', () => {
+    it('applies the default aria-label to the search input', () => {
+      const fixture = TestBed.configureTestingModule({
+        imports: [BasicPaletteHost, OverlayModule],
+      }).createComponent(BasicPaletteHost);
+      fixture.detectChanges();
+
+      openPalette(fixture);
+
+      expect(getSearchInput()!.getAttribute('aria-label')).toBe('Search commands');
+    });
+
+    it('reflects a consumer override', () => {
+      const fixture = TestBed.configureTestingModule({
+        imports: [SearchAriaLabelHost, OverlayModule],
+      }).createComponent(SearchAriaLabelHost);
+      fixture.componentInstance.searchAriaLabel = 'Find anything';
+      fixture.detectChanges();
+
+      openPalette(fixture);
+
+      expect(getSearchInput()!.getAttribute('aria-label')).toBe('Find anything');
+    });
+  });
+
+  describe('description', () => {
+    it('renders description text from a declarative item', () => {
+      const fixture = TestBed.configureTestingModule({
+        imports: [DeclarativeDescriptionHost, OverlayModule],
+      }).createComponent(DeclarativeDescriptionHost);
+      fixture.detectChanges();
+
+      openPalette(fixture);
+
+      const overlay = getOverlay()!;
+      expect(overlay.textContent).toContain('Find in current file');
+    });
+
+    it('renders description text from a data-driven item', () => {
+      const fixture = TestBed.configureTestingModule({
+        imports: [DataDescriptionHost, OverlayModule],
+      }).createComponent(DataDescriptionHost);
+      fixture.detectChanges();
+
+      openPalette(fixture);
+
+      const overlay = getOverlay()!;
+      expect(overlay.textContent).toContain('Find in current file');
+    });
+  });
+
+  describe('shortcut rendering', () => {
+    it('renders each key of a dual-key shortcut as a separate kbd', () => {
+      const fixture = TestBed.configureTestingModule({
+        imports: [DualKeyShortcutHost, OverlayModule],
+      }).createComponent(DualKeyShortcutHost);
+      fixture.detectChanges();
+
+      openPalette(fixture);
+
+      const kbds = Array.from(
+        document.querySelectorAll('tw-command-palette-overlay kbd'),
+      );
+      expect(kbds).toHaveLength(2);
+      expect(kbds[0].textContent?.trim()).toBe('⌘');
+      expect(kbds[1].textContent?.trim()).toBe('S');
+    });
+  });
+
+  describe('panelClass', () => {
+    it('applies consumer-supplied classes to the overlay panel', () => {
+      const fixture = TestBed.configureTestingModule({
+        imports: [PanelClassHost, OverlayModule],
+      }).createComponent(PanelClassHost);
+      fixture.detectChanges();
+
+      openPalette(fixture);
+
+      const panel = getDialog()!;
+      expect(panel.className).toContain('custom-panel');
+      expect(panel.className).toContain('extra-shadow');
+    });
+  });
+
+  describe('LiveAnnouncer', () => {
+    it('announces an open message with command count when the palette opens', () => {
+      const fixture = TestBed.configureTestingModule({
+        imports: [BasicPaletteHost, OverlayModule],
+      }).createComponent(BasicPaletteHost);
+      fixture.detectChanges();
+
+      const announcer = TestBed.inject(LiveAnnouncer);
+      const announceSpy = vi.spyOn(announcer, 'announce');
+
+      openPalette(fixture);
+
+      expect(announceSpy).toHaveBeenCalledWith(
+        'Command palette opened. 3 commands available.',
+        'polite',
+      );
+    });
+
+    it('announces a debounced results-count message on query change', () => {
+      const fixture = TestBed.configureTestingModule({
+        imports: [DataDrivenPaletteHost, OverlayModule],
+      }).createComponent(DataDrivenPaletteHost);
+      fixture.detectChanges();
+
+      const announcer = TestBed.inject(LiveAnnouncer);
+      const announceSpy = vi.spyOn(announcer, 'announce');
+
+      openPalette(fixture);
+      announceSpy.mockClear();
+
+      typeInSearch('copy');
+      fixture.detectChanges();
+
+      // Before the debounce elapses, no announcement.
+      expect(announceSpy).not.toHaveBeenCalled();
+
+      vi.advanceTimersByTime(200);
+
+      expect(announceSpy).toHaveBeenCalledWith('1 result for copy', 'polite');
     });
   });
 

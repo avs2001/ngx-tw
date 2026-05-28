@@ -103,7 +103,7 @@ describe('ToastService', () => {
       toast.success('done');
       flushEnter();
       const panel = getAllToasts()[0];
-      expect(panel.className).toContain('bg-success-50');
+      expect(panel.className).toContain('bg-success-soft');
       expect(panel.getAttribute('role')).toBe('status');
     });
 
@@ -167,6 +167,17 @@ describe('ToastService', () => {
       closeBtn.click();
       flushLeave();
       expect(spy.mock.calls[0][0].reason).toBe('manual');
+    });
+
+    it('dismiss button uses the xs square-interactive target (size-6) with an inner glyph (size-4)', () => {
+      toast.show('sizing', { duration: 0 });
+      flushEnter();
+      const closeBtn = document.querySelector('button[aria-label="Dismiss"]') as HTMLElement;
+      expect(closeBtn).not.toBeNull();
+      expect(closeBtn.className).toContain('size-6');
+      expect(closeBtn.className).not.toContain('size-5');
+      const svg = closeBtn.querySelector('svg');
+      expect(svg?.getAttribute('class')).toContain('size-4');
     });
   });
 

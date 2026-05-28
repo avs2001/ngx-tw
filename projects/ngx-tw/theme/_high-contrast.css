@@ -119,4 +119,172 @@
   --color-error-800: var(--color-red-900);
   --color-error-900: var(--color-red-950);
   --color-error-950: var(--color-red-950);
+
+  /* ===== Role slot tokens (high-contrast) =====
+     Every slot is redefined explicitly. -soft pairings target ≥ 7:1 (AAA),
+     -solid pairings target ≥ 7:1 with black-or-white foregrounds, and
+     -border-strong sticks to -700/-800 shades so 1px outlines remain visible
+     against -soft backgrounds. */
+
+  /* Primary */
+  --color-primary-soft: var(--color-blue-100);
+  --color-primary-soft-hover: var(--color-blue-200);
+  --color-primary-soft-fg: var(--color-blue-950);
+  --color-primary-soft-fg-muted: var(--color-blue-900);
+  --color-primary-solid: var(--color-blue-800);
+  --color-primary-solid-hover: var(--color-blue-900);
+  --color-primary-solid-fg: var(--color-white);
+  --color-primary-border: var(--color-blue-700);
+  --color-primary-border-strong: var(--color-blue-900);
+  --color-primary-fg: var(--color-blue-900);
+  --color-primary-icon: var(--color-blue-800);
+
+  /* Secondary */
+  --color-secondary-soft: var(--color-slate-100);
+  --color-secondary-soft-hover: var(--color-slate-200);
+  --color-secondary-soft-fg: var(--color-slate-950);
+  --color-secondary-soft-fg-muted: var(--color-slate-900);
+  --color-secondary-solid: var(--color-slate-900);
+  --color-secondary-solid-hover: var(--color-black);
+  --color-secondary-solid-fg: var(--color-white);
+  --color-secondary-border: var(--color-slate-700);
+  --color-secondary-border-strong: var(--color-slate-900);
+  --color-secondary-fg: var(--color-slate-900);
+  --color-secondary-icon: var(--color-slate-800);
+
+  /* Accent */
+  --color-accent-soft: var(--color-violet-100);
+  --color-accent-soft-hover: var(--color-violet-200);
+  --color-accent-soft-fg: var(--color-violet-950);
+  --color-accent-soft-fg-muted: var(--color-violet-900);
+  --color-accent-solid: var(--color-violet-800);
+  --color-accent-solid-hover: var(--color-violet-900);
+  --color-accent-solid-fg: var(--color-white);
+  --color-accent-border: var(--color-violet-700);
+  --color-accent-border-strong: var(--color-violet-900);
+  --color-accent-fg: var(--color-violet-900);
+  --color-accent-icon: var(--color-violet-800);
+
+  /* Neutral */
+  --color-neutral-soft: var(--color-surface-muted);
+  --color-neutral-soft-hover: var(--color-surface-sunken);
+  --color-neutral-soft-fg: var(--color-black);
+  --color-neutral-soft-fg-muted: var(--color-gray-800);
+  --color-neutral-solid: var(--color-black);
+  --color-neutral-solid-hover: var(--color-gray-800);
+  --color-neutral-solid-fg: var(--color-white);
+  --color-neutral-border: var(--color-gray-700);
+  --color-neutral-border-strong: var(--color-black);
+  --color-neutral-fg: var(--color-black);
+  --color-neutral-icon: var(--color-gray-800);
+
+  /* Info — high-contrast pushes sky toward black text on a deeper bg */
+  --color-info-soft: var(--color-sky-100);
+  --color-info-soft-hover: var(--color-sky-200);
+  --color-info-soft-fg: var(--color-sky-950);
+  --color-info-soft-fg-muted: var(--color-sky-900);
+  --color-info-solid: var(--color-sky-800);
+  --color-info-solid-hover: var(--color-sky-900);
+  --color-info-solid-fg: var(--color-white);
+  --color-info-border: var(--color-sky-700);
+  --color-info-border-strong: var(--color-sky-900);
+  --color-info-fg: var(--color-sky-900);
+  --color-info-icon: var(--color-sky-800);
+
+  /* Success */
+  --color-success-soft: var(--color-green-100);
+  --color-success-soft-hover: var(--color-green-200);
+  --color-success-soft-fg: var(--color-green-950);
+  --color-success-soft-fg-muted: var(--color-green-900);
+  --color-success-solid: var(--color-green-800);
+  --color-success-solid-hover: var(--color-green-900);
+  --color-success-solid-fg: var(--color-white);
+  --color-success-border: var(--color-green-700);
+  --color-success-border-strong: var(--color-green-900);
+  --color-success-fg: var(--color-green-900);
+  --color-success-icon: var(--color-green-800);
+
+  /* Warning — amber stays dark-text-on-yellow */
+  --color-warning-soft: var(--color-amber-100);
+  --color-warning-soft-hover: var(--color-amber-200);
+  --color-warning-soft-fg: var(--color-amber-950);
+  --color-warning-soft-fg-muted: var(--color-amber-900);
+  --color-warning-solid: var(--color-amber-400);
+  --color-warning-solid-hover: var(--color-amber-500);
+  --color-warning-solid-fg: var(--color-amber-950);
+  --color-warning-border: var(--color-amber-700);
+  --color-warning-border-strong: var(--color-amber-900);
+  --color-warning-fg: var(--color-amber-900);
+  --color-warning-icon: var(--color-amber-800);
+
+  /* Error */
+  --color-error-soft: var(--color-red-100);
+  --color-error-soft-hover: var(--color-red-200);
+  --color-error-soft-fg: var(--color-red-950);
+  --color-error-soft-fg-muted: var(--color-red-900);
+  --color-error-solid: var(--color-red-800);
+  --color-error-solid-hover: var(--color-red-900);
+  --color-error-solid-fg: var(--color-white);
+  --color-error-border: var(--color-red-700);
+  --color-error-border-strong: var(--color-red-900);
+  --color-error-fg: var(--color-red-900);
+  --color-error-icon: var(--color-red-800);
+
+  /* ===== Legacy on-role aliases (high-contrast) ===== */
+  --color-on-info: var(--color-info-solid-fg);
+  --color-on-success: var(--color-success-solid-fg);
+  --color-on-warning: var(--color-warning-solid-fg);
+  --color-on-error: var(--color-error-solid-fg);
+  --color-on-primary: var(--color-primary-solid-fg);
+  --color-on-secondary: var(--color-secondary-solid-fg);
+  --color-on-accent: var(--color-accent-solid-fg);
+  --color-on-neutral: var(--color-neutral-solid-fg);
+}
+
+/* ===== Windows / forced-colors mode =====
+   When the OS enables forced-colors (Windows High Contrast, some Linux a11y
+   profiles), the user agent replaces all author colors with system keywords
+   (`Canvas`, `CanvasText`, `Highlight`, `GrayText`, etc.). We remap the
+   library's structural tokens to the matching system colors so components
+   keep their semantic shape, and disable `forced-color-adjust` on interactive
+   affordances so the browser applies system colors uniformly. */
+@media (forced-colors: active) {
+  :root,
+  [data-theme="light"],
+  [data-theme="dark"],
+  [data-theme="high-contrast"] {
+    /* Surfaces collapse to the system canvas. */
+    --color-surface: Canvas;
+    --color-surface-raised: Canvas;
+    --color-surface-overlay: Canvas;
+    --color-surface-sunken: Canvas;
+    --color-surface-muted: Canvas;
+
+    /* Foregrounds and borders take system text colors. */
+    --color-fg: CanvasText;
+    --color-fg-muted: CanvasText;
+    --color-fg-subtle: GrayText;
+    --color-border: CanvasText;
+    --color-border-muted: GrayText;
+    --color-border-strong: CanvasText;
+
+    /* Focus / selection accents take the system Highlight color so focus
+       rings remain visible in Windows High Contrast. */
+    --color-primary-500: Highlight;
+  }
+
+  /* Interactive affordances opt out of the forced palette so the system
+     colors apply uniformly across roles, borders, and backgrounds. */
+  button,
+  [role="button"],
+  input,
+  select,
+  textarea,
+  [role="menuitem"],
+  [role="menuitemcheckbox"],
+  [role="menuitemradio"],
+  [role="option"],
+  [role="tab"] {
+    forced-color-adjust: none;
+  }
 }

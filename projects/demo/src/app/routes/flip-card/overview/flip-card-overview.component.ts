@@ -40,7 +40,14 @@ import { CodeBlockComponent } from 'ngx-tw/code-block';
         <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">manual</code>
         mode the host is a plain region with
         <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">aria-live="polite"</code>
-        — face changes are announced automatically.
+        — face changes are announced automatically, and an
+        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">ariaLabel</code>
+        is applied (defaulting to "Flip card") so the region passes AXE. The
+        invisible face is also marked
+        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">aria-hidden</code>
+        and
+        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">inert</code>,
+        so screen readers and tab order only see the visible content.
       </p>
       <div class="overflow-x-auto border border-border rounded-lg max-w-2xl">
         <table class="w-full text-sm">

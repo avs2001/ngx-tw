@@ -116,6 +116,7 @@
               "../badge/**/*.spec.ts",
               "../button/**/*.spec.ts",
               "../card/**/*.spec.ts",
+              "../carousel/**/*.spec.ts",
               "../flip-card/**/*.spec.ts",
               "../core/**/*.spec.ts",
               "../alert/**/*.spec.ts",
@@ -154,9 +155,13 @@
               "../date-picker/**/*.spec.ts",
               "../date-range-picker/**/*.spec.ts",
               "../time-picker/**/*.spec.ts",
+              "../timeline/**/*.spec.ts",
               "../item/**/*.spec.ts",
               "../breadcrumbs/**/*.spec.ts",
-              "../sheet/**/*.spec.ts"
+              "../sheet/**/*.spec.ts",
+              "../stat/**/*.spec.ts",
+              "../combobox/**/*.spec.ts",
+              "../empty-state/**/*.spec.ts"
             ]
           }
         }

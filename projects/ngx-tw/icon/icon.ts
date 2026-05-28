@@ -15,9 +15,13 @@ import { tv } from 'tailwind-variants';
 import type { TwSize } from 'ngx-tw/core';
 import { TW_ICON_REGISTRAR } from './icon.providers';
 import { IconRegistry } from './icon.registry';
-import type { TwIconColor, TwIconData } from './icon.types';
+import type { TwIconColor, TwIconData, TwIconSvgConfig } from './icon.types';
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
+
+const DEFAULT_STROKE_WIDTH = 2;
+const DEFAULT_ABSOLUTE_STROKE_WIDTH = false;
+const DEFAULT_VIEW_BOX = '0 0 24 24';
 
 /** Converts a kebab-case icon name to PascalCase for registry lookup. */
 function toPascalCase(str: string): string {
@@ -79,8 +83,14 @@ const iconVariants = tv({
  * <tw-icon name="star" />
  * <tw-icon name="check" color="success" size="lg" />
  * <tw-icon name="alert-triangle" color="warning" ariaLabel="Warning" />
+ * <tw-icon name="star" [svg]="{ strokeWidth: 1.5, absoluteStrokeWidth: true }" />
  * ```
  */
+// IMPORTANT: `ViewEncapsulation.None` is required because the SVG is built
+// imperatively via Renderer2 and appended outside Angular's view boundary —
+// emulated-encapsulation attribute selectors would not match it. The host class
+// list (color/size utilities) must also cascade `currentColor` into the SVG
+// children for `stroke="currentColor"` to resolve correctly.
 @Component({
   selector: 'tw-icon',
   template: '',
@@ -97,10 +107,10 @@ export class IconComponent {
   private readonly registry = inject(IconRegistry);
   private readonly _registrar = inject(TW_ICON_REGISTRAR, { optional: true });
 
-  /** Icon name in kebab-case (e.g. `'chevron-right'`). Resolved via the registry. */
+  /** Icon name in kebab-case (e.g. `'chevron-right'`). Resolved via the registry. Defaults to `undefined`. */
   readonly name = input<string>();
 
-  /** Direct icon data (SVG element tuples). Takes precedence over `name`. */
+  /** Direct icon data (SVG element tuples). Takes precedence over `name`. Defaults to `undefined`. */
   readonly img = input<TwIconData>();
 
   /** Semantic color. `'current'` inherits from parent text color. Defaults to `'current'`. */
@@ -109,17 +119,14 @@ export class IconComponent {
   /** Icon size. Defaults to `'md'` (20px). */
   readonly size = input<TwSize>('md');
 
-  /** SVG stroke width. Defaults to `2`. */
-  readonly strokeWidth = input(2);
-
-  /** When true, stroke width scales inversely with icon size to maintain consistent visual weight. Defaults to `false`. */
-  readonly absoluteStrokeWidth = input(false);
-
-  /** Accessible label. When set, removes `aria-hidden` and applies `aria-label` to the SVG. */
+  /** Accessible label. When set, removes `aria-hidden` and applies `aria-label` to the SVG. Defaults to `undefined` (icon is decorative, `aria-hidden="true"`). */
   readonly ariaLabel = input<string>();
 
-  /** SVG viewBox attribute. Defaults to `'0 0 24 24'`. */
-  readonly viewBox = input('0 0 24 24');
+  /**
+   * SVG-author configuration: `strokeWidth`, `absoluteStrokeWidth`, `viewBox`.
+   * Unset fields fall back to `{ strokeWidth: 2, absoluteStrokeWidth: false, viewBox: '0 0 24 24' }`.
+   */
+  readonly svg = input<TwIconSvgConfig>();
 
   /** Resolves icon data from `img` (priority) or `name` (registry lookup). */
   protected readonly resolvedIcon = computed<TwIconData | undefined>(() => {
@@ -137,10 +144,17 @@ export class IconComponent {
 
   /** Effective stroke width, accounting for `absoluteStrokeWidth`. */
   protected readonly effectiveStrokeWidth = computed(() => {
-    const sw = this.strokeWidth();
-    if (!this.absoluteStrokeWidth()) return sw;
+    const cfg = this.svg();
+    const sw = cfg?.strokeWidth ?? DEFAULT_STROKE_WIDTH;
+    const absolute = cfg?.absoluteStrokeWidth ?? DEFAULT_ABSOLUTE_STROKE_WIDTH;
+    if (!absolute) return sw;
     return (sw * 24) / this.sizeInPx();
   });
+
+  /** Effective viewBox. */
+  protected readonly effectiveViewBox = computed(() =>
+    this.svg()?.viewBox ?? DEFAULT_VIEW_BOX,
+  );
 
   /** Host class string from tv(). */
   readonly classes = computed(() =>
@@ -164,7 +178,7 @@ export class IconComponent {
     const el = this.elRef.nativeElement;
     const data = this.resolvedIcon();
     const sw = this.effectiveStrokeWidth();
-    const vb = this.viewBox();
+    const vb = this.effectiveViewBox();
     const label = this.ariaLabel();
     const iconName = this.name();
 

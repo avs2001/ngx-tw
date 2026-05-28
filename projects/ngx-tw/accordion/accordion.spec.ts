@@ -4,6 +4,7 @@ import { LiveAnnouncer } from '@angular/cdk/a11y';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import {
   CollapsibleComponent,
+  CollapsibleGroupComponent,
   CollapsibleTriggerDirective,
 } from 'ngx-tw/collapsible';
 import { AccordionComponent } from './accordion';
@@ -30,7 +31,7 @@ import { AccordionComponent } from './accordion';
   `,
 })
 class SingleHost {
-  active = signal<string | string[]>('');
+  active = signal<string | string[] | null>(null);
   collapsibleFlag = signal(true);
 }
 
@@ -52,7 +53,7 @@ class SingleHost {
   `,
 })
 class MultipleHost {
-  open = signal<string | string[]>([]);
+  open = signal<string | string[] | null>([]);
 }
 
 // ── Test host: variant control ──
@@ -89,6 +90,47 @@ class VariantHost {
 class AriaHost {
   label = signal<string | null>(null);
   labelledby = signal<string | null>(null);
+}
+
+// ── Parity host: <tw-accordion type="single"> + <tw-collapsible-group accordion> in one TestBed ──
+
+@Component({
+  imports: [
+    AccordionComponent,
+    CollapsibleGroupComponent,
+    CollapsibleComponent,
+    CollapsibleTriggerDirective,
+  ],
+  template: `
+    <section data-role="acc">
+      <tw-accordion type="single" [(value)]="accValue">
+        <tw-collapsible value="a">
+          <button twCollapsibleTrigger>A</button>
+          <p class="content-a">A</p>
+        </tw-collapsible>
+        <tw-collapsible value="b">
+          <button twCollapsibleTrigger>B</button>
+          <p class="content-b">B</p>
+        </tw-collapsible>
+      </tw-accordion>
+    </section>
+    <section data-role="grp">
+      <tw-collapsible-group [accordion]="true" [(value)]="grpValue">
+        <tw-collapsible value="a">
+          <button twCollapsibleTrigger>A</button>
+          <p class="content-a">A</p>
+        </tw-collapsible>
+        <tw-collapsible value="b">
+          <button twCollapsibleTrigger>B</button>
+          <p class="content-b">B</p>
+        </tw-collapsible>
+      </tw-collapsible-group>
+    </section>
+  `,
+})
+class ParityHost {
+  accValue = signal<string | string[] | null>(null);
+  grpValue = signal<string | string[] | null>(null);
 }
 
 describe('AccordionComponent', () => {
@@ -205,7 +247,7 @@ describe('AccordionComponent', () => {
       triggers[0].click();
       fixture.detectChanges();
       expect(fixture.nativeElement.querySelector('.content-a')).toBeNull();
-      expect(fixture.componentInstance.active()).toBe('');
+      expect(fixture.componentInstance.active()).toBeNull();
     });
 
     it('should NOT close the open panel when re-clicked with collapsible=false', () => {
@@ -242,7 +284,7 @@ describe('AccordionComponent', () => {
       fixture.detectChanges();
 
       expect(fixture.nativeElement.querySelector('.content-c')).toBeNull();
-      expect(fixture.componentInstance.active()).toBe('');
+      expect(fixture.componentInstance.active()).toBeNull();
     });
   });
 
@@ -362,10 +404,10 @@ describe('AccordionComponent', () => {
   // ── Accessibility ──
 
   describe('Accessibility', () => {
-    it('should set role="group" on the host', () => {
+    it('should NOT set role="group" on the host (per APG)', () => {
       const fixture = createFixture(SingleHost);
       const accordion = fixture.nativeElement.querySelector('tw-accordion');
-      expect(accordion.getAttribute('role')).toBe('group');
+      expect(accordion.hasAttribute('role')).toBe(false);
     });
 
     it('should announce state changes via LiveAnnouncer', () => {
@@ -389,10 +431,10 @@ describe('AccordionComponent', () => {
       expect(triggers[0].getAttribute('aria-expanded')).toBe('true');
     });
 
-    it('should NOT set aria-multiselectable in single mode', () => {
+    it('should set aria-multiselectable="false" explicitly in single mode (per APG)', () => {
       const fixture = createFixture(SingleHost);
       const accordion = fixture.nativeElement.querySelector('tw-accordion');
-      expect(accordion.hasAttribute('aria-multiselectable')).toBe(false);
+      expect(accordion.getAttribute('aria-multiselectable')).toBe('false');
     });
 
     it('should set aria-multiselectable="true" in multiple mode', () => {
@@ -419,6 +461,108 @@ describe('AccordionComponent', () => {
       fixture.componentInstance.labelledby.set('sections-heading');
       fixture.detectChanges();
       expect(accordion.getAttribute('aria-labelledby')).toBe('sections-heading');
+    });
+  });
+
+  // ── Value default ──
+
+  describe('Value default', () => {
+    it('should default value to null (not empty string) on mount', () => {
+      const fixture = createFixture(SingleHost);
+      expect(fixture.componentInstance.active()).toBeNull();
+    });
+  });
+
+  // ── Parity: <tw-accordion type="single"> ≡ <tw-collapsible-group accordion> ──
+
+  describe('Parity with tw-collapsible-group accordion', () => {
+    function click(el: Element): void {
+      (el as HTMLElement).click();
+    }
+
+    function keydown(el: Element, key: string, keyCode: number): void {
+      el.dispatchEvent(new KeyboardEvent('keydown', { key, keyCode, bubbles: true }));
+    }
+
+    function queryTriggers(
+      fixture: ComponentFixture<ParityHost>,
+      role: 'acc' | 'grp',
+    ): NodeListOf<Element> {
+      const section = fixture.nativeElement.querySelector(`section[data-role="${role}"]`);
+      return section.querySelectorAll('[twcollapsibletrigger]');
+    }
+
+    function queryContent(
+      fixture: ComponentFixture<ParityHost>,
+      role: 'acc' | 'grp',
+      letter: 'a' | 'b',
+    ): Element | null {
+      const section = fixture.nativeElement.querySelector(`section[data-role="${role}"]`);
+      return section.querySelector(`.content-${letter}`);
+    }
+
+    it('should produce identical open/close state on click toggling', () => {
+      const fixture = createFixture(ParityHost);
+      const accTriggers = queryTriggers(fixture, 'acc');
+      const grpTriggers = queryTriggers(fixture, 'grp');
+
+      // Open A in both
+      click(accTriggers[0]);
+      click(grpTriggers[0]);
+      fixture.detectChanges();
+
+      expect(!!queryContent(fixture, 'acc', 'a')).toBe(!!queryContent(fixture, 'grp', 'a'));
+      expect(fixture.componentInstance.accValue()).toBe(fixture.componentInstance.grpValue());
+
+      // Open B (closes A in both)
+      click(accTriggers[1]);
+      click(grpTriggers[1]);
+      fixture.detectChanges();
+
+      expect(!!queryContent(fixture, 'acc', 'a')).toBe(!!queryContent(fixture, 'grp', 'a'));
+      expect(!!queryContent(fixture, 'acc', 'b')).toBe(!!queryContent(fixture, 'grp', 'b'));
+      expect(fixture.componentInstance.accValue()).toBe(fixture.componentInstance.grpValue());
+
+      // Re-click B closes it (both groups allow collapse by default)
+      click(accTriggers[1]);
+      click(grpTriggers[1]);
+      fixture.detectChanges();
+
+      expect(fixture.componentInstance.accValue()).toBeNull();
+      expect(fixture.componentInstance.grpValue()).toBeNull();
+    });
+
+    it('should produce identical aria-expanded propagation on the triggers', () => {
+      const fixture = createFixture(ParityHost);
+      const accTriggers = queryTriggers(fixture, 'acc');
+      const grpTriggers = queryTriggers(fixture, 'grp');
+
+      click(accTriggers[0]);
+      click(grpTriggers[0]);
+      fixture.detectChanges();
+
+      expect(accTriggers[0].getAttribute('aria-expanded')).toBe(
+        grpTriggers[0].getAttribute('aria-expanded'),
+      );
+      expect(accTriggers[1].getAttribute('aria-expanded')).toBe(
+        grpTriggers[1].getAttribute('aria-expanded'),
+      );
+    });
+
+    it('should produce identical keyboard navigation (ArrowDown)', () => {
+      const fixture = createFixture(ParityHost);
+      const accTriggers = queryTriggers(fixture, 'acc');
+      const grpTriggers = queryTriggers(fixture, 'grp');
+
+      (accTriggers[0] as HTMLElement).focus();
+      keydown(accTriggers[0], 'ArrowDown', 40);
+      fixture.detectChanges();
+      expect(document.activeElement).toBe(accTriggers[1]);
+
+      (grpTriggers[0] as HTMLElement).focus();
+      keydown(grpTriggers[0], 'ArrowDown', 40);
+      fixture.detectChanges();
+      expect(document.activeElement).toBe(grpTriggers[1]);
     });
   });
 });

@@ -50,13 +50,26 @@ class FullCardHost {
   imports: [CardComponent, CardMediaDirective, CardBodyDirective],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <tw-card>
+    <tw-card [size]="size()">
       <img twCardMedia src="test.jpg" alt="Test" />
       <div twCardBody>Caption</div>
     </tw-card>
   `,
 })
-class MediaCardHost {}
+class MediaCardHost {
+  size = signal<TwSize>('md');
+}
+
+@Component({
+  imports: [CardComponent, CardBodyDirective],
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  template: `
+    <tw-card class="rounded-2xl shadow-md custom-card">
+      <div twCardBody>Body</div>
+    </tw-card>
+  `,
+})
+class TwMergeHost {}
 
 // ── Tests ──
 
@@ -92,6 +105,12 @@ describe('CardComponent', () => {
       expect(card.className).toContain('rounded-lg');
       expect(card.className).toContain('shadow');
     });
+
+    it('should apply hover:shadow-md on elevated variant', () => {
+      const card: HTMLElement = fixture.nativeElement.querySelector('tw-card');
+      expect(card.className).toContain('hover:shadow-md');
+      expect(card.className).toContain('transition-shadow');
+    });
   });
 
   describe('variants', () => {
@@ -108,6 +127,7 @@ describe('CardComponent', () => {
     it('should render elevated variant', () => {
       const card: HTMLElement = fixture.nativeElement.querySelector('tw-card');
       expect(card.className).toContain('shadow');
+      expect(card.className).toContain('hover:shadow-md');
       expect(card.className).toContain('bg-surface-raised');
     });
 
@@ -118,6 +138,7 @@ describe('CardComponent', () => {
       expect(card.className).toContain('border');
       expect(card.className).toContain('bg-surface');
       expect(card.className).not.toContain('shadow');
+      expect(card.className).not.toContain('hover:shadow-md');
     });
 
     it('should render ghost variant', () => {
@@ -126,6 +147,7 @@ describe('CardComponent', () => {
       const card: HTMLElement = fixture.nativeElement.querySelector('tw-card');
       expect(card.className).toContain('bg-transparent');
       expect(card.className).not.toContain('shadow');
+      expect(card.className).not.toContain('hover:shadow-md');
     });
   });
 
@@ -140,12 +162,39 @@ describe('CardComponent', () => {
       fixture.detectChanges();
     });
 
-    it('should apply color border on outlined variant', () => {
+    const TINTABLE_COLORS: TwColor[] = [
+      'primary',
+      'secondary',
+      'accent',
+      'info',
+      'success',
+      'warning',
+      'error',
+    ];
+
+    for (const color of TINTABLE_COLORS) {
+      it(`should apply border-${color}-300 on outlined variant`, () => {
+        fixture.componentInstance.variant.set('outlined');
+        fixture.componentInstance.color.set(color);
+        fixture.detectChanges();
+        const card: HTMLElement = fixture.nativeElement.querySelector('tw-card');
+        expect(card.className).toContain(`border-${color}-300`);
+
+        for (const otherColor of TINTABLE_COLORS) {
+          if (otherColor === color) continue;
+          expect(card.className).not.toContain(`border-${otherColor}-300`);
+        }
+      });
+    }
+
+    it('should not apply any color border on neutral color', () => {
       fixture.componentInstance.variant.set('outlined');
-      fixture.componentInstance.color.set('error');
+      fixture.componentInstance.color.set('neutral');
       fixture.detectChanges();
       const card: HTMLElement = fixture.nativeElement.querySelector('tw-card');
-      expect(card.className).toContain('border-error-300');
+      for (const color of TINTABLE_COLORS) {
+        expect(card.className).not.toContain(`border-${color}-300`);
+      }
     });
 
     it('should not apply color border on elevated variant', () => {
@@ -268,13 +317,25 @@ describe('CardComponent', () => {
       expect(media.tagName).toBe('IMG');
     });
 
-    it('should apply media classes without padding', () => {
+    it('should apply media base classes', () => {
       const media: HTMLElement =
         fixture.nativeElement.querySelector('[twCardMedia]');
       expect(media.className).toContain('w-full');
       expect(media.className).toContain('overflow-hidden');
-      expect(media.className).not.toContain('p-');
     });
+
+    const PADDING_UTILITY = /(?:^|\s)p-\d+(?:\.\d+)?(?:\s|$)/;
+    const SIZES: TwSize[] = ['xs', 'sm', 'md', 'lg', 'xl'];
+
+    for (const size of SIZES) {
+      it(`should not apply any p-* utility at size="${size}"`, () => {
+        fixture.componentInstance.size.set(size);
+        fixture.detectChanges();
+        const media: HTMLElement =
+          fixture.nativeElement.querySelector('[twCardMedia]');
+        expect(PADDING_UTILITY.test(media.className)).toBe(false);
+      });
+    }
   });
 
   describe('section dividers', () => {
@@ -313,6 +374,36 @@ describe('CardComponent', () => {
 
       const card = fixture.nativeElement.querySelector('tw-card');
       expect(card.getAttribute('role')).toBeNull();
+    });
+  });
+
+  describe('class merging', () => {
+    it('should preserve consumer classes alongside internal classes', async () => {
+      await TestBed.configureTestingModule({
+        imports: [TwMergeHost],
+      }).compileComponents();
+      const fixture = TestBed.createComponent(TwMergeHost);
+      fixture.detectChanges();
+
+      const card: HTMLElement = fixture.nativeElement.querySelector('tw-card');
+      expect(card.className).toContain('rounded-2xl');
+      expect(card.className).toContain('shadow-md');
+      expect(card.className).toContain('custom-card');
+      expect(card.className).toContain('bg-surface-raised');
+    });
+
+    it('should resolve internal border-color conflicts via twMerge on outlined+color', async () => {
+      await TestBed.configureTestingModule({
+        imports: [FullCardHost],
+      }).compileComponents();
+      const fixture = TestBed.createComponent(FullCardHost);
+      fixture.componentInstance.variant.set('outlined');
+      fixture.componentInstance.color.set('primary');
+      fixture.detectChanges();
+
+      const card: HTMLElement = fixture.nativeElement.querySelector('tw-card');
+      const matches = card.className.match(/\bborder-[a-z]+-\d{3}\b/g) ?? [];
+      expect(matches).toEqual(['border-primary-300']);
     });
   });
 });

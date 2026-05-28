@@ -425,6 +425,24 @@ describe('TabsComponent', () => {
       const closeBtn = normalTrigger.querySelector('[aria-label]');
       expect(closeBtn).toBeNull();
     });
+
+    it('should render the close affordance as a native <button> (keyboard-focusable)', () => {
+      const closeBtn = fixture.nativeElement.querySelector('[aria-label="Close Closable"]');
+      expect(closeBtn.tagName).toBe('BUTTON');
+      expect(closeBtn.getAttribute('type')).toBe('button');
+      // No tabindex="-1" — keyboard users must be able to reach it.
+      expect(closeBtn.getAttribute('tabindex')).not.toBe('-1');
+    });
+
+    it('should emit closed output when Delete is pressed on the parent tab', () => {
+      const closableTrigger: HTMLElement = fixture.nativeElement.querySelector('[role="tab"]');
+      closableTrigger.dispatchEvent(
+        new KeyboardEvent('keydown', { key: 'Delete', keyCode: 46, bubbles: true }),
+      );
+      fixture.detectChanges();
+
+      expect(fixture.componentInstance.closedValue()).toBe('closable');
+    });
   });
 
   describe('lazy content', () => {
@@ -519,7 +537,7 @@ describe('TabsComponent', () => {
       triggers[0].focus();
       fixture.detectChanges();
 
-      triggers[0].dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true }));
+      triggers[0].dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', keyCode: 39, bubbles: true }));
       fixture.detectChanges();
       await fixture.whenStable();
       fixture.detectChanges();
@@ -536,7 +554,7 @@ describe('TabsComponent', () => {
       triggers[1].focus();
       fixture.detectChanges();
 
-      triggers[1].dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowLeft', bubbles: true }));
+      triggers[1].dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowLeft', keyCode: 37, bubbles: true }));
       fixture.detectChanges();
       await fixture.whenStable();
       fixture.detectChanges();
@@ -552,7 +570,7 @@ describe('TabsComponent', () => {
       triggers[2].focus();
       fixture.detectChanges();
 
-      triggers[2].dispatchEvent(new KeyboardEvent('keydown', { key: 'Home', bubbles: true }));
+      triggers[2].dispatchEvent(new KeyboardEvent('keydown', { key: 'Home', keyCode: 36, bubbles: true }));
       fixture.detectChanges();
       await fixture.whenStable();
       fixture.detectChanges();
@@ -566,12 +584,109 @@ describe('TabsComponent', () => {
       triggers[0].focus();
       fixture.detectChanges();
 
-      triggers[0].dispatchEvent(new KeyboardEvent('keydown', { key: 'End', bubbles: true }));
+      triggers[0].dispatchEvent(new KeyboardEvent('keydown', { key: 'End', keyCode: 35, bubbles: true }));
       fixture.detectChanges();
       await fixture.whenStable();
       fixture.detectChanges();
 
       expect(fixture.componentInstance.activeTab()).toBe('three');
+    });
+
+    it('should wrap around with ArrowRight from the last tab', async () => {
+      const triggers = fixture.nativeElement.querySelectorAll('[role="tab"]');
+      // Activate the last tab
+      triggers[2].click();
+      fixture.detectChanges();
+      triggers[2].focus();
+      fixture.detectChanges();
+
+      triggers[2].dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', keyCode: 39, bubbles: true }));
+      fixture.detectChanges();
+      await fixture.whenStable();
+      fixture.detectChanges();
+
+      expect(fixture.componentInstance.activeTab()).toBe('one');
+    });
+
+    it('should activate the focused tab when Enter is pressed', async () => {
+      const triggers = fixture.nativeElement.querySelectorAll('[role="tab"]');
+      triggers[1].focus();
+      fixture.detectChanges();
+
+      triggers[1].dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', keyCode: 13, bubbles: true }));
+      fixture.detectChanges();
+      await fixture.whenStable();
+
+      expect(fixture.componentInstance.activeTab()).toBe('two');
+    });
+
+    it('should activate the focused tab when Space is pressed', async () => {
+      const triggers = fixture.nativeElement.querySelectorAll('[role="tab"]');
+      triggers[2].focus();
+      fixture.detectChanges();
+
+      triggers[2].dispatchEvent(new KeyboardEvent('keydown', { key: ' ', keyCode: 32, bubbles: true }));
+      fixture.detectChanges();
+      await fixture.whenStable();
+
+      expect(fixture.componentInstance.activeTab()).toBe('three');
+    });
+  });
+
+  describe('vertical orientation keyboard navigation', () => {
+    let fixture: ComponentFixture<VariantHost>;
+
+    beforeEach(async () => {
+      await TestBed.configureTestingModule({
+        imports: [VariantHost],
+      }).compileComponents();
+      fixture = TestBed.createComponent(VariantHost);
+      fixture.componentInstance.orientation.set('vertical');
+      fixture.detectChanges();
+      await fixture.whenStable();
+      fixture.detectChanges();
+    });
+
+    it('should move to next tab on ArrowDown when vertical', async () => {
+      const triggers = fixture.nativeElement.querySelectorAll('[role="tab"]');
+      triggers[0].focus();
+      fixture.detectChanges();
+
+      triggers[0].dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', keyCode: 40, bubbles: true }));
+      fixture.detectChanges();
+      await fixture.whenStable();
+      fixture.detectChanges();
+
+      expect(fixture.componentInstance.activeTab()).toBe('b');
+    });
+
+    it('should move to previous tab on ArrowUp when vertical', async () => {
+      const triggers = fixture.nativeElement.querySelectorAll('[role="tab"]');
+      triggers[1].click();
+      fixture.detectChanges();
+      triggers[1].focus();
+      fixture.detectChanges();
+
+      triggers[1].dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowUp', keyCode: 38, bubbles: true }));
+      fixture.detectChanges();
+      await fixture.whenStable();
+      fixture.detectChanges();
+
+      expect(fixture.componentInstance.activeTab()).toBe('a');
+    });
+
+    it('should not respond to ArrowRight/ArrowLeft in vertical mode', async () => {
+      const triggers = fixture.nativeElement.querySelectorAll('[role="tab"]');
+      triggers[0].focus();
+      fixture.detectChanges();
+
+      triggers[0].dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', keyCode: 39, bubbles: true }));
+      fixture.detectChanges();
+      await fixture.whenStable();
+      fixture.detectChanges();
+
+      // Active tab unchanged — horizontal arrows are inert in vertical orientation.
+      expect(fixture.componentInstance.activeTab()).toBe('a');
     });
   });
 

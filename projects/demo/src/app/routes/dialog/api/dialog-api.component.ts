@@ -165,8 +165,14 @@ import { CodeBlockComponent } from 'ngx-tw/code-block';
             <tr>
               <td class="px-4 py-2 font-mono text-xs">ariaModal</td>
               <td class="px-4 py-2 font-mono text-xs text-fg-muted">boolean</td>
-              <td class="px-4 py-2 font-mono text-xs text-fg-muted">false</td>
-              <td class="px-4 py-2 text-fg-muted">Sets <code class="font-mono">aria-modal</code> on the container when true.</td>
+              <td class="px-4 py-2 font-mono text-xs text-fg-muted">true</td>
+              <td class="px-4 py-2 text-fg-muted">Sets <code class="font-mono">aria-modal</code> on the container. Defaults to <code class="font-mono">true</code> — set to <code class="font-mono">false</code> only for non-modal surfaces.</td>
+            </tr>
+            <tr>
+              <td class="px-4 py-2 font-mono text-xs">ariaDescribedBy</td>
+              <td class="px-4 py-2 font-mono text-xs text-fg-muted">string | null</td>
+              <td class="px-4 py-2 font-mono text-xs text-fg-muted">null</td>
+              <td class="px-4 py-2 text-fg-muted">Explicit IDREF for <code class="font-mono">aria-describedby</code>. When omitted, the first <code class="font-mono">twDialogDescription</code> id is used.</td>
             </tr>
             <tr>
               <td class="px-4 py-2 font-mono text-xs">enterAnimationDuration</td>
@@ -232,7 +238,7 @@ import { CodeBlockComponent } from 'ngx-tw/code-block';
             </tr>
             <tr>
               <td class="px-4 py-2 font-mono text-xs">state</td>
-              <td class="px-4 py-2 font-mono text-xs text-fg-muted">Signal&lt;TwDialogState&gt;</td>
+              <td class="px-4 py-2 font-mono text-xs text-fg-muted">Signal&lt;DialogState&gt;</td>
               <td class="px-4 py-2 text-fg-muted">Reactive animation state cycling through opening → open → closing → closed.</td>
             </tr>
             <tr>
@@ -320,18 +326,18 @@ import { CodeBlockComponent } from 'ngx-tw/code-block';
       </div>
     </section>
 
-    <!-- TwDialogHeaderDirective -->
+    <!-- DialogHeaderDirective -->
     <section class="mb-10">
-      <h2 class="text-sm font-semibold mb-3">TwDialogHeaderDirective</h2>
+      <h2 class="text-sm font-semibold mb-3">DialogHeaderDirective</h2>
       <p class="text-xs text-fg-muted mb-4 font-mono">Selector: [twDialogHeader], tw-dialog-header</p>
       <p class="text-sm text-fg-muted leading-relaxed max-w-2xl">
         Flex wrapper that hosts the leading icon, title, and subtitle with consistent padding and spacing.
       </p>
     </section>
 
-    <!-- TwDialogIconDirective -->
+    <!-- DialogIconDirective -->
     <section class="mb-10">
-      <h2 class="text-sm font-semibold mb-3">TwDialogIconDirective</h2>
+      <h2 class="text-sm font-semibold mb-3">DialogIconDirective</h2>
       <p class="text-xs text-fg-muted mb-4 font-mono">Selector: [twDialogIcon]</p>
 
       <h3 class="text-xs font-semibold text-fg-muted uppercase tracking-wide mb-2">Inputs</h3>
@@ -357,9 +363,9 @@ import { CodeBlockComponent } from 'ngx-tw/code-block';
       </div>
     </section>
 
-    <!-- TwDialogTitleDirective -->
+    <!-- DialogTitleDirective -->
     <section class="mb-10">
-      <h2 class="text-sm font-semibold mb-3">TwDialogTitleDirective</h2>
+      <h2 class="text-sm font-semibold mb-3">DialogTitleDirective</h2>
       <p class="text-xs text-fg-muted mb-4 font-mono">Selector: [twDialogTitle], tw-dialog-title</p>
       <p class="text-sm text-fg-muted leading-relaxed max-w-2xl mb-4">
         Marks an element as the dialog title and auto-registers its id with the container's
@@ -390,18 +396,55 @@ import { CodeBlockComponent } from 'ngx-tw/code-block';
       </div>
     </section>
 
-    <!-- TwDialogSubtitleDirective -->
+    <!-- DialogSubtitleDirective -->
     <section class="mb-10">
-      <h2 class="text-sm font-semibold mb-3">TwDialogSubtitleDirective</h2>
+      <h2 class="text-sm font-semibold mb-3">DialogSubtitleDirective</h2>
       <p class="text-xs text-fg-muted mb-4 font-mono">Selector: [twDialogSubtitle], tw-dialog-subtitle</p>
       <p class="text-sm text-fg-muted leading-relaxed max-w-2xl">
         Secondary text rendered beneath the dialog title; intended for a short one-line description.
+        Visual only — does not contribute to the dialog's accessible name. Use
+        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">twDialogDescription</code>
+        when you need the text wired to <code class="font-mono">aria-describedby</code>.
       </p>
     </section>
 
-    <!-- TwDialogContentDirective -->
+    <!-- DialogDescriptionDirective -->
     <section class="mb-10">
-      <h2 class="text-sm font-semibold mb-3">TwDialogContentDirective</h2>
+      <h2 class="text-sm font-semibold mb-3">DialogDescriptionDirective</h2>
+      <p class="text-xs text-fg-muted mb-4 font-mono">Selector: [twDialogDescription], tw-dialog-description</p>
+      <p class="text-sm text-fg-muted leading-relaxed max-w-2xl mb-4">
+        Marks an element as the dialog description and auto-registers its id with the container's
+        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">aria-describedby</code>
+        queue. Apply to the body paragraph of a confirmation or alert dialog so the description is
+        announced after the title.
+      </p>
+
+      <h3 class="text-xs font-semibold text-fg-muted uppercase tracking-wide mb-2">Inputs</h3>
+      <div class="overflow-x-auto border border-border rounded-lg">
+        <table class="w-full text-sm">
+          <thead>
+            <tr class="bg-surface-muted text-left">
+              <th class="px-4 py-2 font-medium text-fg-muted">Name</th>
+              <th class="px-4 py-2 font-medium text-fg-muted">Type</th>
+              <th class="px-4 py-2 font-medium text-fg-muted">Default</th>
+              <th class="px-4 py-2 font-medium text-fg-muted">Description</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-border-muted">
+            <tr>
+              <td class="px-4 py-2 font-mono text-xs">id</td>
+              <td class="px-4 py-2 font-mono text-xs text-fg-muted">string</td>
+              <td class="px-4 py-2 font-mono text-xs text-fg-muted">auto</td>
+              <td class="px-4 py-2 text-fg-muted">Custom id for the description element; defaults to a generated unique id.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- DialogContentDirective -->
+    <section class="mb-10">
+      <h2 class="text-sm font-semibold mb-3">DialogContentDirective</h2>
       <p class="text-xs text-fg-muted mb-4 font-mono">Selector: [twDialogContent], tw-dialog-content</p>
       <p class="text-sm text-fg-muted leading-relaxed max-w-2xl">
         Scrollable body region placed between the header and the actions bar; inherits CDK's
@@ -410,9 +453,9 @@ import { CodeBlockComponent } from 'ngx-tw/code-block';
       </p>
     </section>
 
-    <!-- TwDialogActionsDirective -->
+    <!-- DialogActionsDirective -->
     <section class="mb-10">
-      <h2 class="text-sm font-semibold mb-3">TwDialogActionsDirective</h2>
+      <h2 class="text-sm font-semibold mb-3">DialogActionsDirective</h2>
       <p class="text-xs text-fg-muted mb-4 font-mono">Selector: [twDialogActions], tw-dialog-actions</p>
       <p class="text-sm text-fg-muted leading-relaxed max-w-2xl mb-4">
         Bottom action bar that stays pinned below the scrollable content, separated by a top border.
@@ -441,9 +484,9 @@ import { CodeBlockComponent } from 'ngx-tw/code-block';
       </div>
     </section>
 
-    <!-- TwDialogCloseDirective -->
+    <!-- DialogCloseDirective -->
     <section class="mb-10">
-      <h2 class="text-sm font-semibold mb-3">TwDialogCloseDirective</h2>
+      <h2 class="text-sm font-semibold mb-3">DialogCloseDirective</h2>
       <p class="text-xs text-fg-muted mb-4 font-mono">Selector: [twDialogClose]</p>
       <p class="text-sm text-fg-muted leading-relaxed max-w-2xl mb-4">
         Closes the enclosing dialog when the host element is clicked; attach it to any
@@ -518,15 +561,15 @@ import { CodeBlockComponent } from 'ngx-tw/code-block';
 })
 export class DialogApi {
   protected readonly typesSnippet = `type TwDialogSize = 'xs' | 'sm' | 'md' | 'lg' | 'xl' | 'fullscreen';
-type TwDialogState = 'opening' | 'open' | 'closing' | 'closed';
+type DialogState = 'opening' | 'open' | 'closing' | 'closed';
 type TwDialogRole = 'dialog' | 'alertdialog';
 type TwDialogScrollStrategy = 'block' | 'reposition' | 'close' | 'noop';
 type TwDialogAutoFocus = AutoFocusTarget | string | boolean;
 type TwDialogRestoreFocus = boolean | string | HTMLElement;
-type TwDialogActionsAlign = 'start' | 'center' | 'end';
+type DialogActionsAlign = 'start' | 'center' | 'end';
 
-interface TwDialogAnimationEvent {
-  state: TwDialogState;
+interface DialogAnimationEvent {
+  state: DialogState;
   totalTime: number;
 }`;
 }

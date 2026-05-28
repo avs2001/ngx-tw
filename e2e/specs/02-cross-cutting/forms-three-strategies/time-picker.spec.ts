@@ -38,7 +38,7 @@ test.describe('Forms · Three strategies · Time Picker', () => {
     await expect(picker.hoursField(root)).toHaveAttribute('aria-valuenow', '2');
     await expect(picker.minutesField(root)).toHaveAttribute('aria-valuenow', '0');
     await expect(picker.meridiemButton(root, 'PM')).toHaveAttribute(
-      'aria-pressed',
+      'aria-checked',
       'true',
     );
     await expect(picker.readoutIn('td')).toContainText('callTime');

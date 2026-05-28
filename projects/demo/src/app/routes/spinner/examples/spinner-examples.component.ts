@@ -182,7 +182,7 @@ const PLAY_SIZES: SpinnerSize[] = ['xs', 'sm', 'md', 'lg', 'xl', 'inherit'];
       <h2 class="text-sm font-semibold mb-3">Inside form fields (async validation)</h2>
       <p class="text-sm text-fg-muted leading-relaxed max-w-2xl mb-4">
         Project the spinner into the
-        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">[slot="suffix"]</code>
+        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">[twSuffix]</code>
         slot on a
         <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">&lt;tw-form-field&gt;</code>
         to signal async validation or pending lookups. The spinner inherits the suffix's muted
@@ -197,7 +197,7 @@ const PLAY_SIZES: SpinnerSize[] = ['xs', 'sm', 'md', 'lg', 'xl', 'inherit'];
             <label twLabel>Username</label>
             <input twInput [formControl]="usernameCtrl" placeholder="Type to simulate validation" />
             @if (usernameCtrl.pending || validatingUsername()) {
-              <tw-spinner slot="suffix" size="sm" label="Checking availability" />
+              <tw-spinner twSuffix size="sm" label="Checking availability" />
             }
           </tw-form-field>
         </div>
@@ -454,7 +454,7 @@ export class SpinnerExamples {
   <label twLabel>Username</label>
   <input twInput [formControl]="usernameCtrl" />
   @if (usernameCtrl.pending) {
-    <tw-spinner slot="suffix" size="sm" label="Checking availability" />
+    <tw-spinner twSuffix size="sm" label="Checking availability" />
   }
 </tw-form-field>`;
 

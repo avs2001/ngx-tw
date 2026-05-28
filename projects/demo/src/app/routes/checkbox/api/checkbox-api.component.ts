@@ -75,7 +75,19 @@ import { CodeBlockComponent } from 'ngx-tw/code-block';
               <td class="px-4 py-2 font-mono text-xs">name</td>
               <td class="px-4 py-2 font-mono text-xs text-fg-muted">string | undefined</td>
               <td class="px-4 py-2 font-mono text-xs text-fg-muted">undefined</td>
-              <td class="px-4 py-2 text-fg-muted">Optional name attribute mirrored to the host for form association.</td>
+              <td class="px-4 py-2 text-fg-muted">Applied to the hidden native <code class="font-mono">&lt;input type="checkbox"&gt;</code> so the value participates in native form submission alongside Angular form bindings.</td>
+            </tr>
+            <tr>
+              <td class="px-4 py-2 font-mono text-xs">id</td>
+              <td class="px-4 py-2 font-mono text-xs text-fg-muted">string | undefined</td>
+              <td class="px-4 py-2 font-mono text-xs text-fg-muted">undefined</td>
+              <td class="px-4 py-2 text-fg-muted">Id on the host element. Auto-generated as <code class="font-mono">tw-checkbox-N</code> when not provided; used by <code class="font-mono">tw-form-field</code>'s <code class="font-mono">&lt;label for&gt;</code>.</td>
+            </tr>
+            <tr>
+              <td class="px-4 py-2 font-mono text-xs">errorStateMatcher</td>
+              <td class="px-4 py-2 font-mono text-xs text-fg-muted">ErrorStateMatcher | undefined</td>
+              <td class="px-4 py-2 font-mono text-xs text-fg-muted">undefined</td>
+              <td class="px-4 py-2 text-fg-muted">Per-instance override of when the checkbox should render in the error state. Falls back to the <code class="font-mono">TW_ERROR_STATE_MATCHER</code> token.</td>
             </tr>
             <tr>
               <td class="px-4 py-2 font-mono text-xs">aria-label</td>
@@ -162,6 +174,73 @@ import { CodeBlockComponent } from 'ngx-tw/code-block';
               <td class="px-4 py-2 font-mono text-xs">toggle</td>
               <td class="px-4 py-2 font-mono text-xs text-fg-muted">toggle(): void</td>
               <td class="px-4 py-2 text-fg-muted">Toggles the checked state and clears indeterminate; no-op when disabled.</td>
+            </tr>
+            <tr>
+              <td class="px-4 py-2 font-mono text-xs">setDescribedByIds</td>
+              <td class="px-4 py-2 font-mono text-xs text-fg-muted">(ids: string[]): void</td>
+              <td class="px-4 py-2 text-fg-muted">Called by <code class="font-mono">tw-form-field</code> to merge hint / error ids into <code class="font-mono">aria-describedby</code>.</td>
+            </tr>
+            <tr>
+              <td class="px-4 py-2 font-mono text-xs">onContainerClick</td>
+              <td class="px-4 py-2 font-mono text-xs text-fg-muted">(event: MouseEvent): void</td>
+              <td class="px-4 py-2 text-fg-muted">Called by <code class="font-mono">tw-form-field</code> when the wrapper is clicked; focuses the host without toggling.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3 class="text-xs font-semibold text-fg-muted uppercase tracking-wide mb-2">FormFieldControl signals</h3>
+      <p class="text-sm text-fg-muted leading-relaxed max-w-2xl mb-3">
+        The checkbox implements
+        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">FormFieldControl&lt;boolean&gt;</code>
+        and registers itself with the surrounding
+        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">tw-form-field</code>
+        automatically. The signals below back the form-field's labelling and error wiring.
+      </p>
+      <div class="overflow-x-auto border border-border rounded-lg mb-6">
+        <table class="w-full text-sm">
+          <thead>
+            <tr class="bg-surface-muted text-left">
+              <th class="px-4 py-2 font-medium text-fg-muted">Name</th>
+              <th class="px-4 py-2 font-medium text-fg-muted">Type</th>
+              <th class="px-4 py-2 font-medium text-fg-muted">Description</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-border-muted">
+            <tr>
+              <td class="px-4 py-2 font-mono text-xs">id</td>
+              <td class="px-4 py-2 font-mono text-xs text-fg-muted">Signal&lt;string&gt;</td>
+              <td class="px-4 py-2 text-fg-muted">Resolved id of the host element; the form-field's <code class="font-mono">&lt;label for&gt;</code> points here.</td>
+            </tr>
+            <tr>
+              <td class="px-4 py-2 font-mono text-xs">value</td>
+              <td class="px-4 py-2 font-mono text-xs text-fg-muted">Signal&lt;boolean | null&gt;</td>
+              <td class="px-4 py-2 text-fg-muted">Current checked state.</td>
+            </tr>
+            <tr>
+              <td class="px-4 py-2 font-mono text-xs">focused</td>
+              <td class="px-4 py-2 font-mono text-xs text-fg-muted">Signal&lt;boolean&gt;</td>
+              <td class="px-4 py-2 text-fg-muted">Whether the checkbox currently has focus (driven by CDK <code class="font-mono">FocusMonitor</code>).</td>
+            </tr>
+            <tr>
+              <td class="px-4 py-2 font-mono text-xs">empty</td>
+              <td class="px-4 py-2 font-mono text-xs text-fg-muted">Signal&lt;boolean&gt;</td>
+              <td class="px-4 py-2 text-fg-muted">Always <code class="font-mono">false</code> — a checkbox is never empty in the form-field sense; the floating label always sits in the floated position.</td>
+            </tr>
+            <tr>
+              <td class="px-4 py-2 font-mono text-xs">required</td>
+              <td class="px-4 py-2 font-mono text-xs text-fg-muted">Signal&lt;boolean&gt;</td>
+              <td class="px-4 py-2 text-fg-muted">True when the <code class="font-mono">required</code> input is set OR the bound <code class="font-mono">NgControl</code> carries <code class="font-mono">Validators.required</code> / <code class="font-mono">Validators.requiredTrue</code>.</td>
+            </tr>
+            <tr>
+              <td class="px-4 py-2 font-mono text-xs">errorState</td>
+              <td class="px-4 py-2 font-mono text-xs text-fg-muted">Signal&lt;boolean&gt;</td>
+              <td class="px-4 py-2 text-fg-muted">Drives <code class="font-mono">aria-invalid</code> and the error border swap. Computed from the active <code class="font-mono">ErrorStateMatcher</code> against the bound <code class="font-mono">NgControl</code> + form submit state.</td>
+            </tr>
+            <tr>
+              <td class="px-4 py-2 font-mono text-xs">controlType</td>
+              <td class="px-4 py-2 font-mono text-xs text-fg-muted">'checkbox'</td>
+              <td class="px-4 py-2 text-fg-muted">Form-field appends <code class="font-mono">tw-form-field-type-checkbox</code> to its host for styling hooks.</td>
             </tr>
           </tbody>
         </table>

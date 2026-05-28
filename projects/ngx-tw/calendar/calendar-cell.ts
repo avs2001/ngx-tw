@@ -18,6 +18,8 @@ import type { CalendarCell, CalendarCellState, CalendarViewState } from './calen
 /** Emitted on keyboard navigation keys (arrows, Home/End, PageUp/PageDown). */
 export interface CalendarCellKeyNavEvent<D> {
   readonly direction: 'left' | 'right' | 'up' | 'down' | 'home' | 'end' | 'pageUp' | 'pageDown';
+  /** True when the originating KeyboardEvent had Shift held — drives year-jump variants of Page navigation. */
+  readonly shiftKey: boolean;
   readonly cell: CalendarCell<D>;
 }
 
@@ -26,7 +28,7 @@ const cellVariants = tv(
     slots: {
       wrapper: 'relative flex items-center justify-center',
       button:
-        'relative flex items-center justify-center cursor-pointer select-none transition-colors duration-200 motion-reduce:transition-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500 disabled:cursor-not-allowed',
+        'relative flex items-center justify-center cursor-pointer select-none transition-colors duration-normal motion-reduce:transition-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500 disabled:cursor-not-allowed',
     },
     variants: {
       view: {
@@ -34,38 +36,42 @@ const cellVariants = tv(
         month: { button: 'h-10 w-16 text-sm rounded-md' },
         year: { button: 'h-10 w-14 text-sm rounded-md' },
       },
+      // Slot tokens own light/dark contrast — no `dark:`, no shade picks.
+      // The range wash uses `primary-soft-hover` (one step deeper than `-soft`)
+      // so the in-range band reads slightly stronger than the popover surface
+      // without competing with the selected endpoints.
       state: {
         default: { button: 'text-fg hover:bg-surface-muted' },
         today: {
           button:
-            'text-primary-600 dark:text-primary-400 font-semibold ring-1 ring-primary-500 hover:bg-primary-100 dark:hover:bg-primary-900/30',
+            'text-primary-fg font-semibold ring-1 ring-primary-border-strong hover:bg-primary-soft',
         },
         selected: {
-          button: 'bg-primary-500 text-on-primary font-semibold hover:bg-primary-600',
+          button: 'bg-primary-solid text-primary-solid-fg font-semibold hover:bg-primary-solid-hover',
         },
         'range-start': {
           button:
-            'bg-primary-500 text-on-primary font-semibold rounded-l-full rounded-r-none hover:bg-primary-600',
+            'bg-primary-solid text-primary-solid-fg font-semibold rounded-l-full rounded-r-none hover:bg-primary-solid-hover',
         },
         'range-middle': {
           button:
-            'bg-primary-100 text-primary-700 dark:bg-primary-900/40 dark:text-primary-200 rounded-none hover:bg-primary-200 dark:hover:bg-primary-900/60',
+            'bg-primary-soft-hover text-primary-soft-fg rounded-none hover:bg-primary-soft',
         },
         'range-end': {
           button:
-            'bg-primary-500 text-on-primary font-semibold rounded-r-full rounded-l-none hover:bg-primary-600',
+            'bg-primary-solid text-primary-solid-fg font-semibold rounded-r-full rounded-l-none hover:bg-primary-solid-hover',
         },
         'preview-start': {
           button:
-            'bg-primary-100 text-primary-700 dark:bg-primary-900/40 dark:text-primary-200 rounded-l-full rounded-r-none ring-1 ring-primary-500 opacity-70',
+            'bg-primary-soft-hover text-primary-soft-fg rounded-l-full rounded-r-none ring-1 ring-primary-border-strong opacity-70',
         },
         'preview-middle': {
           button:
-            'bg-primary-100 text-primary-700 dark:bg-primary-900/40 dark:text-primary-200 rounded-none opacity-70',
+            'bg-primary-soft-hover text-primary-soft-fg rounded-none opacity-70',
         },
         'preview-end': {
           button:
-            'bg-primary-100 text-primary-700 dark:bg-primary-900/40 dark:text-primary-200 rounded-r-full rounded-l-none ring-1 ring-primary-500 opacity-70',
+            'bg-primary-soft-hover text-primary-soft-fg rounded-r-full rounded-l-none ring-1 ring-primary-border-strong opacity-70',
         },
         disabled: { button: 'text-fg-subtle cursor-not-allowed hover:bg-transparent' },
       },
@@ -75,9 +81,9 @@ const cellVariants = tv(
       },
       range: {
         none: {},
-        start: { wrapper: 'bg-primary-100 dark:bg-primary-900/40 rounded-l-full' },
-        middle: { wrapper: 'bg-primary-100 dark:bg-primary-900/40' },
-        end: { wrapper: 'bg-primary-100 dark:bg-primary-900/40 rounded-r-full' },
+        start: { wrapper: 'bg-primary-soft-hover rounded-l-full' },
+        middle: { wrapper: 'bg-primary-soft-hover' },
+        end: { wrapper: 'bg-primary-soft-hover rounded-r-full' },
         single: {},
       },
     },
@@ -241,7 +247,7 @@ export class CalendarCellComponent<D> {
     const direction = navKeys[event.key];
     if (direction) {
       event.preventDefault();
-      this.keyNav.emit({ direction, cell: this.cell() });
+      this.keyNav.emit({ direction, shiftKey: event.shiftKey, cell: this.cell() });
       return;
     }
     if (event.key === 'Enter' || event.key === ' ') {

@@ -27,37 +27,37 @@ import { CodeBlockComponent } from 'ngx-tw/code-block';
               <td class="px-4 py-2 font-mono text-xs">value</td>
               <td class="px-4 py-2 font-mono text-xs text-fg-muted">number | null | undefined</td>
               <td class="px-4 py-2 font-mono text-xs text-fg-muted">null</td>
-              <td class="px-4 py-2 text-fg-muted">Current progress value; when null or undefined the bar renders indeterminate, and values outside <code class="font-mono">[options.min, options.max]</code> are clamped.</td>
+              <td class="px-4 py-2 text-fg-muted">Current progress value. When null or undefined, the bar renders indeterminate. Values outside <code class="font-mono">[options.min, options.max]</code> are clamped.</td>
             </tr>
             <tr>
               <td class="px-4 py-2 font-mono text-xs">variant</td>
               <td class="px-4 py-2 font-mono text-xs text-fg-muted">ProgressBarVariant</td>
               <td class="px-4 py-2 font-mono text-xs text-fg-muted">'linear'</td>
-              <td class="px-4 py-2 text-fg-muted">Visual style of the bar; <code class="font-mono">'segmented'</code> splits the rail into discrete cells.</td>
+              <td class="px-4 py-2 text-fg-muted">Visual style of the bar. <code class="font-mono">'linear'</code> renders a single fill; <code class="font-mono">'segmented'</code> splits the rail into discrete steps. Defaults to <code class="font-mono">'linear'</code>.</td>
             </tr>
             <tr>
               <td class="px-4 py-2 font-mono text-xs">color</td>
               <td class="px-4 py-2 font-mono text-xs text-fg-muted">TwColor</td>
               <td class="px-4 py-2 font-mono text-xs text-fg-muted">'primary'</td>
-              <td class="px-4 py-2 text-fg-muted">Semantic color of the filled portion.</td>
+              <td class="px-4 py-2 text-fg-muted">Semantic color of the filled portion. Defaults to <code class="font-mono">'primary'</code>. Use status colors (<code class="font-mono">success</code>/<code class="font-mono">warning</code>/<code class="font-mono">error</code>) to reflect task outcome.</td>
             </tr>
             <tr>
               <td class="px-4 py-2 font-mono text-xs">size</td>
               <td class="px-4 py-2 font-mono text-xs text-fg-muted">ProgressBarSize</td>
               <td class="px-4 py-2 font-mono text-xs text-fg-muted">'md'</td>
-              <td class="px-4 py-2 text-fg-muted">Bar thickness; <code class="font-mono">'sm'</code>, <code class="font-mono">'md'</code>, <code class="font-mono">'lg'</code> map to 4px, 8px, and 12px respectively.</td>
+              <td class="px-4 py-2 text-fg-muted">Bar thickness. <code class="font-mono">'sm'</code> = h-1, <code class="font-mono">'md'</code> = h-2, <code class="font-mono">'lg'</code> = h-3. Defaults to <code class="font-mono">'md'</code>.</td>
             </tr>
             <tr>
               <td class="px-4 py-2 font-mono text-xs">label</td>
               <td class="px-4 py-2 font-mono text-xs text-fg-muted">string | undefined</td>
               <td class="px-4 py-2 font-mono text-xs text-fg-muted">undefined</td>
-              <td class="px-4 py-2 text-fg-muted">Visible label rendered above the bar; when set, the bar is wired to the label via <code class="font-mono">aria-labelledby</code>.</td>
+              <td class="px-4 py-2 text-fg-muted">Visible label rendered above the bar. When set, the bar is wired to the label via <code class="font-mono">aria-labelledby</code>.</td>
             </tr>
             <tr>
               <td class="px-4 py-2 font-mono text-xs">options</td>
               <td class="px-4 py-2 font-mono text-xs text-fg-muted">ProgressBarOptions | undefined</td>
               <td class="px-4 py-2 font-mono text-xs text-fg-muted">undefined</td>
-              <td class="px-4 py-2 text-fg-muted">Bundle of non-visual configuration. See the table below for the field shape.</td>
+              <td class="px-4 py-2 text-fg-muted">Bundles non-visual configuration: value range (<code class="font-mono">min</code>/<code class="font-mono">max</code>/<code class="font-mono">segments</code>), value readout (<code class="font-mono">showValue</code>/<code class="font-mono">formatter</code>), and accessibility fallbacks (<code class="font-mono">ariaLabel</code>/<code class="font-mono">ariaLabelledby</code>). Every field is optional. See the table below for the field shape.</td>
             </tr>
           </tbody>
         </table>

@@ -36,6 +36,7 @@ const TOTAL_CELLS = DAYS_PER_WEEK * WEEKS_PER_MONTH;
       role="grid"
       [attr.aria-label]="gridLabel()"
       [attr.aria-multiselectable]="multiSelectable() || null"
+      [attr.aria-readonly]="readonlyGrid() || null"
       (mouseleave)="onGridMouseLeave()"
     >
       <!-- gap-0: weekday headers align column-by-column with the day grid below, which itself must be gap-0 for contiguous range backgrounds. -->
@@ -43,7 +44,7 @@ const TOTAL_CELLS = DAYS_PER_WEEK * WEEKS_PER_MONTH;
         @for (header of weekdayHeaders(); track $index) {
           <div
             role="columnheader"
-            class="flex items-center justify-center h-9 text-xs font-medium text-fg-muted"
+            class="flex items-center justify-center h-9 text-2xs font-medium text-fg-muted"
             [attr.aria-label]="header.label"
           >
             {{ header.narrow }}
@@ -203,10 +204,14 @@ export class MonthViewComponent<D> extends CalendarViewBase<D> {
         break;
       }
       case 'pageUp':
-        newDate = this.dateAdapter.addMonths(currentDate, -1);
+        newDate = event.shiftKey
+          ? this.dateAdapter.addYears(currentDate, -1)
+          : this.dateAdapter.addMonths(currentDate, -1);
         break;
       case 'pageDown':
-        newDate = this.dateAdapter.addMonths(currentDate, 1);
+        newDate = event.shiftKey
+          ? this.dateAdapter.addYears(currentDate, 1)
+          : this.dateAdapter.addMonths(currentDate, 1);
         break;
     }
 

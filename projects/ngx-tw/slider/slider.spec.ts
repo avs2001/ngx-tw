@@ -4,6 +4,7 @@ import { type ComponentFixture, TestBed } from '@angular/core/testing';
 import { FormControl, FormsModule, ReactiveFormsModule } from '@angular/forms';
 import { form, FormField } from '@angular/forms/signals';
 import { FocusMonitor } from '@angular/cdk/a11y';
+import { NEVER } from 'rxjs';
 import { SliderComponent, type SliderMark, type SliderValue, type SliderVariant } from './slider';
 import type { TwColor, TwSize } from 'ngx-tw/core';
 
@@ -166,15 +167,13 @@ function dispatchPointer(
 
 describe('SliderComponent', () => {
   const focusMonitorSpy = {
-    monitor: vi.fn().mockReturnValue({ subscribe: vi.fn().mockReturnValue({ unsubscribe: vi.fn() }) }),
+    monitor: vi.fn().mockReturnValue(NEVER),
     stopMonitoring: vi.fn(),
   };
 
   beforeEach(() => {
     vi.clearAllMocks();
-    focusMonitorSpy.monitor = vi
-      .fn()
-      .mockReturnValue({ subscribe: vi.fn().mockReturnValue({ unsubscribe: vi.fn() }) });
+    focusMonitorSpy.monitor = vi.fn().mockReturnValue(NEVER);
     focusMonitorSpy.stopMonitoring = vi.fn();
     TestBed.configureTestingModule({
       providers: [{ provide: FocusMonitor, useValue: focusMonitorSpy }],
@@ -349,6 +348,28 @@ describe('SliderComponent', () => {
       const fixture = TestBed.createComponent(BasicHost);
       fixture.detectChanges();
       expect(getThumbs(fixture)[0].getAttribute('aria-orientation')).toBe('horizontal');
+    });
+
+    it('binds aria-required when required is true', () => {
+      @Component({
+        imports: [SliderComponent],
+        changeDetection: ChangeDetectionStrategy.OnPush,
+        template: `<tw-slider [required]="true" aria-label="x" />`,
+      })
+      class RequiredHost {}
+
+      const fixture = TestBed.createComponent(RequiredHost);
+      fixture.detectChanges();
+      const thumb = fixture.nativeElement.querySelector(
+        '[role="slider"]',
+      ) as HTMLElement;
+      expect(thumb.getAttribute('aria-required')).toBe('true');
+    });
+
+    it('does not bind aria-required when required is false (default)', () => {
+      const fixture = TestBed.createComponent(BasicHost);
+      fixture.detectChanges();
+      expect(getThumbs(fixture)[0].hasAttribute('aria-required')).toBe(false);
     });
 
     it('uses external aria-label when no visible label is set', () => {
@@ -593,15 +614,13 @@ describe('SliderComponent', () => {
 
 describe('SliderComponent CVA', () => {
   const focusMonitorSpy = {
-    monitor: vi.fn().mockReturnValue({ subscribe: vi.fn().mockReturnValue({ unsubscribe: vi.fn() }) }),
+    monitor: vi.fn().mockReturnValue(NEVER),
     stopMonitoring: vi.fn(),
   };
 
   beforeEach(() => {
     vi.clearAllMocks();
-    focusMonitorSpy.monitor = vi
-      .fn()
-      .mockReturnValue({ subscribe: vi.fn().mockReturnValue({ unsubscribe: vi.fn() }) });
+    focusMonitorSpy.monitor = vi.fn().mockReturnValue(NEVER);
     focusMonitorSpy.stopMonitoring = vi.fn();
     TestBed.configureTestingModule({
       providers: [{ provide: FocusMonitor, useValue: focusMonitorSpy }],
@@ -649,15 +668,13 @@ describe('SliderComponent CVA', () => {
 
 describe('SliderComponent signal forms', () => {
   const focusMonitorSpy = {
-    monitor: vi.fn().mockReturnValue({ subscribe: vi.fn().mockReturnValue({ unsubscribe: vi.fn() }) }),
+    monitor: vi.fn().mockReturnValue(NEVER),
     stopMonitoring: vi.fn(),
   };
 
   beforeEach(() => {
     vi.clearAllMocks();
-    focusMonitorSpy.monitor = vi
-      .fn()
-      .mockReturnValue({ subscribe: vi.fn().mockReturnValue({ unsubscribe: vi.fn() }) });
+    focusMonitorSpy.monitor = vi.fn().mockReturnValue(NEVER);
     focusMonitorSpy.stopMonitoring = vi.fn();
     TestBed.configureTestingModule({
       providers: [{ provide: FocusMonitor, useValue: focusMonitorSpy }],

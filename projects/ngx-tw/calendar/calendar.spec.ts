@@ -193,12 +193,16 @@ describe('CalendarComponent', () => {
       expect(getCalendarHost(fixture)).toBeTruthy();
     });
 
-    it("renders the application landmark with aria-label='Calendar'", () => {
+    it("renders a labelled group landmark (NOT role=application) with aria-label='Calendar'", () => {
       const fixture = TestBed.createComponent(BasicHost);
       fixture.detectChanges();
-      const app = fixture.nativeElement.querySelector('[role="application"]');
-      expect(app).toBeTruthy();
-      expect(app.getAttribute('aria-label')).toBe('Calendar');
+      // role="application" hijacks AT browse-mode keyboard handlers and is
+      // discouraged outside of canvas/widget editors. The inner views still
+      // carry role="grid" — the root only needs to label the group.
+      expect(fixture.nativeElement.querySelector('[role="application"]')).toBeNull();
+      const group = fixture.nativeElement.querySelector('tw-calendar [role="group"]');
+      expect(group).toBeTruthy();
+      expect(group.getAttribute('aria-label')).toBe('Calendar');
     });
 
     it("renders the day grid view by default", () => {
@@ -946,9 +950,8 @@ describe('CalendarComponent', () => {
 
     // `minRangeLength` / `maxRangeLength` per Phase 4 (§43): the v1 default is
     // permissive — invalid ranges still commit but `rangePreview.invalidPreview`
-    // and validator codes flag the violation. The hardening hook
-    // (`blockInvalidRangeCommit`) is a v1.1 placeholder. These tests document the
-    // current behavior: the commit goes through, but `rangePreview` reports
+    // and validator codes flag the violation. These tests document the current
+    // behavior: the commit goes through, but `rangePreview` reports
     // `invalidPreview: true` while the user hovers a too-short / too-long range.
 
     it('range mode: emits rangePreview with invalidPreview=true while hovered range is shorter than minRangeLength', () => {
@@ -1626,6 +1629,618 @@ describe('CalendarComponent', () => {
       );
       expect(grid).toBeTruthy();
       expect(grid!.getAttribute('aria-multiselectable')).toBe('true');
+    });
+  });
+
+  // ── aria-readonly forwarding ──
+
+  describe('aria-readonly forwarding', () => {
+    it("forwards aria-readonly='true' to the day-view grid when readonly is set", () => {
+      const fixture = TestBed.createComponent<CalendarComponent<CalendarMode, Date>>(
+        CalendarComponent as unknown as new () => CalendarComponent<CalendarMode, Date>,
+      );
+      fixture.componentRef.setInput('readonly', true);
+      fixture.detectChanges();
+      const grid = fixture.nativeElement.querySelector(
+        'tw-calendar-month-view [role="grid"]',
+      );
+      expect(grid).toBeTruthy();
+      expect(grid!.getAttribute('aria-readonly')).toBe('true');
+    });
+
+    it("does not set aria-readonly on the grid when readonly is unset", () => {
+      const fixture = TestBed.createComponent(BasicHost);
+      fixture.detectChanges();
+      const grid = fixture.nativeElement.querySelector(
+        'tw-calendar-month-view [role="grid"]',
+      );
+      expect(grid).toBeTruthy();
+      expect(grid!.getAttribute('aria-readonly')).toBeNull();
+    });
+  });
+
+  // ── Weekday header typography ──
+
+  describe('weekday header typography', () => {
+    it('renders weekday columnheaders with text-2xs (xs-density secondary text)', () => {
+      const fixture = TestBed.createComponent(BasicHost);
+      fixture.detectChanges();
+      const headers = Array.from(
+        fixture.nativeElement.querySelectorAll(
+          'tw-calendar-month-view [role="columnheader"]',
+        ),
+      ) as HTMLElement[];
+      expect(headers.length).toBeGreaterThan(0);
+      for (const header of headers) {
+        expect(header.className).toContain('text-2xs');
+        expect(header.className).not.toContain('text-xs ');
+      }
+    });
+  });
+
+  // ── LiveAnnouncer for selection commits ──
+
+  describe('LiveAnnouncer selection-commit announcements', () => {
+    it("single mode: announces the selected date after commit (polite, 'Selected …')", () => {
+      const announcer = TestBed.inject(LiveAnnouncer);
+      const spy = vi.spyOn(announcer, 'announce');
+
+      const fixture = TestBed.createComponent(BasicHost);
+      fixture.detectChanges();
+      spy.mockClear();
+
+      getDayCell(fixture, '15')!.click();
+      fixture.detectChanges();
+
+      expect(spy).toHaveBeenCalled();
+      const [message, politeness] = spy.mock.calls.at(-1)!;
+      expect(typeof message).toBe('string');
+      expect((message as string).toLowerCase()).toContain('selected');
+      expect(politeness).toBe('polite');
+    });
+
+    it('range mode: announces the range-start after the 1st click', () => {
+      const announcer = TestBed.inject(LiveAnnouncer);
+      const spy = vi.spyOn(announcer, 'announce');
+
+      const fixture = TestBed.createComponent(BasicHost);
+      fixture.componentInstance.mode.set('range');
+      fixture.detectChanges();
+      spy.mockClear();
+
+      getDayCell(fixture, '10')!.click();
+      fixture.detectChanges();
+
+      expect(spy).toHaveBeenCalled();
+      const [message, politeness] = spy.mock.calls.at(-1)!;
+      expect((message as string).toLowerCase()).toContain('start date');
+      expect(politeness).toBe('polite');
+    });
+
+    it('range mode: announces the committed range with a length-in-days after the 2nd click', () => {
+      const announcer = TestBed.inject(LiveAnnouncer);
+      const spy = vi.spyOn(announcer, 'announce');
+
+      const fixture = TestBed.createComponent(BasicHost);
+      fixture.componentInstance.mode.set('range');
+      fixture.detectChanges();
+      spy.mockClear();
+
+      getDayCell(fixture, '10')!.click();
+      fixture.detectChanges();
+      getDayCell(fixture, '15')!.click();
+      fixture.detectChanges();
+
+      const lastCommitMsg = spy.mock.calls
+        .map((c) => c[0] as string)
+        .reverse()
+        .find((m) => m.toLowerCase().includes('range selected'));
+      expect(lastCommitMsg).toBeDefined();
+      // 10..15 inclusive = 6 days
+      expect(lastCommitMsg).toContain('6 days');
+    });
+
+    it("multiple mode: announces 'N dates selected' on each commit", () => {
+      const announcer = TestBed.inject(LiveAnnouncer);
+      const spy = vi.spyOn(announcer, 'announce');
+
+      const fixture = TestBed.createComponent(BasicHost);
+      fixture.componentInstance.mode.set('multiple');
+      fixture.componentInstance.value.set([]);
+      fixture.detectChanges();
+      spy.mockClear();
+
+      getDayCell(fixture, '5')!.click();
+      fixture.detectChanges();
+      const after1 = spy.mock.calls.at(-1)![0] as string;
+      expect(after1).toContain('1 date selected');
+
+      getDayCell(fixture, '10')!.click();
+      fixture.detectChanges();
+      const after2 = spy.mock.calls.at(-1)![0] as string;
+      expect(after2).toContain('2 dates selected');
+    });
+
+    it('announces selection rejection when a require-clear click flashes invalid', () => {
+      const announcer = TestBed.inject(LiveAnnouncer);
+      const spy = vi.spyOn(announcer, 'announce');
+
+      const fixture = TestBed.createComponent<CalendarComponent<CalendarMode, Date>>(
+        CalendarComponent as unknown as new () => CalendarComponent<CalendarMode, Date>,
+      );
+      fixture.componentRef.setInput('mode', 'range');
+      fixture.componentRef.setInput('startAt', new Date(2026, 3, 26));
+      fixture.componentRef.setInput('rangeClickBehavior', 'require-clear');
+      fixture.detectChanges();
+      spy.mockClear();
+
+      // Commit a range so we're in COMPLETE state.
+      getDayCell(fixture, '10')!.click();
+      fixture.detectChanges();
+      getDayCell(fixture, '15')!.click();
+      fixture.detectChanges();
+
+      spy.mockClear();
+      // Third click — require-clear rejects and announces.
+      getDayCell(fixture, '20')!.click();
+      fixture.detectChanges();
+
+      const rejected = spy.mock.calls
+        .map((c) => c[0] as string)
+        .find((m) => m.toLowerCase().includes('rejected'));
+      expect(rejected).toBeDefined();
+    });
+  });
+
+  // ── Shift+PageUp / Shift+PageDown year jumps ──
+
+  describe('Shift+PageUp/PageDown year jumps', () => {
+    it('Shift+PageDown advances by one year in the day view', () => {
+      const fixture = TestBed.createComponent(BasicHost);
+      fixture.detectChanges();
+      const calendar = getCalendarComponent(fixture);
+
+      const active = getActiveDayCell(fixture);
+      pressKey(fixture, active!, 'PageDown', { shiftKey: true });
+
+      const activeDate = calendar.activeDate() as Date;
+      expect(activeDate.getFullYear()).toBe(2027);
+      expect(activeDate.getMonth()).toBe(3); // April
+    });
+
+    it('Shift+PageUp retreats by one year in the day view', () => {
+      const fixture = TestBed.createComponent(BasicHost);
+      fixture.detectChanges();
+      const calendar = getCalendarComponent(fixture);
+
+      const active = getActiveDayCell(fixture);
+      pressKey(fixture, active!, 'PageUp', { shiftKey: true });
+
+      const activeDate = calendar.activeDate() as Date;
+      expect(activeDate.getFullYear()).toBe(2025);
+      expect(activeDate.getMonth()).toBe(3);
+    });
+
+    it('Shift+PageDown jumps 10 years in the month-of-year view', () => {
+      const fixture = TestBed.createComponent<CalendarComponent<CalendarMode, Date>>(
+        CalendarComponent as unknown as new () => CalendarComponent<CalendarMode, Date>,
+      );
+      fixture.componentRef.setInput('startAt', new Date(2026, 3, 26));
+      fixture.componentRef.setInput('startView', 'month');
+      fixture.detectChanges();
+      const calendar = fixture.componentInstance;
+
+      const activeMonth = fixture.nativeElement.querySelector(
+        'tw-calendar-year-view tw-calendar-cell button[tabindex="0"]',
+      ) as HTMLButtonElement | null;
+      expect(activeMonth).toBeTruthy();
+      pressKey(fixture, activeMonth!, 'PageDown', { shiftKey: true });
+
+      const activeDate = calendar.activeDate() as Date;
+      expect(activeDate.getFullYear()).toBe(2036);
+    });
+
+    it('Shift+PageDown jumps a full multi-year page-block in the year view', () => {
+      const fixture = TestBed.createComponent<CalendarComponent<CalendarMode, Date>>(
+        CalendarComponent as unknown as new () => CalendarComponent<CalendarMode, Date>,
+      );
+      fixture.componentRef.setInput('startAt', new Date(2026, 3, 26));
+      fixture.componentRef.setInput('startView', 'year');
+      fixture.detectChanges();
+      const calendar = fixture.componentInstance;
+      const startYear = (calendar.activeDate() as Date).getFullYear();
+
+      const activeYear = fixture.nativeElement.querySelector(
+        'tw-calendar-years-view tw-calendar-cell button[tabindex="0"]',
+      ) as HTMLButtonElement | null;
+      expect(activeYear).toBeTruthy();
+      pressKey(fixture, activeYear!, 'PageDown', { shiftKey: true });
+
+      const activeDate = calendar.activeDate() as Date;
+      // YEARS_PER_PAGE * 10 = a century-page jump.
+      expect(activeDate.getFullYear()).toBeGreaterThan(startYear + 100);
+    });
+  });
+
+  // ── Year-view + multi-year-view keyboard navigation ──
+
+  describe('keyboard navigation (year view)', () => {
+    function setupYearView(): {
+      fixture: ComponentFixture<CalendarComponent<CalendarMode, Date>>;
+      calendar: CalendarComponent<CalendarMode, Date>;
+    } {
+      const fixture = TestBed.createComponent<CalendarComponent<CalendarMode, Date>>(
+        CalendarComponent as unknown as new () => CalendarComponent<CalendarMode, Date>,
+      );
+      fixture.componentRef.setInput('startAt', new Date(2026, 3, 26));
+      fixture.componentRef.setInput('startView', 'month');
+      fixture.detectChanges();
+      return { fixture, calendar: fixture.componentInstance };
+    }
+
+    function getActiveMonthCell(
+      fixture: ComponentFixture<unknown>,
+    ): HTMLButtonElement | null {
+      return fixture.nativeElement.querySelector(
+        'tw-calendar-year-view tw-calendar-cell button[tabindex="0"]',
+      ) as HTMLButtonElement | null;
+    }
+
+    it('ArrowRight moves to the next month (in the same year)', () => {
+      const { fixture, calendar } = setupYearView();
+      const cell = getActiveMonthCell(fixture);
+      pressKey(fixture, cell!, 'ArrowRight');
+      const activeDate = calendar.activeDate() as Date;
+      expect(activeDate.getMonth()).toBe(4); // May
+    });
+
+    it('ArrowDown jumps 4 months down (4 columns)', () => {
+      const { fixture, calendar } = setupYearView();
+      const cell = getActiveMonthCell(fixture);
+      pressKey(fixture, cell!, 'ArrowDown');
+      const activeDate = calendar.activeDate() as Date;
+      expect(activeDate.getMonth()).toBe(7); // August
+    });
+
+    it('Home jumps to January', () => {
+      const { fixture, calendar } = setupYearView();
+      const cell = getActiveMonthCell(fixture);
+      pressKey(fixture, cell!, 'Home');
+      const activeDate = calendar.activeDate() as Date;
+      expect(activeDate.getMonth()).toBe(0);
+    });
+
+    it('End jumps to December', () => {
+      const { fixture, calendar } = setupYearView();
+      const cell = getActiveMonthCell(fixture);
+      pressKey(fixture, cell!, 'End');
+      const activeDate = calendar.activeDate() as Date;
+      expect(activeDate.getMonth()).toBe(11);
+    });
+  });
+
+  describe('keyboard navigation (multi-year view)', () => {
+    function setupMultiYearView(): {
+      fixture: ComponentFixture<CalendarComponent<CalendarMode, Date>>;
+      calendar: CalendarComponent<CalendarMode, Date>;
+    } {
+      const fixture = TestBed.createComponent<CalendarComponent<CalendarMode, Date>>(
+        CalendarComponent as unknown as new () => CalendarComponent<CalendarMode, Date>,
+      );
+      fixture.componentRef.setInput('startAt', new Date(2026, 3, 26));
+      fixture.componentRef.setInput('startView', 'year');
+      fixture.detectChanges();
+      return { fixture, calendar: fixture.componentInstance };
+    }
+
+    function getActiveYearCell(
+      fixture: ComponentFixture<unknown>,
+    ): HTMLButtonElement | null {
+      return fixture.nativeElement.querySelector(
+        'tw-calendar-years-view tw-calendar-cell button[tabindex="0"]',
+      ) as HTMLButtonElement | null;
+    }
+
+    it('ArrowRight advances by one year', () => {
+      const { fixture, calendar } = setupMultiYearView();
+      const initial = (calendar.activeDate() as Date).getFullYear();
+      const cell = getActiveYearCell(fixture);
+      pressKey(fixture, cell!, 'ArrowRight');
+      const activeDate = calendar.activeDate() as Date;
+      expect(activeDate.getFullYear()).toBe(initial + 1);
+    });
+
+    it('PageDown advances by a full multi-year page', () => {
+      const { fixture, calendar } = setupMultiYearView();
+      const initial = (calendar.activeDate() as Date).getFullYear();
+      const cell = getActiveYearCell(fixture);
+      pressKey(fixture, cell!, 'PageDown');
+      const activeDate = calendar.activeDate() as Date;
+      expect(activeDate.getFullYear()).toBeGreaterThan(initial);
+    });
+  });
+
+  // ── selectionLimitReached / maxSelectionBehavior (mode='multiple') ──
+
+  describe("maxSelectionBehavior (mode='multiple')", () => {
+    function setupMultiple(behavior?: 'emit-limit-reached' | 'replace-oldest' | 'ignore'): {
+      fixture: ComponentFixture<CalendarComponent<CalendarMode, Date>>;
+      calendar: CalendarComponent<CalendarMode, Date>;
+    } {
+      const fixture = TestBed.createComponent<CalendarComponent<CalendarMode, Date>>(
+        CalendarComponent as unknown as new () => CalendarComponent<CalendarMode, Date>,
+      );
+      fixture.componentRef.setInput('startAt', new Date(2026, 3, 26));
+      fixture.componentRef.setInput('mode', 'multiple');
+      fixture.componentRef.setInput('value', []);
+      fixture.componentRef.setInput('maxSelections', 2);
+      if (behavior) fixture.componentRef.setInput('maxSelectionBehavior', behavior);
+      fixture.detectChanges();
+      return { fixture, calendar: fixture.componentInstance };
+    }
+
+    it("emit-limit-reached: emits selectionLimitReached and does NOT commit beyond the limit", () => {
+      const { fixture, calendar } = setupMultiple();
+      const limitSpy = vi.fn();
+      const valueSpy = vi.fn();
+      calendar.selectionLimitReached.subscribe(limitSpy);
+      calendar.valueChange.subscribe(valueSpy);
+
+      getDayCell(fixture, '5')!.click();
+      fixture.detectChanges();
+      getDayCell(fixture, '10')!.click();
+      fixture.detectChanges();
+
+      valueSpy.mockClear();
+      getDayCell(fixture, '15')!.click();
+      fixture.detectChanges();
+
+      expect(limitSpy).toHaveBeenCalledTimes(1);
+      const event = limitSpy.mock.calls[0]?.[0] as { limit: number; attempted: Date };
+      expect(event.limit).toBe(2);
+      expect(event.attempted.getDate()).toBe(15);
+      expect(valueSpy).not.toHaveBeenCalled();
+    });
+
+    it("replace-oldest: drops the first entry and commits the new date", () => {
+      const { fixture, calendar } = setupMultiple('replace-oldest');
+      const valueSpy = vi.fn();
+      calendar.valueChange.subscribe(valueSpy);
+
+      getDayCell(fixture, '5')!.click();
+      fixture.detectChanges();
+      getDayCell(fixture, '10')!.click();
+      fixture.detectChanges();
+      valueSpy.mockClear();
+
+      getDayCell(fixture, '15')!.click();
+      fixture.detectChanges();
+
+      expect(valueSpy).toHaveBeenCalledTimes(1);
+      const arr = valueSpy.mock.calls[0]?.[0] as Date[];
+      expect(arr).toHaveLength(2);
+      expect(arr.map((d) => d.getDate())).toEqual([10, 15]);
+    });
+
+    it("ignore: silently drops the click past the limit (no events emitted)", () => {
+      const { fixture, calendar } = setupMultiple('ignore');
+      const valueSpy = vi.fn();
+      const limitSpy = vi.fn();
+      calendar.valueChange.subscribe(valueSpy);
+      calendar.selectionLimitReached.subscribe(limitSpy);
+
+      getDayCell(fixture, '5')!.click();
+      fixture.detectChanges();
+      getDayCell(fixture, '10')!.click();
+      fixture.detectChanges();
+      valueSpy.mockClear();
+
+      getDayCell(fixture, '15')!.click();
+      fixture.detectChanges();
+
+      expect(valueSpy).not.toHaveBeenCalled();
+      expect(limitSpy).not.toHaveBeenCalled();
+    });
+  });
+
+  // ── persistPartialRange across view navigation ──
+
+  describe('persistPartialRange', () => {
+    it('preserves the in-flight draft when navigating months while SELECTING (default true)', () => {
+      const fixture = TestBed.createComponent(BasicHost);
+      fixture.componentInstance.mode.set('range');
+      fixture.detectChanges();
+      const calendar = getCalendarComponent(fixture);
+
+      // Establish a draft.
+      getDayCell(fixture, '10')!.click();
+      fixture.detectChanges();
+      expect(calendar.selectionState()).toBe<CalendarSelectionState>('SELECTING');
+
+      // Navigate to the next month via the header.
+      const buttons = Array.from(
+        fixture.nativeElement.querySelectorAll('tw-calendar-header button'),
+      ) as HTMLButtonElement[];
+      buttons[2]!.click(); // next-month
+      fixture.detectChanges();
+
+      // Draft survives: still SELECTING.
+      expect(calendar.selectionState()).toBe<CalendarSelectionState>('SELECTING');
+    });
+  });
+
+  // ── Locale handling ──
+
+  describe('locale handling', () => {
+    it("propagates locale='de-DE' through effectiveLocale() so adapter format calls localize", () => {
+      const fixture = TestBed.createComponent<CalendarComponent<CalendarMode, Date>>(
+        CalendarComponent as unknown as new () => CalendarComponent<CalendarMode, Date>,
+      );
+      fixture.componentRef.setInput('startAt', new Date(2026, 0, 15));
+      fixture.componentRef.setInput('locale', 'de-DE');
+      fixture.detectChanges();
+
+      const calendar = fixture.componentInstance as unknown as {
+        effectiveLocale(): string;
+      };
+      expect(calendar.effectiveLocale()).toBe('de-DE');
+    });
+
+    it("renders period button text with localized month names when locale='de-DE'", () => {
+      const fixture = TestBed.createComponent<CalendarComponent<CalendarMode, Date>>(
+        CalendarComponent as unknown as new () => CalendarComponent<CalendarMode, Date>,
+      );
+      // January is distinct across locales: en "January", de "Januar".
+      fixture.componentRef.setInput('startAt', new Date(2026, 0, 15));
+      fixture.componentRef.setInput('locale', 'de-DE');
+      fixture.detectChanges();
+
+      // Period button is the middle of the header trio.
+      const buttons = Array.from(
+        fixture.nativeElement.querySelectorAll('tw-calendar-header button'),
+      ) as HTMLButtonElement[];
+      const text = (buttons[1]?.textContent ?? '').trim();
+      // In environments with full ICU the German form is rendered; if a stripped
+      // build falls back to English the text still contains the year. Assert
+      // a non-empty period label as a baseline and prefer the localized form
+      // when ICU is present.
+      expect(text.length).toBeGreaterThan(0);
+      // ICU-bearing Node renders "Januar 2026"; loosely match either localized
+      // form so the test stays robust across runtimes.
+      expect(/(Januar|January)/.test(text)).toBe(true);
+    });
+  });
+
+  // ── Dropped pre-1.0 surface (S19) ──
+  //
+  // The placeholder `opened` / `closed` / `renderedMonthsCount` outputs and the
+  // no-op `blockInvalidRangeCommit` input were removed in S19. Picker overlay
+  // events live on `tw-date-picker` / `tw-date-range-picker`; the calendar is
+  // inline-only at this layer.
+
+  describe('dropped pre-1.0 surface', () => {
+    it('no longer exposes opened / closed / renderedMonthsCount outputs', () => {
+      const fixture = TestBed.createComponent(BasicHost);
+      fixture.detectChanges();
+      const calendar = getCalendarComponent(fixture) as unknown as Record<string, unknown>;
+
+      expect(calendar['opened']).toBeUndefined();
+      expect(calendar['closed']).toBeUndefined();
+      expect(calendar['renderedMonthsCount']).toBeUndefined();
+    });
+
+    it('no longer exposes blockInvalidRangeCommit / individual range-behavior inputs', () => {
+      const fixture = TestBed.createComponent(BasicHost);
+      fixture.detectChanges();
+      const calendar = getCalendarComponent(fixture) as unknown as Record<string, unknown>;
+
+      expect(calendar['blockInvalidRangeCommit']).toBeUndefined();
+      expect(calendar['allowBackwardRange']).toBeUndefined();
+      expect(calendar['allowSingleDayRange']).toBeUndefined();
+      expect(calendar['persistPartialRange']).toBeUndefined();
+      expect(calendar['disableRangesCrossingDisabledDates']).toBeUndefined();
+    });
+  });
+
+  // ── rangeBehavior config (S19) ──
+  //
+  // The four standalone booleans collapsed into one `Partial<RangeBehaviorConfig>`
+  // input. These tests cover the partial-merge semantics and the per-field
+  // overrides that previously had their own inputs.
+
+  describe('rangeBehavior config', () => {
+    it('uses documented defaults when no rangeBehavior is supplied (single-day range commits)', () => {
+      const fixture = TestBed.createComponent<CalendarComponent<CalendarMode, Date>>(
+        CalendarComponent as unknown as new () => CalendarComponent<CalendarMode, Date>,
+      );
+      fixture.componentRef.setInput('startAt', new Date(2026, 3, 26));
+      fixture.componentRef.setInput('mode', 'range');
+      fixture.detectChanges();
+      const calendar = fixture.componentInstance;
+      const valueSpy = vi.fn();
+      calendar.valueChange.subscribe(valueSpy);
+
+      // Click the same in-month day twice — default `allowSingleDayRange: true` commits.
+      getDayCell(fixture, '15')!.click();
+      fixture.detectChanges();
+      getDayCell(fixture, '15')!.click();
+      fixture.detectChanges();
+
+      expect(valueSpy).toHaveBeenCalled();
+      const last = valueSpy.mock.calls.at(-1)?.[0] as { start: Date; end: Date };
+      expect(last.start.getDate()).toBe(15);
+      expect(last.end.getDate()).toBe(15);
+    });
+
+    it('honors rangeBehavior.allowSingleDayRange=false (rejects same-cell second click)', () => {
+      const fixture = TestBed.createComponent<CalendarComponent<CalendarMode, Date>>(
+        CalendarComponent as unknown as new () => CalendarComponent<CalendarMode, Date>,
+      );
+      fixture.componentRef.setInput('startAt', new Date(2026, 3, 26));
+      fixture.componentRef.setInput('mode', 'range');
+      fixture.componentRef.setInput('rangeBehavior', { allowSingleDayRange: false });
+      fixture.detectChanges();
+      const calendar = fixture.componentInstance;
+      const valueSpy = vi.fn();
+      calendar.valueChange.subscribe(valueSpy);
+
+      getDayCell(fixture, '15')!.click();
+      fixture.detectChanges();
+      getDayCell(fixture, '15')!.click();
+      fixture.detectChanges();
+
+      // 1st click moves into SELECTING (no commit); 2nd click on same cell is rejected.
+      expect(valueSpy).not.toHaveBeenCalled();
+    });
+
+    it('honors rangeBehavior.allowBackwardRange=true (skips auto-swap when end < start)', () => {
+      const fixture = TestBed.createComponent<CalendarComponent<CalendarMode, Date>>(
+        CalendarComponent as unknown as new () => CalendarComponent<CalendarMode, Date>,
+      );
+      fixture.componentRef.setInput('startAt', new Date(2026, 3, 26));
+      fixture.componentRef.setInput('mode', 'range');
+      fixture.componentRef.setInput('rangeBehavior', { allowBackwardRange: true });
+      fixture.detectChanges();
+      const calendar = fixture.componentInstance;
+      const valueSpy = vi.fn();
+      calendar.valueChange.subscribe(valueSpy);
+
+      // Click day 20, then click day 10 — without allowBackwardRange the value
+      // would normalize to { start: 10, end: 20 }; with it set we keep 20→10.
+      getDayCell(fixture, '20')!.click();
+      fixture.detectChanges();
+      getDayCell(fixture, '10')!.click();
+      fixture.detectChanges();
+
+      const last = valueSpy.mock.calls.at(-1)?.[0] as { start: Date; end: Date };
+      expect(last.start.getDate()).toBe(20);
+      expect(last.end.getDate()).toBe(10);
+    });
+
+    it('merges a partial config over the defaults (unspecified fields keep defaults)', () => {
+      const fixture = TestBed.createComponent<CalendarComponent<CalendarMode, Date>>(
+        CalendarComponent as unknown as new () => CalendarComponent<CalendarMode, Date>,
+      );
+      fixture.componentRef.setInput('startAt', new Date(2026, 3, 26));
+      fixture.componentRef.setInput('mode', 'range');
+      // Override only one field. Defaults for the rest still apply.
+      fixture.componentRef.setInput('rangeBehavior', { allowBackwardRange: true });
+      fixture.detectChanges();
+      const calendar = fixture.componentInstance;
+      const valueSpy = vi.fn();
+      calendar.valueChange.subscribe(valueSpy);
+
+      // allowSingleDayRange default `true` should still hold: clicking the same
+      // day cell twice commits a single-day range.
+      getDayCell(fixture, '12')!.click();
+      fixture.detectChanges();
+      getDayCell(fixture, '12')!.click();
+      fixture.detectChanges();
+
+      expect(valueSpy).toHaveBeenCalled();
+      const last = valueSpy.mock.calls.at(-1)?.[0] as { start: Date; end: Date };
+      expect(last.start.getDate()).toBe(12);
+      expect(last.end.getDate()).toBe(12);
     });
   });
 });

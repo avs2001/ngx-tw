@@ -54,16 +54,30 @@ import { CodeBlockComponent } from 'ngx-tw/code-block';
               <td class="px-4 py-2 text-fg-muted">Controls the avatar's square dimensions and the initials font scale.</td>
             </tr>
             <tr>
-              <td class="px-4 py-2 font-mono text-xs">rounded</td>
-              <td class="px-4 py-2 font-mono text-xs text-fg-muted">AvatarRounded</td>
-              <td class="px-4 py-2 font-mono text-xs text-fg-muted">'full'</td>
-              <td class="px-4 py-2 text-fg-muted">Border-radius shape: <code class="font-mono">'full'</code> circle, <code class="font-mono">'lg'</code> rounded square, <code class="font-mono">'none'</code> sharp square.</td>
+              <td class="px-4 py-2 font-mono text-xs">appearance</td>
+              <td class="px-4 py-2 font-mono text-xs text-fg-muted">AvatarAppearance</td>
+              <td class="px-4 py-2 font-mono text-xs text-fg-muted">&#123; rounded: 'full', status: null &#125;</td>
+              <td class="px-4 py-2 text-fg-muted">Bundles decorative axes — <code class="font-mono">rounded</code> (border-radius shape) and <code class="font-mono">status</code> (indicator dot). Both keys are optional and fall back to the defaults shown.</td>
             </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3 class="text-xs font-semibold text-fg-muted uppercase tracking-wide mb-2">Outputs</h3>
+      <div class="overflow-x-auto border border-border rounded-lg mb-6">
+        <table class="w-full text-sm">
+          <thead>
+            <tr class="bg-surface-muted text-left">
+              <th class="px-4 py-2 font-medium text-fg-muted">Name</th>
+              <th class="px-4 py-2 font-medium text-fg-muted">Payload</th>
+              <th class="px-4 py-2 font-medium text-fg-muted">Description</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-border-muted">
             <tr>
-              <td class="px-4 py-2 font-mono text-xs">status</td>
-              <td class="px-4 py-2 font-mono text-xs text-fg-muted">AvatarStatus | null</td>
-              <td class="px-4 py-2 font-mono text-xs text-fg-muted">null</td>
-              <td class="px-4 py-2 text-fg-muted">Renders a decorative status dot; position adapts to the resolved shape.</td>
+              <td class="px-4 py-2 font-mono text-xs">imageError</td>
+              <td class="px-4 py-2 font-mono text-xs text-fg-muted">Event</td>
+              <td class="px-4 py-2 text-fg-muted">Fires when the underlying <code class="font-mono">&lt;img&gt;</code> dispatches an <code class="font-mono">error</code> event (broken URL, network failure). The avatar automatically falls back to initials or projected content.</td>
             </tr>
           </tbody>
         </table>
@@ -155,6 +169,11 @@ export class AvatarApi {
   protected readonly typesSnippet = `type AvatarStatus = 'online' | 'busy' | 'away' | 'offline';
 
 type AvatarRounded = 'full' | 'lg' | 'none';
+
+interface AvatarAppearance {
+  rounded?: AvatarRounded;        // default: 'full'
+  status?: AvatarStatus | null;   // default: null
+}
 
 // Shared library types, re-exported from 'ngx-tw/core':
 type TwColor = 'primary' | 'secondary' | 'accent' | 'neutral'

@@ -2,8 +2,8 @@ import { ChangeDetectionStrategy, Component, signal } from '@angular/core';
 import { TooltipDirective } from 'ngx-tw/tooltip';
 import { ButtonDirective } from 'ngx-tw/button';
 import { CodeBlockComponent } from 'ngx-tw/code-block';
-import type { TwColor } from 'ngx-tw/core';
-import type { TooltipPosition, TooltipSize } from 'ngx-tw/tooltip';
+import type { TwColor, TwSize } from 'ngx-tw/core';
+import type { TooltipPosition } from 'ngx-tw/tooltip';
 
 const COLORS: TwColor[] = [
   'primary',
@@ -15,7 +15,7 @@ const COLORS: TwColor[] = [
   'warning',
   'error',
 ];
-const SIZES: TooltipSize[] = ['sm', 'md', 'lg'];
+const SIZES: TwSize[] = ['xs', 'sm', 'md', 'lg', 'xl'];
 const POSITIONS: TooltipPosition[] = [
   'top',
   'top-start',
@@ -420,7 +420,7 @@ export class TooltipExamples {
   protected readonly mainPositions = MAIN_POSITIONS;
 
   protected readonly playColor = signal<TwColor>('neutral');
-  protected readonly playSize = signal<TooltipSize>('md');
+  protected readonly playSize = signal<TwSize>('md');
   protected readonly playPosition = signal<TooltipPosition>('top');
   protected readonly playArrow = signal(true);
 

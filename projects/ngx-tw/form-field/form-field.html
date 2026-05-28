@@ -1,10 +1,12 @@
 <div [class]="controlWrapperClasses()">
-  <ng-content select="[slot=prefix]" />
+  <ng-content select="[twPrefix]" />
+  <ng-content select="[twPrefixIcon]" />
   <div #infix [class]="infixClasses()">
     <ng-content />
   </div>
-  <ng-content select="[slot=suffix]" />
-  @if (hasLabel()) {
+  <ng-content select="[twSuffix]" />
+  <ng-content select="[twSuffixIcon]" />
+  @if (shouldRenderLabelWrapper()) {
     <div [class]="labelWrapperClasses()" [style.left]="labelLeft()">
       <ng-content select="[twLabel]" />
       @if (!hideRequiredMarker() && isRequired()) {
@@ -14,10 +16,12 @@
   }
 </div>
 
-<div [class]="subscriptWrapperClasses()">
-  @if (subscriptMode() === 'error') {
-    <ng-content select="[twError]" />
-  } @else {
-    <ng-content select="[twHint]" />
-  }
-</div>
+@if (shouldRenderSubscript()) {
+  <div [class]="subscriptWrapperClasses()">
+    @if (subscriptMode() === 'error') {
+      <ng-content select="[twError]" />
+    } @else {
+      <ng-content select="[twHint]" />
+    }
+  </div>
+}

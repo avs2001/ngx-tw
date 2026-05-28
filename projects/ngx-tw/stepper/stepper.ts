@@ -49,9 +49,9 @@ const stepperVariants = tv(
       header: 'flex',
       stepItem: 'flex',
       stepHeader:
-        'group relative inline-flex items-center gap-2 cursor-pointer transition-colors duration-200 motion-reduce:transition-none rounded-md focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500 disabled:cursor-not-allowed',
+        'group relative inline-flex items-center gap-2 cursor-pointer transition-colors duration-normal motion-reduce:transition-none rounded-md focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500 disabled:cursor-not-allowed',
       stepIndicator:
-        'inline-flex items-center justify-center shrink-0 rounded-full font-medium transition-[color,background-color,border-color,box-shadow] duration-200 motion-reduce:transition-none',
+        'inline-flex items-center justify-center shrink-0 rounded-full font-medium transition-[color,background-color,border-color,box-shadow] duration-normal motion-reduce:transition-none',
       stepNumber: 'leading-none',
       stepIconSlot: 'inline-flex items-center justify-center',
       stepLabelWrapper: 'flex flex-col min-w-0 text-left',
@@ -59,7 +59,7 @@ const stepperVariants = tv(
       stepDescription: 'text-xs text-fg-muted leading-tight mt-0.5',
       stepOptionalHint: 'text-xs text-fg-subtle ml-1 font-normal',
       stepConnector:
-        'shrink-0 transition-colors duration-200 motion-reduce:transition-none',
+        'shrink-0 transition-colors duration-normal motion-reduce:transition-none',
       stepPanel: 'min-w-0',
     },
     variants: {
@@ -86,6 +86,8 @@ const stepperVariants = tv(
           stepIndicator: 'size-8 text-sm',
           stepLabel: 'text-sm',
         },
+        // lg/xl step labels use `text-base` per the trigger font-size scale
+        // (CLAUDE.md typography). Steps are interactive trigger elements.
         lg: {
           stepIndicator: 'size-10 text-base',
           stepLabel: 'text-base',
@@ -156,63 +158,60 @@ const INDICATOR_PENDING =
 const INDICATOR_DISABLED =
   'bg-surface-muted text-fg-subtle border border-border opacity-60';
 const INDICATOR_ERROR =
-  'bg-error-500 text-on-error border border-error-500';
+  'bg-error-solid text-error-solid-fg border border-error-border-strong';
 
+// Slot tokens own light/dark contrast — no `dark:`, no shade picks.
+// The active-state ring uses `{role}-soft` (low-chroma in light, deep-tinted in
+// dark) so the halo reads consistently against the surface in both modes.
 const INDICATOR_ACTIVE: Record<TwColor, string> = {
-  primary:
-    'bg-primary-500 text-on-primary border border-primary-500 ring-4 ring-primary-100 dark:ring-primary-950',
-  secondary:
-    'bg-secondary-500 text-on-secondary border border-secondary-500 ring-4 ring-secondary-100 dark:ring-secondary-950',
-  accent:
-    'bg-accent-500 text-on-accent border border-accent-500 ring-4 ring-accent-100 dark:ring-accent-950',
-  neutral: 'bg-fg text-surface border border-fg ring-4 ring-surface-muted',
-  info: 'bg-info-500 text-on-info border border-info-500 ring-4 ring-info-100 dark:ring-info-950',
-  success:
-    'bg-success-500 text-on-success border border-success-500 ring-4 ring-success-100 dark:ring-success-950',
-  warning:
-    'bg-warning-500 text-on-warning border border-warning-500 ring-4 ring-warning-100 dark:ring-warning-950',
-  error:
-    'bg-error-500 text-on-error border border-error-500 ring-4 ring-error-100 dark:ring-error-950',
+  primary: 'bg-primary-solid text-primary-solid-fg border border-primary-border-strong ring-4 ring-primary-soft',
+  secondary: 'bg-secondary-solid text-secondary-solid-fg border border-secondary-border-strong ring-4 ring-secondary-soft',
+  accent: 'bg-accent-solid text-accent-solid-fg border border-accent-border-strong ring-4 ring-accent-soft',
+  neutral: 'bg-neutral-solid text-neutral-solid-fg border border-neutral-border-strong ring-4 ring-neutral-soft',
+  info: 'bg-info-solid text-info-solid-fg border border-info-border-strong ring-4 ring-info-soft',
+  success: 'bg-success-solid text-success-solid-fg border border-success-border-strong ring-4 ring-success-soft',
+  warning: 'bg-warning-solid text-warning-solid-fg border border-warning-border-strong ring-4 ring-warning-soft',
+  error: 'bg-error-solid text-error-solid-fg border border-error-border-strong ring-4 ring-error-soft',
 };
 
 const INDICATOR_COMPLETED: Record<TwColor, string> = {
-  primary: 'bg-primary-500 text-on-primary border border-primary-500',
-  secondary: 'bg-secondary-500 text-on-secondary border border-secondary-500',
-  accent: 'bg-accent-500 text-on-accent border border-accent-500',
-  neutral: 'bg-fg text-surface border border-fg',
-  info: 'bg-info-500 text-on-info border border-info-500',
-  success: 'bg-success-500 text-on-success border border-success-500',
-  warning: 'bg-warning-500 text-on-warning border border-warning-500',
-  error: 'bg-error-500 text-on-error border border-error-500',
+  primary: 'bg-primary-solid text-primary-solid-fg border border-primary-border-strong',
+  secondary: 'bg-secondary-solid text-secondary-solid-fg border border-secondary-border-strong',
+  accent: 'bg-accent-solid text-accent-solid-fg border border-accent-border-strong',
+  neutral: 'bg-neutral-solid text-neutral-solid-fg border border-neutral-border-strong',
+  info: 'bg-info-solid text-info-solid-fg border border-info-border-strong',
+  success: 'bg-success-solid text-success-solid-fg border border-success-border-strong',
+  warning: 'bg-warning-solid text-warning-solid-fg border border-warning-border-strong',
+  error: 'bg-error-solid text-error-solid-fg border border-error-border-strong',
 };
 
 const LABEL_PENDING = 'text-fg-muted';
 const LABEL_COMPLETED = 'text-fg';
 const LABEL_DISABLED = 'text-fg-subtle';
-const LABEL_ERROR = 'text-error-700 dark:text-error-300 font-semibold';
+const LABEL_ERROR = 'text-error-fg font-semibold';
 
 const LABEL_ACTIVE: Record<TwColor, string> = {
-  primary: 'text-primary-700 dark:text-primary-300 font-semibold',
-  secondary: 'text-secondary-700 dark:text-secondary-300 font-semibold',
-  accent: 'text-accent-700 dark:text-accent-300 font-semibold',
+  primary: 'text-primary-fg font-semibold',
+  secondary: 'text-secondary-fg font-semibold',
+  accent: 'text-accent-fg font-semibold',
   neutral: 'text-fg font-semibold',
-  info: 'text-info-700 dark:text-info-300 font-semibold',
-  success: 'text-success-700 dark:text-success-300 font-semibold',
-  warning: 'text-warning-700 dark:text-warning-300 font-semibold',
-  error: 'text-error-700 dark:text-error-300 font-semibold',
+  info: 'text-info-fg font-semibold',
+  success: 'text-success-fg font-semibold',
+  warning: 'text-warning-fg font-semibold',
+  error: 'text-error-fg font-semibold',
 };
 
 const CONNECTOR_DEFAULT = 'bg-border';
-const CONNECTOR_ERROR = 'bg-error-500';
+const CONNECTOR_ERROR = 'bg-error-border-strong';
 const CONNECTOR_REACHED: Record<TwColor, string> = {
-  primary: 'bg-primary-500',
-  secondary: 'bg-secondary-500',
-  accent: 'bg-accent-500',
-  neutral: 'bg-fg',
-  info: 'bg-info-500',
-  success: 'bg-success-500',
-  warning: 'bg-warning-500',
-  error: 'bg-error-500',
+  primary: 'bg-primary-border-strong',
+  secondary: 'bg-secondary-border-strong',
+  accent: 'bg-accent-border-strong',
+  neutral: 'bg-neutral-border-strong',
+  info: 'bg-info-border-strong',
+  success: 'bg-success-border-strong',
+  warning: 'bg-warning-border-strong',
+  error: 'bg-error-border-strong',
 };
 
 function resolveIndicatorClasses(state: StepStyleState, color: TwColor): string {
@@ -321,9 +320,13 @@ export class StepperComponent extends CdkStepper implements AfterViewInit {
   readonly size = input<TwSize>('md');
 
   /** When true, steps with `hasError` render error styling, icon, and `aria-invalid`. Defaults to `true`. */
+  // TRUE-default: error states must be visible by default — silently swallowing
+  // a stepped flow's failure state is a UX regression. Consumers opt out per step.
   readonly showError = input(true);
 
   /** When true, clicking a navigable step header selects it. Set to `false` to only allow advancement via `twStepperNext` / `twStepperPrevious`. Defaults to `true`. */
+  // TRUE-default: free-navigation is the standard stepper UX; restricted flows
+  // (e.g. wizards that must complete in order) explicitly opt out.
   readonly headerInteractive = input(true);
 
   private readonly _liveAnnouncer = inject(LiveAnnouncer);

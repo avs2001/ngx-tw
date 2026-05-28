@@ -23,20 +23,25 @@ import { CodeBlockComponent } from 'ngx-tw/code-block';
     <section class="mb-10">
       <h2 class="text-sm font-semibold mb-3">Accessibility</h2>
       <p class="text-sm text-fg-muted leading-relaxed max-w-2xl mb-4">
-        The trigger element exposes
-        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">role="button"</code>,
+        Apply
+        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">twCollapsibleTrigger</code>
+        to a native
+        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">&lt;button&gt;</code>
+        — the directive then wires up
         <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">aria-expanded</code>,
+        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">aria-controls</code>,
         and
-        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">aria-controls</code>;
-        the projected content region is wrapped in
+        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">aria-disabled</code>,
+        and switches
+        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">tabindex</code>
+        to
+        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">-1</code>
+        when the panel is disabled. The projected content region is wrapped in
         <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">role="region"</code>
         with
         <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">aria-labelledby</code>
         pointing back at the trigger. State changes are announced through CDK
         <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">LiveAnnouncer</code>.
-        Always project an element with an accessible name as the trigger — a
-        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">&lt;button&gt;</code>
-        with text content is the simplest choice.
       </p>
 
       <div class="overflow-x-auto border border-border rounded-lg">
@@ -72,7 +77,7 @@ import { CodeBlockComponent } from 'ngx-tw/code-block';
     <section class="mb-10">
       <h2 class="text-sm font-semibold mb-3">Basic Usage</h2>
       <div class="rounded-lg border border-border p-6 bg-surface-raised mb-4">
-        <tw-collapsible variant="bordered">
+        <tw-collapsible [display]="{ variant: 'bordered' }">
           <button twCollapsibleTrigger>What is ngx-tw?</button>
           <p>An Angular component library built with Tailwind CSS v4, designed for flexibility and accessibility.</p>
         </tw-collapsible>
@@ -145,7 +150,7 @@ import { CodeBlockComponent } from 'ngx-tw/code-block';
   `,
 })
 export class CollapsibleOverview {
-  protected readonly basicUsageSnippet = `<tw-collapsible variant="bordered">
+  protected readonly basicUsageSnippet = `<tw-collapsible [display]="{ variant: 'bordered' }">
   <button twCollapsibleTrigger>What is ngx-tw?</button>
   <p>An Angular component library built with Tailwind CSS v4...</p>
 </tw-collapsible>`;

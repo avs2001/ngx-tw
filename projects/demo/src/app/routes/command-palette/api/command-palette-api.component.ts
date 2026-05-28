@@ -78,6 +78,12 @@ import { CodeBlockComponent } from 'ngx-tw/code-block';
               <td class="px-4 py-2 text-fg-muted">Accessible label used for the dialog role.</td>
             </tr>
             <tr>
+              <td class="px-4 py-2 font-mono text-xs">searchAriaLabel</td>
+              <td class="px-4 py-2 font-mono text-xs text-fg-muted">string</td>
+              <td class="px-4 py-2 font-mono text-xs text-fg-muted">'Search commands'</td>
+              <td class="px-4 py-2 text-fg-muted">Accessible label applied to the search input (<code class="font-mono">role="combobox"</code>).</td>
+            </tr>
+            <tr>
               <td class="px-4 py-2 font-mono text-xs">panelClass</td>
               <td class="px-4 py-2 font-mono text-xs text-fg-muted">string | string[]</td>
               <td class="px-4 py-2 font-mono text-xs text-fg-muted">''</td>
@@ -273,6 +279,12 @@ import { CodeBlockComponent } from 'ngx-tw/code-block';
               <td class="px-4 py-2 font-mono text-xs text-fg-muted">string | readonly string[] | undefined</td>
               <td class="px-4 py-2 font-mono text-xs text-fg-muted">undefined</td>
               <td class="px-4 py-2 text-fg-muted">Keyboard shortcut hint; a string renders as one kbd, an array renders each key separately.</td>
+            </tr>
+            <tr>
+              <td class="px-4 py-2 font-mono text-xs">description</td>
+              <td class="px-4 py-2 font-mono text-xs text-fg-muted">string</td>
+              <td class="px-4 py-2 font-mono text-xs text-fg-muted">''</td>
+              <td class="px-4 py-2 text-fg-muted">Secondary description text rendered under the label.</td>
             </tr>
             <tr>
               <td class="px-4 py-2 font-mono text-xs">run</td>

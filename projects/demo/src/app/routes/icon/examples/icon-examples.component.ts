@@ -1,8 +1,8 @@
-import { ChangeDetectionStrategy, Component, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, signal } from '@angular/core';
 import { IconComponent } from 'ngx-tw/icon';
 import { ButtonDirective } from 'ngx-tw/button';
 import { CodeBlockComponent } from 'ngx-tw/code-block';
-import type { TwIconColor } from 'ngx-tw/icon';
+import type { TwIconColor, TwIconSvgConfig } from 'ngx-tw/icon';
 import type { TwSize } from 'ngx-tw/core';
 
 const COLORS: TwIconColor[] = [
@@ -87,13 +87,15 @@ const PLAYGROUND_ICONS: readonly string[] = [
       <tw-code-block [code]="sizesSnippet" language="html" />
     </section>
 
-    <!-- Stroke Width -->
+    <!-- SVG config — stroke width -->
     <section class="mb-10">
       <h2 class="text-sm font-semibold mb-3">Stroke Width</h2>
       <p class="text-sm text-fg-muted leading-relaxed max-w-2xl mb-4">
-        The
-        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">strokeWidth</code>
-        input sets the SVG stroke weight. The default of
+        SVG-author options group under a single
+        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">svg</code>
+        input. Set
+        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">{{ '{ strokeWidth }' }}</code>
+        to tune the stroke weight — the default of
         <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">2</code>
         matches the Lucide baseline; drop to
         <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">1.5</code>
@@ -105,7 +107,7 @@ const PLAYGROUND_ICONS: readonly string[] = [
         <div class="flex flex-wrap items-center gap-4">
           @for (sw of strokeWidths; track sw) {
             <div class="flex flex-col items-center gap-1.5">
-              <tw-icon name="star" size="lg" [strokeWidth]="sw" />
+              <tw-icon name="star" size="lg" [svg]="{ strokeWidth: sw }" />
               <span class="text-xs text-fg-muted font-mono">{{ sw }}</span>
             </div>
           }
@@ -119,7 +121,7 @@ const PLAYGROUND_ICONS: readonly string[] = [
       <h2 class="text-sm font-semibold mb-3">Absolute Stroke Width</h2>
       <p class="text-sm text-fg-muted leading-relaxed max-w-2xl mb-4">
         With
-        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">[absoluteStrokeWidth]="true"</code>
+        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">[svg]="{{ '{ strokeWidth: 2, absoluteStrokeWidth: true }' }}"</code>
         the stroke scales inversely with size so large icons don't look heavier than small ones.
         Reach for it when the same icon shows up across very different sizes (for example,
         <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">xs</code>
@@ -133,7 +135,7 @@ const PLAYGROUND_ICONS: readonly string[] = [
             <p class="text-xs font-medium text-fg-muted mb-2 uppercase tracking-wide">Normal (default)</p>
             <div class="flex items-end gap-3">
               @for (s of sizes; track s) {
-                <tw-icon name="star" [size]="s" [strokeWidth]="2" />
+                <tw-icon name="star" [size]="s" [svg]="normalStroke" />
               }
             </div>
           </div>
@@ -141,7 +143,7 @@ const PLAYGROUND_ICONS: readonly string[] = [
             <p class="text-xs font-medium text-fg-muted mb-2 uppercase tracking-wide">Absolute</p>
             <div class="flex items-end gap-3">
               @for (s of sizes; track s) {
-                <tw-icon name="star" [size]="s" [strokeWidth]="2" [absoluteStrokeWidth]="true" />
+                <tw-icon name="star" [size]="s" [svg]="absoluteStroke" />
               }
             </div>
           </div>
@@ -331,8 +333,7 @@ const PLAYGROUND_ICONS: readonly string[] = [
             [name]="playName()"
             [color]="playColor()"
             [size]="playSize()"
-            [strokeWidth]="playStrokeWidth()"
-            [absoluteStrokeWidth]="playAbsoluteStrokeWidth()"
+            [svg]="playSvgConfig()"
           />
         </div>
       </div>
@@ -351,6 +352,14 @@ export class IconExamples {
   protected readonly playStrokeWidth = signal<number>(2);
   protected readonly playAbsoluteStrokeWidth = signal<boolean>(false);
 
+  protected readonly playSvgConfig = computed<TwIconSvgConfig>(() => ({
+    strokeWidth: this.playStrokeWidth(),
+    absoluteStrokeWidth: this.playAbsoluteStrokeWidth(),
+  }));
+
+  protected readonly normalStroke: TwIconSvgConfig = { strokeWidth: 2 };
+  protected readonly absoluteStroke: TwIconSvgConfig = { strokeWidth: 2, absoluteStrokeWidth: true };
+
   protected readonly colorsSnippet = `
 @for (c of colors; track c) {
   <tw-icon name="star" [color]="c" size="lg" />
@@ -363,18 +372,18 @@ export class IconExamples {
 
   protected readonly strokeWidthSnippet = `
 @for (sw of strokeWidths; track sw) {
-  <tw-icon name="star" size="lg" [strokeWidth]="sw" />
+  <tw-icon name="star" size="lg" [svg]="{ strokeWidth: sw }" />
 }`.trim();
 
   protected readonly absoluteStrokeWidthSnippet = `
 <!-- Normal: heavier at small sizes -->
 @for (s of sizes; track s) {
-  <tw-icon name="star" [size]="s" [strokeWidth]="2" />
+  <tw-icon name="star" [size]="s" [svg]="{ strokeWidth: 2 }" />
 }
 
 <!-- Absolute: compensates so perceived weight stays constant -->
 @for (s of sizes; track s) {
-  <tw-icon name="star" [size]="s" [strokeWidth]="2" [absoluteStrokeWidth]="true" />
+  <tw-icon name="star" [size]="s" [svg]="{ strokeWidth: 2, absoluteStrokeWidth: true }" />
 }`.trim();
 
   protected readonly inlineTextSnippet = `<p class="text-sm flex items-center gap-1.5">

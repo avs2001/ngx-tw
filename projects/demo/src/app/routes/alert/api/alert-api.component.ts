@@ -39,13 +39,19 @@ import { CodeBlockComponent } from 'ngx-tw/code-block';
               <td class="px-4 py-2 font-mono text-xs">dismissible</td>
               <td class="px-4 py-2 font-mono text-xs text-fg-muted">boolean</td>
               <td class="px-4 py-2 font-mono text-xs text-fg-muted">false</td>
-              <td class="px-4 py-2 text-fg-muted">When true, renders an aria-labelled dismiss button in the top-right corner.</td>
+              <td class="px-4 py-2 text-fg-muted">When true, renders an aria-labelled dismiss button in the top-right corner. Accepts bare attribute form (<code class="font-mono">&lt;tw-alert dismissible&gt;</code>).</td>
             </tr>
             <tr>
               <td class="px-4 py-2 font-mono text-xs">politeness</td>
-              <td class="px-4 py-2 font-mono text-xs text-fg-muted">'polite' | 'assertive' | 'off'</td>
+              <td class="px-4 py-2 font-mono text-xs text-fg-muted">AlertPoliteness</td>
               <td class="px-4 py-2 font-mono text-xs text-fg-muted">'polite'</td>
-              <td class="px-4 py-2 text-fg-muted">Live-region politeness used when announcing the alert's text through CDK's LiveAnnouncer.</td>
+              <td class="px-4 py-2 text-fg-muted">Maps to the host ARIA role: <code class="font-mono">'polite' → status</code>, <code class="font-mono">'assertive' → alert</code>, <code class="font-mono">'off' → null</code>. The role's implicit live region announces the alert exactly once.</td>
+            </tr>
+            <tr>
+              <td class="px-4 py-2 font-mono text-xs">dismissLabel</td>
+              <td class="px-4 py-2 font-mono text-xs text-fg-muted">string</td>
+              <td class="px-4 py-2 font-mono text-xs text-fg-muted">'Dismiss'</td>
+              <td class="px-4 py-2 text-fg-muted">Accessible label applied to the dismiss button. Override for localization.</td>
             </tr>
           </tbody>
         </table>
@@ -172,6 +178,8 @@ import { CodeBlockComponent } from 'ngx-tw/code-block';
 })
 export class AlertApi {
   protected readonly typesSnippet = `type AlertVariant = 'solid' | 'outline' | 'soft';
+
+type AlertPoliteness = 'polite' | 'assertive' | 'off';
 
 // Shared library types (re-exported from 'ngx-tw/core'):
 type TwColor = 'primary' | 'secondary' | 'accent' | 'neutral'

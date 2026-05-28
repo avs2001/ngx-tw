@@ -4,4 +4,4 @@ export {
   CollapsibleTriggerDirective,
   CollapsibleIconDirective,
 } from './collapsible';
-export type { CollapsibleVariant } from './collapsible';
+export type { CollapsibleVariant, CollapsibleDisplay } from './collapsible';

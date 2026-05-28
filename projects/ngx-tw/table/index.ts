@@ -2,16 +2,17 @@ export {
   ColumnComponent,
   DEFAULT_TABLE_LABELS,
   TableComponent,
-  TwCellDefDirective,
-  TwFooterCellDefDirective,
-  TwHeaderCellDefDirective,
-  TwNoDataRowDirective,
-  TwRowExpansionDirective,
+  CellDefDirective,
+  FooterCellDefDirective,
+  HeaderCellDefDirective,
+  NoDataRowDirective,
+  RowExpansionDirective,
 } from './table';
 
 export type {
   TwCellContext,
   TwColumnAlign,
+  TwColumnAriaSort,
   TwColumnDisplay,
   TwColumnSticky,
   TwFooterCellContext,

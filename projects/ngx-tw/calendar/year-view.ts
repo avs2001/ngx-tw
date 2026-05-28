@@ -26,6 +26,7 @@ const MONTHS_PER_YEAR = 12;
       role="grid"
       [attr.aria-label]="gridLabel()"
       [attr.aria-multiselectable]="multiSelectable() || null"
+      [attr.aria-readonly]="readonlyGrid() || null"
       (mouseleave)="onGridMouseLeave()"
     >
       @for (row of cells(); track $index) {
@@ -137,10 +138,10 @@ export class YearViewComponent<D> extends CalendarViewBase<D> {
         this.focusCell(11);
         break;
       case 'pageUp':
-        newDate = this.dateAdapter.addYears(event.cell.value, -1);
+        newDate = this.dateAdapter.addYears(event.cell.value, event.shiftKey ? -10 : -1);
         break;
       case 'pageDown':
-        newDate = this.dateAdapter.addYears(event.cell.value, 1);
+        newDate = this.dateAdapter.addYears(event.cell.value, event.shiftKey ? 10 : 1);
         break;
     }
     if (newDate) this.activeDateChange.emit(newDate);

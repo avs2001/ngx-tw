@@ -17,10 +17,17 @@ import {
   computed,
   effect,
   input,
-  isDevMode,
+  untracked,
 } from '@angular/core';
 import { tv } from 'tailwind-variants';
 import type { TwColor } from 'ngx-tw/core';
+
+// `ngDevMode` is a globalThis flag set by Angular's build tooling — true in dev,
+// `false` in production builds. The `typeof` guard keeps the warning path safe
+// in environments (SSR, ad-hoc test harnesses) where the global is undeclared.
+// Preferred over `isDevMode()` because the latter is a runtime function call;
+// `ngDevMode` is a build-time constant the bundler can dead-code-eliminate.
+declare const ngDevMode: boolean | undefined;
 
 /** Visual style of the progress bar. */
 export type ProgressBarVariant = 'linear' | 'segmented';
@@ -90,7 +97,7 @@ const progressBarVariants = tv({
     },
     isIndeterminate: {
       true: { fill: 'w-[30%] animate-progress-bar-indeterminate' },
-      false: { fill: 'transition-[width] duration-200 motion-reduce:transition-none' },
+      false: { fill: 'transition-[width] duration-normal motion-reduce:transition-none' },
     },
     hasHeader: {
       true: { root: 'gap-1.5' },
@@ -303,18 +310,30 @@ export class ProgressBarComponent {
   }
 
   // ── Dev-mode accessible-name warning (fires once per instance) ──
+  //
+  // The effect is reactive on purpose: if a consumer mounts the component
+  // without a label and later removes the only accessible name they had, the
+  // warning still fires on the *first* render where no name is present. Once
+  // it has fired, `warned` short-circuits further evaluations. Production
+  // builds skip the entire effect setup because `ngDevMode` is statically
+  // `false` and the constructor returns early.
 
   constructor() {
-    if (!isDevMode()) return;
+    if (typeof ngDevMode !== 'undefined' && !ngDevMode) return;
     let warned = false;
     effect(() => {
       if (warned) return;
       const opts = this.options();
       if (this.label() || opts?.ariaLabel || opts?.ariaLabelledby) return;
-      warned = true;
-      console.warn(
-        'tw-progress-bar: no accessible name provided. Supply one of `label`, `options.ariaLabel`, or `options.ariaLabelledby`.',
-      );
+      // `untracked` wraps the side-effect so the console.warn / flag mutation
+      // can never create a reactive subscription — defensive in case future
+      // work adds signal reads inside the warning block.
+      untracked(() => {
+        warned = true;
+        console.warn(
+          'tw-progress-bar: no accessible name provided. Supply one of `label`, `options.ariaLabel`, or `options.ariaLabelledby`.',
+        );
+      });
     });
   }
 }

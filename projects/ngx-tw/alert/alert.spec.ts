@@ -1,7 +1,6 @@
 import { ChangeDetectionStrategy, Component, signal } from '@angular/core';
 import { type ComponentFixture, TestBed } from '@angular/core/testing';
-import { LiveAnnouncer } from '@angular/cdk/a11y';
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach } from 'vitest';
 import type { TwColor } from 'ngx-tw/core';
 import {
   AlertComponent,
@@ -10,7 +9,7 @@ import {
   AlertContentDirective,
   AlertActionsDirective,
 } from './alert';
-import type { AlertVariant } from './alert';
+import type { AlertPoliteness, AlertVariant } from './alert';
 
 // ── Test host components ──
 
@@ -36,6 +35,7 @@ class SimpleHost {}
       [color]="color()"
       [dismissible]="dismissible()"
       [politeness]="politeness()"
+      [dismissLabel]="dismissLabel()"
       (dismissed)="dismissCount.set(dismissCount() + 1)"
     >
       <svg twAlertIcon data-testid="icon">icon</svg>
@@ -51,7 +51,8 @@ class FullHost {
   variant = signal<AlertVariant>('soft');
   color = signal<TwColor>('info');
   dismissible = signal(false);
-  politeness = signal<'polite' | 'assertive' | 'off'>('polite');
+  politeness = signal<AlertPoliteness>('polite');
+  dismissLabel = signal('Dismiss');
   dismissCount = signal(0);
 }
 
@@ -67,6 +68,20 @@ class FullHost {
 class DismissibleHost {
   dismissCount = signal(0);
 }
+
+@Component({
+  imports: [AlertComponent],
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  template: `<tw-alert dismissible>Bare dismissible</tw-alert>`,
+})
+class BareDismissibleHost {}
+
+@Component({
+  imports: [AlertComponent],
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  template: `<tw-alert class="bg-purple-500 rounded-none">Overridden</tw-alert>`,
+})
+class OverrideHost {}
 
 // ── Tests ──
 
@@ -100,7 +115,7 @@ describe('AlertComponent', () => {
       const alert: HTMLElement = fixture.nativeElement.querySelector('tw-alert');
       expect(alert.className).toContain('rounded-lg');
       expect(alert.className).toContain('p-4');
-      expect(alert.className).toContain('bg-info-50');
+      expect(alert.className).toContain('bg-info-soft');
     });
 
     it('should not render dismiss button by default', () => {
@@ -122,7 +137,7 @@ describe('AlertComponent', () => {
 
     it('should render soft variant', () => {
       const alert: HTMLElement = fixture.nativeElement.querySelector('tw-alert');
-      expect(alert.className).toContain('bg-info-50');
+      expect(alert.className).toContain('bg-info-soft');
     });
 
     it('should render outline variant', () => {
@@ -130,15 +145,18 @@ describe('AlertComponent', () => {
       fixture.detectChanges();
       const alert: HTMLElement = fixture.nativeElement.querySelector('tw-alert');
       expect(alert.className).toContain('border');
-      expect(alert.className).toContain('border-info-300');
+      expect(alert.className).toContain('border-info-border');
     });
 
-    it('should render solid variant', () => {
+    it('should render solid variant with the solid-fg slot token', () => {
       fixture.componentInstance.variant.set('solid');
       fixture.detectChanges();
       const alert: HTMLElement = fixture.nativeElement.querySelector('tw-alert');
-      expect(alert.className).toContain('bg-info-600');
-      expect(alert.className).toContain('text-white');
+      expect(alert.className).toContain('bg-info-solid');
+      expect(alert.className).toContain('text-info-solid-fg');
+      // No raw shade picks — slot tokens own the pairing.
+      expect(alert.className).not.toMatch(/bg-info-\d/);
+      expect(alert.className).not.toMatch(/text-on-/);
     });
 
     it('should render each variant without errors', () => {
@@ -161,36 +179,45 @@ describe('AlertComponent', () => {
       fixture.detectChanges();
     });
 
-    it('should apply error color classes', () => {
+    it('should apply error soft slot tokens', () => {
       fixture.componentInstance.color.set('error');
       fixture.detectChanges();
       const alert: HTMLElement = fixture.nativeElement.querySelector('tw-alert');
-      expect(alert.className).toContain('bg-error-50');
-      expect(alert.className).toContain('text-error-800');
+      expect(alert.className).toContain('bg-error-soft');
+      expect(alert.className).toContain('text-error-soft-fg-muted');
     });
 
-    it('should apply success color classes', () => {
+    it('should apply success soft slot bg', () => {
       fixture.componentInstance.color.set('success');
       fixture.detectChanges();
       const alert: HTMLElement = fixture.nativeElement.querySelector('tw-alert');
-      expect(alert.className).toContain('bg-success-50');
+      expect(alert.className).toContain('bg-success-soft');
     });
 
-    it('should apply neutral color with surface tokens', () => {
+    it('should apply neutral slot tokens (which alias surface/fg)', () => {
       fixture.componentInstance.color.set('neutral');
       fixture.detectChanges();
       const alert: HTMLElement = fixture.nativeElement.querySelector('tw-alert');
-      expect(alert.className).toContain('bg-surface-muted');
-      expect(alert.className).toContain('text-fg');
+      expect(alert.className).toContain('bg-neutral-soft');
+      expect(alert.className).toContain('text-neutral-soft-fg-muted');
     });
 
-    it('should apply warning solid variant with dark text', () => {
+    it('should apply warning solid variant with slot tokens', () => {
       fixture.componentInstance.variant.set('solid');
       fixture.componentInstance.color.set('warning');
       fixture.detectChanges();
       const alert: HTMLElement = fixture.nativeElement.querySelector('tw-alert');
-      expect(alert.className).toContain('bg-warning-500');
-      expect(alert.className).toContain('text-black');
+      expect(alert.className).toContain('bg-warning-solid');
+      expect(alert.className).toContain('text-warning-solid-fg');
+    });
+
+    it('should apply success solid variant with slot tokens', () => {
+      fixture.componentInstance.variant.set('solid');
+      fixture.componentInstance.color.set('success');
+      fixture.detectChanges();
+      const alert: HTMLElement = fixture.nativeElement.querySelector('tw-alert');
+      expect(alert.className).toContain('bg-success-solid');
+      expect(alert.className).toContain('text-success-solid-fg');
     });
 
     it('should render all color values without errors', () => {
@@ -200,6 +227,58 @@ describe('AlertComponent', () => {
         fixture.detectChanges();
         expect(fixture.nativeElement.querySelector('tw-alert')).toBeTruthy();
       }
+    });
+  });
+
+  describe('theme adaptation (slot-only, no dark: overrides)', () => {
+    let fixture: ComponentFixture<FullHost>;
+
+    beforeEach(async () => {
+      await TestBed.configureTestingModule({
+        imports: [FullHost],
+      }).compileComponents();
+      fixture = TestBed.createComponent(FullHost);
+      fixture.detectChanges();
+    });
+
+    it('should never emit `dark:` overrides — theme adaptation is owned by the slot tokens', () => {
+      // Sweep every variant × color and assert no `dark:` utility is present.
+      // The slot tokens (`bg-{role}-soft`, etc.) resolve to different values
+      // per theme via CSS variables, so components no longer need `dark:`.
+      const variants: AlertVariant[] = ['soft', 'outline', 'solid'];
+      const colors: TwColor[] = ['primary', 'secondary', 'accent', 'neutral', 'info', 'success', 'warning', 'error'];
+      for (const v of variants) {
+        for (const c of colors) {
+          fixture.componentInstance.variant.set(v);
+          fixture.componentInstance.color.set(c);
+          fixture.detectChanges();
+          const alert: HTMLElement = fixture.nativeElement.querySelector('tw-alert');
+          expect(alert.className, `variant=${v} color=${c}`).not.toMatch(/\bdark:/);
+        }
+      }
+    });
+
+    it('should consume only slot tokens for the soft info path', () => {
+      fixture.componentInstance.variant.set('soft');
+      fixture.componentInstance.color.set('info');
+      fixture.detectChanges();
+      const alert: HTMLElement = fixture.nativeElement.querySelector('tw-alert');
+      expect(alert.className).toContain('bg-info-soft');
+      expect(alert.className).toContain('text-info-soft-fg-muted');
+      // Title and content children carry the title-strength and body-muted slots.
+      const title = fixture.nativeElement.querySelector('[twAlertTitle]');
+      expect(title.className).toContain('text-info-soft-fg');
+      const content = fixture.nativeElement.querySelector('[twAlertContent]');
+      expect(content.className).toContain('text-info-soft-fg-muted');
+    });
+
+    it('should consume only slot tokens for the outline error path', () => {
+      fixture.componentInstance.variant.set('outline');
+      fixture.componentInstance.color.set('error');
+      fixture.detectChanges();
+      const alert: HTMLElement = fixture.nativeElement.querySelector('tw-alert');
+      expect(alert.className).toContain('border-error-border');
+      expect(alert.className).toContain('text-error-soft-fg-muted');
     });
   });
 
@@ -217,6 +296,11 @@ describe('AlertComponent', () => {
     it('should render dismiss button when dismissible', () => {
       const dismiss = fixture.nativeElement.querySelector('button[aria-label="Dismiss"]');
       expect(dismiss).toBeTruthy();
+    });
+
+    it('should size the dismiss button to size-6 (square-interactive xs)', () => {
+      const dismiss: HTMLButtonElement = fixture.nativeElement.querySelector('button[aria-label="Dismiss"]');
+      expect(dismiss.className).toContain('size-6');
     });
 
     it('should add right padding when dismissible', () => {
@@ -237,6 +321,45 @@ describe('AlertComponent', () => {
       dismiss.click();
       fixture.detectChanges();
       expect(fixture.componentInstance.dismissCount()).toBe(2);
+    });
+  });
+
+  describe('dismissible booleanAttribute', () => {
+    it('should treat bare `dismissible` attribute as true', async () => {
+      await TestBed.configureTestingModule({
+        imports: [BareDismissibleHost],
+      }).compileComponents();
+      const fixture = TestBed.createComponent(BareDismissibleHost);
+      fixture.detectChanges();
+
+      const dismiss = fixture.nativeElement.querySelector('button[aria-label="Dismiss"]');
+      expect(dismiss).toBeTruthy();
+    });
+  });
+
+  describe('dismissLabel input', () => {
+    let fixture: ComponentFixture<FullHost>;
+
+    beforeEach(async () => {
+      await TestBed.configureTestingModule({
+        imports: [FullHost],
+      }).compileComponents();
+      fixture = TestBed.createComponent(FullHost);
+      fixture.componentInstance.dismissible.set(true);
+      fixture.detectChanges();
+    });
+
+    it('should default the dismiss button aria-label to "Dismiss"', () => {
+      const dismiss = fixture.nativeElement.querySelector('button[aria-label="Dismiss"]');
+      expect(dismiss).toBeTruthy();
+    });
+
+    it('should override the dismiss button aria-label when dismissLabel changes', () => {
+      fixture.componentInstance.dismissLabel.set('Fermer');
+      fixture.detectChanges();
+      const dismiss = fixture.nativeElement.querySelector('button[aria-label="Fermer"]');
+      expect(dismiss).toBeTruthy();
+      expect(fixture.nativeElement.querySelector('button[aria-label="Dismiss"]')).toBeNull();
     });
   });
 
@@ -315,18 +438,38 @@ describe('AlertComponent', () => {
     });
   });
 
-  describe('accessibility', () => {
-    it('should have role="alert"', async () => {
-      await TestBed.configureTestingModule({
-        imports: [SimpleHost],
-      }).compileComponents();
-      const fixture = TestBed.createComponent(SimpleHost);
-      fixture.detectChanges();
+  describe('role by politeness', () => {
+    let fixture: ComponentFixture<FullHost>;
 
+    beforeEach(async () => {
+      await TestBed.configureTestingModule({
+        imports: [FullHost],
+      }).compileComponents();
+      fixture = TestBed.createComponent(FullHost);
+    });
+
+    it('should set role="status" for polite politeness (default)', () => {
+      fixture.detectChanges();
+      const alert = fixture.nativeElement.querySelector('tw-alert');
+      expect(alert.getAttribute('role')).toBe('status');
+    });
+
+    it('should set role="alert" for assertive politeness', () => {
+      fixture.componentInstance.politeness.set('assertive');
+      fixture.detectChanges();
       const alert = fixture.nativeElement.querySelector('tw-alert');
       expect(alert.getAttribute('role')).toBe('alert');
     });
 
+    it('should drop role entirely when politeness is off', () => {
+      fixture.componentInstance.politeness.set('off');
+      fixture.detectChanges();
+      const alert = fixture.nativeElement.querySelector('tw-alert');
+      expect(alert.getAttribute('role')).toBeNull();
+    });
+  });
+
+  describe('accessibility', () => {
     it('should have aria-label on dismiss button', async () => {
       await TestBed.configureTestingModule({
         imports: [DismissibleHost],
@@ -349,74 +492,31 @@ describe('AlertComponent', () => {
       const dismiss = fixture.nativeElement.querySelector('button[aria-label="Dismiss"]');
       expect(dismiss.getAttribute('type')).toBe('button');
     });
-  });
 
-  describe('LiveAnnouncer', () => {
-    it('should announce with polite politeness by default', async () => {
-      const announceSpy = vi.fn().mockResolvedValue(undefined);
+    it('should expose a focus-visible outline on the dismiss button', async () => {
       await TestBed.configureTestingModule({
-        imports: [SimpleHost],
-        providers: [
-          { provide: LiveAnnouncer, useValue: { announce: announceSpy } },
-        ],
+        imports: [DismissibleHost],
       }).compileComponents();
-      const fixture = TestBed.createComponent(SimpleHost);
+      const fixture = TestBed.createComponent(DismissibleHost);
       fixture.detectChanges();
-      await fixture.whenStable();
 
-      expect(announceSpy).toHaveBeenCalledWith(
-        expect.stringContaining('Simple alert message'),
-        'polite',
-      );
-    });
-
-    it('should announce with assertive politeness when configured', async () => {
-      const announceSpy = vi.fn().mockResolvedValue(undefined);
-      await TestBed.configureTestingModule({
-        imports: [FullHost],
-        providers: [
-          { provide: LiveAnnouncer, useValue: { announce: announceSpy } },
-        ],
-      }).compileComponents();
-      const fixture = TestBed.createComponent(FullHost);
-      fixture.componentInstance.politeness.set('assertive');
-      fixture.detectChanges();
-      await fixture.whenStable();
-
-      expect(announceSpy).toHaveBeenCalledWith(
-        expect.any(String),
-        'assertive',
-      );
-    });
-
-    it('should not announce when politeness is off', async () => {
-      const announceSpy = vi.fn().mockResolvedValue(undefined);
-      await TestBed.configureTestingModule({
-        imports: [FullHost],
-        providers: [
-          { provide: LiveAnnouncer, useValue: { announce: announceSpy } },
-        ],
-      }).compileComponents();
-      const fixture = TestBed.createComponent(FullHost);
-      fixture.componentInstance.politeness.set('off');
-      fixture.detectChanges();
-      await fixture.whenStable();
-
-      expect(announceSpy).not.toHaveBeenCalled();
+      const dismiss: HTMLButtonElement = fixture.nativeElement.querySelector('button[aria-label="Dismiss"]');
+      expect(dismiss.className).toContain('focus-visible:outline-2');
+      expect(dismiss.className).toContain('focus-visible:outline-primary-500');
     });
   });
 
-  describe('animate.leave binding', () => {
-    it('should have animate.leave host binding', async () => {
+  describe('consumer classes', () => {
+    it('should preserve consumer classes alongside internal classes', async () => {
       await TestBed.configureTestingModule({
-        imports: [SimpleHost],
+        imports: [OverrideHost],
       }).compileComponents();
-      const fixture = TestBed.createComponent(SimpleHost);
+      const fixture = TestBed.createComponent(OverrideHost);
       fixture.detectChanges();
 
-      const alert = fixture.nativeElement.querySelector('tw-alert');
-      // The animate.leave binding is set as a host attribute
-      expect(alert).toBeTruthy();
+      const alert: HTMLElement = fixture.nativeElement.querySelector('tw-alert');
+      expect(alert.className).toContain('bg-purple-500');
+      expect(alert.className).toContain('rounded-none');
     });
   });
 });

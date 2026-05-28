@@ -4,6 +4,7 @@ import {
   ChangeDetectionStrategy,
   Component,
   computed,
+  contentChild,
   DestroyRef,
   effect,
   ElementRef,
@@ -18,6 +19,7 @@ import {
   output,
   signal,
   type Signal,
+  type TemplateRef,
   untracked,
   viewChild,
   ViewContainerRef,
@@ -29,19 +31,16 @@ import {
   NgForm,
   Validators,
 } from '@angular/forms';
-import {
-  type ConnectedPosition,
-  Overlay,
-  type OverlayRef,
-  type ScrollStrategy,
-} from '@angular/cdk/overlay';
-import { ComponentPortal } from '@angular/cdk/portal';
-import { FocusMonitor, FocusTrapFactory, LiveAnnouncer } from '@angular/cdk/a11y';
+import { Overlay } from '@angular/cdk/overlay';
+import { FocusMonitor, LiveAnnouncer } from '@angular/cdk/a11y';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { merge, Subscription } from 'rxjs';
+import { merge } from 'rxjs';
 import { tv } from 'tailwind-variants';
 import {
+  buildSelectLikePositions,
   type ErrorStateMatcher,
+  PickerOverlayCoordinator,
+  resolveSelectScrollStrategy,
   type TimePickerFormat,
   timeOfDaySeconds,
   TW_ERROR_STATE_MATCHER,
@@ -55,7 +54,7 @@ import {
   TW_FORM_FIELD_CONTROL,
 } from 'ngx-tw/form-field';
 import { DATE_ADAPTER, type DateAdapter } from 'ngx-tw/calendar';
-import type { TwCalendarView, TwDateFilter } from 'ngx-tw/calendar';
+import type { CalendarCell, CalendarViewState, DateClassFn, DateFilterFn } from 'ngx-tw/calendar';
 import { DatePickerOverlayComponent } from './date-picker-overlay';
 
 // ── Public types ──────────────────────────────────────────────────
@@ -107,30 +106,54 @@ export interface DatePickerOpenedEvent {
   readonly trigger: HTMLElement;
 }
 
+/** A quick-select preset rendered above the calendar in the overlay. Mirrors `DateRangePreset`. */
+export interface DatePickerPreset<D = Date> {
+  /** Label shown on the preset button. */
+  readonly label: string;
+  /** Factory returning the date to apply when this preset is chosen. Called fresh each click so "today"-relative presets stay current. */
+  readonly date: () => D;
+  /** Optional identifier — surfaced in `presetSelected` and used to detect the active preset for visual state. */
+  readonly id?: string;
+}
+
+/** Bundle of time-of-day configuration forwarded to the embedded `<tw-time-picker>`. Passing a non-null object turns the time-picker on and forwards each field; pass `{}` to enable with all defaults. */
+export interface DatePickerTimeConfig<D = Date> {
+  /** Clock format. Defaults to `'24h'`. */
+  readonly format?: TimePickerFormat;
+  /** Whether to expose a seconds field. Defaults to `false`. */
+  readonly showSeconds?: boolean;
+  /** Hour step. Defaults to `1`. */
+  readonly hourStep?: number;
+  /** Minute step. Defaults to `1`. */
+  readonly minuteStep?: number;
+  /** Second step. Defaults to `1`. */
+  readonly secondStep?: number;
+  /** Earliest accepted time-of-day. Values earlier than this set `errorState`. */
+  readonly minTime?: D | null;
+  /** Latest accepted time-of-day. Values later than this set `errorState`. */
+  readonly maxTime?: D | null;
+}
+
 /** Re-exported from `ngx-tw/calendar` for consumers importing only the date-picker. */
-export type { TwCalendarView, TwDateFilter };
+export type { CalendarViewState, DateFilterFn, DateClassFn };
 
 /** Re-exported from `ngx-tw/core` for consumers importing only the date-picker. */
 export type { TimePickerFormat };
-
-// ── Constants ─────────────────────────────────────────────────────
-
-// Duration for leave animation — matches theme/_base.css scale-out/fade-out.
-const ANIMATION_DURATION = 150;
 
 // ── tv() config ───────────────────────────────────────────────────
 
 const datePickerVariants = tv(
   {
     slots: {
-      root: 'relative inline-flex items-center w-full text-fg transition-[color,border-color,box-shadow] duration-200 motion-reduce:transition-none',
+      root: 'relative inline-flex items-center w-full text-fg transition-[color,border-color,box-shadow] duration-normal motion-reduce:transition-none',
       input:
         'flex-1 min-w-0 bg-transparent text-fg placeholder:text-fg-subtle outline-none border-0 p-0 m-0 font-inherit',
       triggerButton:
-        'inline-flex items-center justify-center shrink-0 rounded-md text-fg-muted hover:text-fg hover:bg-surface-muted transition-colors duration-200 motion-reduce:transition-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500',
+        'inline-flex items-center justify-center shrink-0 rounded-md text-fg-muted hover:text-fg hover:bg-surface-muted transition-colors duration-normal motion-reduce:transition-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500',
       triggerIcon: 'shrink-0',
+      // size-6 (24×24 CSS px) is the WCAG AA minimum interactive target — bumping past size-5 keeps the affordance hittable without growing the inline row.
       clearButton:
-        'inline-flex items-center justify-center shrink-0 rounded-md text-fg-muted hover:text-fg hover:bg-surface-muted transition-colors duration-200 motion-reduce:transition-none size-5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500',
+        'inline-flex items-center justify-center shrink-0 rounded-md text-fg-muted hover:text-fg hover:bg-surface-muted transition-colors duration-normal motion-reduce:transition-none size-6 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500',
     },
     variants: {
       size: {
@@ -138,6 +161,7 @@ const datePickerVariants = tv(
           root: 'gap-1 text-xs',
           input: 'text-xs',
           triggerButton: 'size-6',
+          // size-3.5 (14px) is the codified half-step for xs-density chevrons — size-3 (12px) looks pinched next to text-xs and size-4 (16px) crowds the 24px trigger.
           triggerIcon: 'size-3.5',
         },
         sm: {
@@ -161,6 +185,7 @@ const datePickerVariants = tv(
         xl: {
           root: 'gap-2 text-base',
           input: 'text-base',
+          // size-10 (40px) extends the codified xs..lg square-interactive scale (24/28/32/36) by one step for xl. Stepping down to size-9 would make lg and xl visually identical since both use text-base; matches paginator's xl handling (size-11).
           triggerButton: 'size-10',
           triggerIcon: 'size-5',
         },
@@ -217,17 +242,6 @@ const datePickerVariants = tv(
   { twMerge: true },
 );
 
-// ── Overlay positions ─────────────────────────────────────────────
-
-function buildDatePickerPositions(offset: number): ConnectedPosition[] {
-  return [
-    { originX: 'start', originY: 'bottom', overlayX: 'start', overlayY: 'top', offsetY: offset },
-    { originX: 'end', originY: 'bottom', overlayX: 'end', overlayY: 'top', offsetY: offset },
-    { originX: 'start', originY: 'top', overlayX: 'start', overlayY: 'bottom', offsetY: -offset },
-    { originX: 'end', originY: 'top', overlayX: 'end', overlayY: 'bottom', offsetY: -offset },
-  ];
-}
-
 // ── ID generator ──────────────────────────────────────────────────
 
 let nextDatePickerId = 0;
@@ -255,16 +269,28 @@ const DEFAULT_DISPLAY_FORMAT = {
       provide: TW_FORM_FIELD_CONTROL,
       useExisting: forwardRef(() => DatePickerComponent),
     },
+    PickerOverlayCoordinator,
   ],
   template: `
+    <!-- Optional rich-label trigger. When projected (a child carries [slot=trigger]), the default input/clear/trigger chrome is hidden. Clicks anywhere in the projected content open the overlay. -->
+    <div
+      class="contents"
+      (click)="onCustomTriggerClick($event)"
+      (keydown)="onCustomTriggerKeydown($event)"
+    >
+      <ng-content select="[slot=trigger]" />
+    </div>
+
     <input
       #dateInput
       type="text"
       [id]="hostId"
       [class]="inputClasses()"
+      [class.sr-only]="hasCustomTrigger()"
       [value]="rawInputText()"
       [placeholder]="placeholder() || ''"
       [disabled]="isDisabled()"
+      [tabindex]="hasCustomTrigger() ? -1 : null"
       [attr.readonly]="readonlyInput() ? 'true' : null"
       [attr.role]="'combobox'"
       [attr.aria-haspopup]="'dialog'"
@@ -284,7 +310,7 @@ const DEFAULT_DISPLAY_FORMAT = {
       (keydown)="onInputKeydown($event)"
     />
 
-    @if (showClear() && !isEmpty() && !isDisabled() && !readonlyInput()) {
+    @if (!hasCustomTrigger() && showClear() && !isEmpty() && !isDisabled() && !readonlyInput()) {
       <button
         type="button"
         tabindex="-1"
@@ -292,7 +318,7 @@ const DEFAULT_DISPLAY_FORMAT = {
         [attr.aria-label]="'Clear date'"
         (click)="onClearClick($event)"
       >
-        <svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true" class="size-3">
+        <svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true" class="size-4">
           <path
             fill-rule="evenodd"
             d="M10 8.586 4.707 3.293a1 1 0 0 0-1.414 1.414L8.586 10l-5.293 5.293a1 1 0 1 0 1.414 1.414L10 11.414l5.293 5.293a1 1 0 0 0 1.414-1.414L11.414 10l5.293-5.293a1 1 0 0 0-1.414-1.414L10 8.586Z"
@@ -302,37 +328,39 @@ const DEFAULT_DISPLAY_FORMAT = {
       </button>
     }
 
-    <button
-      #triggerBtn
-      type="button"
-      [class]="triggerButtonClasses()"
-      [attr.aria-label]="triggerAriaLabel()"
-      [attr.aria-haspopup]="'dialog'"
-      [attr.aria-expanded]="open() ? 'true' : 'false'"
-      [attr.aria-controls]="dialogId"
-      [attr.aria-disabled]="isDisabled() || null"
-      [disabled]="isDisabled()"
-      (click)="onTriggerClick()"
-      (keydown)="onTriggerKeydown($event)"
-    >
-      <ng-content select="[slot=trigger-icon]">
-        <svg
-          [class]="triggerIconClasses()"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="2"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-          aria-hidden="true"
-        >
-          <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
-          <line x1="16" y1="2" x2="16" y2="6" />
-          <line x1="8" y1="2" x2="8" y2="6" />
-          <line x1="3" y1="10" x2="21" y2="10" />
-        </svg>
-      </ng-content>
-    </button>
+    @if (!hasCustomTrigger()) {
+      <button
+        #triggerBtn
+        type="button"
+        [class]="triggerButtonClasses()"
+        [attr.aria-label]="triggerAriaLabel()"
+        [attr.aria-haspopup]="'dialog'"
+        [attr.aria-expanded]="open() ? 'true' : 'false'"
+        [attr.aria-controls]="dialogId"
+        [attr.aria-disabled]="isDisabled() || null"
+        [disabled]="isDisabled()"
+        (click)="onTriggerClick()"
+        (keydown)="onTriggerKeydown($event)"
+      >
+        <ng-content select="[slot=trigger-icon]">
+          <svg
+            [class]="triggerIconClasses()"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            aria-hidden="true"
+          >
+            <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
+            <line x1="16" y1="2" x2="16" y2="6" />
+            <line x1="8" y1="2" x2="8" y2="6" />
+            <line x1="3" y1="10" x2="21" y2="10" />
+          </svg>
+        </ng-content>
+      </button>
+    }
   `,
   host: {
     '[class]': 'rootClasses()',
@@ -354,10 +382,10 @@ export class DatePickerComponent<D = Date>
   readonly maxDate = input<D | null>(null);
 
   /** Per-date predicate — return `false` to disable. Applied in both the calendar and the text-parse path. */
-  readonly dateFilter = input<TwDateFilter<D> | null>(null);
+  readonly dateFilter = input<DateFilterFn<D> | null>(null);
 
   /** Which calendar view opens first — `'day'`, `'month'`, or `'year'`. Defaults to `'day'`. */
-  readonly startView = input<TwCalendarView>('day');
+  readonly startView = input<CalendarViewState>('day');
 
   /** Date to focus when the calendar opens with no selection. Falls back to today. */
   readonly startAt = input<D | null>(null);
@@ -399,6 +427,7 @@ export class DatePickerComponent<D = Date>
   readonly variant = input<DatePickerVariant | undefined>(undefined);
 
   /** Whether to show a clear-button affordance inside the trigger when a value is set. Defaults to `true`. */
+  // TRUE-default: a picker without a clear affordance forces consumers to wire one — most form pickers expect the inline clear, matching `<tw-input>`'s clear button.
   readonly showClear = input<boolean>(true);
 
   /** When true, renders a `Today / Clear / Cancel / Apply` action bar at the bottom of the overlay. Defaults to `false`. */
@@ -431,29 +460,24 @@ export class DatePickerComponent<D = Date>
   /** Accessible name for the calendar trigger button. Defaults to `'Open calendar'`. */
   readonly triggerAriaLabel = input<string>('Open calendar');
 
-  /** When true, the overlay also renders a `<tw-time-picker>` so users can pick a time-of-day alongside the date. Defaults to `false`. */
-  readonly withTime = input<boolean>(false);
+  /**
+   * Bundles the time-of-day configuration. Passing a non-null object turns on the embedded `<tw-time-picker>` and forwards each field.
+   *
+   * Defaults to `null` (no time field). Pass an empty object `{}` to enable the time picker with all defaults.
+   */
+  readonly timeConfig = input<DatePickerTimeConfig<D> | null>(null);
 
-  /** Format of the embedded time-picker. `'24h'` renders 00–23 hours; `'12h'` adds an AM/PM toggle. Defaults to `'24h'`. */
-  readonly timeFormat = input<TimePickerFormat>('24h');
+  /** Per-instance locale override. Forwarded to the embedded calendar and the underlying `DateAdapter` for parse/format. Falls back to Angular `LOCALE_ID` when `null`. */
+  readonly locale = input<string | null>(null);
 
-  /** Whether the embedded time-picker exposes a seconds field. Defaults to `false`. */
-  readonly showSeconds = input<boolean>(false);
+  /** Function producing per-cell CSS classes, forwarded to the embedded calendar. Useful for visually marking special dates (holidays, billing cycles). */
+  readonly dateClass = input<DateClassFn<D> | null>(null);
 
-  /** Step for the embedded time-picker's hour field. Defaults to `1`. */
-  readonly hourStep = input<number>(1);
+  /** Optional cell-content template, forwarded to the embedded calendar. Use to customize cell visuals beyond `dateClass`. */
+  readonly cellTemplate = input<TemplateRef<{ $implicit: CalendarCell<D> }> | null>(null);
 
-  /** Step for the embedded time-picker's minute field. Defaults to `1`. */
-  readonly minuteStep = input<number>(1);
-
-  /** Step for the embedded time-picker's second field. Defaults to `1`. */
-  readonly secondStep = input<number>(1);
-
-  /** Earliest accepted time-of-day. Values earlier than this set `errorState`. Ignored when `withTime` is false. */
-  readonly minTime = input<D | null>(null);
-
-  /** Latest accepted time-of-day. Values later than this set `errorState`. Ignored when `withTime` is false. */
-  readonly maxTime = input<D | null>(null);
+  /** Optional quick-select presets rendered as a vertical list before the calendar. Each preset provides a `label` and a `date` factory. An empty array hides the preset panel. */
+  readonly presets = input<readonly DatePickerPreset<D>[]>([]);
 
   /** Per-instance override of the `ErrorStateMatcher`. */
   readonly errorStateMatcher = input<ErrorStateMatcher | undefined>(undefined);
@@ -491,13 +515,16 @@ export class DatePickerComponent<D = Date>
   /** Fires after a commit — from parsing typed input or picking in the calendar. */
   readonly dateChange = output<DatePickerChangeEvent<D>>();
 
+  /** Fires when the user picks one of the entries from `presets`. Payload is the preset that fired. */
+  readonly presetSelected = output<DatePickerPreset<D>>();
+
   // ── Injected deps ──
 
   private readonly adapter = inject<DateAdapter<D>>(DATE_ADAPTER);
   private readonly overlayService = inject(Overlay);
   private readonly focusMonitor = inject(FocusMonitor);
   private readonly liveAnnouncer = inject(LiveAnnouncer);
-  private readonly focusTrapFactory = inject(FocusTrapFactory);
+  private readonly coordinator = inject(PickerOverlayCoordinator);
   private readonly elementRef = inject(ElementRef<HTMLElement>);
   private readonly viewContainerRef = inject(ViewContainerRef);
   private readonly injector = inject(Injector);
@@ -511,7 +538,10 @@ export class DatePickerComponent<D = Date>
   // ── View refs ──
 
   private readonly inputRef = viewChild.required<ElementRef<HTMLInputElement>>('dateInput');
-  private readonly triggerRef = viewChild.required<ElementRef<HTMLButtonElement>>('triggerBtn');
+  private readonly triggerRef = viewChild<ElementRef<HTMLButtonElement>>('triggerBtn');
+
+  /** @internal Whether a `[slot=trigger]` is projected. Detected post-mount via DOM query so we can drop the default chrome. */
+  readonly hasCustomTrigger = signal(false);
 
   // ── Identity ──
 
@@ -539,17 +569,14 @@ export class DatePickerComponent<D = Date>
   private readonly closingSignal = signal(false);
   private readonly lastValueBeforeOpen = signal<D | null>(null);
   private readonly pendingCalendarValue = signal<D | null>(null);
+  private readonly activePresetIdSignal = signal<string | undefined>(undefined);
   private readonly _ngControlRev = signal(0);
   private readonly _formSubmitRev = signal(0);
 
   private onChange: (value: D | null) => void = () => {};
   private onTouched: () => void = () => {};
 
-  private overlayRef: OverlayRef | null = null;
   private readonly overlayInstanceSignal = signal<DatePickerOverlayComponent<D> | null>(null);
-  private focusTrap: ReturnType<FocusTrapFactory['create']> | null = null;
-  private perOpenSubs: Subscription | null = null;
-  private closeTimer: ReturnType<typeof setTimeout> | null = null;
   private returnFocusTo: HTMLElement | null = null;
 
   private get overlayInstance(): DatePickerOverlayComponent<D> | null {
@@ -572,11 +599,29 @@ export class DatePickerComponent<D = Date>
   /** @internal */
   readonly isEmpty = computed(() => this.internalValue() === null && !this.rawInputText());
 
+  /** Whether the time picker is rendered inside the overlay. True iff `timeConfig` is non-null. */
+  readonly withTime = computed<boolean>(() => this.timeConfig() !== null);
+
+  /** @internal Effective time-of-day configuration — merges `timeConfig` over the documented per-field defaults. */
+  readonly effectiveTimeConfig = computed<Required<Omit<DatePickerTimeConfig<D>, 'minTime' | 'maxTime'>> & { minTime: D | null; maxTime: D | null }>(() => {
+    const cfg = this.timeConfig();
+    return {
+      format: cfg?.format ?? '24h',
+      showSeconds: cfg?.showSeconds ?? false,
+      hourStep: cfg?.hourStep ?? 1,
+      minuteStep: cfg?.minuteStep ?? 1,
+      secondStep: cfg?.secondStep ?? 1,
+      minTime: cfg?.minTime ?? null,
+      maxTime: cfg?.maxTime ?? null,
+    };
+  });
+
   /** @internal Effective display format — folds hour/minute (and optional seconds) into the default when `withTime` is on and the user hasn't overridden `format`. */
   readonly effectiveFormat = computed<unknown>(() => {
     const fmt = this.format();
     if (!this.withTime() || fmt !== DEFAULT_DISPLAY_FORMAT) return fmt;
-    const hour12 = this.timeFormat() === '12h';
+    const time = this.effectiveTimeConfig();
+    const hour12 = time.format === '12h';
     const base: Intl.DateTimeFormatOptions = {
       year: 'numeric',
       month: 'short',
@@ -585,7 +630,7 @@ export class DatePickerComponent<D = Date>
       minute: '2-digit',
       hour12,
     };
-    if (this.showSeconds()) base.second = '2-digit';
+    if (time.showSeconds) base.second = '2-digit';
     return { dateTimeFormat: base };
   });
 
@@ -704,37 +749,84 @@ export class DatePickerComponent<D = Date>
     });
 
     // Push state into the overlay whenever anything relevant changes.
+    // Reads happen in the tracked phase; writes to the overlay instance are
+    // wrapped in `untracked()` so they never feed back into this effect.
     effect(() => {
       const instance = this.overlayInstance;
       if (!instance) return;
-      instance.size.set(this.size());
-      instance.color.set(this.color());
-      instance.minDate.set(this.minDate());
-      instance.maxDate.set(this.maxDate());
-      instance.dateFilter.set(this.dateFilter());
-      instance.startView.set(this.startView());
-      instance.startAt.set(this.startAt() ?? this.internalValue() ?? null);
-      instance.pendingValue.set(this.pendingCalendarValue());
-      instance.showActions.set(this.showActions());
-      instance.todayLabel.set(this.todayLabel());
-      instance.clearLabel.set(this.clearLabel());
-      instance.cancelLabel.set(this.cancelLabel());
-      instance.applyLabel.set(this.applyLabel());
-      instance.dialogId.set(this.dialogId);
-      instance.dialogAriaLabel.set(this.resolveDialogAriaLabel());
-      instance.panelClassValue.set(this.resolvePanelClass());
-      instance.withTime.set(this.withTime());
-      instance.timeFormat.set(this.timeFormat());
-      instance.showSeconds.set(this.showSeconds());
-      instance.hourStep.set(this.hourStep());
-      instance.minuteStep.set(this.minuteStep());
-      instance.secondStep.set(this.secondStep());
-      instance.minTime.set(this.minTime());
-      instance.maxTime.set(this.maxTime());
+      const time = this.effectiveTimeConfig();
+      const size = this.size();
+      const color = this.color();
+      const minDate = this.minDate();
+      const maxDate = this.maxDate();
+      const dateFilter = this.dateFilter();
+      const startView = this.startView();
+      const startAt = this.startAt() ?? this.internalValue() ?? null;
+      const pendingValue = this.pendingCalendarValue();
+      const showActions = this.showActions();
+      const todayLabel = this.todayLabel();
+      const clearLabel = this.clearLabel();
+      const cancelLabel = this.cancelLabel();
+      const applyLabel = this.applyLabel();
+      const dialogAriaLabel = this.resolveDialogAriaLabel();
+      const panelClassValue = this.resolvePanelClass();
+      const withTime = this.withTime();
+      const locale = this.locale();
+      const dateClass = this.dateClass();
+      const cellTemplate = this.cellTemplate();
+      const presets = this.presets();
+      const activePresetId = this.activePresetIdSignal();
+      untracked(() => {
+        instance.size.set(size);
+        instance.color.set(color);
+        instance.minDate.set(minDate);
+        instance.maxDate.set(maxDate);
+        instance.dateFilter.set(dateFilter);
+        instance.startView.set(startView);
+        instance.startAt.set(startAt);
+        instance.pendingValue.set(pendingValue);
+        instance.showActions.set(showActions);
+        instance.todayLabel.set(todayLabel);
+        instance.clearLabel.set(clearLabel);
+        instance.cancelLabel.set(cancelLabel);
+        instance.applyLabel.set(applyLabel);
+        instance.dialogId.set(this.dialogId);
+        instance.dialogAriaLabel.set(dialogAriaLabel);
+        instance.panelClassValue.set(panelClassValue);
+        instance.withTime.set(withTime);
+        instance.timeFormat.set(time.format);
+        instance.showSeconds.set(time.showSeconds);
+        instance.hourStep.set(time.hourStep);
+        instance.minuteStep.set(time.minuteStep);
+        instance.secondStep.set(time.secondStep);
+        instance.minTime.set(time.minTime);
+        instance.maxTime.set(time.maxTime);
+        instance.locale.set(locale);
+        instance.dateClass.set(dateClass);
+        instance.cellTemplate.set(cellTemplate);
+        instance.presets.set(presets);
+        instance.activePresetId.set(activePresetId);
+      });
     });
 
-    // Dev-mode accessible-name warning.
+    // Push locale into the adapter for parse/format. The calendar also calls
+    // setLocale, but a standalone picker without a calendar open still needs
+    // the parser to honour the picker's locale.
+    effect(() => {
+      const locale = this.locale();
+      if (locale === null) return;
+      untracked(() => this.adapter.setLocale(locale));
+    });
+
+    // Dev-mode accessible-name warning + projected-trigger detection.
     afterNextRender(() => {
+      const host = this.elementRef.nativeElement;
+      // Detect [slot=trigger] projection by querying for projected children that carry the attribute.
+      // Angular's <ng-content select="[slot=trigger]"> moves them into the rendered DOM under the host.
+      if (host.querySelector('[slot="trigger"]')) {
+        this.hasCustomTrigger.set(true);
+      }
+
       if (!isDevMode()) return;
       const hasLabel =
         !!this.ariaLabel() ||
@@ -762,11 +854,8 @@ export class DatePickerComponent<D = Date>
     this.destroyRef.onDestroy(() => {
       monitorSub.unsubscribe();
       this.focusMonitor.stopMonitoring(this.elementRef);
-      this.clearCloseTimer();
-      this.destroyFocusTrap();
-      this.perOpenSubs?.unsubscribe();
-      this.overlayRef?.dispose();
-      this.overlayRef = null;
+      // The coordinator's own DestroyRef.onDestroy disposes the overlay and
+      // clears its timers; we only need to drop the local instance signal.
       this.overlayInstanceSignal.set(null);
     });
   }
@@ -822,10 +911,19 @@ export class DatePickerComponent<D = Date>
   /** @internal */
   onInputEvent(event: Event): void {
     const target = event.target as HTMLInputElement;
-    this.rawInputText.set(target.value);
+    const rawText = target.value;
+    this.rawInputText.set(rawText);
     this.parseError.set(false);
     this.rangeError.set(false);
-    this.dateInput.emit({ rawText: target.value, parsed: null, target });
+    // Non-committing parse so the payload's `parsed` field reflects success when achievable.
+    let parsed: D | null = null;
+    if (rawText.trim()) {
+      const candidate = this.adapter.parse(rawText, this.parseFormat());
+      if (candidate && this.adapter.isValid(candidate) && this.isInRange(candidate)) {
+        parsed = candidate;
+      }
+    }
+    this.dateInput.emit({ rawText, parsed, target });
   }
 
   /** @internal */
@@ -895,7 +993,8 @@ export class DatePickerComponent<D = Date>
   /** @internal */
   onTriggerClick(): void {
     if (this.isDisabled()) return;
-    this.returnFocusTo = this.triggerRef().nativeElement;
+    const trigger = this.triggerRef();
+    if (trigger) this.returnFocusTo = trigger.nativeElement;
     this.toggle();
   }
 
@@ -904,7 +1003,32 @@ export class DatePickerComponent<D = Date>
     if (this.isDisabled()) return;
     if (event.key === 'Enter' || event.key === ' ' || event.key === 'Spacebar') {
       event.preventDefault();
-      this.returnFocusTo = this.triggerRef().nativeElement;
+      const trigger = this.triggerRef();
+      if (trigger) this.returnFocusTo = trigger.nativeElement;
+      if (!this.open()) this.openPicker();
+    } else if (event.key === 'Escape' && this.open()) {
+      event.preventDefault();
+      this.closeOverlay('escape', /* restore */ true);
+    }
+  }
+
+  /** @internal */
+  onCustomTriggerClick(event: MouseEvent): void {
+    if (!this.hasCustomTrigger() || this.isDisabled()) return;
+    // The projected element itself is the focus target on close.
+    const target = event.currentTarget as HTMLElement | null;
+    if (target) this.returnFocusTo = target;
+    event.preventDefault();
+    this.toggle();
+  }
+
+  /** @internal */
+  onCustomTriggerKeydown(event: KeyboardEvent): void {
+    if (!this.hasCustomTrigger() || this.isDisabled()) return;
+    if (event.key === 'Enter' || event.key === ' ' || event.key === 'Spacebar') {
+      event.preventDefault();
+      const target = event.currentTarget as HTMLElement | null;
+      if (target) this.returnFocusTo = target;
       if (!this.open()) this.openPicker();
     } else if (event.key === 'Escape' && this.open()) {
       event.preventDefault();
@@ -974,8 +1098,7 @@ export class DatePickerComponent<D = Date>
   }
 
   private isTimeInRange(d: D): boolean {
-    const min = this.minTime();
-    const max = this.maxTime();
+    const { minTime: min, maxTime: max } = this.effectiveTimeConfig();
     if (!min && !max) return true;
     const adapter = this.adapter;
     const vSecs = timeOfDaySeconds(adapter.getHours(d), adapter.getMinutes(d), adapter.getSeconds(d));
@@ -994,18 +1117,56 @@ export class DatePickerComponent<D = Date>
 
   private openOverlay(): void {
     if (!this.returnFocusTo) {
-      this.returnFocusTo = this.inputRef().nativeElement;
+      this.returnFocusTo = this.resolveFocusTarget();
     }
     this.lastValueBeforeOpen.set(this.internalValue());
     this.pendingCalendarValue.set(this.internalValue());
-    this.ensureOverlay();
-    this.attachOverlayComponent();
-    this.subscribePerOpen();
-    this.setupFocusTrap();
+
+    const result = this.coordinator.open<DatePickerOverlayComponent<D>>({
+      origin: this.elementRef,
+      portalComponent: DatePickerOverlayComponent as unknown as new (
+        ...args: unknown[]
+      ) => DatePickerOverlayComponent<D>,
+      viewContainerRef: this.viewContainerRef,
+      injector: this.injector,
+      positions: buildSelectLikePositions(this.offset()),
+      scrollStrategy: resolveSelectScrollStrategy(this.scrollStrategy(), this.overlayService),
+      panelClass: 'tw-date-picker-panel',
+    });
+    if (!result) return;
+
+    const instance = result.instance;
+    instance.onCalendarSelect.set((date) => this.onCalendarSelection(date));
+    instance.onTimeInput.set((date) => this.onTimeInput(date));
+    instance.onToday.set(() => this.onTodayClicked());
+    instance.onClear.set(() => this.onClearAction());
+    instance.onCancel.set(() => this.onCancelAction());
+    instance.onApply.set(() => this.onApplyAction());
+    instance.onPresetSelect.set((preset) => this.onPresetClick(preset));
+    instance.activePresetId.set(this.activePresetIdSignal());
+    this.overlayInstanceSignal.set(instance);
+
+    // Per-open streams from the coordinator complete on close, so no
+    // takeUntilDestroyed is needed — accumulating subscribers across multiple
+    // open/close cycles is the bug we'd hit otherwise.
+    this.coordinator
+      .backdropClick$()
+      .subscribe(() => this.closeOverlay('backdrop'));
+
+    this.coordinator.escape$().subscribe((event) => {
+      event.preventDefault();
+      this.closeOverlay('escape', /* restore */ true);
+    });
+
+    // Defer `opened` emission until after the enter animation completes — was
+    // previously fired synchronously on open() (audit Medium, date-picker.ts:1199).
+    this.coordinator
+      .opened$()
+      .subscribe(() => this.opened.emit({ trigger: this.elementRef.nativeElement }));
+
     queueMicrotask(() => {
       this.overlayInstance?.focusCalendar();
     });
-    this.opened.emit({ trigger: this.elementRef.nativeElement });
   }
 
   private closeOverlay(reason: DatePickerCloseReason, restore = false): void {
@@ -1026,96 +1187,18 @@ export class DatePickerComponent<D = Date>
       }
     }
 
-    this.destroyFocusTrap();
-    this.returnFocusTo?.focus();
+    // Fallback chain ensures focus always returns to a visible element even when
+    // returnFocusTo was never set (e.g. open() flipped programmatically).
+    (this.returnFocusTo ?? this.resolveFocusTarget()).focus();
 
-    this.closeTimer = setTimeout(() => {
-      this.closeTimer = null;
-      if (this.overlayRef?.hasAttached()) {
-        this.overlayRef.detach();
-      }
-      this.perOpenSubs?.unsubscribe();
-      this.perOpenSubs = null;
+    this.coordinator.close(() => {
       this.overlayInstanceSignal.set(null);
       this.pendingCalendarValue.set(null);
       this.returnFocusTo = null;
       untracked(() => this.open.set(false));
       this.closingSignal.set(false);
       this.closed.emit(reason);
-    }, ANIMATION_DURATION);
-  }
-
-  private ensureOverlay(): void {
-    if (this.overlayRef) return;
-    const positionStrategy = this.overlayService
-      .position()
-      .flexibleConnectedTo(this.elementRef)
-      .withPositions(buildDatePickerPositions(this.offset()))
-      .withFlexibleDimensions(false)
-      .withPush(false)
-      .withViewportMargin(8);
-
-    this.overlayRef = this.overlayService.create({
-      positionStrategy,
-      scrollStrategy: this.resolveScrollStrategy(),
-      hasBackdrop: true,
-      backdropClass: 'cdk-overlay-transparent-backdrop',
-      panelClass: 'tw-date-picker-panel',
     });
-  }
-
-  private attachOverlayComponent(): void {
-    if (!this.overlayRef) return;
-    const portal = new ComponentPortal<DatePickerOverlayComponent<D>>(
-      DatePickerOverlayComponent as unknown as new () => DatePickerOverlayComponent<D>,
-      this.viewContainerRef,
-      this.injector,
-    );
-    const ref = this.overlayRef.attach(portal);
-    const instance = ref.instance;
-    instance.onCalendarSelect.set((date) => this.onCalendarSelection(date));
-    instance.onTimeInput.set((date) => this.onTimeInput(date));
-    instance.onToday.set(() => this.onTodayClicked());
-    instance.onClear.set(() => this.onClearAction());
-    instance.onCancel.set(() => this.onCancelAction());
-    instance.onApply.set(() => this.onApplyAction());
-    this.overlayInstanceSignal.set(instance);
-  }
-
-  private subscribePerOpen(): void {
-    this.perOpenSubs?.unsubscribe();
-    this.perOpenSubs = new Subscription();
-    if (!this.overlayRef) return;
-
-    this.perOpenSubs.add(
-      this.overlayRef
-        .backdropClick()
-        .pipe(takeUntilDestroyed(this.destroyRef))
-        .subscribe(() => this.closeOverlay('backdrop')),
-    );
-
-    this.perOpenSubs.add(
-      this.overlayRef
-        .keydownEvents()
-        .pipe(takeUntilDestroyed(this.destroyRef))
-        .subscribe((event) => {
-          if (event.key === 'Escape') {
-            event.preventDefault();
-            this.closeOverlay('escape', /* restore */ true);
-          }
-        }),
-    );
-  }
-
-  private setupFocusTrap(): void {
-    if (!this.overlayRef) return;
-    const overlayEl = this.overlayRef.overlayElement;
-    this.focusTrap = this.focusTrapFactory.create(overlayEl);
-  }
-
-  private destroyFocusTrap(): void {
-    this.focusTrap?.destroy();
-    this.focusTrap = null;
   }
 
   // ── Calendar / action-bar callbacks ──
@@ -1185,6 +1268,19 @@ export class DatePickerComponent<D = Date>
     this.closeOverlay('apply');
   }
 
+  private onPresetClick(preset: DatePickerPreset<D>): void {
+    const next = preset.date();
+    if (!this.adapter.isValid(next) || !this.isInRange(next)) return;
+    this.activePresetIdSignal.set(preset.id);
+    this.presetSelected.emit(preset);
+    if (this.showActions()) {
+      this.pendingCalendarValue.set(next);
+      return;
+    }
+    this.commit(next, 'calendar');
+    this.closeOverlay('select');
+  }
+
   // ── Helpers ──
 
   private resolveDialogAriaLabel(): string {
@@ -1196,23 +1292,14 @@ export class DatePickerComponent<D = Date>
     return Array.isArray(raw) ? raw.join(' ') : (raw as string);
   }
 
-  private resolveScrollStrategy(): ScrollStrategy {
-    const s = this.scrollStrategy();
-    switch (s) {
-      case 'close':
-        return this.overlayService.scrollStrategies.close();
-      case 'block':
-        return this.overlayService.scrollStrategies.block();
-      default:
-        return this.overlayService.scrollStrategies.reposition();
-    }
-  }
-
-  private clearCloseTimer(): void {
-    if (this.closeTimer !== null) {
-      clearTimeout(this.closeTimer);
-      this.closeTimer = null;
-    }
+  /** Picks the best element to receive focus on overlay close. Prefers the explicit `returnFocusTo` source, then the trigger button, the projected custom trigger, and finally the input. */
+  private resolveFocusTarget(): HTMLElement {
+    const trigger = this.triggerRef();
+    if (trigger) return trigger.nativeElement;
+    const host = this.elementRef.nativeElement;
+    const custom = host.querySelector('[slot="trigger"]') as HTMLElement | null;
+    if (custom) return custom;
+    return this.inputRef().nativeElement;
   }
 
   // ── ControlValueAccessor ──
@@ -1275,7 +1362,7 @@ export class DatePickerComponent<D = Date>
 
   /** @internal */
   onContainerClick(event: MouseEvent): void {
-    if (this.isDisabled()) return;
+    if (this.isDisabled() || this.hasCustomTrigger()) return;
     // Don't steal focus when the user clicks the trigger button directly.
     const target = event.target as HTMLElement | null;
     const triggerEl = this.triggerRef()?.nativeElement;

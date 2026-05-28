@@ -1,6 +1,7 @@
+import { Component } from '@angular/core';
 import { type ComponentFixture, TestBed } from '@angular/core/testing';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { CodeBlockComponent } from './code-block';
+import { CodeBlockComponent, CodeBlockHeaderDirective } from './code-block';
 import { Clipboard } from '@angular/cdk/clipboard';
 import { LiveAnnouncer } from '@angular/cdk/a11y';
 
@@ -82,9 +83,8 @@ describe('CodeBlockComponent', () => {
 
   it('should not show language label when not set', () => {
     const header = fixture.nativeElement.querySelector('div');
-    const spans = header.querySelectorAll('span');
-    expect(spans.length).toBe(1);
-    expect(spans[0].textContent.trim()).toBe('');
+    const labelSpan = header.querySelector('span');
+    expect(labelSpan).toBeNull();
   });
 
   it('should show language label when set', () => {
@@ -137,6 +137,32 @@ describe('CodeBlockComponent', () => {
     expect(copiedSpy).not.toHaveBeenCalled();
   });
 
+  it('should emit copyFailed output with an Error when clipboard copy fails', () => {
+    clipboardSpy.copy.mockReturnValue(false);
+    const copyFailedSpy = vi.fn<(err: Error) => void>();
+    fixture.componentInstance.copyFailed.subscribe(copyFailedSpy);
+
+    const button = fixture.nativeElement.querySelector('button');
+    button.click();
+    fixture.detectChanges();
+
+    expect(copyFailedSpy).toHaveBeenCalledOnce();
+    const err = copyFailedSpy.mock.calls[0][0];
+    expect(err).toBeInstanceOf(Error);
+    expect(err.message).toBe('Clipboard copy failed');
+  });
+
+  it('should not emit copyFailed output on successful copy', () => {
+    const copyFailedSpy = vi.fn();
+    fixture.componentInstance.copyFailed.subscribe(copyFailedSpy);
+
+    const button = fixture.nativeElement.querySelector('button');
+    button.click();
+    fixture.detectChanges();
+
+    expect(copyFailedSpy).not.toHaveBeenCalled();
+  });
+
   it('should show success state after copy', () => {
     const button = fixture.nativeElement.querySelector('button');
     button.click();
@@ -166,6 +192,24 @@ describe('CodeBlockComponent', () => {
     fixture.detectChanges();
 
     expect(liveAnnouncerSpy.announce).toHaveBeenCalledWith('Copied to clipboard');
+  });
+
+  it('should clear the reset timeout when destroyed mid-success', () => {
+    vi.useFakeTimers();
+    const clearTimeoutSpy = vi.spyOn(globalThis, 'clearTimeout');
+
+    const button = fixture.nativeElement.querySelector('button');
+    button.click();
+    fixture.detectChanges();
+
+    fixture.destroy();
+    expect(clearTimeoutSpy).toHaveBeenCalled();
+
+    // Advance past the reset window — nothing should throw.
+    expect(() => vi.advanceTimersByTime(2000)).not.toThrow();
+
+    clearTimeoutSpy.mockRestore();
+    vi.useRealTimers();
   });
 
   // ===== Accessibility =====
@@ -205,15 +249,118 @@ describe('CodeBlockComponent', () => {
     expect(pre.getAttribute('aria-label')).toBe('TypeScript code');
   });
 
-  it('should be keyboard-accessible via Enter key', () => {
-    const copiedSpy = vi.fn();
-    fixture.componentInstance.copied.subscribe(copiedSpy);
+  // ===== i18n / labels override =====
+
+  it('should override the copy button aria-label via labels input', () => {
+    fixture.componentRef.setInput('labels', { copy: 'Copier' });
+    fixture.detectChanges();
+    const button = fixture.nativeElement.querySelector('button');
+    expect(button.getAttribute('aria-label')).toBe('Copier');
+  });
+
+  it('should override the copied aria-label via labels input', () => {
+    fixture.componentRef.setInput('labels', { copied: 'Copié' });
+    fixture.detectChanges();
 
     const button = fixture.nativeElement.querySelector('button');
-    button.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter' }));
     button.click();
     fixture.detectChanges();
 
-    expect(copiedSpy).toHaveBeenCalledOnce();
+    expect(button.getAttribute('aria-label')).toBe('Copié');
+  });
+
+  it('should override the screen-reader announcement via labels input', () => {
+    fixture.componentRef.setInput('labels', { announcement: 'Copié dans le presse-papier' });
+    fixture.detectChanges();
+
+    const button = fixture.nativeElement.querySelector('button');
+    button.click();
+    fixture.detectChanges();
+
+    expect(liveAnnouncerSpy.announce).toHaveBeenCalledWith('Copié dans le presse-papier');
+  });
+
+  it('should fall back to English defaults for missing label fields', () => {
+    fixture.componentRef.setInput('labels', { copy: 'Copier' });
+    fixture.detectChanges();
+
+    const button = fixture.nativeElement.querySelector('button');
+    button.click();
+    fixture.detectChanges();
+
+    expect(button.getAttribute('aria-label')).toBe('Copied');
+    expect(liveAnnouncerSpy.announce).toHaveBeenCalledWith('Copied to clipboard');
+  });
+
+  // ===== Consumer class merging =====
+
+  it('should preserve consumer classes alongside internal host classes', async () => {
+    @Component({
+      imports: [CodeBlockComponent],
+      template: `<tw-code-block code="x" class="rounded-2xl shadow-md custom-block" />`,
+    })
+    class Host {}
+
+    const hostFixture = TestBed.createComponent(Host);
+    hostFixture.detectChanges();
+
+    const host = hostFixture.nativeElement.querySelector('tw-code-block');
+    expect(host.className).toContain('rounded-2xl');
+    expect(host.className).toContain('shadow-md');
+    expect(host.className).toContain('custom-block');
+    expect(host.className).toContain('bg-surface-sunken');
+  });
+
+  // ===== Two-way bindable isCopied =====
+
+  it('should support two-way binding via [(isCopied)]', async () => {
+    @Component({
+      imports: [CodeBlockComponent],
+      template: `<tw-code-block code="x" [(isCopied)]="copied" />`,
+    })
+    class Host {
+      copied = false;
+    }
+
+    const hostFixture = TestBed.createComponent(Host);
+    hostFixture.detectChanges();
+
+    const button = hostFixture.nativeElement.querySelector('button');
+    button.click();
+    hostFixture.detectChanges();
+    expect(hostFixture.componentInstance.copied).toBe(true);
+  });
+
+  it('should reflect external writes to isCopied in the UI', () => {
+    fixture.componentInstance.isCopied.set(true);
+    fixture.detectChanges();
+    const button = fixture.nativeElement.querySelector('button');
+    expect(button.className).toContain('text-success-500');
+    expect(button.getAttribute('aria-label')).toBe('Copied');
+  });
+
+  // ===== Header slot =====
+
+  it('should project content matching [twCodeBlockHeader] into the header', async () => {
+    @Component({
+      imports: [CodeBlockComponent, CodeBlockHeaderDirective],
+      template: `
+        <tw-code-block code="x" language="TypeScript">
+          <span twCodeBlockHeader data-testid="filename">app.ts</span>
+        </tw-code-block>
+      `,
+    })
+    class Host {}
+
+    const hostFixture = TestBed.createComponent(Host);
+    hostFixture.detectChanges();
+
+    const projected: HTMLElement | null =
+      hostFixture.nativeElement.querySelector('[data-testid="filename"]');
+    expect(projected).toBeTruthy();
+    expect(projected!.textContent).toBe('app.ts');
+
+    // The directive applies its host classes for typography alignment.
+    expect(projected!.className).toContain('inline-flex');
   });
 });

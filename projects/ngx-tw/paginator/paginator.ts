@@ -13,13 +13,12 @@ import {
   isDevMode,
   model,
   output,
-  signal,
   TemplateRef,
   untracked,
-  viewChild,
+  viewChildren,
 } from '@angular/core';
 import { NgTemplateOutlet } from '@angular/common';
-import { LiveAnnouncer } from '@angular/cdk/a11y';
+import { FocusableOption, FocusKeyManager, LiveAnnouncer } from '@angular/cdk/a11y';
 import { tv } from 'tailwind-variants';
 import type { TwColor, TwSize } from 'ngx-tw/core';
 
@@ -151,23 +150,34 @@ const DEFAULT_LABELS: Readonly<TwPaginatorLabels> = {
 };
 
 // ── Static active-page class maps (Tailwind v4 requires statically written class strings) ──
+// Mirrors the checkbox SOLID_BOX / SOLID_ICON split: a per-color background + border map
+// and a per-color on-color text map. `text-on-{color}` keeps the active button readable
+// against any consumer theme without hardcoding `text-white` (would fail for warning's
+// dark-on-amber convention) or `text-black`. The legacy `--color-on-*` alias tokens still
+// resolve to the canonical solid-fg slot per `theme/_semantic.css` lines 284-296.
 
-const PAGE_BUTTON_ACTIVE: Record<TwColor, string> = {
-  primary:
-    'bg-primary-600 text-white hover:bg-primary-700 border border-primary-600 focus-visible:outline-primary-500',
-  secondary:
-    'bg-secondary-600 text-white hover:bg-secondary-700 border border-secondary-600 focus-visible:outline-secondary-500',
-  accent:
-    'bg-accent-600 text-white hover:bg-accent-700 border border-accent-600 focus-visible:outline-accent-500',
-  neutral:
-    'bg-fg text-surface hover:bg-fg border border-fg focus-visible:outline-fg',
-  info: 'bg-info-600 text-white hover:bg-info-700 border border-info-600 focus-visible:outline-info-500',
-  success:
-    'bg-success-600 text-white hover:bg-success-700 border border-success-600 focus-visible:outline-success-500',
-  warning:
-    'bg-warning-500 text-black hover:bg-warning-600 border border-warning-500 focus-visible:outline-warning-500',
-  error:
-    'bg-error-600 text-white hover:bg-error-700 border border-error-600 focus-visible:outline-error-500',
+const PAGE_BUTTON_ACTIVE_BG: Record<TwColor, string> = {
+  primary: 'bg-primary-600 hover:bg-primary-700 border-primary-600 focus-visible:outline-primary-500',
+  secondary: 'bg-secondary-600 hover:bg-secondary-700 border-secondary-600 focus-visible:outline-secondary-500',
+  accent: 'bg-accent-600 hover:bg-accent-700 border-accent-600 focus-visible:outline-accent-500',
+  neutral: 'bg-fg hover:bg-fg border-fg focus-visible:outline-fg',
+  info: 'bg-info-600 hover:bg-info-700 border-info-600 focus-visible:outline-info-500',
+  success: 'bg-success-600 hover:bg-success-700 border-success-600 focus-visible:outline-success-500',
+  // Warning keeps -500 because the amber-500/amber-950 pairing meets contrast — see
+  // `theme/_semantic.css` warning role comment ("yellow signage convention").
+  warning: 'bg-warning-500 hover:bg-warning-600 border-warning-500 focus-visible:outline-warning-500',
+  error: 'bg-error-600 hover:bg-error-700 border-error-600 focus-visible:outline-error-500',
+};
+
+const PAGE_BUTTON_ACTIVE_FG: Record<TwColor, string> = {
+  primary: 'text-on-primary',
+  secondary: 'text-on-secondary',
+  accent: 'text-on-accent',
+  neutral: 'text-on-neutral',
+  info: 'text-on-info',
+  success: 'text-on-success',
+  warning: 'text-on-warning',
+  error: 'text-on-error',
 };
 
 // ── Pure helpers (exported for unit testing only — not re-exported from index.ts) ──
@@ -252,14 +262,14 @@ const paginatorVariants = tv(
       pageSizeGroup: 'flex items-center gap-2 shrink-0',
       pageSizeLabel: 'text-sm text-fg-muted whitespace-nowrap',
       pageSizeSelect:
-        'rounded-md border border-border bg-surface text-fg cursor-pointer transition-colors duration-200 motion-reduce:transition-none hover:bg-surface-muted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500 disabled:opacity-50 disabled:pointer-events-none',
+        'rounded-md border border-border bg-surface text-fg cursor-pointer transition-colors duration-normal motion-reduce:transition-none hover:bg-surface-muted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500 disabled:opacity-50 disabled:pointer-events-none',
       pageInfo: 'text-sm text-fg-muted whitespace-nowrap',
       navGroup: 'flex items-center gap-1',
       pageList: 'flex items-center gap-1',
       navButton:
-        'inline-flex items-center justify-center rounded-md border border-border bg-surface text-fg transition-colors duration-200 motion-reduce:transition-none cursor-pointer hover:bg-surface-muted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500 disabled:opacity-50 disabled:pointer-events-none disabled:cursor-not-allowed aria-disabled:opacity-50 aria-disabled:pointer-events-none aria-disabled:cursor-not-allowed',
+        'inline-flex items-center justify-center rounded-md border border-border bg-surface text-fg transition-colors duration-normal motion-reduce:transition-none cursor-pointer hover:bg-surface-muted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500 disabled:opacity-50 disabled:pointer-events-none disabled:cursor-not-allowed aria-disabled:opacity-50 aria-disabled:pointer-events-none aria-disabled:cursor-not-allowed',
       pageButton:
-        'inline-flex items-center justify-center rounded-md border border-transparent text-fg transition-colors duration-200 motion-reduce:transition-none cursor-pointer hover:bg-surface-muted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500 disabled:opacity-50 disabled:pointer-events-none disabled:cursor-not-allowed aria-disabled:opacity-50 aria-disabled:pointer-events-none aria-disabled:cursor-not-allowed',
+        'inline-flex items-center justify-center rounded-md border border-transparent text-fg transition-colors duration-normal motion-reduce:transition-none cursor-pointer hover:bg-surface-muted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500 disabled:opacity-50 disabled:pointer-events-none disabled:cursor-not-allowed aria-disabled:opacity-50 aria-disabled:pointer-events-none aria-disabled:cursor-not-allowed',
       ellipsis:
         'inline-flex items-center justify-center text-fg-subtle select-none pointer-events-none',
       emptyState: 'text-sm text-fg-muted',
@@ -272,6 +282,8 @@ const paginatorVariants = tv(
           pageButton: 'px-2 py-1 text-xs min-w-7 h-7',
           pageSizeSelect: 'px-2 py-1 text-xs',
           ellipsis: 'min-w-7 h-7 text-xs',
+          // `size-3.5` (14px) half-step: neither size-3 nor size-4 aligns with
+          // text-xs glyph metrics inside a 28px nav button.
           icon: 'size-3.5',
         },
         sm: {
@@ -400,6 +412,37 @@ export class PaginatorPageSizeSelectorDirective {
   }
 }
 
+// ── PaginatorFocusableDirective ───────────────────────────────────
+
+/**
+ * @internal Wraps every nav-group focusable (first/prev/page/next/last) as a CDK
+ * `FocusableOption` so `FocusKeyManager` can drive roving focus across the group.
+ * Applied via attribute selector on the existing `data-tw-paginator-focusable`
+ * marker so the spec's button queries continue to match.
+ */
+@Directive({
+  selector: '[data-tw-paginator-focusable]',
+})
+export class PaginatorFocusableDirective implements FocusableOption {
+  readonly elementRef = inject(ElementRef<HTMLElement>);
+
+  /** When true, the element is skipped by `FocusKeyManager` roving focus. */
+  readonly isDisabled = input(false);
+
+  focus(): void {
+    this.elementRef.nativeElement.focus();
+  }
+
+  /**
+   * `FocusableOption.disabled` resolver. NOTE: returning the signal function
+   * itself would always be truthy, so `FocusKeyManager` would skip every
+   * element. Call the signal here so the manager sees the actual value.
+   */
+  get disabled(): boolean {
+    return this.isDisabled();
+  }
+}
+
 // ── PaginatorComponent ────────────────────────────────────────────
 
 let nextPaginatorId = 0;
@@ -408,7 +451,7 @@ let nextPaginatorId = 0;
   selector: 'tw-paginator',
   exportAs: 'twPaginator',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [NgTemplateOutlet],
+  imports: [NgTemplateOutlet, PaginatorFocusableDirective],
   templateUrl: './paginator.html',
   host: {
     '[attr.role]': 'shouldRender() ? "navigation" : null',
@@ -448,6 +491,8 @@ export class PaginatorComponent {
   readonly boundaryCount = input<number>(1);
 
   /** When true, renders jump-to-first and jump-to-last buttons. Defaults to `true`. */
+  // TRUE-default: first/last jumps are the standard pagination affordance for
+  // any list large enough to need a paginator; opt-out is for compact paginators.
   readonly showFirstLastButtons = input<boolean>(true);
 
   /** When true, renders the page-size selector region. Defaults to `false`. */
@@ -457,9 +502,13 @@ export class PaginatorComponent {
   readonly pageSizeOptions = input<readonly number[]>([10, 25, 50, 100]);
 
   /** When true, renders the page-info text region. Defaults to `true`. */
+  // TRUE-default: showing "X–Y of Z" is the expected pagination context; opt-out
+  // is for ultra-compact paginators that fit in tight UI.
   readonly showPageInfo = input<boolean>(true);
 
   /** When true, renders nothing when `totalItems === 0`. Defaults to `true`. */
+  // TRUE-default: hiding the paginator on empty data is expected UX; opt-out is
+  // for layouts that need to reserve the paginator's vertical space.
   readonly hideOnEmpty = input<boolean>(true);
 
   /** When true, renders nothing when `totalPages <= 1`. Defaults to `false`. */
@@ -507,8 +556,8 @@ export class PaginatorComponent {
 
   // ── View children ──
 
-  /** @internal */
-  readonly navGroupRef = viewChild<ElementRef<HTMLElement>>('navGroup');
+  /** @internal All nav-group focusables (first/prev/page/next/last) for `FocusKeyManager`. */
+  readonly focusableItems = viewChildren(PaginatorFocusableDirective);
 
   // ── IDs ──
 
@@ -634,7 +683,8 @@ export class PaginatorComponent {
   pageButtonClasses(active: boolean): string {
     const base = this._variantResult().pageButton();
     if (!active) return base;
-    return `${base} ${PAGE_BUTTON_ACTIVE[this.color()]}`;
+    const color = this.color();
+    return `${base} ${PAGE_BUTTON_ACTIVE_BG[color]} ${PAGE_BUTTON_ACTIVE_FG[color]}`;
   }
 
   // ── Projected template lookup ──
@@ -712,6 +762,11 @@ export class PaginatorComponent {
   private _pendingSource: PageChangeSource | null = null;
   private _initialized = false;
 
+  // ── Keyboard navigation (CDK FocusKeyManager) ──
+
+  /** @internal */
+  private _keyManager: FocusKeyManager<PaginatorFocusableDirective> | null = null;
+
   constructor() {
     afterNextRender(() => {
       this._initialized = true;
@@ -754,6 +809,30 @@ export class PaginatorComponent {
         this._pendingSource = null;
         this._emitChange(newPage, newSize, oldPage, oldSize, source);
         this._announce(newPage);
+      });
+    });
+
+    // Rebuild the FocusKeyManager whenever the focusable set changes (e.g. the
+    // numbered page list re-renders when total or current page shifts). No
+    // `.withWrap()` — paginators should NOT loop from page 1 ArrowLeft to the
+    // last page; that would be disorienting. Mirrors `accordion.ts` and the S12
+    // tabs/tab-nav migration. The `disabled` getter on `PaginatorFocusableDirective`
+    // resolves the `isDisabled()` signal so the manager skips disabled controls.
+    // `onCleanup` fires both on rebuild AND on component destroy, so no separate
+    // `_destroyRef.onDestroy` is needed.
+    effect((onCleanup) => {
+      const items = this.focusableItems();
+      if (items.length === 0) {
+        this._keyManager = null;
+        return;
+      }
+      const manager = new FocusKeyManager(items)
+        .withHorizontalOrientation('ltr')
+        .withHomeAndEnd();
+      this._keyManager = manager;
+
+      onCleanup(() => {
+        manager.destroy();
       });
     });
   }
@@ -813,45 +892,28 @@ export class PaginatorComponent {
     // because pageSize is tracked.
   }
 
-  /** @internal Keyboard navigation inside the nav group. */
+  /**
+   * @internal Keyboard navigation inside the nav group. Delegates ArrowLeft /
+   * ArrowRight / Home / End to CDK `FocusKeyManager`. The manager skips
+   * disabled controls automatically via the `disabled` getter on
+   * `PaginatorFocusableDirective`.
+   */
   onKeydown(event: KeyboardEvent): void {
-    const nav = this.navGroupRef()?.nativeElement;
-    if (!nav) return;
+    if (!this._keyManager) return;
+    const items = this.focusableItems();
+    if (items.length === 0) return;
 
-    const focusables = Array.from(
-      nav.querySelectorAll<HTMLElement>('[data-tw-paginator-focusable]'),
-    ).filter(
-      (el) =>
-        !el.hasAttribute('disabled') &&
-        el.getAttribute('aria-disabled') !== 'true',
+    // Sync the manager's active index to whichever focusable currently owns DOM
+    // focus, so arrow keys move from the user's perceived position rather than
+    // the stale post-render default of -1.
+    const focusedIdx = items.findIndex(
+      (item) => item.elementRef.nativeElement === event.target,
     );
-    if (focusables.length === 0) return;
-
-    const activeEl = document.activeElement as HTMLElement | null;
-    const currentIdx = activeEl ? focusables.indexOf(activeEl) : -1;
-
-    let nextIdx = -1;
-    switch (event.key) {
-      case 'ArrowRight':
-        nextIdx = currentIdx < 0 ? 0 : Math.min(currentIdx + 1, focusables.length - 1);
-        break;
-      case 'ArrowLeft':
-        nextIdx = currentIdx < 0 ? 0 : Math.max(currentIdx - 1, 0);
-        break;
-      case 'Home':
-        nextIdx = 0;
-        break;
-      case 'End':
-        nextIdx = focusables.length - 1;
-        break;
-      default:
-        return;
+    if (focusedIdx >= 0 && focusedIdx !== this._keyManager.activeItemIndex) {
+      this._keyManager.setActiveItem(focusedIdx);
     }
 
-    if (nextIdx >= 0 && nextIdx !== currentIdx) {
-      event.preventDefault();
-      focusables[nextIdx]?.focus();
-    }
+    this._keyManager.onKeydown(event);
   }
 
   // ── Emission + announcement ──

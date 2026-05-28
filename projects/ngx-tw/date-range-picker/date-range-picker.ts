@@ -18,30 +18,33 @@ import {
   output,
   signal,
   type Signal,
+  type TemplateRef,
   untracked,
   viewChild,
   ViewContainerRef,
 } from '@angular/core';
 import {
-  ControlValueAccessor,
+  type AbstractControl,
+  type ControlValueAccessor,
   FormGroupDirective,
+  NG_VALIDATORS,
   NgControl,
   NgForm,
+  type ValidationErrors,
+  type Validator,
   Validators,
 } from '@angular/forms';
-import {
-  type ConnectedPosition,
-  Overlay,
-  type OverlayRef,
-  type ScrollStrategy,
-} from '@angular/cdk/overlay';
-import { ComponentPortal } from '@angular/cdk/portal';
-import { FocusMonitor, FocusTrapFactory, LiveAnnouncer } from '@angular/cdk/a11y';
+import { Overlay } from '@angular/cdk/overlay';
+import { FocusMonitor, LiveAnnouncer } from '@angular/cdk/a11y';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { merge, Subscription } from 'rxjs';
+import { merge } from 'rxjs';
 import { tv } from 'tailwind-variants';
 import {
+  buildSelectLikePositions,
   type ErrorStateMatcher,
+  PickerOverlayCoordinator,
+  type RangeBehaviorConfig,
+  resolveSelectScrollStrategy,
   type TimePickerFormat,
   TW_ERROR_STATE_MATCHER,
   type TwColor,
@@ -54,10 +57,15 @@ import {
   TW_FORM_FIELD_CONTROL,
 } from 'ngx-tw/form-field';
 import {
+  calendarValidator,
+  type CalendarCell,
+  type CalendarValidationErrors,
+  type DateClassFn,
   DATE_ADAPTER,
   type DateAdapter,
-  type TwCalendarView,
-  type TwDateFilter,
+  type CalendarViewState,
+  type DateFilterFn,
+  type RangeClickBehavior,
   type TwDateRangeInput,
   TwDateRange,
 } from 'ngx-tw/calendar';
@@ -78,7 +86,6 @@ export type DateRangePickerChangeSource =
   | 'time'
   | 'apply'
   | 'clear'
-  | 'today'
   | 'programmatic';
 
 /** Reason the overlay closed. */
@@ -118,9 +125,6 @@ export interface DateRangePreset<D = Date> {
 
 // ── Constants ─────────────────────────────────────────────────────
 
-// Duration for leave animation — matches theme/_base.css scale-out/fade-out.
-const ANIMATION_DURATION = 150;
-
 const DEFAULT_DISPLAY_FORMAT = {
   dateTimeFormat: { year: 'numeric', month: 'short', day: 'numeric' } as Intl.DateTimeFormatOptions,
 };
@@ -143,59 +147,47 @@ function rangesEqual<D>(
   return startEq && endEq;
 }
 
-function buildDateRangePickerPositions(offset: number): ConnectedPosition[] {
-  return [
-    { originX: 'start', originY: 'bottom', overlayX: 'start', overlayY: 'top', offsetY: offset },
-    { originX: 'end', originY: 'bottom', overlayX: 'end', overlayY: 'top', offsetY: offset },
-    { originX: 'start', originY: 'top', overlayX: 'start', overlayY: 'bottom', offsetY: -offset },
-    { originX: 'end', originY: 'top', overlayX: 'end', overlayY: 'bottom', offsetY: -offset },
-  ];
-}
-
 // ── tv() config ───────────────────────────────────────────────────
 
 const dateRangePickerVariants = tv(
   {
     slots: {
-      root: 'relative inline-flex items-center w-full text-fg transition-[color,border-color,box-shadow] duration-200 motion-reduce:transition-none',
+      root: 'relative inline-flex items-center w-full text-fg transition-[color,border-color,box-shadow] duration-normal motion-reduce:transition-none',
       trigger:
-        'flex-1 inline-flex items-center gap-2 min-w-0 bg-transparent text-left text-fg outline-none border-0 p-0 m-0 cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500',
+        'flex-1 inline-flex items-center gap-2 min-w-0 bg-transparent text-left text-fg outline-none border-0 p-0 m-0 cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500 disabled:cursor-not-allowed',
       startText: 'truncate',
       separator: 'shrink-0 text-fg-subtle',
       endText: 'truncate',
       placeholderText: 'text-fg-subtle truncate flex-1',
-      triggerIconButton:
-        'inline-flex items-center justify-center shrink-0 rounded-md text-fg-muted hover:text-fg hover:bg-surface-muted transition-colors duration-200 motion-reduce:transition-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500 disabled:cursor-not-allowed',
+      triggerIconWrapper: 'inline-flex items-center justify-center shrink-0 text-fg-muted',
       triggerIcon:
-        'shrink-0 text-fg-muted transition-colors duration-200 motion-reduce:transition-none',
+        'shrink-0 text-fg-muted transition-colors duration-normal motion-reduce:transition-none',
+      // size-6 (24×24 CSS px) is the WCAG AA minimum interactive target — bumping past size-5 keeps the affordance hittable without growing the inline row.
       clearButton:
-        'inline-flex items-center justify-center shrink-0 rounded-md text-fg-muted hover:text-fg hover:bg-surface-muted transition-colors duration-200 motion-reduce:transition-none size-5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500',
+        'inline-flex items-center justify-center shrink-0 rounded-md text-fg-muted hover:text-fg hover:bg-surface-muted transition-colors duration-normal motion-reduce:transition-none size-6 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500',
     },
     variants: {
       size: {
         xs: {
           root: 'gap-1 text-xs',
-          triggerIconButton: 'size-6',
+          // size-3.5 (14px) is a permitted half-step decorative chevron for xs
+          // density where neither size-3 nor size-4 lines up with adjacent text.
           triggerIcon: 'size-3.5',
         },
         sm: {
           root: 'gap-1.5 text-sm',
-          triggerIconButton: 'size-7',
           triggerIcon: 'size-4',
         },
         md: {
           root: 'gap-2 text-sm',
-          triggerIconButton: 'size-8',
           triggerIcon: 'size-4',
         },
         lg: {
           root: 'gap-2 text-base',
-          triggerIconButton: 'size-9',
           triggerIcon: 'size-5',
         },
         xl: {
           root: 'gap-2 text-base',
-          triggerIconButton: 'size-10',
           triggerIcon: 'size-5',
         },
       },
@@ -273,6 +265,12 @@ let nextDateRangePickerId = 0;
       provide: TW_FORM_FIELD_CONTROL,
       useExisting: forwardRef(() => DateRangePickerComponent),
     },
+    {
+      provide: NG_VALIDATORS,
+      useExisting: forwardRef(() => DateRangePickerComponent),
+      multi: true,
+    },
+    PickerOverlayCoordinator,
   ],
   template: `
     <button
@@ -295,14 +293,35 @@ let nextDateRangePickerId = 0;
       (click)="onTriggerClick()"
       (keydown)="onTriggerKeydown($event)"
     >
-      @if (internalValue() !== null) {
-        <span [class]="startTextClasses()">{{ startDisplay() }}</span>
-        <span [class]="separatorClasses()">{{ rangeSeparator() }}</span>
-        <span [class]="endTextClasses()">{{ endDisplay() }}</span>
-      } @else {
-        <span [class]="placeholderClasses()">{{ placeholderDisplay() }}</span>
-      }
+      <span class="flex-1 inline-flex items-center gap-2 min-w-0">
+        @if (internalValue() !== null) {
+          <span [class]="startTextClasses()">{{ startDisplay() }}</span>
+          <span [class]="separatorClasses()">{{ rangeSeparator() }}</span>
+          <span [class]="endTextClasses()">{{ endDisplay() }}</span>
+        } @else {
+          <span [class]="placeholderClasses()">{{ placeholderDisplay() }}</span>
+        }
+      </span>
 
+      <span [class]="triggerIconWrapperClasses()">
+        <ng-content select="[slot=trigger-icon]">
+          <svg
+            [class]="triggerIconClasses()"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            aria-hidden="true"
+          >
+            <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
+            <line x1="16" y1="2" x2="16" y2="6" />
+            <line x1="8" y1="2" x2="8" y2="6" />
+            <line x1="3" y1="10" x2="21" y2="10" />
+          </svg>
+        </ng-content>
+      </span>
     </button>
 
     @if (showClear() && !isEmpty() && !isDisabled()) {
@@ -322,34 +341,6 @@ let nextDateRangePickerId = 0;
         </svg>
       </button>
     }
-
-    <button
-      type="button"
-      tabindex="-1"
-      [class]="triggerIconButtonClasses()"
-      [attr.aria-label]="triggerAccessibleName() || null"
-      [attr.aria-hidden]="'true'"
-      [disabled]="isDisabled()"
-      (click)="onTriggerClick()"
-    >
-      <ng-content select="[slot=trigger-icon]">
-        <svg
-          [class]="triggerIconClasses()"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="2"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-          aria-hidden="true"
-        >
-          <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
-          <line x1="16" y1="2" x2="16" y2="6" />
-          <line x1="8" y1="2" x2="8" y2="6" />
-          <line x1="3" y1="10" x2="21" y2="10" />
-        </svg>
-      </ng-content>
-    </button>
   `,
   host: {
     '[class]': 'rootClasses()',
@@ -357,7 +348,7 @@ let nextDateRangePickerId = 0;
 })
 export class DateRangePickerComponent<D = Date>
   extends FormFieldControl<TwDateRange<D>>
-  implements ControlValueAccessor, OnInit
+  implements ControlValueAccessor, Validator, OnInit
 {
   // ── Inputs ──
 
@@ -371,10 +362,10 @@ export class DateRangePickerComponent<D = Date>
   readonly maxDate = input<D | null>(null);
 
   /** Per-date predicate — return `false` to disable. Applied in both calendars. Presets that fall on a filtered date are skipped. */
-  readonly dateFilter = input<TwDateFilter<D> | null>(null);
+  readonly dateFilter = input<DateFilterFn<D> | null>(null);
 
   /** Which calendar view opens first — `'day'`, `'month'`, or `'year'`. Defaults to `'day'`. */
-  readonly startView = input<TwCalendarView>('day');
+  readonly startView = input<CalendarViewState>('day');
 
   /** Date the left calendar focuses on when opened with no value. Falls back to today. Ignored when a value is already set. */
   readonly startAt = input<D | null>(null);
@@ -422,7 +413,36 @@ export class DateRangePickerComponent<D = Date>
   readonly presets = input<readonly DateRangePreset<D>[]>([]);
 
   /** Whether to show a clear-button affordance inside the trigger when a value is set. Defaults to `true`. */
+  // TRUE-default: a picker without a clear affordance forces consumers to wire one — most form pickers expect the inline clear, matching `<tw-input>`'s clear button.
   readonly showClear = input<boolean>(true);
+
+  /** Minimum range length in days, inclusive. Commits shorter than this are rejected and surface `calendarRangeTooShort` on the bound `NgControl`. `null` = no minimum. Defaults to `null`. */
+  readonly minRangeLength = input<number | null>(null);
+
+  /** Maximum range length in days, inclusive. Commits longer than this are rejected and surface `calendarRangeTooLong` on the bound `NgControl`. `null` = no maximum. Defaults to `null`. */
+  readonly maxRangeLength = input<number | null>(null);
+
+  /**
+   * Range-mode behavior knobs forwarded to the embedded calendar. Accepts a
+   * partial config — unset fields use the documented defaults on
+   * `RangeBehaviorConfig`. Defaults: `{ allowSingleDayRange: true, persistPartialRange: true, allowBackwardRange: false, disableRangesCrossingDisabledDates: false }`.
+   */
+  readonly rangeBehavior = input<Partial<RangeBehaviorConfig>>({});
+
+  /** How the embedded calendar reacts to a click after a complete range. `'restart'` (default) starts a fresh draft; `'nearest-edge'` moves the nearer endpoint; `'require-clear'` blocks until cleared. */
+  readonly rangeClickBehavior = input<RangeClickBehavior>('restart');
+
+  /** Override first day of week (0=Sun, 1=Mon) on the embedded calendar. Falls back to the adapter's default. */
+  readonly firstDayOfWeek = input<number | null>(null);
+
+  /** Per-instance locale override. Forwarded to the embedded calendar and the underlying `DateAdapter` so the trigger display tracks the picker's locale. Falls back to Angular `LOCALE_ID` when `null`. */
+  readonly locale = input<string | null>(null);
+
+  /** Function producing per-cell CSS classes on the embedded calendar. */
+  readonly dateClass = input<DateClassFn<D> | null>(null);
+
+  /** Optional cell-content template, forwarded to the embedded calendar. Use to customize cell visuals beyond `dateClass`. */
+  readonly cellTemplate = input<TemplateRef<{ $implicit: CalendarCell<D> }> | null>(null);
 
   /** When true, renders a `Today / Clear / Cancel / Apply` action bar at the bottom of the overlay. The calendar commits on the second click by default — turn this on for touch-heavy contexts. Defaults to `false`. */
   readonly showActions = input<boolean>(false);
@@ -511,13 +531,17 @@ export class DateRangePickerComponent<D = Date>
   private readonly overlayService = inject(Overlay);
   private readonly focusMonitor = inject(FocusMonitor);
   private readonly liveAnnouncer = inject(LiveAnnouncer);
-  private readonly focusTrapFactory = inject(FocusTrapFactory);
+  private readonly coordinator = inject(PickerOverlayCoordinator);
   private readonly elementRef = inject(ElementRef<HTMLElement>);
   private readonly viewContainerRef = inject(ViewContainerRef);
   private readonly injector = inject(Injector);
   private readonly destroyRef = inject(DestroyRef);
   private readonly formField = inject(FormFieldComponent, { optional: true });
-  private readonly ngControl = inject(NgControl, { optional: true, self: true });
+  // Lazy NgControl lookup avoids the construction-time cycle with NG_VALIDATORS
+  // (the host registers itself as a validator via `useExisting`, and NgModel's
+  // constructor pulls the validator set — eager `inject(NgControl, {self})`
+  // would resolve to this component while it is still being created).
+  private ngControl: NgControl | null = null;
   private readonly parentForm = inject(NgForm, { optional: true });
   private readonly parentFormGroup = inject(FormGroupDirective, { optional: true });
   private readonly defaultMatcher = inject(TW_ERROR_STATE_MATCHER);
@@ -550,19 +574,15 @@ export class DateRangePickerComponent<D = Date>
   private readonly closingSignal = signal(false);
   private readonly lastValueBeforeOpen = signal<TwDateRange<D> | null>(null);
   private readonly pendingRange = signal<TwDateRange<D> | null>(null);
-  private readonly currentView = signal<TwCalendarView>('day');
+  private readonly currentView = signal<CalendarViewState>('day');
   private readonly _ngControlRev = signal(0);
   private readonly _formSubmitRev = signal(0);
 
   private onChange: (value: TwDateRange<D> | null) => void = () => {};
   private onTouched: () => void = () => {};
 
-  private overlayRef: OverlayRef | null = null;
   private readonly overlayInstanceSignal =
     signal<DateRangePickerOverlayComponent<D> | null>(null);
-  private focusTrap: ReturnType<FocusTrapFactory['create']> | null = null;
-  private perOpenSubs: Subscription | null = null;
-  private closeTimer: ReturnType<typeof setTimeout> | null = null;
 
   private get overlayInstance(): DateRangePickerOverlayComponent<D> | null {
     return this.overlayInstanceSignal();
@@ -702,7 +722,7 @@ export class DateRangePickerComponent<D = Date>
   /** @internal */
   readonly triggerIconClasses = computed(() => this.variantResult().triggerIcon());
   /** @internal */
-  readonly triggerIconButtonClasses = computed(() => this.variantResult().triggerIconButton());
+  readonly triggerIconWrapperClasses = computed(() => this.variantResult().triggerIconWrapper());
   /** @internal */
   readonly clearButtonClasses = computed(() => this.variantResult().clearButton());
 
@@ -748,13 +768,6 @@ export class DateRangePickerComponent<D = Date>
   constructor() {
     super();
 
-    // Wire this component as the NgControl's value accessor without registering
-    // NG_VALUE_ACCESSOR in providers, which would create a circular DI with the
-    // `inject(NgControl, { self: true })` above.
-    if (this.ngControl) {
-      this.ngControl.valueAccessor = this;
-    }
-
     // Mirror the `open` model into the overlay lifecycle.
     effect(() => {
       const shouldOpen = this.open();
@@ -771,35 +784,99 @@ export class DateRangePickerComponent<D = Date>
     });
 
     // Push config into the overlay whenever anything relevant changes.
+    // Reads happen in the tracked phase; writes to the overlay instance are
+    // wrapped in `untracked()` so they never feed back into this effect.
     effect(() => {
       const instance = this.overlayInstance;
       if (!instance) return;
-      instance.size.set(this.size());
-      instance.color.set(this.color());
-      instance.minDate.set(this.minDate());
-      instance.maxDate.set(this.maxDate());
-      instance.dateFilter.set(this.dateFilter());
-      instance.startView.set(this.startView());
-      instance.numberOfMonths.set(this.numberOfMonths());
-      instance.pendingRange.set(this.pendingRange());
-      instance.currentView.set(this.currentView());
-      instance.presets.set(this.presets());
-      instance.activePresetId.set(this.activePresetId());
-      instance.showActions.set(this.showActions());
-      instance.showTime.set(this.showTime());
-      instance.timeFormat.set(this.timeFormat());
-      instance.showSeconds.set(this.showSeconds());
-      instance.hourStep.set(this.hourStep());
-      instance.minuteStep.set(this.minuteStep());
-      instance.secondStep.set(this.secondStep());
-      instance.todayLabel.set(this.todayLabel());
-      instance.clearLabel.set(this.clearLabel());
-      instance.cancelLabel.set(this.cancelLabel());
-      instance.applyLabel.set(this.applyLabel());
-      instance.rangeSeparator.set(this.rangeSeparator());
-      instance.dialogId.set(this.dialogId);
-      instance.dialogAriaLabel.set(this.resolveDialogAriaLabel());
-      instance.panelClassValue.set(this.resolvePanelClass());
+      const size = this.size();
+      const color = this.color();
+      const minDate = this.minDate();
+      const maxDate = this.maxDate();
+      const dateFilter = this.dateFilter();
+      const startView = this.startView();
+      const numberOfMonths = this.numberOfMonths();
+      const pendingRange = this.pendingRange();
+      const currentView = this.currentView();
+      const presets = this.presets();
+      const activePresetId = this.activePresetId();
+      const showActions = this.showActions();
+      const showTime = this.showTime();
+      const timeFormat = this.timeFormat();
+      const showSeconds = this.showSeconds();
+      const hourStep = this.hourStep();
+      const minuteStep = this.minuteStep();
+      const secondStep = this.secondStep();
+      const todayLabel = this.todayLabel();
+      const clearLabel = this.clearLabel();
+      const cancelLabel = this.cancelLabel();
+      const applyLabel = this.applyLabel();
+      const rangeSeparator = this.rangeSeparator();
+      const dialogAriaLabel = this.resolveDialogAriaLabel();
+      const panelClassValue = this.resolvePanelClass();
+      const minRangeLength = this.minRangeLength();
+      const maxRangeLength = this.maxRangeLength();
+      const rangeBehavior = this.rangeBehavior();
+      const rangeClickBehavior = this.rangeClickBehavior();
+      const firstDayOfWeek = this.firstDayOfWeek();
+      const locale = this.locale();
+      const dateClass = this.dateClass();
+      const cellTemplate = this.cellTemplate();
+      untracked(() => {
+        instance.size.set(size);
+        instance.color.set(color);
+        instance.minDate.set(minDate);
+        instance.maxDate.set(maxDate);
+        instance.dateFilter.set(dateFilter);
+        instance.startView.set(startView);
+        instance.numberOfMonths.set(numberOfMonths);
+        instance.pendingRange.set(pendingRange);
+        instance.currentView.set(currentView);
+        instance.presets.set(presets);
+        instance.activePresetId.set(activePresetId);
+        instance.showActions.set(showActions);
+        instance.showTime.set(showTime);
+        instance.timeFormat.set(timeFormat);
+        instance.showSeconds.set(showSeconds);
+        instance.hourStep.set(hourStep);
+        instance.minuteStep.set(minuteStep);
+        instance.secondStep.set(secondStep);
+        instance.todayLabel.set(todayLabel);
+        instance.clearLabel.set(clearLabel);
+        instance.cancelLabel.set(cancelLabel);
+        instance.applyLabel.set(applyLabel);
+        instance.rangeSeparator.set(rangeSeparator);
+        instance.dialogId.set(this.dialogId);
+        instance.dialogAriaLabel.set(dialogAriaLabel);
+        instance.panelClassValue.set(panelClassValue);
+        instance.minRangeLength.set(minRangeLength);
+        instance.maxRangeLength.set(maxRangeLength);
+        instance.rangeBehavior.set(rangeBehavior);
+        instance.rangeClickBehavior.set(rangeClickBehavior);
+        instance.firstDayOfWeek.set(firstDayOfWeek);
+        instance.locale.set(locale);
+        instance.dateClass.set(dateClass);
+        instance.cellTemplate.set(cellTemplate);
+      });
+    });
+
+    // Push locale into the adapter so the trigger display tracks the picker's
+    // locale; the calendar runs its own setLocale internally for its grid.
+    effect(() => {
+      const locale = this.locale();
+      if (locale === null) return;
+      untracked(() => this.adapter.setLocale(locale));
+    });
+
+    // Re-run validation whenever a constraint input changes so consumer
+    // statusChanges fires (mirrors the calendar's pattern).
+    effect(() => {
+      this.minDate();
+      this.maxDate();
+      this.dateFilter();
+      this.minRangeLength();
+      this.maxRangeLength();
+      untracked(() => this.validatorOnChange());
     });
 
     // Dev-mode accessible-name warning.
@@ -831,16 +908,25 @@ export class DateRangePickerComponent<D = Date>
     this.destroyRef.onDestroy(() => {
       monitorSub.unsubscribe();
       this.focusMonitor.stopMonitoring(this.elementRef);
-      this.clearCloseTimer();
-      this.destroyFocusTrap();
-      this.perOpenSubs?.unsubscribe();
-      this.overlayRef?.dispose();
-      this.overlayRef = null;
+      // The coordinator's own DestroyRef.onDestroy disposes the overlay and
+      // clears its timers; we only need to drop the local instance signal.
       this.overlayInstanceSignal.set(null);
     });
   }
 
   ngOnInit(): void {
+    // Resolve the bound NgControl lazily (see field declaration). By the time
+    // ngOnInit runs the host's FormControlName / NgModel is fully constructed.
+    this.ngControl = this.injector.get(NgControl, null, {
+      self: true,
+      optional: true,
+    });
+    // Wire this component as the NgControl's value accessor. NG_VALUE_ACCESSOR
+    // is not registered as a provider to keep `inject(NgControl, { self })`
+    // possible — we assign it here instead.
+    if (this.ngControl) {
+      this.ngControl.valueAccessor = this;
+    }
     const ctrl = this.ngControl?.control;
     if (ctrl) {
       const streams = [ctrl.statusChanges, ctrl.valueChanges].filter(
@@ -997,7 +1083,34 @@ export class DateRangePickerComponent<D = Date>
     ) {
       return false;
     }
+    // Range-length constraints (Phase 4 codes).
+    if (range.start !== null && range.end !== null) {
+      const minLen = this.minRangeLength();
+      const maxLen = this.maxRangeLength();
+      if (minLen !== null || maxLen !== null) {
+        const length = this.rangeLengthInDays(range.start, range.end);
+        if (minLen !== null && length < minLen) return false;
+        if (maxLen !== null && length > maxLen) return false;
+      }
+    }
     return true;
+  }
+
+  private rangeLengthInDays(start: D, end: D): number {
+    // Inclusive day count (start + 1 day = length 2). Mirrors
+    // `rangeLengthDays` in calendar.utils so picker-level validation matches
+    // the calendar's commit-time validation.
+    const [lo, hi] =
+      this.adapter.compare(start, end) <= 0 ? [start, end] : [end, start];
+    const a = this.adapter.startOfDay(lo);
+    const b = this.adapter.startOfDay(hi);
+    let count = 1;
+    let cursor = a;
+    while (this.adapter.compare(cursor, b) < 0) {
+      cursor = this.adapter.addDays(cursor, 1);
+      count++;
+    }
+    return count;
   }
 
   // ── Overlay lifecycle ──
@@ -1008,78 +1121,20 @@ export class DateRangePickerComponent<D = Date>
     this.pendingRange.set(current);
     this.currentView.set(this.startView());
 
-    this.ensureOverlay();
-    this.attachOverlayComponent();
-    this.subscribePerOpen();
-    this.setupFocusTrap();
-    queueMicrotask(() => {
-      this.overlayInstance?.focusCalendar();
-    });
-    this.opened.emit({ trigger: this.elementRef.nativeElement });
-  }
-
-  private closeOverlay(reason: DateRangePickerCloseReason, restore = false): void {
-    if (this.closingSignal() || !this.overlayInstance) return;
-    this.closingSignal.set(true);
-    this.overlayInstance.leaving.set(true);
-
-    if (restore) {
-      const previous = this.lastValueBeforeOpen();
-      if (!rangesEqual(previous, this.internalValue(), this.adapter)) {
-        // Silent restore — no emit of rangeChange.
-        this.internalValue.set(previous);
-        this.value.set(previous);
-        this.parseError.set(false);
-        this.rangeError.set(false);
-      }
-    }
-
-    this.destroyFocusTrap();
-    this.triggerRef().nativeElement.focus();
-
-    this.closeTimer = setTimeout(() => {
-      this.closeTimer = null;
-      if (this.overlayRef?.hasAttached()) {
-        this.overlayRef.detach();
-      }
-      this.perOpenSubs?.unsubscribe();
-      this.perOpenSubs = null;
-      this.overlayInstanceSignal.set(null);
-      this.pendingRange.set(null);
-      untracked(() => this.open.set(false));
-      this.closingSignal.set(false);
-      this.closed.emit(reason);
-    }, ANIMATION_DURATION);
-  }
-
-  private ensureOverlay(): void {
-    if (this.overlayRef) return;
-    const positionStrategy = this.overlayService
-      .position()
-      .flexibleConnectedTo(this.elementRef)
-      .withPositions(buildDateRangePickerPositions(this.offset()))
-      .withFlexibleDimensions(false)
-      .withPush(false)
-      .withViewportMargin(8);
-
-    this.overlayRef = this.overlayService.create({
-      positionStrategy,
-      scrollStrategy: this.resolveScrollStrategy(),
-      hasBackdrop: true,
-      backdropClass: 'cdk-overlay-transparent-backdrop',
+    const result = this.coordinator.open<DateRangePickerOverlayComponent<D>>({
+      origin: this.elementRef,
+      portalComponent: DateRangePickerOverlayComponent as unknown as new (
+        ...args: unknown[]
+      ) => DateRangePickerOverlayComponent<D>,
+      viewContainerRef: this.viewContainerRef,
+      injector: this.injector,
+      positions: buildSelectLikePositions(this.offset()),
+      scrollStrategy: resolveSelectScrollStrategy(this.scrollStrategy(), this.overlayService),
       panelClass: 'tw-date-range-picker-panel',
     });
-  }
+    if (!result) return;
 
-  private attachOverlayComponent(): void {
-    if (!this.overlayRef) return;
-    const portal = new ComponentPortal<DateRangePickerOverlayComponent<D>>(
-      DateRangePickerOverlayComponent as unknown as new () => DateRangePickerOverlayComponent<D>,
-      this.viewContainerRef,
-      this.injector,
-    );
-    const ref = this.overlayRef.attach(portal);
-    const instance = ref.instance;
+    const instance = result.instance;
     instance.onCalendarSelect.set((range) => this.onCalendarSelection(range));
     instance.onPresetSelect.set((preset) => this.onPresetClick(preset));
     instance.onStartTimeChange.set((date) => this.onStartTimeChange(date));
@@ -1090,7 +1145,7 @@ export class DateRangePickerComponent<D = Date>
     instance.onCancel.set(() => this.onCancelAction());
     instance.onApply.set(() => this.onApplyAction());
     // Push the initial config synchronously so the first render reflects the
-    // current inputs; the effect below keeps things in sync afterwards.
+    // current inputs; the effect in the constructor keeps things in sync afterwards.
     instance.size.set(this.size());
     instance.color.set(this.color());
     instance.minDate.set(this.minDate());
@@ -1114,53 +1169,71 @@ export class DateRangePickerComponent<D = Date>
     instance.cancelLabel.set(this.cancelLabel());
     instance.applyLabel.set(this.applyLabel());
     instance.rangeSeparator.set(this.rangeSeparator());
+    instance.minRangeLength.set(this.minRangeLength());
+    instance.maxRangeLength.set(this.maxRangeLength());
+    instance.rangeBehavior.set(this.rangeBehavior());
+    instance.rangeClickBehavior.set(this.rangeClickBehavior());
+    instance.firstDayOfWeek.set(this.firstDayOfWeek());
+    instance.locale.set(this.locale());
+    instance.dateClass.set(this.dateClass());
+    instance.cellTemplate.set(this.cellTemplate());
     this.overlayInstanceSignal.set(instance);
     // Flush the initial config into the overlay's first render so view children
     // (calendar, time pickers, action bar) observe the picker's current inputs.
-    ref.changeDetectorRef.detectChanges();
+    result.componentRef.changeDetectorRef.detectChanges();
+
+    // Per-open streams from the coordinator complete on close, so no
+    // takeUntilDestroyed is needed.
+    this.coordinator.backdropClick$().subscribe(() => {
+      // When an action bar is present, backdrop click acts as cancel.
+      if (this.showActions()) {
+        this.closeOverlay('backdrop', /* restore */ true);
+      } else {
+        this.closeOverlay('backdrop');
+      }
+    });
+
+    this.coordinator.escape$().subscribe((event) => {
+      event.preventDefault();
+      this.closeOverlay('escape', /* restore */ true);
+    });
+
+    // Defer `opened` emission until after the enter animation completes — was
+    // previously fired synchronously on open() (mirrors the date-picker fix).
+    this.coordinator
+      .opened$()
+      .subscribe(() => this.opened.emit({ trigger: this.elementRef.nativeElement }));
+
+    queueMicrotask(() => {
+      this.overlayInstance?.focusCalendar();
+    });
   }
 
-  private subscribePerOpen(): void {
-    this.perOpenSubs?.unsubscribe();
-    this.perOpenSubs = new Subscription();
-    if (!this.overlayRef) return;
+  private closeOverlay(reason: DateRangePickerCloseReason, restore = false): void {
+    if (this.closingSignal() || !this.overlayInstance) return;
+    this.closingSignal.set(true);
+    this.overlayInstance.leaving.set(true);
 
-    this.perOpenSubs.add(
-      this.overlayRef
-        .backdropClick()
-        .pipe(takeUntilDestroyed(this.destroyRef))
-        .subscribe(() => {
-          // When an action bar is present, backdrop click acts as cancel.
-          if (this.showActions()) {
-            this.closeOverlay('backdrop', /* restore */ true);
-          } else {
-            this.closeOverlay('backdrop');
-          }
-        }),
-    );
+    if (restore) {
+      const previous = this.lastValueBeforeOpen();
+      if (!rangesEqual(previous, this.internalValue(), this.adapter)) {
+        // Silent restore — no emit of rangeChange.
+        this.internalValue.set(previous);
+        this.value.set(previous);
+        this.parseError.set(false);
+        this.rangeError.set(false);
+      }
+    }
 
-    this.perOpenSubs.add(
-      this.overlayRef
-        .keydownEvents()
-        .pipe(takeUntilDestroyed(this.destroyRef))
-        .subscribe((event) => {
-          if (event.key === 'Escape') {
-            event.preventDefault();
-            this.closeOverlay('escape', /* restore */ true);
-          }
-        }),
-    );
-  }
+    this.triggerRef().nativeElement.focus();
 
-  private setupFocusTrap(): void {
-    if (!this.overlayRef) return;
-    const overlayEl = this.overlayRef.overlayElement;
-    this.focusTrap = this.focusTrapFactory.create(overlayEl);
-  }
-
-  private destroyFocusTrap(): void {
-    this.focusTrap?.destroy();
-    this.focusTrap = null;
+    this.coordinator.close(() => {
+      this.overlayInstanceSignal.set(null);
+      this.pendingRange.set(null);
+      untracked(() => this.open.set(false));
+      this.closingSignal.set(false);
+      this.closed.emit(reason);
+    });
   }
 
   // ── Overlay callbacks ──
@@ -1241,7 +1314,7 @@ export class DateRangePickerComponent<D = Date>
     }
   }
 
-  private onViewChanged(view: TwCalendarView): void {
+  private onViewChanged(view: CalendarViewState): void {
     this.currentView.set(view);
   }
 
@@ -1250,6 +1323,12 @@ export class DateRangePickerComponent<D = Date>
     const range = new TwDateRange<D>(today, today);
     if (!this.isRangeValid(range)) return;
     this.pendingRange.set(range);
+    // When the action bar is off, Today behaves like a direct commit shortcut —
+    // mirrors the date-picker's parallel behaviour.
+    if (!this.showActions()) {
+      this.commit(range, 'preset');
+      this.closeOverlay('select');
+    }
   }
 
   private onClearAction(): void {
@@ -1283,25 +1362,6 @@ export class DateRangePickerComponent<D = Date>
   private resolvePanelClass(): string {
     const raw = this.panelClass();
     return Array.isArray(raw) ? raw.join(' ') : (raw as string);
-  }
-
-  private resolveScrollStrategy(): ScrollStrategy {
-    const s = this.scrollStrategy();
-    switch (s) {
-      case 'close':
-        return this.overlayService.scrollStrategies.close();
-      case 'block':
-        return this.overlayService.scrollStrategies.block();
-      default:
-        return this.overlayService.scrollStrategies.reposition();
-    }
-  }
-
-  private clearCloseTimer(): void {
-    if (this.closeTimer !== null) {
-      clearTimeout(this.closeTimer);
-      this.closeTimer = null;
-    }
   }
 
   // ── ControlValueAccessor ──
@@ -1364,6 +1424,35 @@ export class DateRangePickerComponent<D = Date>
 
   setDisabledState(isDisabled: boolean): void {
     this.cvaDisabled.set(isDisabled);
+  }
+
+  // ── Validator ──
+
+  private validatorOnChange: () => void = () => {};
+
+  /** @internal */
+  validate(control: AbstractControl): ValidationErrors | null {
+    // Delegate to the calendar validator so consumers see the same
+    // CalendarErrorCode set on a date-range-picker as on a bound `tw-calendar`.
+    const validator = calendarValidator<'range', D>({
+      mode: 'range',
+      lastInvalidFormValue: null,
+      constraints: {
+        minDate: this.minDate(),
+        maxDate: this.maxDate(),
+        dateFilter: this.dateFilter(),
+      },
+      adapter: this.adapter,
+      minRangeLength: this.minRangeLength(),
+      maxRangeLength: this.maxRangeLength(),
+    });
+    const errors = validator(control) as CalendarValidationErrors | null;
+    return errors;
+  }
+
+  /** @internal */
+  registerOnValidatorChange(fn: () => void): void {
+    this.validatorOnChange = fn;
   }
 
   // ── FormFieldControl methods ──

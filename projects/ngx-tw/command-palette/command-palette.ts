@@ -38,7 +38,7 @@ import {
 // ── Constants ──
 
 /** Duration of leave animation (ms) — matches scale-out/fade-out in theme/_base.css. */
-const ANIMATION_DURATION = 150;
+const ANIMATION_DURATION = 120;
 
 /** Debounce window (ms) for live-region result announcements while typing. */
 const ANNOUNCE_DEBOUNCE = 200;
@@ -77,8 +77,9 @@ const commandPaletteVariants = tv(
       groupHeader:
         'px-4 text-xs font-semibold uppercase tracking-wide text-fg-subtle',
       item:
-        'relative flex items-center gap-3 px-4 select-none transition-colors duration-200 motion-reduce:transition-none text-fg outline-none',
-      itemLabel: 'flex-1 min-w-0 truncate',
+        'relative flex items-center gap-3 px-4 select-none transition-colors duration-normal motion-reduce:transition-none text-fg outline-none',
+      itemBody: 'flex-1 min-w-0 flex flex-col',
+      itemLabel: 'min-w-0 truncate',
       itemDescription: 'block text-xs text-fg-muted mt-0.5 min-w-0 truncate',
       itemShortcut: 'ml-auto flex items-center gap-1 pl-3 shrink-0',
       itemKbd:
@@ -114,8 +115,12 @@ const commandPaletteVariants = tv(
           groupHeader: 'pt-4 pb-1',
         },
       },
+      // Active option uses `bg-surface-sunken` (one step recessed from `bg-surface-muted`)
+      // so the activedescendant-listbox carve-out remains unambiguously distinguishable
+      // from the hovered non-active state — DOM focus stays on the combobox input, so
+      // this background shift is the only visual signal for the keyboard-active option.
       active: {
-        true: { item: 'bg-surface-muted' },
+        true: { item: 'bg-surface-sunken' },
         false: { item: '' },
       },
       disabled: {
@@ -123,6 +128,17 @@ const commandPaletteVariants = tv(
         false: { item: 'cursor-pointer hover:bg-surface-muted' },
       },
     },
+    compoundVariants: [
+      {
+        // When an item is BOTH active and enabled, drop the non-active hover token so
+        // hovering the keyboard-active option doesn't visually demote it to the
+        // hovered-non-active state. Without this, twMerge keeps both background classes
+        // and the active sunken fill flips to muted on hover.
+        active: true,
+        disabled: false,
+        class: { item: 'hover:bg-surface-sunken' },
+      },
+    ],
     defaultVariants: { size: 'md', active: false, disabled: false },
   },
   { twMerge: true },
@@ -210,6 +226,9 @@ export class CommandPaletteItemDirective {
   /** Keyboard shortcut hint. A string renders as one kbd; an array renders each key separately. Defaults to `undefined`. */
   readonly shortcut = input<string | readonly string[] | undefined>(undefined);
 
+  /** Secondary description text rendered under the label. Defaults to `''`. */
+  readonly description = input<string>('');
+
   /** Callback run before `activated` emits. Defaults to `undefined`. */
   readonly run = input<(() => void) | undefined>(undefined);
 
@@ -232,6 +251,7 @@ export class CommandPaletteItemDirective {
     group: this.group() ?? this.parentGroup?.label() ?? undefined,
     disabled: this.disabled(),
     shortcut: this.shortcut(),
+    description: this.description() || undefined,
     run: this.run(),
   }));
 }
@@ -284,8 +304,8 @@ export class CommandPaletteFooterDirective {
     class:
       'fixed inset-0 flex items-start justify-center p-4 pointer-events-none origin-top',
     '[attr.data-command-palette-overlay]': '""',
-    '[animate.enter]': '"scale-in fade-in"',
-    '[animate.leave]': '"scale-out fade-out"',
+    '[animate.enter]': '"scale-in"',
+    '[animate.leave]': '"scale-out"',
   },
   templateUrl: './command-palette-overlay.html',
 })
@@ -318,6 +338,9 @@ class CommandPaletteOverlayComponent {
   protected readonly listClasses = computed(() => this.variantResult().list());
   protected readonly groupHeaderClasses = computed(() =>
     this.variantResult().groupHeader(),
+  );
+  protected readonly itemBodyClasses = computed(() =>
+    this.variantResult().itemBody(),
   );
   protected readonly itemLabelClasses = computed(() =>
     this.variantResult().itemLabel(),
@@ -390,20 +413,23 @@ export class CommandPaletteComponent {
   /** Custom filter function. Receives the merged item list and current query, returns the filtered result. Defaults to `undefined` (case-insensitive substring match). */
   readonly filterFn = input<CommandPaletteFilterFn | undefined>(undefined);
 
-  /** Whether the palette closes automatically after an item is activated. Defaults to `true`. */
+  /** Whether the palette closes automatically after an item is activated. Defaults to `true` — a command palette is a fire-and-dismiss surface; the special case is a "run many" launcher that opts out. */
   readonly closeOnSelect = input<boolean>(true);
 
-  /** Whether Escape closes the palette. Defaults to `true`. */
+  /** Whether Escape closes the palette. Defaults to `true` — Escape is the universal dismiss key for modal surfaces; the special case is a non-dismissible palette. */
   readonly closeOnEscape = input<boolean>(true);
 
-  /** Whether clicking the backdrop closes the palette. Defaults to `true`. */
+  /** Whether clicking the backdrop closes the palette. Defaults to `true` — clicking outside a modal is the expected dismiss gesture; the special case is enforcing an explicit choice. */
   readonly closeOnBackdropClick = input<boolean>(true);
 
-  /** Whether the search input is auto-focused when the palette opens. Defaults to `true`. */
+  /** Whether the search input is auto-focused when the palette opens. Defaults to `true` — without auto-focus the user must click into the input before typing, defeating the keyboard-first design. */
   readonly autoFocus = input<boolean>(true);
 
   /** Accessible label used for the dialog role. Defaults to `'Command palette'`. */
   readonly ariaLabel = input<string>('Command palette');
+
+  /** Accessible label applied to the search input (`role="combobox"`). Defaults to `'Search commands'`. */
+  readonly searchAriaLabel = input<string>('Search commands');
 
   /** Additional classes appended to the overlay panel for consumer customization. Defaults to `''`. */
   readonly panelClass = input<string | string[]>('');
@@ -501,10 +527,26 @@ export class CommandPaletteComponent {
     return groups;
   });
 
-  /** Active item index, auto-resets to the first enabled item when the filtered list changes. */
-  readonly activeIndex = linkedSignal({
-    source: () => this.filteredItems(),
-    computation: (items: readonly ResolvedItem[]) => findFirstEnabled(items),
+  /**
+   * Active item index, auto-resets to the first enabled item when the filtered
+   * *id set* changes. Keyed off the id sequence (not the array reference) so a
+   * re-emission of `filteredItems` with identical ids preserves the user's
+   * keyboard selection; only when ids actually shift do we recompute. When the
+   * previously-active id is still present in the new sequence its index is
+   * carried over; otherwise we fall back to the first enabled item.
+   */
+  readonly activeIndex = linkedSignal<readonly string[], number>({
+    source: () => this.filteredItems().map((i) => i.data.id),
+    computation: (ids, previous) => {
+      const items = this.filteredItems();
+      if (!previous) return findFirstEnabled(items);
+      const prevId = previous.source[previous.value];
+      if (prevId) {
+        const carriedIndex = ids.indexOf(prevId);
+        if (carriedIndex >= 0) return carriedIndex;
+      }
+      return findFirstEnabled(items);
+    },
   });
 
   /** Id of the currently active item (for `aria-activedescendant`). */
@@ -645,6 +687,16 @@ export class CommandPaletteComponent {
     this.closeTimer = setTimeout(() => {
       this.closeTimer = null;
 
+      // Guard against teardown during the animation window. `destroyRef.onDestroy`
+      // calls `clearCloseTimer()` so this branch only fires when the timer survived;
+      // even so, `isAttached` is the authoritative signal — if the overlay already
+      // detached (programmatic disposeOverlay, double-close race), skip writes that
+      // would touch a destroyed instance or re-emit `open=false`.
+      if (!this.isAttached()) {
+        this.closing = false;
+        return;
+      }
+
       if (this.overlayRef?.hasAttached()) {
         this.overlayRef.detach();
       }
@@ -741,10 +793,11 @@ export class CommandPaletteComponent {
         event.preventDefault();
         this.activateActive();
         break;
-      case 'Tab':
-        event.preventDefault();
-        this.hide();
-        break;
+      // Tab is intentionally NOT handled here — the FocusTrap installed in
+      // `setupFocusTrap()` cycles focus through the modal's focusable elements,
+      // so the user cannot accidentally tab out of the palette. Closing on Tab
+      // (the previous behaviour) ran counter to the universal "Tab moves focus
+      // within a modal" convention and surprised keyboard users.
     }
   }
 

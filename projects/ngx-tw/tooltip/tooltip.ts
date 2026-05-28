@@ -17,12 +17,12 @@ import {
   type ConnectedPosition,
   Overlay,
   type OverlayRef,
-  ScrollDispatcher,
 } from '@angular/cdk/overlay';
 import { ComponentPortal } from '@angular/cdk/portal';
 import { AriaDescriber } from '@angular/cdk/a11y';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { tv } from 'tailwind-variants';
-import type { TwColor } from 'ngx-tw/core';
+import type { TwColor, TwSize } from 'ngx-tw/core';
 
 /** Placement position of the tooltip relative to its trigger element. */
 export type TooltipPosition =
@@ -39,9 +39,6 @@ export type TooltipPosition =
   | 'right-start'
   | 'right-end';
 
-/** Size scale for the tooltip. */
-export type TooltipSize = 'sm' | 'md' | 'lg';
-
 /** Direction the arrow points toward (derived from resolved overlay position). */
 type ArrowDirection = 'top' | 'bottom' | 'left' | 'right';
 
@@ -50,22 +47,22 @@ type ArrowDirection = 'top' | 'bottom' | 'left' | 'right';
 const tooltipVariants = tv(
   {
     slots: {
-      wrapper: 'relative z-50 pointer-events-none',
-      panel: 'rounded-md shadow-sm',
+      wrapper: 'relative pointer-events-none',
+      panel: 'rounded-md shadow-md',
       arrow: 'absolute size-2 rotate-45',
     },
     variants: {
       color: {
         primary: {
-          panel: 'bg-primary-700 text-white',
+          panel: 'bg-primary-700 text-on-primary',
           arrow: 'bg-primary-700',
         },
         secondary: {
-          panel: 'bg-secondary-700 text-white',
+          panel: 'bg-secondary-700 text-on-secondary',
           arrow: 'bg-secondary-700',
         },
         accent: {
-          panel: 'bg-accent-700 text-white',
+          panel: 'bg-accent-700 text-on-accent',
           arrow: 'bg-accent-700',
         },
         neutral: {
@@ -73,18 +70,27 @@ const tooltipVariants = tv(
           panel: 'bg-surface-overlay text-fg',
           arrow: 'bg-surface-overlay',
         },
-        info: { panel: 'bg-info-700 text-white', arrow: 'bg-info-700' },
+        info: {
+          panel: 'bg-info-700 text-on-info',
+          arrow: 'bg-info-700',
+        },
         success: {
-          panel: 'bg-success-700 text-white',
+          panel: 'bg-success-700 text-on-success',
           arrow: 'bg-success-700',
         },
         warning: {
-          panel: 'bg-warning-700 text-white',
+          panel: 'bg-warning-700 text-on-warning',
           arrow: 'bg-warning-700',
         },
-        error: { panel: 'bg-error-700 text-white', arrow: 'bg-error-700' },
+        error: {
+          panel: 'bg-error-700 text-on-error',
+          arrow: 'bg-error-700',
+        },
       },
       size: {
+        xs: {
+          panel: 'px-1.5 py-0.5 text-2xs max-w-40',
+        },
         sm: {
           panel: 'px-2 py-1 text-xs max-w-48',
         },
@@ -93,6 +99,9 @@ const tooltipVariants = tv(
         },
         lg: {
           panel: 'px-4 py-2 text-sm max-w-sm',
+        },
+        xl: {
+          panel: 'px-4 py-2 text-base max-w-md',
         },
       },
     },
@@ -259,9 +268,10 @@ class TooltipOverlayComponent {
 
   readonly content = signal<string | TemplateRef<void>>('');
   readonly color = signal<TwColor>('neutral');
-  readonly size = signal<TooltipSize>('md');
+  readonly size = signal<TwSize>('md');
   readonly showArrow = signal(true);
   readonly arrowDirection = signal<ArrowDirection>('bottom');
+  readonly panelClass = signal<string>('');
 
   readonly isTemplate = computed(
     () => this.content() instanceof TemplateRef,
@@ -276,7 +286,10 @@ class TooltipOverlayComponent {
   );
 
   readonly wrapperClasses = computed(() => this.variantResult().wrapper());
-  readonly panelClasses = computed(() => this.variantResult().panel());
+  readonly panelClasses = computed(() => {
+    const consumer = this.panelClass();
+    return this.variantResult().panel({ class: consumer });
+  });
   readonly arrowClasses = computed(() => {
     const base = this.variantResult().arrow();
     const position = ARROW_POSITION_CLASSES[this.arrowDirection()];
@@ -309,20 +322,35 @@ export class TooltipDirective {
   /** Semantic color palette for the tooltip. Defaults to `'neutral'`. */
   readonly twTooltipColor = input<TwColor>('neutral');
 
-  /** Controls padding, font size, max-width, and arrow size. Defaults to `'md'`. */
-  readonly twTooltipSize = input<TooltipSize>('md');
+  /** Controls padding, font size, and maximum width. Defaults to `'md'`. */
+  readonly twTooltipSize = input<TwSize>('md');
 
-  /** Milliseconds to wait before showing after trigger. Defaults to `200`. */
+  /**
+   * Milliseconds to wait before showing after trigger. Defaults to `200` — an
+   * intent threshold: the trigger must be held long enough that the user reads
+   * as "wants the tooltip" rather than a passing graze with the pointer.
+   */
   readonly twTooltipShowDelay = input(200);
 
-  /** Milliseconds to wait before hiding after trigger ends. Defaults to `0`. */
+  /**
+   * Milliseconds to wait before hiding after trigger ends. Defaults to `0`
+   * (immediate dismiss). The asymmetry with `twTooltipShowDelay` is
+   * intentional — show is gated to filter noise, hide is instant so the
+   * tooltip never lingers over content the user has moved on from.
+   */
   readonly twTooltipHideDelay = input(0);
 
   /** When true, tooltip never shows. Defaults to `false`. */
   readonly twTooltipDisabled = input(false);
 
+  // Arrows reinforce the visual association between the floating panel and its trigger
+  // and match every other ngx-tw overlay (popover/menu); opt-out is for compact iconic
+  // contexts only.
   /** When true, renders an arrow pointing to the trigger. Defaults to `true`. */
   readonly twTooltipArrow = input(true);
+
+  /** Optional class string (space-separated) merged into the panel slot for consumer customization. */
+  readonly twTooltipPanelClass = input<string>('');
 
   /** Fires when the tooltip becomes visible. */
   readonly twTooltipShown = output<void>();
@@ -332,15 +360,21 @@ export class TooltipDirective {
 
   private readonly overlay = inject(Overlay);
   private readonly elementRef = inject(ElementRef<HTMLElement>);
-  private readonly ariaDescriber = inject(AriaDescriber);
   private readonly destroyRef = inject(DestroyRef);
-  private readonly scrollDispatcher = inject(ScrollDispatcher);
+  // CDK `AriaDescriber` owns a single hidden message-container on the document
+  // and dedupes identical description strings — if two tooltips on the same
+  // trigger advertise the same message, only one `aria-describedby` id is
+  // appended. Mirrors the `sort-header` pattern.
+  private readonly ariaDescriber = inject(AriaDescriber, { optional: true });
 
   private overlayRef: OverlayRef | null = null;
   private tooltipInstance: TooltipOverlayComponent | null = null;
   private showTimer: ReturnType<typeof setTimeout> | null = null;
   private hideTimer: ReturnType<typeof setTimeout> | null = null;
-  private scrollSub: { unsubscribe(): void } | null = null;
+  /** Last description string handed to `AriaDescriber.describe` — required so the symmetrical `removeDescription` call passes the same key. */
+  private _describedBy: string | null = null;
+  /** True when the trigger's `aria-describedby` was set directly to the overlay id (TemplateRef fallback path); used by `removeAriaDescription` to choose the symmetrical teardown. */
+  private _templateDescribedBy = false;
 
   constructor() {
     // Hide immediately when disabled changes to true
@@ -354,7 +388,6 @@ export class TooltipDirective {
       this.clearTimers();
       this.removeAriaDescription();
       this.disposeOverlay();
-      this.scrollSub?.unsubscribe();
     });
   }
 
@@ -423,6 +456,7 @@ export class TooltipDirective {
   private createAndShow(): void {
     if (this.tooltipInstance) {
       this.updateTooltip();
+      this.applyAriaDescription();
       return;
     }
 
@@ -432,16 +466,7 @@ export class TooltipDirective {
     this.tooltipInstance = componentRef.instance;
 
     this.updateTooltip();
-    this.setAriaDescription();
-
-    this.elementRef.nativeElement.setAttribute(
-      'aria-describedby',
-      this.tooltipInstance.id,
-    );
-
-    this.scrollSub = this.scrollDispatcher
-      .ancestorScrolled(this.elementRef, 20)
-      .subscribe(() => this.detach());
+    this.applyAriaDescription();
 
     this.twTooltipShown.emit();
   }
@@ -454,20 +479,25 @@ export class TooltipDirective {
       .position()
       .flexibleConnectedTo(this.elementRef)
       .withPositions(positions)
-      .withPush(false);
+      .withPush(true)
+      .withViewportMargin(8);
 
     this.overlayRef = this.overlay.create({
       positionStrategy,
-      scrollStrategy: this.overlay.scrollStrategies.reposition(),
+      // Close on ancestor scroll — tooltips are transient and should not chase a
+      // moving trigger across a scrolling viewport.
+      scrollStrategy: this.overlay.scrollStrategies.close(),
       panelClass: 'tw-tooltip-panel',
     });
 
-    positionStrategy.positionChanges.subscribe((change) => {
-      if (this.tooltipInstance) {
-        const dir = resolveArrowDirection(change.connectionPair);
-        this.tooltipInstance.arrowDirection.set(dir);
-      }
-    });
+    positionStrategy.positionChanges
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((change) => {
+        if (this.tooltipInstance) {
+          const dir = resolveArrowDirection(change.connectionPair);
+          this.tooltipInstance.arrowDirection.set(dir);
+        }
+      });
   }
 
   private updateTooltip(): void {
@@ -476,6 +506,7 @@ export class TooltipDirective {
     this.tooltipInstance.color.set(this.twTooltipColor());
     this.tooltipInstance.size.set(this.twTooltipSize());
     this.tooltipInstance.showArrow.set(this.twTooltipArrow());
+    this.tooltipInstance.panelClass.set(this.twTooltipPanelClass());
   }
 
   private detach(): void {
@@ -483,11 +514,72 @@ export class TooltipDirective {
     if (this.overlayRef?.hasAttached()) {
       this.overlayRef.detach();
     }
-    this.tooltipInstance = null;
-    this.elementRef.nativeElement.removeAttribute('aria-describedby');
-    this.scrollSub?.unsubscribe();
-    this.scrollSub = null;
-    this.twTooltipHidden.emit();
+    if (this.tooltipInstance) {
+      this.removeAriaDescription();
+      this.tooltipInstance = null;
+      this.twTooltipHidden.emit();
+    }
+  }
+
+  /**
+   * Push the current tooltip content as an `aria-describedby` link on the
+   * trigger element. Dual-mode wiring:
+   *
+   * - **String content**: routed through CDK `AriaDescriber.describe`, which
+   *   maintains a single hidden message-container on the document and dedupes
+   *   identical strings across all describers.
+   * - **TemplateRef content**: AriaDescriber's dedup table is keyed by string,
+   *   so we fall back to a direct `setAttribute('aria-describedby', overlayId)`
+   *   pointing at the `role="tooltip"` overlay. Without this fallback,
+   *   assistive tech would have no description link for templated tooltip
+   *   content.
+   *
+   * `_describedBy` tracks the string handed to `AriaDescriber`;
+   * `_templateDescribedBy` is `true` when the fallback path is active so
+   * `removeAriaDescription` can take the symmetrical teardown branch.
+   */
+  private applyAriaDescription(): void {
+    const el = this.elementRef.nativeElement;
+    const content = this.twTooltip();
+
+    if (typeof content === 'string' && content.length > 0 && this.ariaDescriber) {
+      // If we previously wired the template fallback (rare — content can swap
+      // at runtime), tear it down before swapping to the describer path.
+      if (this._templateDescribedBy) {
+        el.removeAttribute('aria-describedby');
+        this._templateDescribedBy = false;
+      }
+      if (this._describedBy && this._describedBy !== content) {
+        this.ariaDescriber.removeDescription(el, this._describedBy);
+        this._describedBy = null;
+      }
+      if (this._describedBy === content) return;
+      this.ariaDescriber.describe(el, content);
+      this._describedBy = content;
+      return;
+    }
+
+    // Template / non-string fallback.
+    if (this._describedBy && this.ariaDescriber) {
+      this.ariaDescriber.removeDescription(el, this._describedBy);
+      this._describedBy = null;
+    }
+    if (this.tooltipInstance) {
+      el.setAttribute('aria-describedby', this.tooltipInstance.id);
+      this._templateDescribedBy = true;
+    }
+  }
+
+  private removeAriaDescription(): void {
+    const el = this.elementRef.nativeElement;
+    if (this._describedBy && this.ariaDescriber) {
+      this.ariaDescriber.removeDescription(el, this._describedBy);
+      this._describedBy = null;
+    }
+    if (this._templateDescribedBy) {
+      el.removeAttribute('aria-describedby');
+      this._templateDescribedBy = false;
+    }
   }
 
   private disposeOverlay(): void {
@@ -496,28 +588,6 @@ export class TooltipDirective {
       this.overlayRef = null;
     }
     this.tooltipInstance = null;
-  }
-
-  private setAriaDescription(): void {
-    const content = this.twTooltip();
-    if (typeof content === 'string' && content) {
-      this.ariaDescriber.describe(
-        this.elementRef.nativeElement,
-        content,
-        'tooltip',
-      );
-    }
-  }
-
-  private removeAriaDescription(): void {
-    const content = this.twTooltip();
-    if (typeof content === 'string' && content) {
-      this.ariaDescriber.removeDescription(
-        this.elementRef.nativeElement,
-        content,
-        'tooltip',
-      );
-    }
   }
 
   private clearTimers(): void {

@@ -1,6 +1,7 @@
 import { ChangeDetectionStrategy, Component, signal } from '@angular/core';
 import { ButtonDirective, ButtonIconDirective } from 'ngx-tw/button';
 import { CodeBlockComponent } from 'ngx-tw/code-block';
+import { SpinnerComponent } from 'ngx-tw/spinner';
 import type { TwColor, TwSize } from 'ngx-tw/core';
 import type { ButtonVariant } from 'ngx-tw/button';
 
@@ -11,7 +12,7 @@ const SIZES: TwSize[] = ['xs', 'sm', 'md', 'lg', 'xl'];
 @Component({
   selector: 'app-button-examples',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [ButtonDirective, ButtonIconDirective, CodeBlockComponent],
+  imports: [ButtonDirective, ButtonIconDirective, CodeBlockComponent, SpinnerComponent],
   template: `
     <!-- Variants -->
     <section class="mb-10">
@@ -200,6 +201,8 @@ const SIZES: TwSize[] = ['xs', 'sm', 'md', 'lg', 'xl'];
             <div class="flex flex-wrap items-center gap-3">
               <button twButton [loading]="isLoading()">
                 @if (isLoading()) {
+                  <tw-spinner twButtonIcon size="sm" />
+                  <span class="sr-only">Saving</span>
                   Saving...
                 } @else {
                   Save
@@ -207,6 +210,8 @@ const SIZES: TwSize[] = ['xs', 'sm', 'md', 'lg', 'xl'];
               </button>
               <button twButton variant="outline" [loading]="isLoading()">
                 @if (isLoading()) {
+                  <tw-spinner twButtonIcon size="sm" />
+                  <span class="sr-only">Processing</span>
                   Processing...
                 } @else {
                   Process
@@ -224,7 +229,13 @@ const SIZES: TwSize[] = ['xs', 'sm', 'md', 'lg', 'xl'];
         <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">loading</code>
         wins over <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">disabled</code>
         visually but both block clicks. Toggle loading with a handler the user can't re-trigger,
-        then restore it once the async work resolves.
+        then restore it once the async work resolves. The directive sets
+        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">aria-busy</code>
+        but renders no spinner or status text — compose them in the projected content. Pair the
+        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">&lt;tw-spinner&gt;</code>
+        with an
+        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">sr-only</code>
+        status string so assistive tech announces what is in flight.
       </p>
     </section>
 
@@ -381,8 +392,14 @@ export class ButtonExamples {
   <button twButton [variant]="v" [disabled]="true">{{ v }}</button>
 }
 
-<!-- Loading -->
+<!-- Loading: spinner + sr-only status pair with aria-busy -->
 <button twButton [loading]="isLoading()">
-  @if (isLoading()) { Saving... } @else { Save }
+  @if (isLoading()) {
+    <tw-spinner twButtonIcon size="sm" />
+    <span class="sr-only">Saving</span>
+    Saving...
+  } @else {
+    Save
+  }
 </button>`;
 }

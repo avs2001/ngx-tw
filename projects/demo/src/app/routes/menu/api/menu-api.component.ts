@@ -30,6 +30,18 @@ import { ChangeDetectionStrategy, Component } from '@angular/core';
               <td class="px-4 py-2 font-mono text-xs text-fg-muted">'md'</td>
               <td class="px-4 py-2 text-fg-muted">Controls the menu's padding and the density of its items.</td>
             </tr>
+            <tr>
+              <td class="px-4 py-2 font-mono text-xs">aria-label</td>
+              <td class="px-4 py-2 font-mono text-xs text-fg-muted">string | undefined</td>
+              <td class="px-4 py-2 font-mono text-xs text-fg-muted">undefined</td>
+              <td class="px-4 py-2 text-fg-muted">Accessible label for the menu panel. Use when the trigger label doesn't describe the menu (e.g. an icon-only kebab trigger).</td>
+            </tr>
+            <tr>
+              <td class="px-4 py-2 font-mono text-xs">aria-labelledby</td>
+              <td class="px-4 py-2 font-mono text-xs text-fg-muted">string | undefined</td>
+              <td class="px-4 py-2 font-mono text-xs text-fg-muted">undefined</td>
+              <td class="px-4 py-2 text-fg-muted">ID of an element that labels the menu panel. Ignored when <code class="font-mono">aria-label</code> is set.</td>
+            </tr>
           </tbody>
         </table>
       </div>
@@ -80,6 +92,16 @@ import { ChangeDetectionStrategy, Component } from '@angular/core';
               <td class="px-4 py-2 font-mono text-xs">twMenuTrigger</td>
               <td class="px-4 py-2 font-mono text-xs text-fg-muted">TemplateRef&lt;unknown&gt;</td>
               <td class="px-4 py-2 text-fg-muted">The template that contains the <code class="font-mono">&lt;tw-menu&gt;</code> panel.</td>
+            </tr>
+            <tr>
+              <td class="px-4 py-2 font-mono text-xs">position</td>
+              <td class="px-4 py-2 font-mono text-xs text-fg-muted">ConnectedPosition[]</td>
+              <td class="px-4 py-2 text-fg-muted">Preferred anchor positions for the menu panel relative to the trigger. Pass CDK's <code class="font-mono">ConnectedPosition[]</code> to choose <code class="font-mono">bottom-start</code> vs <code class="font-mono">bottom-end</code>, RTL flips, etc.</td>
+            </tr>
+            <tr>
+              <td class="px-4 py-2 font-mono text-xs">data</td>
+              <td class="px-4 py-2 font-mono text-xs text-fg-muted">unknown</td>
+              <td class="px-4 py-2 text-fg-muted">Context data passed to the menu template (read via <code class="font-mono">let-data</code> in the <code class="font-mono">ng-template</code>).</td>
             </tr>
           </tbody>
         </table>
@@ -192,9 +214,9 @@ import { ChangeDetectionStrategy, Component } from '@angular/core';
           <tbody class="divide-y divide-border-muted">
             <tr>
               <td class="px-4 py-2 font-mono text-xs">color</td>
-              <td class="px-4 py-2 font-mono text-xs text-fg-muted">'default' | TwColor</td>
-              <td class="px-4 py-2 font-mono text-xs text-fg-muted">'default'</td>
-              <td class="px-4 py-2 text-fg-muted">Tints the item text and hover / focus backgrounds — use <code class="font-mono">'error'</code> for destructive actions.</td>
+              <td class="px-4 py-2 font-mono text-xs text-fg-muted">TwColor | undefined</td>
+              <td class="px-4 py-2 font-mono text-xs text-fg-muted">undefined</td>
+              <td class="px-4 py-2 text-fg-muted">Tints the item text and hover / focus backgrounds — use <code class="font-mono">'error'</code> for destructive actions. Leave unset for the default neutral style.</td>
             </tr>
             <tr>
               <td class="px-4 py-2 font-mono text-xs">disabled</td>
@@ -281,6 +303,11 @@ import { ChangeDetectionStrategy, Component } from '@angular/core';
               <td class="px-4 py-2 font-mono text-xs text-fg-muted">EventEmitter&lt;void&gt;</td>
               <td class="px-4 py-2 text-fg-muted">Fires when the item is activated — handler typically toggles the source signal.</td>
             </tr>
+            <tr>
+              <td class="px-4 py-2 font-mono text-xs">checkedChange</td>
+              <td class="px-4 py-2 font-mono text-xs text-fg-muted">EventEmitter&lt;boolean&gt;</td>
+              <td class="px-4 py-2 text-fg-muted">Fires after activation with the new <code class="font-mono">checked</code> value — read this instead of <code class="font-mono">triggered</code> when you only care about the resulting state.</td>
+            </tr>
           </tbody>
         </table>
       </div>
@@ -339,6 +366,11 @@ import { ChangeDetectionStrategy, Component } from '@angular/core';
               <td class="px-4 py-2 font-mono text-xs">triggered</td>
               <td class="px-4 py-2 font-mono text-xs text-fg-muted">EventEmitter&lt;void&gt;</td>
               <td class="px-4 py-2 text-fg-muted">Fires when the item is activated — handler typically sets the shared source signal.</td>
+            </tr>
+            <tr>
+              <td class="px-4 py-2 font-mono text-xs">checkedChange</td>
+              <td class="px-4 py-2 font-mono text-xs text-fg-muted">EventEmitter&lt;boolean&gt;</td>
+              <td class="px-4 py-2 text-fg-muted">Fires after activation with the new <code class="font-mono">checked</code> value — convenient for binding to a single source-of-truth signal.</td>
             </tr>
           </tbody>
         </table>

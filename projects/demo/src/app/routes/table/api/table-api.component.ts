@@ -403,6 +403,12 @@ import { CodeBlockComponent } from 'ngx-tw/code-block';
               <td class="px-4 py-2 font-mono text-xs text-fg-muted">undefined</td>
               <td class="px-4 py-2 text-fg-muted">Inline label used as <code class="font-mono">data-label</code> in stack mode; falls back to <code class="font-mono">headerLabel</code> then <code class="font-mono">name</code>.</td>
             </tr>
+            <tr>
+              <td class="px-4 py-2 font-mono text-xs">sortState</td>
+              <td class="px-4 py-2 font-mono text-xs text-fg-muted">TwColumnAriaSort</td>
+              <td class="px-4 py-2 font-mono text-xs text-fg-muted">null</td>
+              <td class="px-4 py-2 text-fg-muted">Explicit override for the column header's <code class="font-mono">aria-sort</code>. When unset, the column auto-derives <code class="font-mono">aria-sort</code> from a parent <code class="font-mono">[twSort]</code> directive — the column is treated as active when its <code class="font-mono">name</code> matches <code class="font-mono">twSortActive</code>.</td>
+            </tr>
           </tbody>
         </table>
       </div>
@@ -511,6 +517,7 @@ type TwTableResponsiveMode = 'scroll' | 'stack' | 'hide';
 type TwTableLayout = 'auto' | 'fixed';
 type TwColumnAlign = 'start' | 'center' | 'end';
 type TwColumnSticky = 'start' | 'end' | false;
+type TwColumnAriaSort = 'ascending' | 'descending' | 'none' | null;
 
 type TwTableDataSourceInput<T> = readonly T[] | Observable<readonly T[]> | DataSource<T>;
 
@@ -554,6 +561,8 @@ interface TwTableLabels {
   selectionAnnouncement: string;    // '{count} rows selected'
   expandRowLabel: string;
   collapseRowLabel: string;
+  selectAllLabel: string;           // 'Select all rows'
+  selectRowLabel: string;           // 'Select row {index}'
 }
 
 interface TwCellContext<T> {

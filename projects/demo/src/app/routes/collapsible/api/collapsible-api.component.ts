@@ -30,22 +30,10 @@ import { CodeBlockComponent } from 'ngx-tw/code-block';
               <td class="px-4 py-2 text-fg-muted">Unique identifier matched against the parent group's value; required when used inside a group.</td>
             </tr>
             <tr>
-              <td class="px-4 py-2 font-mono text-xs">variant</td>
-              <td class="px-4 py-2 font-mono text-xs text-fg-muted">'default' | 'bordered' | 'ghost' | 'filled'</td>
-              <td class="px-4 py-2 font-mono text-xs text-fg-muted">'default'</td>
-              <td class="px-4 py-2 text-fg-muted">Controls the visual style of the panel.</td>
-            </tr>
-            <tr>
-              <td class="px-4 py-2 font-mono text-xs">color</td>
-              <td class="px-4 py-2 font-mono text-xs text-fg-muted">TwColor</td>
-              <td class="px-4 py-2 font-mono text-xs text-fg-muted">'neutral'</td>
-              <td class="px-4 py-2 text-fg-muted">Sets the semantic color; applies only to the bordered and filled variants.</td>
-            </tr>
-            <tr>
-              <td class="px-4 py-2 font-mono text-xs">size</td>
-              <td class="px-4 py-2 font-mono text-xs text-fg-muted">TwSize</td>
-              <td class="px-4 py-2 font-mono text-xs text-fg-muted">'md'</td>
-              <td class="px-4 py-2 text-fg-muted">Controls the padding of the trigger and content sections.</td>
+              <td class="px-4 py-2 font-mono text-xs">display</td>
+              <td class="px-4 py-2 font-mono text-xs text-fg-muted">CollapsibleDisplay</td>
+              <td class="px-4 py-2 font-mono text-xs text-fg-muted">&#123;&#125;</td>
+              <td class="px-4 py-2 text-fg-muted">Bundles decorative axes — <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">variant</code>, <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">color</code>, <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">size</code>. Pass a partial; unset keys fall back to <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">'default'</code> / <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">'neutral'</code> / <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">'md'</code> respectively.</td>
             </tr>
             <tr>
               <td class="px-4 py-2 font-mono text-xs">disabled</td>
@@ -161,16 +149,17 @@ import { CodeBlockComponent } from 'ngx-tw/code-block';
       <h2 class="text-sm font-semibold mb-3">CollapsibleTriggerDirective</h2>
       <p class="text-xs text-fg-muted mb-4 font-mono">Selector: [twCollapsibleTrigger]</p>
       <p class="text-sm text-fg-muted leading-relaxed max-w-2xl">
-        Apply to the element that toggles the panel — typically a
-        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">&lt;button&gt;</code>.
-        The directive wires up the click and keyboard handlers (Enter / Space, plus
-        ArrowUp/Down, Home/End when nested in a group), applies the trigger slot
-        classes, and binds
-        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">role="button"</code>,
+        Apply to the
+        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">&lt;button&gt;</code>
+        that toggles the panel. The directive wires up the click and keyboard handlers
+        (Enter / Space, plus ArrowUp/Down, Home/End when nested in a group), applies
+        the trigger slot classes, and binds
         <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">aria-expanded</code>,
         <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">aria-controls</code>,
         and
         <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">aria-disabled</code>.
+        When the panel is disabled, the trigger is removed from the tab sequence with
+        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">tabindex="-1"</code>.
         It also renders the default chevron when no
         <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">[twCollapsibleIcon]</code>
         is projected.
@@ -198,5 +187,14 @@ import { CodeBlockComponent } from 'ngx-tw/code-block';
   `,
 })
 export class CollapsibleApi {
-  protected readonly typesSnippet = `type CollapsibleVariant = 'default' | 'bordered' | 'ghost' | 'filled';`;
+  protected readonly typesSnippet = `type CollapsibleVariant = 'default' | 'bordered' | 'ghost' | 'filled';
+
+interface CollapsibleDisplay {
+  /** Visual style of the panel container. Defaults to 'default'. */
+  variant?: CollapsibleVariant;
+  /** Semantic color; applies to the bordered and filled variants. Defaults to 'neutral'. */
+  color?: TwColor;
+  /** Padding scale for the trigger and content sections. Defaults to 'md'. */
+  size?: TwSize;
+}`;
 }

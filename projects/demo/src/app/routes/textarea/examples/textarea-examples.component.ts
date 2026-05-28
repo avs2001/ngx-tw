@@ -183,6 +183,43 @@ const SUBMIT_ONLY_MATCHER: ErrorStateMatcher = {
       <tw-code-block [code]="disabledSnippet" language="html" />
     </section>
 
+    <!-- Template-driven forms -->
+    <section class="mb-10" data-section="td">
+      <h2 class="text-sm font-semibold mb-3">Template-Driven Forms</h2>
+      <p class="text-sm text-fg-muted leading-relaxed max-w-2xl mb-4">
+        Bind with <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">[(ngModel)]</code> just like a plain textarea.
+        The directive picks up the bound <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">NgControl</code> automatically, so
+        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">required</code> inference and error-state tracking work without
+        extra wiring.
+      </p>
+      <div class="rounded-lg border border-border p-6 bg-surface-raised mb-4">
+        <tw-form-field>
+          <label twLabel>Comment</label>
+          <textarea
+            twTextarea
+            rows="3"
+            name="comment"
+            [(ngModel)]="comment"
+            [disabled]="commentDisabled()"
+            required
+          ></textarea>
+          <span twHint>Bound model below.</span>
+        </tw-form-field>
+        <p class="text-xs text-fg-muted mt-4 font-mono" data-testid="value-readout">
+          value = "{{ comment() }}" · disabled = {{ commentDisabled() }}
+        </p>
+        <div class="flex gap-2 mt-3">
+          <button twButton variant="outline" color="neutral" size="xs" (click)="comment.set('Great work!\\nShipped on time.')">Set value</button>
+          <button twButton variant="outline" color="neutral" size="xs" (click)="commentDisabled.update(v => !v)">Toggle disabled</button>
+          <button twButton variant="outline" color="neutral" size="xs" (click)="comment.set(''); commentDisabled.set(false)">Reset</button>
+        </div>
+      </div>
+      <tw-code-block [code]="ngModelTsSnippet" language="ts" />
+      <div class="mt-3">
+        <tw-code-block [code]="ngModelHtmlSnippet" language="html" />
+      </div>
+    </section>
+
     <!-- Reactive forms -->
     <section class="mb-10" data-section="reactive">
       <h2 class="text-sm font-semibold mb-3">Reactive Forms</h2>
@@ -218,43 +255,6 @@ const SUBMIT_ONLY_MATCHER: ErrorStateMatcher = {
       <tw-code-block [code]="reactiveTsSnippet" language="ts" />
       <div class="mt-3">
         <tw-code-block [code]="reactiveHtmlSnippet" language="html" />
-      </div>
-    </section>
-
-    <!-- Template-driven forms -->
-    <section class="mb-10" data-section="td">
-      <h2 class="text-sm font-semibold mb-3">Template-Driven Forms</h2>
-      <p class="text-sm text-fg-muted leading-relaxed max-w-2xl mb-4">
-        Bind with <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">[(ngModel)]</code> just like a plain textarea.
-        The directive picks up the bound <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">NgControl</code> automatically, so
-        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">required</code> inference and error-state tracking work without
-        extra wiring.
-      </p>
-      <div class="rounded-lg border border-border p-6 bg-surface-raised mb-4">
-        <tw-form-field>
-          <label twLabel>Comment</label>
-          <textarea
-            twTextarea
-            rows="3"
-            name="comment"
-            [(ngModel)]="comment"
-            [disabled]="commentDisabled()"
-            required
-          ></textarea>
-          <span twHint>Bound model below.</span>
-        </tw-form-field>
-        <p class="text-xs text-fg-muted mt-4 font-mono" data-testid="value-readout">
-          value = "{{ comment() }}" · disabled = {{ commentDisabled() }}
-        </p>
-        <div class="flex gap-2 mt-3">
-          <button twButton variant="outline" color="neutral" size="xs" (click)="comment.set('Great work!\\nShipped on time.')">Set value</button>
-          <button twButton variant="outline" color="neutral" size="xs" (click)="commentDisabled.update(v => !v)">Toggle disabled</button>
-          <button twButton variant="outline" color="neutral" size="xs" (click)="comment.set(''); commentDisabled.set(false)">Reset</button>
-        </div>
-      </div>
-      <tw-code-block [code]="ngModelTsSnippet" language="ts" />
-      <div class="mt-3">
-        <tw-code-block [code]="ngModelHtmlSnippet" language="html" />
       </div>
     </section>
 
@@ -322,7 +322,7 @@ const SUBMIT_ONLY_MATCHER: ErrorStateMatcher = {
     <section class="mb-10">
       <h2 class="text-sm font-semibold mb-3">Suffix Slot (Composition)</h2>
       <p class="text-sm text-fg-muted leading-relaxed max-w-2xl mb-4">
-        The form-field's <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">[slot="suffix"]</code> works for textareas
+        The form-field's <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">[twSuffix]</code> works for textareas
         too. The example below pairs autosize with a "clear" affordance.
       </p>
       <div class="rounded-lg border border-border p-6 bg-surface-raised mb-4">
@@ -331,7 +331,7 @@ const SUBMIT_ONLY_MATCHER: ErrorStateMatcher = {
           <textarea twTextarea [autosize]="true" [minRows]="2" [maxRows]="6" [formControl]="draftCtrl" placeholder="Start typing…"></textarea>
           @if (draftCtrl.value) {
             <button
-              slot="suffix"
+              twSuffix
               type="button"
               twButton
               variant="ghost"
@@ -348,6 +348,114 @@ const SUBMIT_ONLY_MATCHER: ErrorStateMatcher = {
         </tw-form-field>
       </div>
       <tw-code-block [code]="suffixSnippet" language="html" />
+    </section>
+
+    <!-- Playground -->
+    <section class="mb-10">
+      <h2 class="text-sm font-semibold mb-3">Playground</h2>
+      <p class="text-sm text-fg-muted leading-relaxed max-w-2xl mb-4">
+        Combine every user-facing input to sanity-check a configuration. Toggle
+        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">autosize</code>
+        to watch the textarea grow with content, or pair
+        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">readonly</code>
+        with a non-empty value to demo the "view-only" pattern.
+      </p>
+      <div class="rounded-lg border border-border p-6 bg-surface-raised">
+        <div class="flex flex-wrap gap-4 mb-6">
+          <div>
+            <label class="block text-xs font-medium text-fg-muted mb-1">Size</label>
+            <div class="flex gap-1">
+              @for (s of sizes; track s) {
+                <button twButton variant="ghost" color="neutral" size="xs"
+                        [class.!bg-primary-100]="playSize() === s"
+                        [class.!text-primary-700]="playSize() === s"
+                        (click)="playSize.set(s)">{{ s }}</button>
+              }
+            </div>
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-fg-muted mb-1">Resize</label>
+            <div class="flex gap-1">
+              @for (r of resizeValues; track r) {
+                <button twButton variant="ghost" color="neutral" size="xs"
+                        [class.!bg-primary-100]="playResize() === r"
+                        [class.!text-primary-700]="playResize() === r"
+                        (click)="playResize.set(r)">{{ r }}</button>
+              }
+            </div>
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-fg-muted mb-1">Autosize</label>
+            <div class="flex gap-1">
+              <button twButton variant="ghost" color="neutral" size="xs"
+                      [class.!bg-primary-100]="playAutosize()"
+                      [class.!text-primary-700]="playAutosize()"
+                      (click)="playAutosize.update(v => !v)">autosize</button>
+            </div>
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-fg-muted mb-1">State</label>
+            <div class="flex gap-1">
+              <button twButton variant="ghost" color="neutral" size="xs"
+                      [class.!bg-primary-100]="playDisabled()"
+                      [class.!text-primary-700]="playDisabled()"
+                      (click)="playDisabled.update(v => !v)">disabled</button>
+              <button twButton variant="ghost" color="neutral" size="xs"
+                      [class.!bg-primary-100]="playReadonly()"
+                      [class.!text-primary-700]="playReadonly()"
+                      (click)="playReadonly.update(v => !v)">readonly</button>
+            </div>
+          </div>
+          <div>
+            <label for="playRows" class="block text-xs font-medium text-fg-muted mb-1">Rows ({{ playRows() }})</label>
+            <input
+              id="playRows"
+              type="range"
+              min="1"
+              max="10"
+              [value]="playRows()"
+              (input)="playRows.set(+$any($event.target).value)"
+              class="w-32"
+            />
+          </div>
+          <div>
+            <label for="playMaxLength" class="block text-xs font-medium text-fg-muted mb-1">maxLength ({{ playMaxLength() ?? 'none' }})</label>
+            <input
+              id="playMaxLength"
+              type="range"
+              min="0"
+              max="240"
+              step="20"
+              [value]="playMaxLength() ?? 0"
+              (input)="playMaxLength.set(+$any($event.target).value || null)"
+              class="w-32"
+            />
+          </div>
+        </div>
+        <div class="p-6 rounded-lg bg-surface-sunken">
+          <tw-form-field>
+            <label twLabel>Playground</label>
+            <textarea
+              twTextarea
+              [size]="playSize()"
+              [resize]="playResize()"
+              [autosize]="playAutosize()"
+              [rows]="playRows()"
+              [maxLength]="playMaxLength() ?? undefined"
+              [disabled]="playDisabled()"
+              [readonly]="playReadonly()"
+              [(ngModel)]="playValue"
+              name="playValue"
+              placeholder="Type to try out the configuration…"
+              aria-label="Playground"
+            ></textarea>
+            <span twHint>Bound model below.</span>
+          </tw-form-field>
+          <p data-testid="output-playground" class="text-xs text-fg-muted mt-3 font-mono">
+            value length = {{ playValue().length }}{{ playMaxLength() ? ' / ' + playMaxLength() : '' }}
+          </p>
+        </div>
+      </div>
     </section>
   `,
 })
@@ -377,6 +485,16 @@ export class TextareaExamples {
     required(p.notes);
     minLength(p.notes, 2);
   });
+
+  // ── Playground ──
+  protected readonly playSize = signal<TwSize>('md');
+  protected readonly playResize = signal<TwTextareaResize>('vertical');
+  protected readonly playAutosize = signal(false);
+  protected readonly playRows = signal(3);
+  protected readonly playMaxLength = signal<number | null>(null);
+  protected readonly playDisabled = signal(false);
+  protected readonly playReadonly = signal(false);
+  protected readonly playValue = signal('');
 
   protected onSubmit(): void {
     // ngSubmit triggers the form's `submitted` flag; the matcher reads it.
@@ -530,7 +648,7 @@ protected readonly submitOnlyMatcher = SUBMIT_ONLY_MATCHER;`;
     [formControl]="draftCtrl"
   ></textarea>
   @if (draftCtrl.value) {
-    <button slot="suffix" type="button" twButton variant="ghost" color="neutral" size="xs"
+    <button twSuffix type="button" twButton variant="ghost" color="neutral" size="xs"
             aria-label="Clear draft" (click)="draftCtrl.reset('')">
       <svg class="size-4" viewBox="0 0 20 20" fill="currentColor">…</svg>
     </button>

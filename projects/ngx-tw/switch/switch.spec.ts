@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { ChangeDetectionStrategy, Component, signal } from '@angular/core';
 import { type ComponentFixture, TestBed } from '@angular/core/testing';
-import { FormControl, FormsModule, ReactiveFormsModule } from '@angular/forms';
+import { FormControl, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
 import { form, FormField } from '@angular/forms/signals';
 import { FocusMonitor } from '@angular/cdk/a11y';
 import { SwitchComponent } from './switch';
@@ -70,6 +70,18 @@ class AriaLabelHost {}
 })
 class ReactiveHost {
   control = new FormControl<boolean>(false, { nonNullable: true });
+}
+
+@Component({
+  imports: [SwitchComponent, ReactiveFormsModule],
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  template: `<tw-switch label="Required" [formControl]="control" />`,
+})
+class RequiredHost {
+  control = new FormControl<boolean>(false, {
+    nonNullable: true,
+    validators: [Validators.requiredTrue],
+  });
 }
 
 @Component({
@@ -258,12 +270,12 @@ describe('SwitchComponent', () => {
       expect(preventDefaultSpy).toHaveBeenCalled();
     });
 
-    it('should toggle on Enter key', () => {
+    it('should NOT toggle on Enter key — ARIA switch pattern is Space-only, matches tw-checkbox', () => {
       const fixture = TestBed.createComponent(BasicHost);
       fixture.detectChanges();
       dispatchKey(getSwitch(fixture), 'Enter');
       fixture.detectChanges();
-      expect(fixture.componentInstance.value()).toBe(true);
+      expect(fixture.componentInstance.value()).toBe(false);
     });
 
     it('should not toggle on other keys', () => {
@@ -472,5 +484,50 @@ describe('SwitchComponent signal forms', () => {
     getSwitch(fixture).dispatchEvent(new Event('blur'));
     fixture.detectChanges();
     expect(fixture.componentInstance.switchForm.enabled().touched()).toBe(true);
+  });
+});
+
+// ── Error state matcher ──
+
+describe('SwitchComponent errorState', () => {
+  const focusMonitorSpy = {
+    monitor: vi.fn(),
+    stopMonitoring: vi.fn(),
+  };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    TestBed.configureTestingModule({
+      providers: [{ provide: FocusMonitor, useValue: focusMonitorSpy }],
+    });
+  });
+
+  it('does not set aria-invalid before the control is touched', () => {
+    const fixture = TestBed.createComponent(RequiredHost);
+    fixture.detectChanges();
+    expect(fixture.componentInstance.control.invalid).toBe(true);
+    expect(getSwitch(fixture).getAttribute('aria-invalid')).toBe(null);
+  });
+
+  it('sets aria-invalid once the bound FormControl is touched + invalid', () => {
+    const fixture = TestBed.createComponent(RequiredHost);
+    fixture.detectChanges();
+    fixture.componentInstance.control.markAsTouched();
+    fixture.componentInstance.control.updateValueAndValidity();
+    fixture.detectChanges();
+    expect(getSwitch(fixture).getAttribute('aria-invalid')).toBe('true');
+  });
+
+  it('clears aria-invalid once the user toggles and the control becomes valid', () => {
+    const fixture = TestBed.createComponent(RequiredHost);
+    fixture.detectChanges();
+    fixture.componentInstance.control.markAsTouched();
+    fixture.componentInstance.control.updateValueAndValidity();
+    fixture.detectChanges();
+    expect(getSwitch(fixture).getAttribute('aria-invalid')).toBe('true');
+    getSwitch(fixture).click();
+    fixture.detectChanges();
+    expect(fixture.componentInstance.control.valid).toBe(true);
+    expect(getSwitch(fixture).getAttribute('aria-invalid')).toBe(null);
   });
 });

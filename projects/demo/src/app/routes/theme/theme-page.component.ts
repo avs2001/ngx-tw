@@ -21,15 +21,15 @@ import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 
       <nav class="flex border-b border-border-muted mb-8" aria-label="Theme documentation tabs">
         <a routerLink="overview" routerLinkActive="!border-primary-500 !text-primary-600"
-           class="px-4 py-2 text-sm font-medium -mb-px border-b-2 border-transparent text-fg-muted hover:text-fg transition-colors duration-200">
+           class="px-4 py-2 text-sm font-medium -mb-px border-b-2 border-transparent text-fg-muted hover:text-fg transition-colors duration-normal">
           Overview
         </a>
         <a routerLink="examples" routerLinkActive="!border-primary-500 !text-primary-600"
-           class="px-4 py-2 text-sm font-medium -mb-px border-b-2 border-transparent text-fg-muted hover:text-fg transition-colors duration-200">
+           class="px-4 py-2 text-sm font-medium -mb-px border-b-2 border-transparent text-fg-muted hover:text-fg transition-colors duration-normal">
           Examples
         </a>
         <a routerLink="api" routerLinkActive="!border-primary-500 !text-primary-600"
-           class="px-4 py-2 text-sm font-medium -mb-px border-b-2 border-transparent text-fg-muted hover:text-fg transition-colors duration-200">
+           class="px-4 py-2 text-sm font-medium -mb-px border-b-2 border-transparent text-fg-muted hover:text-fg transition-colors duration-normal">
           API
         </a>
       </nav>

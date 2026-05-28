@@ -3,7 +3,7 @@ import { type ComponentFixture, TestBed } from '@angular/core/testing';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { AvatarComponent, AvatarGroupComponent } from './avatar';
 import type { TwColor, TwSize } from 'ngx-tw/core';
-import type { AvatarRounded, AvatarStatus } from './avatar';
+import type { AvatarAppearance, AvatarStatus } from './avatar';
 
 // ── Test host components ──────────────────────────────────────────
 
@@ -17,38 +17,44 @@ class BasicAvatarHost {
 
 @Component({
   imports: [AvatarComponent],
-  template: `<tw-avatar [src]="src()" [alt]="alt()" />`,
+  template: `<tw-avatar [src]="src()" [initials]="initials()" [alt]="alt()" (imageError)="onImageError($event)" />`,
 })
 class ImageAvatarHost {
   readonly src = input<string | null>(null);
+  readonly initials = input<string | null>(null);
   readonly alt = input('Test user');
+  imageErrorEvent: Event | null = null;
+  onImageError(event: Event) {
+    this.imageErrorEvent = event;
+  }
 }
 
 @Component({
   imports: [AvatarComponent],
-  template: `<tw-avatar [initials]="initials()" [color]="color()" [alt]="alt()" />`,
+  template: `<tw-avatar [initials]="initials()" [color]="color()" [size]="size()" [alt]="alt()" />`,
 })
 class InitialsAvatarHost {
   readonly initials = input<string | null>(null);
   readonly color = input<TwColor>('neutral');
+  readonly size = input<TwSize>('md');
   readonly alt = input('Test user');
 }
 
 @Component({
   imports: [AvatarComponent],
-  template: `<tw-avatar [size]="size()" [rounded]="rounded()" alt="Test" />`,
+  template: `<tw-avatar [size]="size()" [appearance]="appearance()" alt="Test" />`,
 })
 class SizedAvatarHost {
   readonly size = input<TwSize>('md');
-  readonly rounded = input<AvatarRounded>('full');
+  readonly appearance = input<AvatarAppearance>({});
 }
 
 @Component({
   imports: [AvatarComponent],
-  template: `<tw-avatar [status]="status()" alt="Test" />`,
+  template: `<tw-avatar [appearance]="appearance()" alt="Test" />`,
 })
 class StatusAvatarHost {
-  readonly status = input<AvatarStatus | null>(null);
+  readonly appearance = input<AvatarAppearance>({});
 }
 
 @Component({
@@ -122,18 +128,79 @@ describe('AvatarComponent', () => {
       expect(span!.textContent?.trim()).toBe('JD');
     });
 
+    it('should render image (not initials) when both src and initials are set', () => {
+      const fixture = TestBed.createComponent(ImageAvatarHost);
+      fixture.componentRef.setInput('src', '/photo.jpg');
+      fixture.componentRef.setInput('initials', 'JD');
+      fixture.detectChanges();
+      const root = getAvatar(fixture);
+      expect(root.querySelector('img')).toBeTruthy();
+      // No initials span while the image is the active mode
+      expect(root.querySelector('span')).toBeNull();
+    });
+
+    it('should render initials in uppercase even when input is lowercase', () => {
+      const fixture = TestBed.createComponent(InitialsAvatarHost);
+      fixture.componentRef.setInput('initials', 'jd');
+      fixture.detectChanges();
+      const span = getAvatar(fixture).querySelector('span')!;
+      // Text content stays as-is, the `uppercase` utility transforms render
+      expect(span.textContent?.trim()).toBe('jd');
+      expect(span.className).toContain('uppercase');
+    });
+
     it('should fall back to initials when image fails to load', () => {
       const fixture = TestBed.createComponent(ImageAvatarHost);
       fixture.componentRef.setInput('src', '/bad.jpg');
+      fixture.componentRef.setInput('initials', 'JD');
       fixture.detectChanges();
 
-      // Trigger error on the img
       const img = getAvatar(fixture).querySelector('img')!;
       img.dispatchEvent(new Event('error'));
       fixture.detectChanges();
 
-      // Now it should show fallback SVG (no initials on this host)
+      const span = getAvatar(fixture).querySelector('span');
+      expect(span).toBeTruthy();
+      expect(span!.textContent?.trim()).toBe('JD');
+    });
+
+    it('should fall back to default SVG when image fails and no initials are provided', () => {
+      const fixture = TestBed.createComponent(ImageAvatarHost);
+      fixture.componentRef.setInput('src', '/bad.jpg');
+      fixture.detectChanges();
+
+      const img = getAvatar(fixture).querySelector('img')!;
+      img.dispatchEvent(new Event('error'));
+      fixture.detectChanges();
+
       expect(getAvatar(fixture).querySelector('svg')).toBeTruthy();
+    });
+  });
+
+  describe('imageError output', () => {
+    it('should emit imageError when the underlying <img> dispatches an error event', () => {
+      const fixture = TestBed.createComponent(ImageAvatarHost);
+      fixture.componentRef.setInput('src', '/bad.jpg');
+      fixture.detectChanges();
+
+      const img = getAvatar(fixture).querySelector('img')!;
+      const errorEvent = new Event('error');
+      img.dispatchEvent(errorEvent);
+      fixture.detectChanges();
+
+      expect(fixture.componentInstance.imageErrorEvent).toBe(errorEvent);
+    });
+
+    it('should not emit imageError on successful load', () => {
+      const fixture = TestBed.createComponent(ImageAvatarHost);
+      fixture.componentRef.setInput('src', '/ok.jpg');
+      fixture.detectChanges();
+
+      const img = getAvatar(fixture).querySelector('img')!;
+      img.dispatchEvent(new Event('load'));
+      fixture.detectChanges();
+
+      expect(fixture.componentInstance.imageErrorEvent).toBeNull();
     });
   });
 
@@ -165,6 +232,31 @@ describe('AvatarComponent', () => {
         expect(getAvatar(fixture).className).toContain(expectedClass);
       });
     }
+
+    it('should apply text-sm to initials at md size', () => {
+      const fixture = TestBed.createComponent(InitialsAvatarHost);
+      fixture.componentRef.setInput('initials', 'JD');
+      fixture.componentRef.setInput('size', 'md');
+      fixture.detectChanges();
+      // The text-* class is applied on the host element (root slot) via the size variant
+      expect(getAvatar(fixture).className).toContain('text-sm');
+    });
+
+    it('should apply text-xs to initials at xs/sm size', () => {
+      const fixture = TestBed.createComponent(InitialsAvatarHost);
+      fixture.componentRef.setInput('initials', 'JD');
+      fixture.componentRef.setInput('size', 'xs');
+      fixture.detectChanges();
+      expect(getAvatar(fixture).className).toContain('text-xs');
+    });
+
+    it('should apply text-base to initials at xl size', () => {
+      const fixture = TestBed.createComponent(InitialsAvatarHost);
+      fixture.componentRef.setInput('initials', 'JD');
+      fixture.componentRef.setInput('size', 'xl');
+      fixture.detectChanges();
+      expect(getAvatar(fixture).className).toContain('text-base');
+    });
   });
 
   describe('colors', () => {
@@ -181,39 +273,47 @@ describe('AvatarComponent', () => {
     }
   });
 
-  describe('rounded', () => {
+  describe('appearance.rounded', () => {
     it('should apply rounded-full by default', () => {
       const fixture = TestBed.createComponent(SizedAvatarHost);
       fixture.detectChanges();
       expect(getAvatar(fixture).className).toContain('rounded-full');
     });
 
-    it('should apply rounded-lg when rounded="lg"', () => {
+    it('should apply rounded-lg when appearance.rounded="lg"', () => {
       const fixture = TestBed.createComponent(SizedAvatarHost);
-      fixture.componentRef.setInput('rounded', 'lg');
+      fixture.componentRef.setInput('appearance', { rounded: 'lg' } satisfies AvatarAppearance);
       fixture.detectChanges();
       expect(getAvatar(fixture).className).toContain('rounded-lg');
     });
 
-    it('should apply rounded-none when rounded="none"', () => {
+    it('should apply rounded-none when appearance.rounded="none"', () => {
       const fixture = TestBed.createComponent(SizedAvatarHost);
-      fixture.componentRef.setInput('rounded', 'none');
+      fixture.componentRef.setInput('appearance', { rounded: 'none' } satisfies AvatarAppearance);
       fixture.detectChanges();
       expect(getAvatar(fixture).className).toContain('rounded-none');
     });
   });
 
-  describe('status indicator', () => {
-    it('should not render status dot when status is null', () => {
+  describe('appearance.status', () => {
+    it('should not render status dot when appearance.status is omitted', () => {
       const fixture = TestBed.createComponent(StatusAvatarHost);
       fixture.detectChanges();
       const dots = getAvatar(fixture).querySelectorAll('span[aria-hidden="true"]');
       expect(dots.length).toBe(0);
     });
 
-    it('should render status dot when status is set', () => {
+    it('should not render status dot when appearance.status is null', () => {
       const fixture = TestBed.createComponent(StatusAvatarHost);
-      fixture.componentRef.setInput('status', 'online');
+      fixture.componentRef.setInput('appearance', { status: null } satisfies AvatarAppearance);
+      fixture.detectChanges();
+      const dots = getAvatar(fixture).querySelectorAll('span[aria-hidden="true"]');
+      expect(dots.length).toBe(0);
+    });
+
+    it('should render status dot when appearance.status is set', () => {
+      const fixture = TestBed.createComponent(StatusAvatarHost);
+      fixture.componentRef.setInput('appearance', { status: 'online' } satisfies AvatarAppearance);
       fixture.detectChanges();
       const dot = getAvatar(fixture).querySelector('span[aria-hidden="true"]');
       expect(dot).toBeTruthy();
@@ -224,7 +324,7 @@ describe('AvatarComponent', () => {
     for (const status of statusValues) {
       it(`should render status="${status}" without errors`, () => {
         const fixture = TestBed.createComponent(StatusAvatarHost);
-        fixture.componentRef.setInput('status', status);
+        fixture.componentRef.setInput('appearance', { status } satisfies AvatarAppearance);
         fixture.detectChanges();
         const dot = getAvatar(fixture).querySelector('span[aria-hidden="true"]');
         expect(dot).toBeTruthy();
@@ -244,7 +344,6 @@ describe('AvatarComponent', () => {
       const fixture = TestBed.createComponent(ProjectedContentHost);
       fixture.detectChanges();
       const svgs = getAvatar(fixture).querySelectorAll('svg');
-      // Only the projected SVG should be present, not the fallback
       expect(svgs.length).toBe(1);
       expect(svgs[0].hasAttribute('data-testid')).toBe(true);
     });
@@ -281,9 +380,49 @@ describe('AvatarComponent', () => {
       expect(getAvatar(fixture).getAttribute('aria-hidden')).toBeNull();
     });
 
+    it('should not apply aria-hidden on image-mode avatars even when alt is empty', () => {
+      // Image-mode avatars carry their accessibility on the underlying <img>'s
+      // alt attribute; hiding the host would suppress the image entirely.
+      const fixture = TestBed.createComponent(ImageAvatarHost);
+      fixture.componentRef.setInput('src', '/photo.jpg');
+      fixture.componentRef.setInput('alt', '');
+      fixture.detectChanges();
+      expect(getAvatar(fixture).getAttribute('aria-hidden')).toBeNull();
+    });
+
+    it('should not apply aria-hidden on image-mode avatars with alt text', () => {
+      const fixture = TestBed.createComponent(ImageAvatarHost);
+      fixture.componentRef.setInput('src', '/photo.jpg');
+      fixture.componentRef.setInput('alt', 'A user photo');
+      fixture.detectChanges();
+      expect(getAvatar(fixture).getAttribute('aria-hidden')).toBeNull();
+    });
+
+    it('should log a dev-mode warning when image-mode avatar has no alt', () => {
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      const fixture = TestBed.createComponent(ImageAvatarHost);
+      fixture.componentRef.setInput('src', '/photo.jpg');
+      fixture.componentRef.setInput('alt', '');
+      fixture.detectChanges();
+      expect(warnSpy).toHaveBeenCalledWith(
+        '<tw-avatar> rendered as image without alt text — provide alt for accessibility',
+      );
+      warnSpy.mockRestore();
+    });
+
+    it('should not log a dev-mode warning when image-mode avatar has alt text', () => {
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      const fixture = TestBed.createComponent(ImageAvatarHost);
+      fixture.componentRef.setInput('src', '/photo.jpg');
+      fixture.componentRef.setInput('alt', 'A user photo');
+      fixture.detectChanges();
+      expect(warnSpy).not.toHaveBeenCalled();
+      warnSpy.mockRestore();
+    });
+
     it('should mark status dot as aria-hidden', () => {
       const fixture = TestBed.createComponent(StatusAvatarHost);
-      fixture.componentRef.setInput('status', 'online');
+      fixture.componentRef.setInput('appearance', { status: 'online' } satisfies AvatarAppearance);
       fixture.detectChanges();
       const dot = getAvatar(fixture).querySelector('span');
       expect(dot!.getAttribute('aria-hidden')).toBe('true');
@@ -314,17 +453,28 @@ describe('AvatarGroupComponent', () => {
   });
 
   describe('max overflow', () => {
-    it('should hide excess avatars when max is set', async () => {
+    it('should hide excess avatars via [hidden] attribute when max is set', async () => {
       const fixture = TestBed.createComponent(AvatarGroupHost);
       fixture.componentRef.setInput('max', 2);
       fixture.detectChanges();
       await fixture.whenStable();
+      fixture.detectChanges();
 
       const avatars = getGroup(fixture).querySelectorAll('tw-avatar');
       const visible = Array.from(avatars).filter(
-        (el) => (el as HTMLElement).style.display !== 'none',
+        (el) => !(el as HTMLElement).hasAttribute('hidden'),
       );
       expect(visible.length).toBe(2);
+
+      // The overflowed avatars carry the `hidden` attribute set by the group
+      // (signal-driven, not `style.display` mutation).
+      const hiddenAvatars = Array.from(avatars).filter(
+        (el) => (el as HTMLElement).hasAttribute('hidden'),
+      );
+      expect(hiddenAvatars.length).toBe(2);
+      for (const el of hiddenAvatars) {
+        expect((el as HTMLElement).style.display).toBe('');
+      }
     });
 
     it('should show "+N" overflow indicator', async () => {
@@ -334,7 +484,6 @@ describe('AvatarGroupComponent', () => {
       await fixture.whenStable();
       fixture.detectChanges();
 
-      // The overflow indicator is a direct child span of the group, not inside a tw-avatar
       const overflow = getGroup(fixture).querySelector(':scope > span');
       expect(overflow).toBeTruthy();
       expect(overflow!.textContent?.trim()).toBe('+2');
@@ -343,7 +492,6 @@ describe('AvatarGroupComponent', () => {
     it('should not show overflow indicator when max is null', () => {
       const fixture = TestBed.createComponent(AvatarGroupHost);
       fixture.detectChanges();
-      // No overflow span should be rendered
       const spans = getGroup(fixture).querySelectorAll(':scope > span');
       expect(spans.length).toBe(0);
     });
@@ -367,7 +515,6 @@ describe('AvatarGroupComponent', () => {
       fixture.detectChanges();
 
       const avatars = getGroup(fixture).querySelectorAll('tw-avatar');
-      // All child avatars should have the sm size class
       avatars.forEach((avatar) => {
         expect(avatar.className).toContain('size-8');
       });

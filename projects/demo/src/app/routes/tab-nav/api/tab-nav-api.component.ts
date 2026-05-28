@@ -51,7 +51,25 @@ import { CodeBlockComponent } from 'ngx-tw/code-block';
               <td class="px-4 py-2 font-mono text-xs">tabPanel</td>
               <td class="px-4 py-2 font-mono text-xs text-fg-muted">TabNavPanel | undefined</td>
               <td class="px-4 py-2 font-mono text-xs text-fg-muted">undefined</td>
-              <td class="px-4 py-2 text-fg-muted">Associated panel reference; when provided, switches the nav to the WAI-ARIA tabs pattern.</td>
+              <td class="px-4 py-2 text-fg-muted">Associated panel reference; when provided, switches the nav to the WAI-ARIA tabs pattern. A panel projected as a child of the nav is auto-discovered when this input is omitted.</td>
+            </tr>
+            <tr>
+              <td class="px-4 py-2 font-mono text-xs">navClass</td>
+              <td class="px-4 py-2 font-mono text-xs text-fg-muted">string</td>
+              <td class="px-4 py-2 font-mono text-xs text-fg-muted">''</td>
+              <td class="px-4 py-2 text-fg-muted">Additional classes merged onto the <code class="font-mono">&lt;nav&gt;</code> host.</td>
+            </tr>
+            <tr>
+              <td class="px-4 py-2 font-mono text-xs">linkClass</td>
+              <td class="px-4 py-2 font-mono text-xs text-fg-muted">string</td>
+              <td class="px-4 py-2 font-mono text-xs text-fg-muted">''</td>
+              <td class="px-4 py-2 text-fg-muted">Additional classes merged onto every tab link.</td>
+            </tr>
+            <tr>
+              <td class="px-4 py-2 font-mono text-xs">labels</td>
+              <td class="px-4 py-2 font-mono text-xs text-fg-muted">TabNavLabels</td>
+              <td class="px-4 py-2 font-mono text-xs text-fg-muted">&#123;&#125;</td>
+              <td class="px-4 py-2 text-fg-muted">Optional formatter for screen-reader announcements when the active link changes in the ARIA tabs pattern.</td>
             </tr>
           </tbody>
         </table>
@@ -154,5 +172,10 @@ import { CodeBlockComponent } from 'ngx-tw/code-block';
   `,
 })
 export class TabNavApi {
-  protected readonly typesSnippet = `type TabNavVariant = 'underline' | 'enclosed' | 'pill';`;
+  protected readonly typesSnippet = `type TabNavVariant = 'underline' | 'enclosed' | 'pill';
+
+interface TabNavLabels {
+  /** Formatter for the LiveAnnouncer message emitted when the active link changes. */
+  activeTabAnnouncement?: (label: string, index: number, total: number) => string;
+}`;
 }

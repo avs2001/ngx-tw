@@ -11,6 +11,7 @@
       [placeholder]="palette.placeholder()"
       [value]="palette.query()"
       (input)="onSearchInput($event)"
+      [attr.aria-label]="palette.searchAriaLabel()"
       [attr.aria-expanded]="'true'"
       [attr.aria-controls]="listId"
       [attr.aria-activedescendant]="palette.activeItemId()"
@@ -43,16 +44,18 @@
               (click)="onItemClick(item)"
               (mousemove)="onItemHover(item)"
             >
-              @if (item.template; as tpl) {
-                <span [class]="itemLabelClasses()">
-                  <ng-container [ngTemplateOutlet]="tpl" />
-                </span>
-              } @else {
-                <span [class]="itemLabelClasses()">{{ item.data.label }}</span>
+              <span [class]="itemBodyClasses()">
+                @if (item.template; as tpl) {
+                  <span [class]="itemLabelClasses()">
+                    <ng-container [ngTemplateOutlet]="tpl" />
+                  </span>
+                } @else {
+                  <span [class]="itemLabelClasses()">{{ item.data.label }}</span>
+                }
                 @if (item.data.description) {
                   <span [class]="itemDescriptionClasses()">{{ item.data.description }}</span>
                 }
-              }
+              </span>
               @if (item.shortcutKeys.length > 0) {
                 <span [class]="itemShortcutClasses()" aria-hidden="true">
                   @for (key of item.shortcutKeys; track $index) {

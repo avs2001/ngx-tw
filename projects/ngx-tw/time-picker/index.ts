@@ -8,3 +8,4 @@ export type {
   TimePickerFormat,
   TimePickerMeridiem,
 } from './time-picker';
+export { TimePickerIntl, provideTimePickerIntl } from './time-picker-intl';

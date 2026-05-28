@@ -9,14 +9,15 @@ import {
 import {
   TW_DIALOG_DATA,
   TwDialog,
-  TwDialogActionsDirective,
-  TwDialogCloseDirective,
-  TwDialogContentDirective,
-  TwDialogHeaderDirective,
-  TwDialogIconDirective,
+  DialogActionsDirective,
+  DialogCloseDirective,
+  DialogContentDirective,
+  DialogDescriptionDirective,
+  DialogHeaderDirective,
+  DialogIconDirective,
   TwDialogRef,
-  TwDialogSubtitleDirective,
-  TwDialogTitleDirective,
+  DialogSubtitleDirective,
+  DialogTitleDirective,
   type TwDialogRole,
   type TwDialogScrollStrategy,
   type TwDialogSize,
@@ -44,9 +45,9 @@ interface UserProfileData {
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
     ButtonDirective,
-    TwDialogContentDirective,
-    TwDialogActionsDirective,
-    TwDialogCloseDirective,
+    DialogContentDirective,
+    DialogActionsDirective,
+    DialogCloseDirective,
   ],
   template: `
     <div twDialogContent>
@@ -206,13 +207,14 @@ const TERMS_SECTIONS: readonly TermsSection[] = [
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
     ButtonDirective,
-    TwDialogHeaderDirective,
-    TwDialogIconDirective,
-    TwDialogTitleDirective,
-    TwDialogSubtitleDirective,
-    TwDialogContentDirective,
-    TwDialogActionsDirective,
-    TwDialogCloseDirective,
+    DialogHeaderDirective,
+    DialogIconDirective,
+    DialogTitleDirective,
+    DialogSubtitleDirective,
+    DialogDescriptionDirective,
+    DialogContentDirective,
+    DialogActionsDirective,
+    DialogCloseDirective,
     CodeBlockComponent,
   ],
   template: `
@@ -502,8 +504,8 @@ const TERMS_SECTIONS: readonly TermsSection[] = [
           </div>
         </div>
         <div twDialogContent>
-          <p class="text-sm text-fg-muted">
-            The following will be permanently deleted and cannot be recovered:
+          <p twDialogDescription class="text-sm text-fg-muted">
+            The following will be permanently deleted and cannot be recovered.
           </p>
           <ul class="mt-3 space-y-1.5 text-sm">
             <li class="flex items-center justify-between py-1 border-b border-border-muted">
@@ -1125,7 +1127,9 @@ ref.afterClosed().subscribe((result) => this.lastResult.set(result));`;
     </div>
   </div>
   <div twDialogContent>
-    <p class="text-sm text-fg-muted">The following will be permanently deleted:</p>
+    <p twDialogDescription class="text-sm text-fg-muted">
+      The following will be permanently deleted and cannot be recovered.
+    </p>
     <ul class="mt-3 space-y-1.5 text-sm">
       <li>Open issues · 14</li>
       <li>Deploy environments · 3</li>
@@ -1173,7 +1177,7 @@ ref.afterClosed().subscribe((result) => this.lastResult.set(result));`;
 
 @Component({
   selector: 'app-user-profile',
-  imports: [TwDialogContentDirective, TwDialogActionsDirective, TwDialogCloseDirective, ButtonDirective],
+  imports: [DialogContentDirective, DialogActionsDirective, DialogCloseDirective, ButtonDirective],
   template: \`
     <div twDialogContent>
       <!-- avatar + name + stats + bio + recent activity -->

@@ -422,7 +422,7 @@ function compareOrders(active: string | null, dir: SortDirection): (a: Order, b:
           <span tw-sort-header id="amount" start="desc">Amount</span>
         </div>
         @if (lastEvent(); as e) {
-          <pre class="text-xs font-mono whitespace-pre text-fg-muted">{{ formatEvent(e) }}</pre>
+          <tw-code-block [code]="formatEvent(e)" language="ts" />
         } @else {
           <p class="text-xs text-fg-subtle italic">Click a header to see the event payload.</p>
         }

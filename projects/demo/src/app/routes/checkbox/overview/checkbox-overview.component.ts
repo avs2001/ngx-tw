@@ -115,6 +115,25 @@ import { CodeBlockComponent } from 'ngx-tw/code-block';
           <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">prefers-reduced-motion</code>
         </li>
         <li>Keyboard: Space toggles, matching native checkbox semantics</li>
+        <li>Implements
+          <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">FormFieldControl&lt;boolean&gt;</code>
+          — pairs with
+          <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">&lt;tw-form-field&gt;</code>
+          for hint, error, and labelled rows
+        </li>
+        <li>
+          <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">aria-invalid</code>
+          driven by
+          <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">ErrorStateMatcher</code>
+          — works with reactive
+          <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">Validators.requiredTrue</code>
+        </li>
+        <li>Hidden native
+          <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">&lt;input type="checkbox"&gt;</code>
+          so the
+          <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">name</code>
+          input participates in native form submission alongside Angular bindings
+        </li>
       </ul>
     </section>
 

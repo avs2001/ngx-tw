@@ -5,20 +5,24 @@ import {
   ElementRef,
   inject,
   signal,
+  type TemplateRef,
   viewChild,
 } from '@angular/core';
 import type { TimePickerFormat, TwColor, TwSize } from 'ngx-tw/core';
 import {
   CalendarComponent,
   provideSingleSelectionStrategy,
-  type TwCalendarView,
-  type TwDateFilter,
+  type CalendarCell,
+  type CalendarViewState,
+  type DateClassFn,
+  type DateFilterFn,
 } from 'ngx-tw/calendar';
 import { ButtonDirective } from 'ngx-tw/button';
 import {
   TimePickerComponent,
   type TimePickerChangeEvent,
 } from 'ngx-tw/time-picker';
+import type { DatePickerPreset } from './date-picker';
 
 /**
  * Internal overlay panel for `tw-date-picker`. Hosts the calendar and, when
@@ -37,10 +41,33 @@ import {
     '[attr.role]': '"dialog"',
     '[attr.aria-modal]': '"true"',
     '[attr.aria-label]': 'dialogAriaLabel()',
-    '[animate.enter]': '"scale-in fade-in"',
-    '[animate.leave]': 'leaving() ? "scale-out fade-out" : ""',
+    '[animate.enter]': '"scale-in"',
+    '[animate.leave]': 'leaving() ? "scale-out" : ""',
   },
   template: `
+    @if (presets().length) {
+      <div
+        class="flex flex-col gap-1 p-2 border-b border-border bg-surface-muted"
+        role="listbox"
+        aria-label="Preset dates"
+      >
+        @for (preset of presets(); track presetKey($index, preset)) {
+          <button
+            twButton
+            variant="ghost"
+            size="sm"
+            type="button"
+            role="option"
+            class="w-full justify-start"
+            [attr.aria-selected]="isActivePreset(preset) ? 'true' : 'false'"
+            (click)="handlePreset(preset)"
+          >
+            {{ preset.label }}
+          </button>
+        }
+      </div>
+    }
+
     <tw-calendar
       #calendar
       class="!block !rounded-none !border-0 !bg-transparent !p-2"
@@ -51,6 +78,9 @@ import {
       [minDate]="minDate()"
       [maxDate]="maxDate()"
       [dateFilter]="dateFilter()"
+      [dateClass]="dateClass()"
+      [cellTemplate]="cellTemplate()"
+      [locale]="locale()"
       aria-label="Calendar"
       (valueChange)="onCalendarDateSelected($event)"
     />
@@ -116,9 +146,9 @@ export class DatePickerOverlayComponent<D = unknown> {
   /** @internal */
   readonly maxDate = signal<D | null>(null);
   /** @internal */
-  readonly dateFilter = signal<TwDateFilter<D> | null>(null);
+  readonly dateFilter = signal<DateFilterFn<D> | null>(null);
   /** @internal */
-  readonly startView = signal<TwCalendarView>('day');
+  readonly startView = signal<CalendarViewState>('day');
   /** @internal */
   readonly startAt = signal<D | null>(null);
   /** @internal Current committed-or-pending value shown as selected in the calendar. */
@@ -141,6 +171,15 @@ export class DatePickerOverlayComponent<D = unknown> {
   readonly panelClassValue = signal<string>('');
   /** @internal */
   readonly leaving = signal(false);
+
+  /** @internal Forwarded to the calendar — per-cell CSS classes. */
+  readonly dateClass = signal<DateClassFn<D> | null>(null);
+  /** @internal Forwarded to the calendar — cell-content template. */
+  readonly cellTemplate = signal<TemplateRef<{ $implicit: CalendarCell<D> }> | null>(null);
+  /** @internal Forwarded to the calendar — per-instance locale override. */
+  readonly locale = signal<string | null>(null);
+  /** @internal Quick-select presets rendered above the calendar. */
+  readonly presets = signal<readonly DatePickerPreset<D>[]>([]);
 
   // ── Time-picker config ──
 
@@ -175,6 +214,8 @@ export class DatePickerOverlayComponent<D = unknown> {
   readonly onCancel = signal<() => void>(() => {});
   /** @internal */
   readonly onApply = signal<() => void>(() => {});
+  /** @internal */
+  readonly onPresetSelect = signal<(preset: DatePickerPreset<D>) => void>(() => {});
 
   // ── Classes ──
 
@@ -223,6 +264,24 @@ export class DatePickerOverlayComponent<D = unknown> {
   handleApply(): void {
     this.onApply()();
   }
+
+  /** @internal */
+  handlePreset(preset: DatePickerPreset<D>): void {
+    this.onPresetSelect()(preset);
+  }
+
+  /** @internal */
+  presetKey(index: number, preset: DatePickerPreset<D>): string | number {
+    return preset.id ?? preset.label ?? index;
+  }
+
+  /** @internal */
+  isActivePreset(preset: DatePickerPreset<D>): boolean {
+    return !!preset.id && this.activePresetId() === preset.id;
+  }
+
+  /** @internal Tracks the most recently picked preset for visual state. Set by the parent. */
+  readonly activePresetId = signal<string | undefined>(undefined);
 
   /** @internal Moves focus to the active calendar cell. Called by the parent after open. */
   focusCalendar(): void {

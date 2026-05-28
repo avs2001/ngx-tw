@@ -6,6 +6,17 @@
   --color-surface-sunken: var(--color-gray-50);
   --color-surface-muted: var(--color-gray-100);
 
+  /* ===== Overlay controls =====
+     Translucent dark backgrounds for floating chrome that sits over arbitrary
+     consumer content (carousel pause control, indicator capsule). The token
+     ships as a fixed `oklch(0 0 0 / 0.4)` rather than a `var(--color-gray-*)`
+     because the contrast contract is against the *content underneath*, not
+     against `--color-surface` — flipping to white on dark would defeat the
+     purpose. Tailwind v4 auto-generates the matching `bg-overlay-control{,-hover}`
+     utilities from these `--color-{name}` pairs. */
+  --color-overlay-control: oklch(0 0 0 / 0.4);
+  --color-overlay-control-hover: oklch(0 0 0 / 0.6);
+
   /* ===== Foreground (text/icons) ===== */
   --color-fg: var(--color-gray-900);
   --color-fg-muted: var(--color-gray-600);
@@ -15,6 +26,15 @@
   --color-border: var(--color-gray-300);
   --color-border-muted: var(--color-gray-200);
   --color-border-strong: var(--color-gray-400);
+
+  /* ===== Table sticky shadows =====
+     Hairline 1px shadows used to separate sticky table chrome from scrolled
+     content. Each value resolves through `--color-border` so the same token
+     auto-adapts to dark mode. Tailwind v4 auto-generates the matching
+     `shadow-table-sticky*` utilities from these `--shadow-{name}` pairs. */
+  --shadow-table-sticky: 0 1px 0 0 var(--color-border);
+  --shadow-table-sticky-cell-start: 1px 0 0 0 var(--color-border);
+  --shadow-table-sticky-cell-end: -1px 0 0 0 var(--color-border);
 
   /* ===== Calendar widths =====
      Pinned per size so month / year / multi-year views share the same footprint
@@ -27,7 +47,9 @@
 
   /* ===== Extra-small typography =====
      Used for xs-density secondary text (xs descriptions, calendar cell labels,
-     keyboard hints). Sits one step below Tailwind's `text-xs` (0.75rem). */
+     keyboard hints). Sits one step below Tailwind's `text-xs` (0.75rem).
+     Tailwind v4 auto-generates the `text-2xs` utility from this `--text-{name}`
+     pair (font-size + line-height) per its theme-token convention. */
   --text-2xs: 0.6875rem;
   --text-2xs--line-height: 1rem;
 
@@ -135,18 +157,161 @@
   --color-error-900: var(--color-red-900);
   --color-error-950: var(--color-red-950);
 
-  /* ===== On-role foregrounds =====
-     Foreground colour that pairs with a solid `{role}-500` fill. Each value is
-     picked to meet WCAG AA against the matched -500 background. Most roles use
-     `white` (the -500 shade is dark enough); `success` and `warning` use the
-     deepest -950 shade because their -500 fills (green/amber) are too light
-     for a white foreground. */
-  --color-on-info: var(--color-white);
-  --color-on-success: var(--color-green-950);
-  --color-on-warning: var(--color-amber-950);
-  --color-on-error: var(--color-white);
-  --color-on-primary: var(--color-white);
-  --color-on-secondary: var(--color-white);
-  --color-on-accent: var(--color-white);
-  --color-on-neutral: var(--color-white);
+  /* ===== Role slot tokens =====
+     Per-role semantic slots picked to meet WCAG AA at each pairing. Components
+     consume these slots directly (`bg-info-soft text-info-soft-fg`) and never
+     pick `{role}-{shade}` values themselves — that keeps contrast deliberate
+     and removes the need for `dark:` overrides on a per-component basis. Dark
+     and high-contrast themes redefine the same slots in their respective
+     files; the `{role}-{shade}` scale below is preserved for consumer escape
+     hatches but is no longer the recommended surface.
+
+     Slot semantics:
+       -soft           soft variant background (low chroma)
+       -soft-hover     soft variant background on hover/focus
+       -soft-fg        title-strength text on -soft
+       -soft-fg-muted  body text on -soft (AA body)
+       -solid          solid variant background (high chroma)
+       -solid-hover    solid variant background on hover/focus
+       -solid-fg       text on -solid (AA body)
+       -border         subtle border (outline variant, dividers)
+       -border-strong  accent border (indicators, rings)
+       -fg             colored text on neutral surface (tab labels, links)
+       -icon           icon tint on -soft / surface contexts
+
+     Light-mode contrast notes (sRGB, against the slot it pairs with):
+       sky-50 ↔ sky-900     ≈ 13.7:1   ✓ AA
+       sky-50 ↔ sky-800     ≈  9.4:1   ✓ AA
+       sky-600 ↔ white      ≈  4.7:1   ✓ AA body
+       sky-700 ↔ white      ≈  5.9:1   ✓ AA body  (info-fg on surface)
+       green-700 ↔ white    ≈  4.7:1   ✓ AA body  (success-solid; -600 fails at 3.3:1)
+       amber-500 ↔ amber-950 ≈ 8.5:1   ✓ AA       (warning keeps dark-on-yellow signage)
+       amber-800 ↔ white    ≈  6.5:1   ✓ AA body  (warning-fg; -700 fails at 3.4:1)
+       red-600 ↔ white      ≈  5.0:1   ✓ AA body
+       blue-600 ↔ white     ≈  6.0:1   ✓ AA body
+       violet-600 ↔ white   ≈  6.7:1   ✓ AA body
+       slate-700 ↔ white    ≈  9.1:1   ✓ AA body
+  */
+
+  /* ----- Primary (blue) ----- */
+  --color-primary-soft: var(--color-primary-50);
+  --color-primary-soft-hover: var(--color-primary-100);
+  --color-primary-soft-fg: var(--color-primary-900);
+  --color-primary-soft-fg-muted: var(--color-primary-800);
+  --color-primary-solid: var(--color-primary-600);
+  --color-primary-solid-hover: var(--color-primary-700);
+  --color-primary-solid-fg: var(--color-white);
+  --color-primary-border: var(--color-primary-300);
+  --color-primary-border-strong: var(--color-primary-500);
+  --color-primary-fg: var(--color-primary-700);
+  --color-primary-icon: var(--color-primary-600);
+
+  /* ----- Secondary (slate) ----- */
+  --color-secondary-soft: var(--color-secondary-50);
+  --color-secondary-soft-hover: var(--color-secondary-100);
+  --color-secondary-soft-fg: var(--color-secondary-900);
+  --color-secondary-soft-fg-muted: var(--color-secondary-800);
+  --color-secondary-solid: var(--color-secondary-700);
+  --color-secondary-solid-hover: var(--color-secondary-800);
+  --color-secondary-solid-fg: var(--color-white);
+  --color-secondary-border: var(--color-secondary-300);
+  --color-secondary-border-strong: var(--color-secondary-500);
+  --color-secondary-fg: var(--color-secondary-700);
+  --color-secondary-icon: var(--color-secondary-600);
+
+  /* ----- Accent (violet) ----- */
+  --color-accent-soft: var(--color-accent-50);
+  --color-accent-soft-hover: var(--color-accent-100);
+  --color-accent-soft-fg: var(--color-accent-900);
+  --color-accent-soft-fg-muted: var(--color-accent-800);
+  --color-accent-solid: var(--color-accent-600);
+  --color-accent-solid-hover: var(--color-accent-700);
+  --color-accent-solid-fg: var(--color-white);
+  --color-accent-border: var(--color-accent-300);
+  --color-accent-border-strong: var(--color-accent-500);
+  --color-accent-fg: var(--color-accent-700);
+  --color-accent-icon: var(--color-accent-600);
+
+  /* ----- Neutral ----- (uses surface/fg tokens so dark mode is automatic) */
+  --color-neutral-soft: var(--color-surface-muted);
+  --color-neutral-soft-hover: var(--color-surface-sunken);
+  --color-neutral-soft-fg: var(--color-fg);
+  --color-neutral-soft-fg-muted: var(--color-fg-muted);
+  --color-neutral-solid: var(--color-fg);
+  --color-neutral-solid-hover: var(--color-gray-700);
+  --color-neutral-solid-fg: var(--color-surface);
+  --color-neutral-border: var(--color-border);
+  --color-neutral-border-strong: var(--color-border-strong);
+  --color-neutral-fg: var(--color-fg);
+  --color-neutral-icon: var(--color-fg-muted);
+
+  /* ----- Info (sky) ----- */
+  --color-info-soft: var(--color-info-50);
+  --color-info-soft-hover: var(--color-info-100);
+  --color-info-soft-fg: var(--color-info-900);
+  --color-info-soft-fg-muted: var(--color-info-800);
+  --color-info-solid: var(--color-info-600);
+  --color-info-solid-hover: var(--color-info-700);
+  --color-info-solid-fg: var(--color-white);
+  --color-info-border: var(--color-info-300);
+  --color-info-border-strong: var(--color-info-500);
+  --color-info-fg: var(--color-info-700);
+  --color-info-icon: var(--color-info-600);
+
+  /* ----- Success (green) ----- */
+  --color-success-soft: var(--color-success-50);
+  --color-success-soft-hover: var(--color-success-100);
+  --color-success-soft-fg: var(--color-success-900);
+  --color-success-soft-fg-muted: var(--color-success-800);
+  /* Solid uses -700 not -600: green-600/white is 3.3:1 (AA fail). -700/white is 4.7:1. */
+  --color-success-solid: var(--color-success-700);
+  --color-success-solid-hover: var(--color-success-800);
+  --color-success-solid-fg: var(--color-white);
+  --color-success-border: var(--color-success-300);
+  --color-success-border-strong: var(--color-success-500);
+  --color-success-fg: var(--color-success-700);
+  --color-success-icon: var(--color-success-600);
+
+  /* ----- Warning (amber) ----- */
+  /* Warning is the only role that keeps dark text on a saturated yellow fill —
+     yellow signage convention. amber-500 + amber-950 = 8.5:1 ✓. */
+  --color-warning-soft: var(--color-warning-50);
+  --color-warning-soft-hover: var(--color-warning-100);
+  --color-warning-soft-fg: var(--color-warning-900);
+  --color-warning-soft-fg-muted: var(--color-warning-800);
+  --color-warning-solid: var(--color-warning-500);
+  --color-warning-solid-hover: var(--color-warning-600);
+  --color-warning-solid-fg: var(--color-warning-950);
+  --color-warning-border: var(--color-warning-300);
+  --color-warning-border-strong: var(--color-warning-500);
+  /* -fg uses -800: amber-700/white is 3.4:1 (AA fail). amber-800/white is 6.5:1. */
+  --color-warning-fg: var(--color-warning-800);
+  --color-warning-icon: var(--color-warning-600);
+
+  /* ----- Error (red) ----- */
+  --color-error-soft: var(--color-error-50);
+  --color-error-soft-hover: var(--color-error-100);
+  --color-error-soft-fg: var(--color-error-900);
+  --color-error-soft-fg-muted: var(--color-error-800);
+  --color-error-solid: var(--color-error-600);
+  --color-error-solid-hover: var(--color-error-700);
+  --color-error-solid-fg: var(--color-white);
+  --color-error-border: var(--color-error-300);
+  --color-error-border-strong: var(--color-error-500);
+  --color-error-fg: var(--color-error-700);
+  --color-error-icon: var(--color-error-600);
+
+  /* ===== Legacy on-role aliases =====
+     `--color-on-{role}` is preserved as an alias of `--color-{role}-solid-fg`
+     for components still on the pre-slot API (calendar-cell, stepper, etc.).
+     New code MUST use the slot tokens. Remove this block once every consumer
+     in the library has migrated. */
+  --color-on-info: var(--color-info-solid-fg);
+  --color-on-success: var(--color-success-solid-fg);
+  --color-on-warning: var(--color-warning-solid-fg);
+  --color-on-error: var(--color-error-solid-fg);
+  --color-on-primary: var(--color-primary-solid-fg);
+  --color-on-secondary: var(--color-secondary-solid-fg);
+  --color-on-accent: var(--color-accent-solid-fg);
+  --color-on-neutral: var(--color-neutral-solid-fg);
 }

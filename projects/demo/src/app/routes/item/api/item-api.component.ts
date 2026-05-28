@@ -47,6 +47,12 @@ import { CodeBlockComponent } from 'ngx-tw/code-block';
               <td class="px-4 py-2 font-mono text-xs text-fg-muted">false</td>
               <td class="px-4 py-2 text-fg-muted">Disables an interactive row, muting it visually and removing it from the tab order.</td>
             </tr>
+            <tr>
+              <td class="px-4 py-2 font-mono text-xs">current</td>
+              <td class="px-4 py-2 font-mono text-xs text-fg-muted">boolean</td>
+              <td class="px-4 py-2 font-mono text-xs text-fg-muted">false</td>
+              <td class="px-4 py-2 text-fg-muted">Marks the row as the visually highlighted "current" entry with a primary tint, inset ring, and <code class="font-mono text-xs">aria-current="true"</code>.</td>
+            </tr>
           </tbody>
         </table>
       </div>

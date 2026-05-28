@@ -94,24 +94,39 @@ import { CodeBlockComponent } from 'ngx-tw/code-block';
           and
           <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">filled</code>
         </li>
+        <li>Five density sizes
+          (<code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">xs</code>–
+          <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">xl</code>)
+          that scale padding and floating-label font in lockstep
+        </li>
         <li>Floating label with
-          <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">auto</code>
+          <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">auto</code>,
+          <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">always</code>,
           and
-          <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">always</code>
+          <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">never</code>
           modes, implemented with a CSS transform — no
           <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">&#64;angular/animations</code>
         </li>
         <li>Prefix and suffix slots via
-          <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">slot="prefix"</code>
+          <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">twPrefix</code>
           /
-          <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">slot="suffix"</code>
+          <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">twSuffix</code>
+          for text, and
+          <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">twPrefixIcon</code>
+          /
+          <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">twSuffixIcon</code>
+          for canonically-sized SVG icons
         </li>
         <li>Hint and error subscript with automatic swap,
           <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">role="alert"</code>,
-          and start/end alignment
+          start/end alignment, and
+          <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">subscriptSizing</code>
+          for dense layouts
         </li>
         <li>Automatic
           <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">aria-describedby</code>
+          and
+          <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">aria-labelledby</code>
           wiring that preserves consumer-supplied ids
         </li>
         <li>Signal-based control contract — no RxJS subscriptions inside the form field</li>
@@ -165,6 +180,8 @@ export class FormFieldOverview {
   ErrorDirective,
   PrefixDirective,
   SuffixDirective,
+  PrefixIconDirective,
+  SuffixIconDirective,
   FormFieldControl,
   TW_FORM_FIELD_CONTROL,
 } from 'ngx-tw/form-field';

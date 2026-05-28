@@ -35,7 +35,11 @@ export class TwDialogConfig<D = unknown, R = unknown> extends CdkDialogConfig<D,
   /** Duration of the open animation in ms. Defaults to `150`. Use `0` to disable. */
   enterAnimationDuration?: number = 150;
 
-  /** Duration of the close animation in ms. Defaults to `120`. Use `0` to disable. */
+  /**
+   * Duration of the close animation in ms. Defaults to `120`. Use `0` to disable.
+   * Asymmetric with `enterAnimationDuration` by design: the close transition is
+   * slightly faster so the dialog feels dismissive rather than reluctant.
+   */
   exitAnimationDuration?: number = 120;
 
   /** Scroll strategy preset applied when `scrollStrategy` isn't set. Defaults to `'block'`. */
@@ -43,6 +47,29 @@ export class TwDialogConfig<D = unknown, R = unknown> extends CdkDialogConfig<D,
 
   /** Maximum width. Number values are treated as pixels. Defaults to `'calc(100vw - 32px)'`. */
   override maxWidth?: number | string = 'calc(100vw - 32px)';
+
+  /**
+   * Whether the dialog is modal — sets `aria-modal` on the container.
+   * Defaults to `true`: a `role="dialog"` opened over the page is modal by
+   * default and the rest of the document is inert while it is open. Set to
+   * `false` only for non-modal surfaces (rare; consider `popover` instead).
+   */
+  override ariaModal?: boolean = true;
+
+  /** Whether Escape and backdrop clicks are blocked. Defaults to `false`. */
+  override disableClose?: boolean = false;
+
+  /** Where to move focus when the dialog opens. Defaults to `'first-tabbable'`. */
+  override autoFocus?: TwDialogAutoFocus = 'first-tabbable';
+
+  /** Whether to restore focus to the previously focused element after close. Defaults to `true`. */
+  override restoreFocus?: TwDialogRestoreFocus = true;
+
+  /** Whether the dialog renders a backdrop. Defaults to `true`. */
+  override hasBackdrop?: boolean = true;
+
+  /** Whether navigation (e.g. router) closes the dialog. Defaults to `true`. */
+  override closeOnNavigation?: boolean = true;
 }
 
 /** Injection token carrying the `data` value passed via {@link TwDialogConfig.data}. */

@@ -477,7 +477,7 @@ const PRODUCTS: readonly Product[] = PRODUCT_NAMES.map((name, i) => ({
               @for (opt of ctx.options; track opt) {
                 <button
                   type="button"
-                  class="inline-flex items-center justify-center rounded-md border px-2.5 py-1 text-xs font-medium transition-colors duration-200 cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500"
+                  class="inline-flex items-center justify-center rounded-md border px-2.5 py-1 text-xs font-medium transition-colors duration-normal cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500"
                   [class.bg-primary-600]="opt === ctx.pageSize"
                   [class.text-white]="opt === ctx.pageSize"
                   [class.border-primary-600]="opt === ctx.pageSize"
@@ -519,7 +519,7 @@ const PRODUCTS: readonly Product[] = PRODUCT_NAMES.map((name, i) => ({
                   @for (t of types; track t) {
                     <button
                       type="button"
-                      class="inline-flex items-center justify-center rounded-md px-2 py-1 text-xs font-medium transition-colors duration-200 cursor-pointer text-fg-muted hover:bg-surface-muted"
+                      class="inline-flex items-center justify-center rounded-md px-2 py-1 text-xs font-medium transition-colors duration-normal cursor-pointer text-fg-muted hover:bg-surface-muted"
                       [class.!bg-primary-100]="playType() === t"
                       [class.!text-primary-700]="playType() === t"
                       (click)="playType.set(t)"
@@ -533,7 +533,7 @@ const PRODUCTS: readonly Product[] = PRODUCT_NAMES.map((name, i) => ({
                   @for (l of layouts; track l) {
                     <button
                       type="button"
-                      class="inline-flex items-center justify-center rounded-md px-2 py-1 text-xs font-medium transition-colors duration-200 cursor-pointer text-fg-muted hover:bg-surface-muted"
+                      class="inline-flex items-center justify-center rounded-md px-2 py-1 text-xs font-medium transition-colors duration-normal cursor-pointer text-fg-muted hover:bg-surface-muted"
                       [class.!bg-primary-100]="playLayout() === l"
                       [class.!text-primary-700]="playLayout() === l"
                       (click)="playLayout.set(l)"
@@ -547,7 +547,7 @@ const PRODUCTS: readonly Product[] = PRODUCT_NAMES.map((name, i) => ({
                   @for (s of sizes; track s) {
                     <button
                       type="button"
-                      class="inline-flex items-center justify-center rounded-md px-2 py-1 text-xs font-medium transition-colors duration-200 cursor-pointer text-fg-muted hover:bg-surface-muted"
+                      class="inline-flex items-center justify-center rounded-md px-2 py-1 text-xs font-medium transition-colors duration-normal cursor-pointer text-fg-muted hover:bg-surface-muted"
                       [class.!bg-primary-100]="playSize() === s"
                       [class.!text-primary-700]="playSize() === s"
                       (click)="playSize.set(s)"
@@ -561,7 +561,7 @@ const PRODUCTS: readonly Product[] = PRODUCT_NAMES.map((name, i) => ({
                   @for (c of colors; track c) {
                     <button
                       type="button"
-                      class="inline-flex items-center justify-center rounded-md px-2 py-1 text-xs font-medium transition-colors duration-200 cursor-pointer text-fg-muted hover:bg-surface-muted"
+                      class="inline-flex items-center justify-center rounded-md px-2 py-1 text-xs font-medium transition-colors duration-normal cursor-pointer text-fg-muted hover:bg-surface-muted"
                       [class.!bg-primary-100]="playColor() === c"
                       [class.!text-primary-700]="playColor() === c"
                       (click)="playColor.set(c)"
@@ -594,19 +594,19 @@ const PRODUCTS: readonly Product[] = PRODUCT_NAMES.map((name, i) => ({
             <p class="text-xs font-semibold text-fg uppercase tracking-wide mb-3">Regions</p>
             <div class="flex flex-wrap gap-1">
               <button type="button"
-                class="inline-flex items-center justify-center rounded-md px-2 py-1 text-xs font-medium transition-colors duration-200 cursor-pointer text-fg-muted hover:bg-surface-muted"
+                class="inline-flex items-center justify-center rounded-md px-2 py-1 text-xs font-medium transition-colors duration-normal cursor-pointer text-fg-muted hover:bg-surface-muted"
                 [class.!bg-primary-100]="playShowFirstLast()"
                 [class.!text-primary-700]="playShowFirstLast()"
                 (click)="playShowFirstLast.update(v => !v)"
               >first / last</button>
               <button type="button"
-                class="inline-flex items-center justify-center rounded-md px-2 py-1 text-xs font-medium transition-colors duration-200 cursor-pointer text-fg-muted hover:bg-surface-muted"
+                class="inline-flex items-center justify-center rounded-md px-2 py-1 text-xs font-medium transition-colors duration-normal cursor-pointer text-fg-muted hover:bg-surface-muted"
                 [class.!bg-primary-100]="playShowPageSize()"
                 [class.!text-primary-700]="playShowPageSize()"
                 (click)="playShowPageSize.update(v => !v)"
               >page-size selector</button>
               <button type="button"
-                class="inline-flex items-center justify-center rounded-md px-2 py-1 text-xs font-medium transition-colors duration-200 cursor-pointer text-fg-muted hover:bg-surface-muted"
+                class="inline-flex items-center justify-center rounded-md px-2 py-1 text-xs font-medium transition-colors duration-normal cursor-pointer text-fg-muted hover:bg-surface-muted"
                 [class.!bg-primary-100]="playShowInfo()"
                 [class.!text-primary-700]="playShowInfo()"
                 (click)="playShowInfo.update(v => !v)"
@@ -618,19 +618,19 @@ const PRODUCTS: readonly Product[] = PRODUCT_NAMES.map((name, i) => ({
             <p class="text-xs font-semibold text-fg uppercase tracking-wide mb-3">State</p>
             <div class="flex flex-wrap gap-1">
               <button type="button"
-                class="inline-flex items-center justify-center rounded-md px-2 py-1 text-xs font-medium transition-colors duration-200 cursor-pointer text-fg-muted hover:bg-surface-muted"
+                class="inline-flex items-center justify-center rounded-md px-2 py-1 text-xs font-medium transition-colors duration-normal cursor-pointer text-fg-muted hover:bg-surface-muted"
                 [class.!bg-primary-100]="playDisabled()"
                 [class.!text-primary-700]="playDisabled()"
                 (click)="playDisabled.update(v => !v)"
               >disabled</button>
               <button type="button"
-                class="inline-flex items-center justify-center rounded-md px-2 py-1 text-xs font-medium transition-colors duration-200 cursor-pointer text-fg-muted hover:bg-surface-muted"
+                class="inline-flex items-center justify-center rounded-md px-2 py-1 text-xs font-medium transition-colors duration-normal cursor-pointer text-fg-muted hover:bg-surface-muted"
                 [class.!bg-primary-100]="playHideOnEmpty()"
                 [class.!text-primary-700]="playHideOnEmpty()"
                 (click)="playHideOnEmpty.update(v => !v)"
               >hide on empty</button>
               <button type="button"
-                class="inline-flex items-center justify-center rounded-md px-2 py-1 text-xs font-medium transition-colors duration-200 cursor-pointer text-fg-muted hover:bg-surface-muted"
+                class="inline-flex items-center justify-center rounded-md px-2 py-1 text-xs font-medium transition-colors duration-normal cursor-pointer text-fg-muted hover:bg-surface-muted"
                 [class.!bg-primary-100]="playHideOnSingle()"
                 [class.!text-primary-700]="playHideOnSingle()"
                 (click)="playHideOnSingle.update(v => !v)"

@@ -1,6 +1,6 @@
-import { ChangeDetectionStrategy, Component, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, signal } from '@angular/core';
 import { AvatarComponent, AvatarGroupComponent } from 'ngx-tw/avatar';
-import type { AvatarRounded, AvatarStatus } from 'ngx-tw/avatar';
+import type { AvatarAppearance, AvatarRounded, AvatarStatus } from 'ngx-tw/avatar';
 import { ButtonDirective } from 'ngx-tw/button';
 import { CodeBlockComponent } from 'ngx-tw/code-block';
 import type { TwColor, TwSize } from 'ngx-tw/core';
@@ -81,9 +81,9 @@ const INITIAL_MAP: Record<TwColor, string> = {
     <section class="mb-10">
       <h2 class="text-sm font-semibold mb-3">Rounded Shapes</h2>
       <p class="text-sm text-fg-muted leading-relaxed max-w-2xl mb-4">
-        The
-        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">rounded</code>
-        input switches the avatar's shape independently of size. Stick to
+        Pass
+        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">appearance.rounded</code>
+        to switch the avatar's shape independently of size. Stick to
         <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">full</code>
         for people, who read as circles by convention; use
         <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">lg</code>
@@ -96,7 +96,7 @@ const INITIAL_MAP: Record<TwColor, string> = {
         <div class="flex flex-wrap items-center gap-4">
           @for (r of roundedOptions; track r) {
             <div class="flex flex-col items-center gap-1.5">
-              <tw-avatar initials="AC" color="accent" [rounded]="r" alt="Acme Corp" />
+              <tw-avatar initials="AC" color="accent" [appearance]="{ rounded: r }" alt="Acme Corp" />
               <span class="text-xs text-fg-muted font-mono">{{ r }}</span>
             </div>
           }
@@ -115,9 +115,9 @@ const INITIAL_MAP: Record<TwColor, string> = {
     <section class="mb-10">
       <h2 class="text-sm font-semibold mb-3">Status Indicators</h2>
       <p class="text-sm text-fg-muted leading-relaxed max-w-2xl mb-4">
-        The
-        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">status</code>
-        input renders a small coloured dot with a surface-coloured ring so it reads cleanly against
+        Pass
+        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">appearance.status</code>
+        to render a small coloured dot with a surface-coloured ring so it reads cleanly against
         any background. The dot is decorative (<code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">aria-hidden</code>)
         — always communicate the status in
         <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">alt</code>
@@ -127,7 +127,7 @@ const INITIAL_MAP: Record<TwColor, string> = {
         <div class="flex flex-wrap items-center gap-6">
           @for (st of statuses; track st) {
             <div class="flex flex-col items-center gap-1.5">
-              <tw-avatar initials="JD" color="primary" [status]="st" [alt]="'Jane Doe, ' + st" />
+              <tw-avatar initials="JD" color="primary" [appearance]="{ status: st }" [alt]="'Jane Doe, ' + st" />
               <span class="text-xs text-fg-muted font-mono">{{ st }}</span>
             </div>
           }
@@ -188,7 +188,7 @@ const INITIAL_MAP: Record<TwColor, string> = {
       </p>
       <div class="rounded-lg border border-border p-6 bg-surface-raised mb-4">
         <div class="flex flex-wrap items-center gap-3">
-          <tw-avatar color="accent" alt="Team channel" rounded="lg">
+          <tw-avatar color="accent" alt="Team channel" [appearance]="{ rounded: 'lg' }">
             <svg
               class="size-[60%] text-accent-700"
               xmlns="http://www.w3.org/2000/svg"
@@ -199,7 +199,7 @@ const INITIAL_MAP: Record<TwColor, string> = {
               <path d="M10 9a3 3 0 100-6 3 3 0 000 6zM6 8a2 2 0 11-4 0 2 2 0 014 0zM1.49 15.326a.78.78 0 01-.358-.442 3 3 0 014.308-3.516 6.484 6.484 0 00-1.905 3.959c-.023.222-.014.442.025.654a4.97 4.97 0 01-2.07-.655zM16.44 15.98a4.97 4.97 0 002.07-.654.78.78 0 00.357-.442 3 3 0 00-4.308-3.517 6.484 6.484 0 011.907 3.96 2.32 2.32 0 01-.026.654zM18 8a2 2 0 11-4 0 2 2 0 014 0zM5.304 16.19a.844.844 0 01-.277-.71 5 5 0 019.947 0 .843.843 0 01-.277.71A6.975 6.975 0 0110 18a6.974 6.974 0 01-4.696-1.81z"/>
             </svg>
           </tw-avatar>
-          <tw-avatar color="warning" alt="Build bot" rounded="lg">
+          <tw-avatar color="warning" alt="Build bot" [appearance]="{ rounded: 'lg' }">
             <svg
               class="size-[60%] text-warning-700"
               xmlns="http://www.w3.org/2000/svg"
@@ -289,7 +289,7 @@ const INITIAL_MAP: Record<TwColor, string> = {
       <p class="text-sm text-fg-muted leading-relaxed max-w-2xl mb-4">
         Combine every user-facing input at once. Toggle Mode to see the fallback cascade switch
         between initials and the default silhouette, and pair
-        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">rounded="lg"</code>
+        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">appearance.rounded = 'lg'</code>
         with a status to see the dot re-anchor to the corner.
       </p>
       <div class="rounded-lg border border-border p-6 bg-surface-raised">
@@ -396,8 +396,7 @@ const INITIAL_MAP: Record<TwColor, string> = {
             [initials]="playMode() === 'initials' ? 'JD' : null"
             [color]="playColor()"
             [size]="playSize()"
-            [rounded]="playRounded()"
-            [status]="playStatus()"
+            [appearance]="playAppearance()"
             alt="Playground avatar"
           />
         </div>
@@ -418,6 +417,11 @@ export class AvatarExamples {
   protected readonly playStatus = signal<AvatarStatus | null>(null);
   protected readonly playMode = signal<'initials' | 'fallback'>('initials');
 
+  protected readonly playAppearance = computed<AvatarAppearance>(() => ({
+    rounded: this.playRounded(),
+    status: this.playStatus(),
+  }));
+
   // ── Code snippets ──
 
   protected readonly colorsSnippet = `
@@ -432,7 +436,7 @@ export class AvatarExamples {
 
   protected readonly roundedSnippet = `
 @for (r of roundedOptions; track r) {
-  <tw-avatar initials="AC" color="accent" [rounded]="r" alt="Acme Corp" />
+  <tw-avatar initials="AC" color="accent" [appearance]="{ rounded: r }" alt="Acme Corp" />
 }`.trim();
 
   protected readonly statusSnippet = `
@@ -440,7 +444,7 @@ export class AvatarExamples {
   <tw-avatar
     initials="JD"
     color="primary"
-    [status]="st"
+    [appearance]="{ status: st }"
     [alt]="'Jane Doe, ' + st"
   />
 }`.trim();
@@ -459,13 +463,13 @@ export class AvatarExamples {
 <!-- No image, no initials — default silhouette -->
 <tw-avatar alt="Anonymous user" />`;
 
-  protected readonly projectedSnippet = `<tw-avatar color="accent" alt="Team channel" rounded="lg">
+  protected readonly projectedSnippet = `<tw-avatar color="accent" alt="Team channel" [appearance]="{ rounded: 'lg' }">
   <svg class="size-[60%] text-accent-700" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
     <path d="…users icon path…" />
   </svg>
 </tw-avatar>
 
-<tw-avatar color="warning" alt="Build bot" rounded="lg">
+<tw-avatar color="warning" alt="Build bot" [appearance]="{ rounded: 'lg' }">
   <svg class="size-[60%] text-warning-700" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
     <path d="…bot icon path…" />
   </svg>

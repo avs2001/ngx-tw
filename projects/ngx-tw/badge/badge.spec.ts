@@ -42,20 +42,29 @@ class PillBadgeHost {
 
 @Component({
   imports: [BadgeComponent],
-  template: `<span twBadge [dismissible]="isDismissible()" (dismissed)="onDismiss()">Dismiss me</span>`,
+  template: `<span twBadge [dismissible]="isDismissible()" [dismissLabel]="dismissLabel()" (dismissed)="onDismiss()">Dismiss me</span>`,
 })
 class DismissibleBadgeHost {
   readonly isDismissible = input(false);
+  readonly dismissLabel = input('Dismiss');
   onDismiss = vi.fn();
 }
 
 @Component({
   imports: [BadgeComponent],
-  template: `<span twBadge [dot]="isDot()" [color]="color()"></span>`,
+  template: `<span twBadge [size]="size()" [dismissible]="true" (dismissed)="onDismiss()">Sized</span>`,
 })
-class DotBadgeHost {
-  readonly isDot = input(false);
-  readonly color = input<TwColor>('success');
+class SizedDismissibleBadgeHost {
+  readonly size = input<TwSize>('md');
+  onDismiss = vi.fn();
+}
+
+@Component({
+  imports: [BadgeComponent],
+  template: `<span twBadge [live]="live()">Live</span>`,
+})
+class LiveBadgeHost {
+  readonly live = input(false);
 }
 
 @Component({
@@ -74,15 +83,6 @@ class IconBadgeHost {
 class AvatarBadgeHost {
   readonly size = input<TwSize>('md');
   readonly color = input<TwColor>('primary');
-}
-
-@Component({
-  imports: [BadgeComponent, AvatarComponent],
-  template: `<span twBadge [dot]="isDot()" [color]="color()"><tw-avatar src="/test.jpg" alt="Test" /></span>`,
-})
-class DotWithAvatarHost {
-  readonly isDot = input(false);
-  readonly color = input<TwColor>('success');
 }
 
 @Component({
@@ -135,14 +135,6 @@ describe('BadgeComponent', () => {
       const fixture = TestBed.createComponent(BasicBadgeHost);
       fixture.detectChanges();
       expect(getBadge(fixture).querySelector('button')).toBeNull();
-    });
-
-    it('should not render a dot element by default', () => {
-      const fixture = TestBed.createComponent(DotBadgeHost);
-      fixture.detectChanges();
-      const el = getBadge(fixture);
-      // dot input is false by default, no dot span should be present
-      expect(el.querySelector('span.rounded-full')).toBeNull();
     });
   });
 
@@ -244,44 +236,60 @@ describe('BadgeComponent', () => {
       fixture.detectChanges();
       expect(getBadge(fixture).querySelector('button')).toBeNull();
     });
-  });
 
-  describe('dot mode', () => {
-    it('should render a dot element when dot is true', () => {
-      const fixture = TestBed.createComponent(DotBadgeHost);
-      fixture.componentRef.setInput('isDot', true);
+    it('should render a focus-visible outline on the dismiss button', () => {
+      const fixture = TestBed.createComponent(DismissibleBadgeHost);
+      fixture.componentRef.setInput('isDismissible', true);
       fixture.detectChanges();
-      const dotEl = getBadge(fixture).querySelector('span');
-      expect(dotEl).toBeTruthy();
-      expect(dotEl!.className).toContain('rounded-full');
+      const button = getBadge(fixture).querySelector('button')!;
+      const classes = button.className;
+      expect(classes).toContain('focus-visible:outline-2');
+      expect(classes).toContain('focus-visible:outline-offset-2');
+      expect(classes).toContain('focus-visible:outline-primary-500');
     });
 
-    it('should hide projected content when dot is true', () => {
-      const fixture = TestBed.createComponent(DotBadgeHost);
-      fixture.componentRef.setInput('isDot', true);
-      fixture.detectChanges();
-      // In dot mode, no content span wrapping ng-content
-      const badge = getBadge(fixture);
-      expect(badge.querySelector('button')).toBeNull();
-      // Only the dot span should be present
-      expect(badge.querySelectorAll('span').length).toBe(1);
-    });
+    const hitTargetMatrix: ReadonlyArray<{ size: TwSize; expected: string }> = [
+      { size: 'xs', expected: 'size-6' },
+      { size: 'sm', expected: 'size-6' },
+      { size: 'md', expected: 'size-7' },
+      { size: 'lg', expected: 'size-8' },
+      { size: 'xl', expected: 'size-8' },
+    ];
 
-    it('should apply dot size based on size input', () => {
-      const fixture = TestBed.createComponent(DotBadgeHost);
-      fixture.componentRef.setInput('isDot', true);
-      fixture.detectChanges();
-      // Root should have size override for dot
-      const rootClasses = getBadge(fixture).className;
-      expect(rootClasses).toContain('p-0');
-    });
+    for (const { size, expected } of hitTargetMatrix) {
+      it(`should use square-interactive hit target ${expected} for size="${size}"`, () => {
+        const fixture = TestBed.createComponent(SizedDismissibleBadgeHost);
+        fixture.componentRef.setInput('size', size);
+        fixture.detectChanges();
+        const button = getBadge(fixture).querySelector('button')!;
+        expect(button.className).toContain(expected);
+      });
+    }
   });
 
   describe('accessibility', () => {
-    it('should have role="status" on the host', () => {
+    it('should not set role on the host by default', () => {
       const fixture = TestBed.createComponent(BasicBadgeHost);
       fixture.detectChanges();
+      // Without `live`, badges are decorative labels — no implicit live region.
+      expect(getBadge(fixture).getAttribute('role')).toBeNull();
+    });
+
+    it('should set role="status" when live is true', () => {
+      const fixture = TestBed.createComponent(LiveBadgeHost);
+      fixture.componentRef.setInput('live', true);
+      fixture.detectChanges();
       expect(getBadge(fixture).getAttribute('role')).toBe('status');
+    });
+
+    it('should remove role when live flips back to false', () => {
+      const fixture = TestBed.createComponent(LiveBadgeHost);
+      fixture.componentRef.setInput('live', true);
+      fixture.detectChanges();
+      expect(getBadge(fixture).getAttribute('role')).toBe('status');
+      fixture.componentRef.setInput('live', false);
+      fixture.detectChanges();
+      expect(getBadge(fixture).getAttribute('role')).toBeNull();
     });
 
     it('should have aria-label="Dismiss" on the dismiss button', () => {
@@ -298,6 +306,15 @@ describe('BadgeComponent', () => {
       fixture.detectChanges();
       const svg = getBadge(fixture).querySelector('button svg');
       expect(svg).toBeTruthy();
+    });
+
+    it('should override the dismiss button aria-label when dismissLabel changes', () => {
+      const fixture = TestBed.createComponent(DismissibleBadgeHost);
+      fixture.componentRef.setInput('isDismissible', true);
+      fixture.componentRef.setInput('dismissLabel', 'Fermer');
+      fixture.detectChanges();
+      const button = getBadge(fixture).querySelector('button')!;
+      expect(button.getAttribute('aria-label')).toBe('Fermer');
     });
   });
 
@@ -383,14 +400,6 @@ describe('BadgeComponent', () => {
         expect(getBadge(fixture).querySelector('tw-avatar')).toBeTruthy();
       });
     }
-
-    it('should not render avatar wrapper when dot mode is active', () => {
-      const fixture = TestBed.createComponent(DotWithAvatarHost);
-      fixture.componentRef.setInput('isDot', true);
-      fixture.detectChanges();
-      const badge = getBadge(fixture);
-      expect(badge.querySelector('span:has(> tw-avatar)')).toBeNull();
-    });
 
     it('should render avatar with pill and dismiss together', () => {
       const fixture = TestBed.createComponent(AvatarPillDismissHost);

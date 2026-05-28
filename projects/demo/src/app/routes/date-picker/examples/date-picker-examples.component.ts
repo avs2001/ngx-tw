@@ -7,7 +7,11 @@ import {
   Validators,
 } from '@angular/forms';
 import { form, FormField, required } from '@angular/forms/signals';
-import { DatePickerComponent } from 'ngx-tw/date-picker';
+import {
+  DatePickerComponent,
+  type DatePickerPreset,
+  type DatePickerTimeConfig,
+} from 'ngx-tw/date-picker';
 import { ButtonDirective } from 'ngx-tw/button';
 import {
   FormFieldComponent,
@@ -195,17 +199,16 @@ function isWeekday(d: Date): boolean {
     <section class="mb-10">
       <h2 class="text-sm font-semibold mb-3">With time</h2>
       <p class="text-sm text-fg-muted leading-relaxed max-w-2xl mb-4">
-        Turning on
-        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">withTime</code>
+        Passing a non-null
+        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">timeConfig</code>
         renders a
         <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">&lt;tw-time-picker&gt;</code>
         inside the overlay and folds hour and minute into the default display format. Picking
         a day preserves the current time-of-day, and editing the time updates the pending value
-        without closing. Combine with
-        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">timeFormat="12h"</code>
-        and
-        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">showSeconds</code>
-        when you need richer time precision.
+        without closing. The config carries
+        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">format</code>,
+        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">showSeconds</code>,
+        and the per-field steps when you need richer time precision.
       </p>
       <div class="rounded-lg border border-border p-6 bg-surface-raised mb-4">
         <div class="space-y-6 max-w-md">
@@ -213,7 +216,7 @@ function isWeekday(d: Date): boolean {
             <p class="text-xs font-medium text-fg-muted uppercase tracking-wide">24h — minute precision</p>
             <tw-date-picker
               [(value)]="meeting"
-              [withTime]="true"
+              [timeConfig]="{}"
               placeholder="Pick a date and time"
               aria-label="Meeting"
             />
@@ -226,9 +229,7 @@ function isWeekday(d: Date): boolean {
             <p class="text-xs font-medium text-fg-muted uppercase tracking-wide">12h + seconds + action bar</p>
             <tw-date-picker
               [(value)]="deadline"
-              [withTime]="true"
-              timeFormat="12h"
-              [showSeconds]="true"
+              [timeConfig]="{ format: '12h', showSeconds: true }"
               [showActions]="true"
               color="accent"
               placeholder="Pick a deadline"
@@ -427,13 +428,166 @@ function isWeekday(d: Date): boolean {
       <tw-code-block [code]="formFieldSnippet" language="html" />
     </section>
 
+    <!-- Presets -->
+    <section class="mb-10">
+      <h2 class="text-sm font-semibold mb-3">Presets</h2>
+      <p class="text-sm text-fg-muted leading-relaxed max-w-2xl mb-4">
+        Pass an array of
+        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">DatePickerPreset</code>
+        entries to render a quick-select list above the calendar — each preset declares a
+        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">label</code>
+        and a
+        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">date</code>
+        factory. The factory is called fresh on every click so
+        "today"-relative shortcuts stay correct without manual re-binding. Combine with
+        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">showActions</code>
+        to let users review a preset before committing.
+      </p>
+      <div class="rounded-lg border border-border p-6 bg-surface-raised mb-4">
+        <div class="space-y-2 max-w-md">
+          <tw-date-picker
+            [(value)]="presetValue"
+            [presets]="quickPresets"
+            placeholder="Pick or use a preset"
+            aria-label="Quick presets"
+          />
+          <p data-testid="output-presets" class="text-xs text-fg-muted mt-3 font-mono">
+            value = {{ presetLabel() }}
+          </p>
+        </div>
+      </div>
+      <tw-code-block [code]="presetsTsSnippet" language="ts" />
+      <div class="mt-3">
+        <tw-code-block [code]="presetsHtmlSnippet" language="html" />
+      </div>
+    </section>
+
+    <!-- Time config -->
+    <section class="mb-10">
+      <h2 class="text-sm font-semibold mb-3">Time config (recommended)</h2>
+      <p class="text-sm text-fg-muted leading-relaxed max-w-2xl mb-4">
+        For new code, prefer the bundled
+        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">timeConfig</code>
+        input over the standalone
+        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">withTime</code>,
+        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">timeFormat</code>,
+        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">showSeconds</code>,
+        etc. Passing a non-null object turns the time picker on; pass
+        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">&#123;&#125;</code>
+        to opt-in with all defaults.
+      </p>
+      <div class="rounded-lg border border-border p-6 bg-surface-raised mb-4">
+        <div class="space-y-2 max-w-md">
+          <tw-date-picker
+            [(value)]="timeConfigValue"
+            [timeConfig]="timeConfig"
+            placeholder="Pick a 12h date + time"
+            aria-label="Time config"
+          />
+          <p data-testid="output-time-config" class="text-xs text-fg-muted mt-3 font-mono">
+            value = {{ timeConfigLabel() }}
+          </p>
+        </div>
+      </div>
+      <tw-code-block [code]="timeConfigSnippet" language="html" />
+    </section>
+
+    <!-- Locale -->
+    <section class="mb-10">
+      <h2 class="text-sm font-semibold mb-3">Per-instance locale</h2>
+      <p class="text-sm text-fg-muted leading-relaxed max-w-2xl mb-4">
+        Override the locale for a single picker with the
+        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">locale</code>
+        input. Cascades to the embedded calendar's month/weekday labels and the underlying
+        date adapter's parse/format calls — no global
+        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">LOCALE_ID</code>
+        change required.
+      </p>
+      <div class="rounded-lg border border-border p-6 bg-surface-raised mb-4">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-3 max-w-2xl">
+          <tw-date-picker
+            [(value)]="localeValueDE"
+            locale="de-DE"
+            placeholder="Wählen Sie ein Datum"
+            aria-label="German"
+          />
+          <tw-date-picker
+            [(value)]="localeValueFR"
+            locale="fr-FR"
+            placeholder="Choisissez une date"
+            aria-label="French"
+          />
+        </div>
+      </div>
+      <tw-code-block [code]="localeSnippet" language="html" />
+    </section>
+
+    <!-- Custom trigger -->
+    <section class="mb-10">
+      <h2 class="text-sm font-semibold mb-3">Custom trigger</h2>
+      <p class="text-sm text-fg-muted leading-relaxed max-w-2xl mb-4">
+        Project an element with
+        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">slot="trigger"</code>
+        to fully replace the default input + button row with a rich label, badge, or button.
+        The component keeps the input in the DOM (visually hidden) so form-field integration
+        and screen readers still work; clicks on the projected trigger toggle the overlay.
+      </p>
+      <div class="rounded-lg border border-border p-6 bg-surface-raised mb-4">
+        <div class="space-y-2 max-w-md">
+          <tw-date-picker [(value)]="customTriggerValue" aria-label="Custom trigger">
+            <button
+              twButton
+              slot="trigger"
+              variant="outline"
+              color="primary"
+              type="button"
+              class="w-full justify-between"
+            >
+              {{ customTriggerLabel() }}
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" class="size-4">
+                <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
+                <line x1="16" y1="2" x2="16" y2="6" />
+                <line x1="8" y1="2" x2="8" y2="6" />
+                <line x1="3" y1="10" x2="21" y2="10" />
+              </svg>
+            </button>
+          </tw-date-picker>
+        </div>
+      </div>
+      <tw-code-block [code]="customTriggerSnippet" language="html" />
+    </section>
+
+    <!-- Date class -->
+    <section class="mb-10">
+      <h2 class="text-sm font-semibold mb-3">Date class &amp; cell template</h2>
+      <p class="text-sm text-fg-muted leading-relaxed max-w-2xl mb-4">
+        Forward calendar-level customizations directly through the picker:
+        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">dateClass</code>
+        returns a CSS class string per cell, and
+        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">cellTemplate</code>
+        overrides the cell content entirely. Useful for visually marking weekends, holidays,
+        availability, etc. without writing a wrapper component.
+      </p>
+      <div class="rounded-lg border border-border p-6 bg-surface-raised mb-4">
+        <div class="space-y-2 max-w-md">
+          <tw-date-picker
+            [(value)]="dateClassValue"
+            [dateClass]="weekendClass"
+            placeholder="Weekends highlighted"
+            aria-label="Date class"
+          />
+        </div>
+      </div>
+      <tw-code-block [code]="dateClassSnippet" language="ts" />
+    </section>
+
     <!-- Playground -->
     <section class="mb-10">
       <h2 class="text-sm font-semibold mb-3">Playground</h2>
       <p class="text-sm text-fg-muted leading-relaxed max-w-2xl mb-4">
         Combine every user-facing input at once to sanity-check your configuration before
         wiring it into a form. A good starting point is
-        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">withTime</code>
+        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">timeConfig</code>
         +
         <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">showActions</code>
         to see the two overlay-heavy features interact, or pair
@@ -472,7 +626,7 @@ function isWeekday(d: Date): boolean {
               <button twButton variant="ghost" color="neutral" size="xs"
                       [class.!bg-primary-100]="playWithTime()"
                       [class.!text-primary-700]="playWithTime()"
-                      (click)="playWithTime.update(v => !v)">withTime</button>
+                      (click)="toggleWithTime()">timeConfig</button>
               <button twButton variant="ghost" color="neutral" size="xs"
                       [disabled]="!playWithTime()"
                       [class.!bg-primary-100]="playTimeFormat() === '12h'"
@@ -482,7 +636,7 @@ function isWeekday(d: Date): boolean {
                       [disabled]="!playWithTime()"
                       [class.!bg-primary-100]="playShowSeconds()"
                       [class.!text-primary-700]="playShowSeconds()"
-                      (click)="playShowSeconds.update(v => !v)">seconds</button>
+                      (click)="toggleShowSeconds()">seconds</button>
             </div>
           </div>
           <div>
@@ -521,9 +675,7 @@ function isWeekday(d: Date): boolean {
             [(value)]="playValue"
             [color]="playColor()"
             [size]="playSize()"
-            [withTime]="playWithTime()"
-            [timeFormat]="playTimeFormat()"
-            [showSeconds]="playShowSeconds()"
+            [timeConfig]="playTimeConfig()"
             [showActions]="playShowActions()"
             [openOnFocus]="playOpenOnFocus()"
             [disabled]="playDisabled()"
@@ -624,12 +776,60 @@ export class DatePickerExamples {
   protected readonly startValue = signal<Date | null>(null);
   protected readonly launchValue = signal<Date | null>(null);
 
+  // ── Presets ──
+  protected readonly presetValue = signal<Date | null>(null);
+  protected readonly presetLabel = computed(
+    () => this.presetValue()?.toDateString() ?? 'null',
+  );
+  protected readonly quickPresets: DatePickerPreset<Date>[] = [
+    { id: 'today', label: 'Today', date: () => startOfToday() },
+    { id: 'tomorrow', label: 'Tomorrow', date: () => addDays(startOfToday(), 1) },
+    { id: 'next-week', label: 'Next week', date: () => addDays(startOfToday(), 7) },
+    { id: 'next-month', label: 'Next month', date: () => addDays(startOfToday(), 30) },
+  ];
+
+  // ── Time config ──
+  protected readonly timeConfigValue = signal<Date | null>(null);
+  protected readonly timeConfigLabel = computed(
+    () => this.timeConfigValue()?.toString() ?? 'null',
+  );
+  protected readonly timeConfig: DatePickerTimeConfig<Date> = {
+    format: '12h',
+    showSeconds: false,
+    minuteStep: 15,
+  };
+
+  // ── Locale ──
+  protected readonly localeValueDE = signal<Date | null>(this.today);
+  protected readonly localeValueFR = signal<Date | null>(this.today);
+
+  // ── Custom trigger ──
+  protected readonly customTriggerValue = signal<Date | null>(null);
+  protected readonly customTriggerLabel = computed(() => {
+    const v = this.customTriggerValue();
+    return v ? v.toDateString() : 'Choose a date';
+  });
+
+  // ── Date class ──
+  protected readonly dateClassValue = signal<Date | null>(null);
+  protected readonly weekendClass = (d: Date): string => {
+    const day = d.getDay();
+    return day === 0 || day === 6 ? 'text-error-600 font-semibold' : '';
+  };
+
   // ── Playground ──
   protected readonly playColor = signal<TwColor>('primary');
   protected readonly playSize = signal<TwSize>('md');
-  protected readonly playWithTime = signal(false);
-  protected readonly playTimeFormat = signal<TimePickerFormat>('24h');
-  protected readonly playShowSeconds = signal(false);
+  // Drives the picker via a single `[timeConfig]` binding. When `null`, the
+  // time-picker is hidden; setting any of the three buttons turns it on.
+  protected readonly playTimeConfig = signal<DatePickerTimeConfig<Date> | null>(null);
+  protected readonly playWithTime = computed(() => this.playTimeConfig() !== null);
+  protected readonly playTimeFormat = computed<TimePickerFormat>(
+    () => this.playTimeConfig()?.format ?? '24h',
+  );
+  protected readonly playShowSeconds = computed(
+    () => this.playTimeConfig()?.showSeconds ?? false,
+  );
   protected readonly playShowActions = signal(false);
   protected readonly playOpenOnFocus = signal(false);
   protected readonly playDisabled = signal(false);
@@ -641,8 +841,18 @@ export class DatePickerExamples {
     if (!v) return 'null';
     return this.playWithTime() ? v.toString() : v.toDateString();
   });
+  protected toggleWithTime(): void {
+    this.playTimeConfig.update((cfg) => (cfg === null ? {} : null));
+  }
   protected toggleTimeFormat(): void {
-    this.playTimeFormat.update((f) => (f === '12h' ? '24h' : '12h'));
+    this.playTimeConfig.update((cfg) =>
+      cfg === null ? cfg : { ...cfg, format: cfg.format === '12h' ? '24h' : '12h' },
+    );
+  }
+  protected toggleShowSeconds(): void {
+    this.playTimeConfig.update((cfg) =>
+      cfg === null ? cfg : { ...cfg, showSeconds: !cfg.showSeconds },
+    );
   }
 
   // ── Code snippets ──
@@ -682,10 +892,10 @@ export class DatePickerExamples {
   aria-label="Appointment"
 />`;
 
-  protected readonly withTimeSnippet = `<!-- 24h, minute precision -->
+  protected readonly withTimeSnippet = `<!-- 24h, minute precision (empty config opts in with defaults) -->
 <tw-date-picker
   [(value)]="meeting"
-  [withTime]="true"
+  [timeConfig]="{}"
   placeholder="Pick a date and time"
   aria-label="Meeting"
 />
@@ -693,9 +903,7 @@ export class DatePickerExamples {
 <!-- 12h + seconds + action bar -->
 <tw-date-picker
   [(value)]="deadline"
-  [withTime]="true"
-  timeFormat="12h"
-  [showSeconds]="true"
+  [timeConfig]="{ format: '12h', showSeconds: true }"
   [showActions]="true"
   color="accent"
   placeholder="Pick a deadline"
@@ -760,4 +968,40 @@ protected readonly shipForm = form(this.shipModel, (path) => {
   <label twLabel>Launch date</label>
   <tw-date-picker [(value)]="launchValue" aria-label="Launch date" />
 </tw-form-field>`;
+
+  protected readonly presetsTsSnippet = `protected readonly quickPresets: DatePickerPreset<Date>[] = [
+  { id: 'today',      label: 'Today',      date: () => startOfToday() },
+  { id: 'tomorrow',   label: 'Tomorrow',   date: () => addDays(startOfToday(), 1) },
+  { id: 'next-week',  label: 'Next week',  date: () => addDays(startOfToday(), 7) },
+  { id: 'next-month', label: 'Next month', date: () => addDays(startOfToday(), 30) },
+];`;
+
+  protected readonly presetsHtmlSnippet = `<tw-date-picker
+  [(value)]="presetValue"
+  [presets]="quickPresets"
+  placeholder="Pick or use a preset"
+  aria-label="Quick presets"
+/>`;
+
+  protected readonly timeConfigSnippet = `<tw-date-picker
+  [(value)]="value"
+  [timeConfig]="{ format: '12h', minuteStep: 15 }"
+  placeholder="Pick a 12h date + time"
+  aria-label="Time config"
+/>`;
+
+  protected readonly localeSnippet = `<tw-date-picker locale="de-DE" [(value)]="dateDE" aria-label="German" />
+<tw-date-picker locale="fr-FR" [(value)]="dateFR" aria-label="French" />`;
+
+  protected readonly customTriggerSnippet = `<tw-date-picker [(value)]="value" aria-label="Custom trigger">
+  <button twButton slot="trigger" variant="outline" type="button">
+    {{ value()?.toDateString() ?? 'Choose a date' }}
+  </button>
+</tw-date-picker>`;
+
+  protected readonly dateClassSnippet = `protected readonly weekendClass = (d: Date) =>
+  d.getDay() === 0 || d.getDay() === 6 ? 'text-error-600 font-semibold' : '';
+
+// in template:
+// <tw-date-picker [dateClass]="weekendClass" [(value)]="value" />`;
 }

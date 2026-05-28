@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { ChangeDetectionStrategy, Component, signal } from '@angular/core';
 import { type ComponentFixture, TestBed } from '@angular/core/testing';
-import { FormControl, FormsModule, ReactiveFormsModule } from '@angular/forms';
+import { FormControl, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
 import { form, FormField } from '@angular/forms/signals';
 import { OverlayModule } from '@angular/cdk/overlay';
 import { SelectComponent } from './select';
@@ -68,6 +68,16 @@ class BasicHost {
 class ReactiveHost {
   options = OPTIONS;
   ctrl = new FormControl<string | null>(null);
+}
+
+@Component({
+  imports: [SelectComponent, ReactiveFormsModule],
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  template: `<tw-select [options]="options" [formControl]="ctrl" aria-label="Required" />`,
+})
+class RequiredReactiveHost {
+  options = OPTIONS;
+  ctrl = new FormControl<string | null>(null, Validators.required);
 }
 
 @Component({
@@ -631,6 +641,39 @@ describe('SelectComponent', () => {
       await advance(fixture);
       expect(fixture.componentInstance.selectForm.fruit().value()).toBe('apple');
       vi.useRealTimers();
+    });
+  });
+
+  // ── Error state ──
+
+  describe('errorState', () => {
+    it('does not set aria-invalid before the control is touched', () => {
+      const fixture = TestBed.createComponent(RequiredReactiveHost);
+      fixture.detectChanges();
+      expect(fixture.componentInstance.ctrl.invalid).toBe(true);
+      expect(getTriggerButton(fixture).getAttribute('aria-invalid')).toBe(null);
+    });
+
+    it('sets aria-invalid once the FormControl is touched + invalid', async () => {
+      const fixture = TestBed.createComponent(RequiredReactiveHost);
+      fixture.detectChanges();
+      fixture.componentInstance.ctrl.markAsTouched();
+      fixture.componentInstance.ctrl.updateValueAndValidity();
+      await advance(fixture);
+      expect(getTriggerButton(fixture).getAttribute('aria-invalid')).toBe('true');
+    });
+
+    it('clears aria-invalid once a value is set and the control becomes valid', async () => {
+      const fixture = TestBed.createComponent(RequiredReactiveHost);
+      fixture.detectChanges();
+      fixture.componentInstance.ctrl.markAsTouched();
+      fixture.componentInstance.ctrl.updateValueAndValidity();
+      await advance(fixture);
+      expect(getTriggerButton(fixture).getAttribute('aria-invalid')).toBe('true');
+      fixture.componentInstance.ctrl.setValue('apple');
+      await advance(fixture);
+      expect(fixture.componentInstance.ctrl.valid).toBe(true);
+      expect(getTriggerButton(fixture).getAttribute('aria-invalid')).toBe(null);
     });
   });
 

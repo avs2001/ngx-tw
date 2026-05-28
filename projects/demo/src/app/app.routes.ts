@@ -27,6 +27,10 @@ export const routes: Routes = [
         loadChildren: () => import('./routes/card/card.routes').then(m => m.CARD_ROUTES),
       },
       {
+        path: 'components/carousel',
+        loadChildren: () => import('./routes/carousel/carousel.routes').then(m => m.CAROUSEL_ROUTES),
+      },
+      {
         path: 'components/item',
         loadChildren: () => import('./routes/item/item.routes').then(m => m.ITEM_ROUTES),
       },
@@ -119,6 +123,10 @@ export const routes: Routes = [
         loadChildren: () => import('./routes/spinner/spinner.routes').then(m => m.SPINNER_ROUTES),
       },
       {
+        path: 'components/stat',
+        loadChildren: () => import('./routes/stat/stat.routes').then(m => m.STAT_ROUTES),
+      },
+      {
         path: 'components/skeleton',
         loadChildren: () => import('./routes/skeleton/skeleton.routes').then(m => m.SKELETON_ROUTES),
       },
@@ -173,6 +181,22 @@ export const routes: Routes = [
       {
         path: 'components/sheet',
         loadChildren: () => import('./routes/sheet/sheet.routes').then(m => m.SHEET_ROUTES),
+      },
+      {
+        path: 'components/timeline',
+        loadChildren: () => import('./routes/timeline/timeline.routes').then(m => m.TIMELINE_ROUTES),
+      },
+      {
+        path: 'components/combobox',
+        loadChildren: () => import('./routes/combobox/combobox.routes').then(m => m.COMBOBOX_ROUTES),
+      },
+      {
+        path: 'components/empty-state',
+        loadChildren: () => import('./routes/empty-state/empty-state.routes').then(m => m.EMPTY_STATE_ROUTES),
+      },
+      {
+        path: 'components/split',
+        loadChildren: () => import('./routes/split/split.routes').then(m => m.SPLIT_ROUTES),
       },
       {
         path: 'services/theme',

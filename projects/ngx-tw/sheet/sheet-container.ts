@@ -1,31 +1,33 @@
 import {
   ChangeDetectionStrategy,
   Component,
-  EventEmitter,
-  type OnDestroy,
-  signal,
+  type EventEmitter,
+  inject,
+  type Signal,
   ViewEncapsulation,
   computed,
 } from '@angular/core';
 import { CdkDialogContainer } from '@angular/cdk/dialog';
 import { CdkPortalOutlet } from '@angular/cdk/portal';
+import {
+  coerceOverlayDuration,
+  mergeOverlayPanelClass,
+  OverlayContainerCoordinator,
+  type OverlayContainerAnimationEvent,
+  type OverlayContainerState,
+} from 'ngx-tw/core';
 import { tv } from 'tailwind-variants';
 import { type SheetConfig } from './sheet-config';
 
 /** Lifecycle states a sheet passes through. */
-export type SheetState = 'opening' | 'open' | 'closing' | 'closed';
+export type SheetState = OverlayContainerState;
 
 /** Event emitted when the sheet's animation state transitions. */
-export interface SheetAnimationEvent {
-  /** New state that the sheet just transitioned into. */
-  state: SheetState;
-  /** Duration, in ms, of the transition that triggered the event. */
-  totalTime: number;
-}
+export type SheetAnimationEvent = OverlayContainerAnimationEvent;
 
 // Sheet uses a `data-[state]` + `data-[side]` driven CSS transition rather than
 // the project's `animate.enter`/`animate.leave` keyframes. Same rationale as
-// the dialog container (see `dialog-container.ts:27-35`):
+// the dialog container (see `dialog-container.ts`):
 //   1. The ref owns the open/close lifecycle (state signal, observables) and
 //      needs runtime-configurable enter/exit durations per `Sheet.open()` call
 //      — `animate.enter` only accepts a static class name.
@@ -101,13 +103,14 @@ const sheetContainerVariants = tv(
   { twMerge: true },
 );
 
-/** Fallback padding (ms) added to transition timers in case `transitionend` is swallowed. */
-const ANIMATION_FALLBACK_PADDING = 50;
-
 /**
  * Sheet container rendered inside the CDK overlay. Wraps the user-provided
  * content in a Tailwind-styled, edge-anchored surface and coordinates slide
  * enter/exit transitions with {@link SheetRef}.
+ *
+ * The animation state machine, `aria-describedby` queue, and panel-class
+ * merge are shared with `DialogContainer` via {@link OverlayContainerCoordinator}
+ * (component-scoped — see `providers: [OverlayContainerCoordinator]`).
  *
  * @docs-private
  */
@@ -117,6 +120,7 @@ const ANIMATION_FALLBACK_PADDING = 50;
   changeDetection: ChangeDetectionStrategy.OnPush,
   encapsulation: ViewEncapsulation.None,
   imports: [CdkPortalOutlet],
+  providers: [OverlayContainerCoordinator],
   host: {
     tabindex: '-1',
     '[attr.id]': '_config.id || null',
@@ -131,31 +135,20 @@ const ANIMATION_FALLBACK_PADDING = 50;
     '[style.transition-duration.ms]': 'transitionDuration()',
   },
 })
-export class SheetContainer extends CdkDialogContainer<SheetConfig> implements OnDestroy {
+export class SheetContainer extends CdkDialogContainer<SheetConfig> {
+  private readonly coordinator = inject(OverlayContainerCoordinator);
+
   /** Lifecycle state of the sheet's enter/exit animation. */
-  readonly state = signal<SheetState>('opening');
-
-  /**
-   * Queue of IDs that describe the sheet, populated by `SheetDescriptionDirective`.
-   * Held as a signal so the host `aria-describedby` binding refreshes via OnPush
-   * without an explicit `markForCheck()`.
-   */
-  readonly _ariaDescribedByQueue = signal<readonly string[]>([]);
-
-  /** @internal Resolved `aria-describedby` value; first registered description wins. */
-  protected readonly ariaDescribedByAttr = computed(
-    () => this._config.ariaDescribedBy || this._ariaDescribedByQueue()[0] || null,
-  );
+  readonly state: Signal<SheetState> = this.coordinator.state;
 
   /** Emits whenever the animation state transitions. */
-  readonly animationStateChanged = new EventEmitter<SheetAnimationEvent>();
+  readonly animationStateChanged: EventEmitter<SheetAnimationEvent> =
+    this.coordinator.animationStateChanged;
 
   /** Resolved enter-animation duration in ms. */
   readonly enterAnimationDuration: number;
   /** Resolved exit-animation duration in ms. */
   readonly exitAnimationDuration: number;
-
-  private _animationTimer: ReturnType<typeof setTimeout> | null = null;
 
   protected readonly sideAttr = computed(() => this._config.side ?? 'right');
 
@@ -165,98 +158,43 @@ export class SheetContainer extends CdkDialogContainer<SheetConfig> implements O
     return sheetContainerVariants({ side, size });
   });
 
-  protected readonly hostClasses = computed(() => {
-    const base = this.variants().host();
-    const extra = this._config.panelClass;
-    if (!extra) return base;
-    return Array.isArray(extra) ? [base, ...extra].join(' ') : `${base} ${extra}`;
-  });
+  protected readonly hostClasses = computed(() =>
+    mergeOverlayPanelClass(this.variants().host(), this._config.panelClass),
+  );
 
-  protected readonly transitionDuration = computed(() => {
-    const current = this.state();
-    if (current === 'opening' || current === 'open') return this.enterAnimationDuration;
-    if (current === 'closing') return this.exitAnimationDuration;
-    return 0;
-  });
+  protected readonly ariaDescribedByAttr = computed(
+    () =>
+      this._config.ariaDescribedBy ||
+      this.coordinator.describedByIds()[0] ||
+      null,
+  );
+
+  protected readonly transitionDuration = this.coordinator.transitionDuration;
 
   constructor() {
     super();
-    this.enterAnimationDuration = coerceDuration(this._config.enterAnimationDuration, 200);
-    this.exitAnimationDuration = coerceDuration(this._config.exitAnimationDuration, 160);
+    this.enterAnimationDuration = coerceOverlayDuration(this._config.enterAnimationDuration, 200);
+    this.exitAnimationDuration = coerceOverlayDuration(this._config.exitAnimationDuration, 160);
+    this.coordinator.setDurations(this.enterAnimationDuration, this.exitAnimationDuration);
   }
 
   protected override _contentAttached(): void {
     super._contentAttached();
-    this._startEnterAnimation();
+    this.coordinator.startEnterAnimation();
   }
 
   /** Triggered by the sheet ref to play the exit transition before disposing the overlay. */
   _startExitAnimation(): void {
-    this.state.set('closing');
-    this.animationStateChanged.emit({ state: 'closing', totalTime: this.exitAnimationDuration });
-
-    this._runAnimationTimer(this.exitAnimationDuration, () => {
-      this.state.set('closed');
-      this.animationStateChanged.emit({ state: 'closed', totalTime: this.exitAnimationDuration });
-    });
+    this.coordinator.startExitAnimation();
   }
 
   /** Registers a description id for the container's `aria-describedby`. */
   _addAriaDescribedBy(id: string): void {
-    this._ariaDescribedByQueue.update((q) => [...q, id]);
+    this.coordinator.addAriaDescribedBy(id);
   }
 
   /** Removes a previously registered description id. */
   _removeAriaDescribedBy(id: string): void {
-    this._ariaDescribedByQueue.update((q) => q.filter((existing) => existing !== id));
+    this.coordinator.removeAriaDescribedBy(id);
   }
-
-  override ngOnDestroy(): void {
-    super.ngOnDestroy();
-    this._clearTimer();
-    this.animationStateChanged.complete();
-  }
-
-  private _startEnterAnimation(): void {
-    this.animationStateChanged.emit({ state: 'opening', totalTime: this.enterAnimationDuration });
-
-    if (this.enterAnimationDuration === 0) {
-      this.state.set('open');
-      this.animationStateChanged.emit({ state: 'open', totalTime: 0 });
-      return;
-    }
-
-    // Defer state change one frame so the browser applies the initial (offscreen)
-    // styles before transitioning to the "open" state.
-    requestAnimationFrame(() => {
-      this.state.set('open');
-      this._runAnimationTimer(this.enterAnimationDuration, () => {
-        this.animationStateChanged.emit({
-          state: 'open',
-          totalTime: this.enterAnimationDuration,
-        });
-      });
-    });
-  }
-
-  private _runAnimationTimer(duration: number, callback: () => void): void {
-    this._clearTimer();
-    if (duration === 0) {
-      callback();
-      return;
-    }
-    this._animationTimer = setTimeout(callback, duration + ANIMATION_FALLBACK_PADDING);
-  }
-
-  private _clearTimer(): void {
-    if (this._animationTimer !== null) {
-      clearTimeout(this._animationTimer);
-      this._animationTimer = null;
-    }
-  }
-}
-
-function coerceDuration(value: number | undefined, fallback: number): number {
-  if (value == null || value < 0 || !Number.isFinite(value)) return fallback;
-  return value;
 }

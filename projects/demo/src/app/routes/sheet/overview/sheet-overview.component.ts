@@ -111,18 +111,58 @@ class QuickStartSheetContent {
     </section>
 
     <section class="mb-10">
-      <h2 class="text-sm font-semibold mb-3">Quick demo</h2>
+      <h2 class="text-sm font-semibold mb-3">Basic Usage</h2>
       <p class="text-sm text-fg-muted leading-relaxed max-w-2xl mb-4">
-        Click a button to open a sheet anchored to that edge.
+        Click a button to open a sheet anchored to that edge. The same
+        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">Sheet.open()</code>
+        call services every side — only the
+        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">side</code>
+        config changes.
       </p>
-      <div class="flex flex-wrap gap-2 mb-6">
-        <button twButton variant="outline" (click)="openSide('top')">Open top</button>
-        <button twButton variant="outline" (click)="openSide('right')">Open right</button>
-        <button twButton variant="outline" (click)="openSide('bottom')">Open bottom</button>
-        <button twButton variant="outline" (click)="openSide('left')">Open left</button>
+      <div class="rounded-lg border border-border p-6 bg-surface-raised mb-4">
+        <div class="flex flex-wrap gap-2">
+          <button twButton variant="outline" (click)="openSide('top')">Open top</button>
+          <button twButton variant="outline" (click)="openSide('right')">Open right</button>
+          <button twButton variant="outline" (click)="openSide('bottom')">Open bottom</button>
+          <button twButton variant="outline" (click)="openSide('left')">Open left</button>
+        </div>
       </div>
-
       <tw-code-block language="ts" [code]="quickStartCode" />
+    </section>
+
+    <section class="mb-10">
+      <h2 class="text-sm font-semibold mb-3">Import</h2>
+      <p class="text-sm text-fg-muted leading-relaxed max-w-2xl mb-4">
+        The <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">Sheet</code>
+        service is not provided in root — register it once in the app providers with
+        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">provideSheet()</code>,
+        passing any application-wide defaults. Slot directives and tokens are imported per
+        component as needed.
+      </p>
+      <div class="space-y-3">
+        <tw-code-block [code]="provideSnippet" language="ts" />
+        <tw-code-block [code]="importSnippet" language="ts" />
+      </div>
+    </section>
+
+    <section>
+      <h2 class="text-sm font-semibold mb-3">Key Features</h2>
+      <ul class="list-disc list-inside text-sm text-fg-muted space-y-1.5">
+        <li>4 anchor sides: <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">top</code>, <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">right</code>, <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">bottom</code>, <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">left</code></li>
+        <li>Axis-aware size presets — <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">xs</code> → <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">full</code> control width on horizontal sheets and height on vertical sheets</li>
+        <li>Template or component content via CDK Portals</li>
+        <li>Slide enter/exit transitions with per-call durations (or disable with <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">0</code>)</li>
+        <li>Reactive <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">state()</code> signal (opening / open / closing / closed)</li>
+        <li><code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">afterOpened()</code>, <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">beforeClosed()</code>, <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">afterClosed()</code> observables</li>
+        <li>Typed result payload on <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">close(result)</code> and <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">[twSheetClose]</code></li>
+        <li>Focus trap + restore focus inherited from CDK</li>
+        <li>Split close-behavior flags: <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">closeOnEscape</code>, <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">closeOnBackdropClick</code>, <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">disableClose</code></li>
+        <li><code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">role="dialog"</code> / <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">"alertdialog"</code> with <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">aria-labelledby</code> / <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">aria-describedby</code> auto-wired by the title and description directives</li>
+        <li>Configurable scroll behavior: <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">block</code>, <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">reposition</code>, <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">close</code>, <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">noop</code></li>
+        <li>Close guards via <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">closePredicate</code></li>
+        <li>Layout directives for header, icon, title, subtitle/description, content, actions, and dismiss</li>
+        <li>Multi-sheet stacking with an <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">openSheets</code> signal, <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">closeAll()</code>, and <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">afterAllClosed</code></li>
+      </ul>
     </section>
   `,
 })
@@ -137,6 +177,27 @@ const ref = sheet.open(MyComponent, { side: 'right', size: 'md' });
 ref.afterClosed().subscribe((result) => {
   // result is whatever you passed to close() or [twSheetClose]
 });`;
+
+  protected readonly provideSnippet = `import { provideSheet } from 'ngx-tw/sheet';
+
+bootstrapApplication(AppComponent, {
+  providers: [
+    provideSheet({ side: 'right', size: 'md' }), // optional defaults
+  ],
+});`;
+
+  protected readonly importSnippet = `import {
+  Sheet,
+  SHEET_DATA,
+  SheetHeaderDirective,
+  SheetIconDirective,
+  SheetTitleDirective,
+  SheetSubtitleDirective,
+  SheetDescriptionDirective,
+  SheetContentDirective,
+  SheetActionsDirective,
+  SheetCloseDirective,
+} from 'ngx-tw/sheet';`;
 
   protected openSide(side: 'top' | 'right' | 'bottom' | 'left'): void {
     this.sheet.open(QuickStartSheetContent, { side, size: 'md', data: { side } });

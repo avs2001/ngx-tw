@@ -1,7 +1,6 @@
 import {
   computed,
   Directive,
-  ElementRef,
   inject,
   input,
   type OnDestroy,
@@ -10,8 +9,8 @@ import {
 import { _IdGenerator } from '@angular/cdk/a11y';
 import { CdkScrollable } from '@angular/cdk/scrolling';
 import type { TwColor } from 'ngx-tw/core';
-import { Sheet } from './sheet';
 import { SheetRef } from './sheet-ref';
+import { SheetContainer } from './sheet-container';
 
 /**
  * Header wrapper for a sheet. Provides consistent padding and spacing for
@@ -67,30 +66,30 @@ export class SheetIconDirective {
 @Directive({
   selector: '[twSheetTitle], tw-sheet-title',
   host: {
-    class: 'text-base font-semibold text-fg',
+    class: 'text-sm font-semibold text-fg',
     '[id]': 'id()',
   },
 })
 export class SheetTitleDirective implements OnInit, OnDestroy {
   private readonly generatedId = inject(_IdGenerator).getId('tw-sheet-title-');
-  private readonly elementRef = inject<ElementRef<HTMLElement>>(ElementRef);
-  private readonly sheet = inject(Sheet, { optional: true });
-  private sheetRef = inject<SheetRef<unknown, unknown>>(SheetRef, { optional: true });
+  private readonly sheetRef = inject<SheetRef<unknown, unknown>>(SheetRef, { optional: true });
+  // Ancestor-DI fallback for the rare case where `SheetRef` is not in the
+  // directive's injector chain (e.g. heavily nested template portals). The
+  // container ALWAYS resolves via element-injector traversal because the
+  // directive lives inside `<tw-sheet-container>`'s DOM tree.
+  private readonly container = inject(SheetContainer, { optional: true, skipSelf: true });
 
   /** Custom id for the title element. Defaults to a generated unique id. */
   readonly id = input<string>(this.generatedId);
 
   ngOnInit(): void {
-    if (!this.sheetRef && this.sheet) {
-      this.sheetRef = findEnclosingSheet(this.elementRef, this.sheet) ?? null;
-    }
-    const container = this.sheetRef?.containerInstance;
-    if (container) container._addAriaLabelledBy(this.id());
+    const containerInstance = this.sheetRef?.containerInstance ?? this.container;
+    if (containerInstance) containerInstance._addAriaLabelledBy(this.id());
   }
 
   ngOnDestroy(): void {
-    const container = this.sheetRef?.containerInstance;
-    if (container) container._removeAriaLabelledBy(this.id());
+    const containerInstance = this.sheetRef?.containerInstance ?? this.container;
+    if (containerInstance) containerInstance._removeAriaLabelledBy(this.id());
   }
 }
 
@@ -116,24 +115,21 @@ export class SheetSubtitleDirective {}
 })
 export class SheetDescriptionDirective implements OnInit, OnDestroy {
   private readonly generatedId = inject(_IdGenerator).getId('tw-sheet-description-');
-  private readonly elementRef = inject<ElementRef<HTMLElement>>(ElementRef);
-  private readonly sheet = inject(Sheet, { optional: true });
-  private sheetRef = inject<SheetRef<unknown, unknown>>(SheetRef, { optional: true });
+  private readonly sheetRef = inject<SheetRef<unknown, unknown>>(SheetRef, { optional: true });
+  // Ancestor-DI fallback — see SheetTitleDirective.
+  private readonly container = inject(SheetContainer, { optional: true, skipSelf: true });
 
   /** Custom id for the description element. Defaults to a generated unique id. */
   readonly id = input<string>(this.generatedId);
 
   ngOnInit(): void {
-    if (!this.sheetRef && this.sheet) {
-      this.sheetRef = findEnclosingSheet(this.elementRef, this.sheet) ?? null;
-    }
-    const container = this.sheetRef?.containerInstance;
-    if (container) container._addAriaDescribedBy(this.id());
+    const containerInstance = this.sheetRef?.containerInstance ?? this.container;
+    if (containerInstance) containerInstance._addAriaDescribedBy(this.id());
   }
 
   ngOnDestroy(): void {
-    const container = this.sheetRef?.containerInstance;
-    if (container) container._removeAriaDescribedBy(this.id());
+    const containerInstance = this.sheetRef?.containerInstance ?? this.container;
+    if (containerInstance) containerInstance._removeAriaDescribedBy(this.id());
   }
 }
 
@@ -187,38 +183,16 @@ export class SheetActionsDirective {
     '[attr.type]': 'type()',
   },
 })
-export class SheetCloseDirective implements OnInit {
+export class SheetCloseDirective {
   /** Value passed to `afterClosed()` when the button is clicked. */
   readonly twSheetClose = input<unknown>(undefined);
 
   /** Native button `type`. Defaults to `'button'` to avoid accidental form submission. */
   readonly type = input<'button' | 'submit' | 'reset'>('button');
 
-  private readonly elementRef = inject<ElementRef<HTMLElement>>(ElementRef);
-  private readonly sheet = inject(Sheet, { optional: true });
-  private sheetRef = inject<SheetRef<unknown, unknown>>(SheetRef, { optional: true });
-
-  ngOnInit(): void {
-    if (!this.sheetRef && this.sheet) {
-      this.sheetRef = findEnclosingSheet(this.elementRef, this.sheet) ?? null;
-    }
-  }
+  private readonly sheetRef = inject<SheetRef<unknown, unknown>>(SheetRef, { optional: true });
 
   protected onClick(): void {
     this.sheetRef?.close(this.twSheetClose());
   }
-}
-
-function findEnclosingSheet(
-  elementRef: ElementRef<HTMLElement>,
-  sheet: Sheet,
-): SheetRef<unknown, unknown> | undefined {
-  let parent: HTMLElement | null = elementRef.nativeElement.parentElement;
-  while (parent && parent.tagName.toLowerCase() !== 'tw-sheet-container') {
-    parent = parent.parentElement;
-  }
-  if (!parent) return undefined;
-  const id = parent.getAttribute('id');
-  if (!id) return undefined;
-  return sheet.getSheetById(id);
 }

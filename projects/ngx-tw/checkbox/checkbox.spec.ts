@@ -1,12 +1,24 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { ChangeDetectionStrategy, Component, signal } from '@angular/core';
 import { type ComponentFixture, TestBed } from '@angular/core/testing';
-import { FormControl, FormsModule, ReactiveFormsModule } from '@angular/forms';
-import { form, FormField } from '@angular/forms/signals';
+import {
+  FormControl,
+  FormGroup,
+  FormsModule,
+  ReactiveFormsModule,
+  Validators,
+} from '@angular/forms';
+import { form, FormField, required } from '@angular/forms/signals';
 import { By } from '@angular/platform-browser';
 import { FocusMonitor } from '@angular/cdk/a11y';
 import { CheckboxComponent } from './checkbox';
 import type { CheckboxLabelPosition, CheckboxVariant } from './checkbox';
+import {
+  FormFieldComponent,
+  LabelDirective,
+  HintDirective,
+  ErrorDirective,
+} from 'ngx-tw/form-field';
 import type { TwColor, TwSize } from 'ngx-tw/core';
 
 // ── Test hosts ────────────────────────────────────────────────────
@@ -555,5 +567,564 @@ describe('CheckboxComponent signal forms', () => {
     getCheckbox(fixture).dispatchEvent(new Event('blur'));
     fixture.detectChanges();
     expect(fixture.componentInstance.checkboxForm.accepted().touched()).toBe(true);
+  });
+});
+
+// ── id input ─────────────────────────────────────────────────────
+
+@Component({
+  imports: [CheckboxComponent],
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  template: `<tw-checkbox id="my-checkbox" label="Custom id" />`,
+})
+class CustomIdHost {}
+
+describe('CheckboxComponent id input', () => {
+  const focusMonitorSpy = {
+    monitor: vi.fn(),
+    stopMonitoring: vi.fn(),
+  };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    TestBed.configureTestingModule({
+      providers: [{ provide: FocusMonitor, useValue: focusMonitorSpy }],
+    });
+  });
+
+  it('should round-trip the id attribute on the host', () => {
+    const fixture = TestBed.createComponent(CustomIdHost);
+    fixture.detectChanges();
+    expect(getCheckbox(fixture).id).toBe('my-checkbox');
+  });
+
+  it('should derive aria-labelledby from the custom id', () => {
+    const fixture = TestBed.createComponent(CustomIdHost);
+    fixture.detectChanges();
+    const labelledby = getCheckbox(fixture).getAttribute('aria-labelledby');
+    expect(labelledby).toBe('my-checkbox-label');
+    expect(fixture.nativeElement.querySelector('#my-checkbox-label')).toBeTruthy();
+  });
+});
+
+// ── change-on-writeValue regression ──────────────────────────────
+
+describe('CheckboxComponent change emission', () => {
+  const focusMonitorSpy = {
+    monitor: vi.fn(),
+    stopMonitoring: vi.fn(),
+  };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    TestBed.configureTestingModule({
+      providers: [{ provide: FocusMonitor, useValue: focusMonitorSpy }],
+    });
+  });
+
+  it('should NOT fire change when value is updated programmatically via writeValue', () => {
+    const fixture = TestBed.createComponent(BasicHost);
+    fixture.detectChanges();
+    const instance = fixture.debugElement.query(By.directive(CheckboxComponent))
+      .componentInstance as CheckboxComponent;
+    const changeSpy = vi.spyOn(instance.change, 'emit');
+    instance.writeValue(true);
+    fixture.detectChanges();
+    expect(changeSpy).not.toHaveBeenCalled();
+    instance.writeValue(false);
+    fixture.detectChanges();
+    expect(changeSpy).not.toHaveBeenCalled();
+  });
+});
+
+// ── Dev-mode accessible-name warning ─────────────────────────────
+
+@Component({
+  imports: [CheckboxComponent],
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  template: `<tw-checkbox />`,
+})
+class NoLabelHost {}
+
+describe('CheckboxComponent accessible-name warning', () => {
+  const focusMonitorSpy = {
+    monitor: vi.fn(),
+    stopMonitoring: vi.fn(),
+  };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    TestBed.configureTestingModule({
+      providers: [{ provide: FocusMonitor, useValue: focusMonitorSpy }],
+    });
+  });
+
+  it('should warn in dev mode when no accessible name is provided', async () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const fixture = TestBed.createComponent(NoLabelHost);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    expect(warnSpy).toHaveBeenCalledWith(
+      expect.stringContaining('[tw-checkbox] The checkbox has no accessible name'),
+    );
+    warnSpy.mockRestore();
+  });
+
+  it('should not warn when an aria-label is provided', async () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const fixture = TestBed.createComponent(AriaLabelHost);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    const accessibleNameWarnings = warnSpy.mock.calls.filter((args) =>
+      typeof args[0] === 'string' && args[0].includes('has no accessible name'),
+    );
+    expect(accessibleNameWarnings.length).toBe(0);
+    warnSpy.mockRestore();
+  });
+});
+
+// ── check-in animation class ─────────────────────────────────────
+
+describe('CheckboxComponent check-in animation', () => {
+  const focusMonitorSpy = {
+    monitor: vi.fn(),
+    stopMonitoring: vi.fn(),
+  };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    TestBed.configureTestingModule({
+      providers: [{ provide: FocusMonitor, useValue: focusMonitorSpy }],
+    });
+  });
+
+  it('should render an icon span with the check-in enter animation when transitioning to checked', () => {
+    const fixture = TestBed.createComponent(BasicHost);
+    fixture.detectChanges();
+    fixture.componentInstance.value.set(true);
+    fixture.detectChanges();
+    // We assert via the rendered icon span — Angular's `animate.enter` compiles
+    // the class either onto the host or via a runtime hook that jsdom does not
+    // execute, so we verify the icon container exists when checked is true.
+    const icon = fixture.nativeElement.querySelector('tw-checkbox svg');
+    expect(icon).toBeTruthy();
+    // And the parent box span carries the active solid color, proving the
+    // checked render path executed.
+    const box = fixture.nativeElement.querySelector('tw-checkbox > span > span') as HTMLElement;
+    expect(box.className).toMatch(/bg-(primary|secondary|accent|info|success|warning|error)-[56]00|bg-fg/);
+  });
+
+  it('should render the indeterminate icon span when transitioning to mixed', () => {
+    const fixture = TestBed.createComponent(BasicHost);
+    fixture.detectChanges();
+    fixture.componentInstance.indeterminate.set(true);
+    fixture.detectChanges();
+    const icon = fixture.nativeElement.querySelector('tw-checkbox svg');
+    expect(icon).toBeTruthy();
+    expect(getCheckbox(fixture).getAttribute('aria-checked')).toBe('mixed');
+  });
+});
+
+// ── Color × Variant combinatorial ────────────────────────────────
+
+describe('CheckboxComponent color × variant combinatorial', () => {
+  const focusMonitorSpy = {
+    monitor: vi.fn(),
+    stopMonitoring: vi.fn(),
+  };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    TestBed.configureTestingModule({
+      providers: [{ provide: FocusMonitor, useValue: focusMonitorSpy }],
+    });
+  });
+
+  const colors: TwColor[] = [
+    'primary',
+    'secondary',
+    'accent',
+    'neutral',
+    'info',
+    'success',
+    'warning',
+    'error',
+  ];
+  const variants: CheckboxVariant[] = ['solid', 'outline'];
+
+  const SOLID_BG_HINT: Record<TwColor, string> = {
+    primary: 'bg-primary-600',
+    secondary: 'bg-secondary-600',
+    accent: 'bg-accent-600',
+    neutral: 'bg-fg',
+    info: 'bg-info-600',
+    success: 'bg-success-600',
+    warning: 'bg-warning-500',
+    error: 'bg-error-600',
+  };
+
+  const OUTLINE_BORDER_HINT: Record<TwColor, string> = {
+    primary: 'border-primary-600',
+    secondary: 'border-secondary-600',
+    accent: 'border-accent-600',
+    neutral: 'border-fg',
+    info: 'border-info-600',
+    success: 'border-success-600',
+    warning: 'border-warning-500',
+    error: 'border-error-600',
+  };
+
+  const SOLID_ICON_HINT: Record<TwColor, string> = {
+    primary: 'text-on-primary',
+    secondary: 'text-on-secondary',
+    accent: 'text-on-accent',
+    neutral: 'text-on-neutral',
+    info: 'text-on-info',
+    success: 'text-on-success',
+    warning: 'text-on-warning',
+    error: 'text-on-error',
+  };
+
+  const OUTLINE_ICON_HINT: Record<TwColor, string> = {
+    primary: 'text-primary-600',
+    secondary: 'text-secondary-600',
+    accent: 'text-accent-600',
+    neutral: 'text-fg',
+    info: 'text-info-600',
+    success: 'text-success-600',
+    warning: 'text-warning-600',
+    error: 'text-error-600',
+  };
+
+  for (const v of variants) {
+    for (const c of colors) {
+      it(`should render ${v} × ${c} with the right tokens when checked`, () => {
+        const fixture = TestBed.createComponent(BasicHost);
+        const host = fixture.componentInstance;
+        host.variant.set(v);
+        host.color.set(c);
+        host.value.set(true);
+        fixture.detectChanges();
+        const box = fixture.nativeElement.querySelector('tw-checkbox > span > span') as HTMLElement;
+        if (v === 'solid') {
+          expect(box.className).toContain(SOLID_BG_HINT[c]);
+        } else {
+          expect(box.className).toContain(OUTLINE_BORDER_HINT[c]);
+        }
+        const iconColorSpan = fixture.nativeElement.querySelector(
+          'tw-checkbox .inline-flex.items-center.justify-center.text-on-' + c +
+            ', tw-checkbox .inline-flex.items-center.justify-center.text-' + c + '-600' +
+            ', tw-checkbox .inline-flex.items-center.justify-center.text-fg' +
+            ', tw-checkbox .inline-flex.items-center.justify-center.text-warning-600',
+        );
+        // Fall back to checking the rendered classes by walking all icon spans.
+        const allInlineFlexes = Array.from(
+          fixture.nativeElement.querySelectorAll('tw-checkbox span'),
+        ) as HTMLElement[];
+        const expectedIconToken =
+          v === 'solid' ? SOLID_ICON_HINT[c] : OUTLINE_ICON_HINT[c];
+        const hasExpected = allInlineFlexes.some((el) =>
+          el.className.includes(expectedIconToken),
+        );
+        expect(hasExpected).toBe(true);
+      });
+    }
+  }
+});
+
+// ── form-field interop ───────────────────────────────────────────
+
+@Component({
+  imports: [
+    CheckboxComponent,
+    FormFieldComponent,
+    LabelDirective,
+    HintDirective,
+    ErrorDirective,
+    ReactiveFormsModule,
+  ],
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  template: `
+    <form [formGroup]="formGroup">
+      <tw-form-field>
+        <label twLabel>Accept terms</label>
+        <tw-checkbox formControlName="terms" />
+        <span twHint>Required to continue</span>
+        <span twError>You must accept the terms</span>
+      </tw-form-field>
+    </form>
+  `,
+})
+class FormFieldHost {
+  readonly formGroup = new FormGroup({
+    terms: new FormControl<boolean>(false, {
+      nonNullable: true,
+      validators: [Validators.requiredTrue],
+    }),
+  });
+}
+
+describe('CheckboxComponent inside tw-form-field', () => {
+  beforeEach(() => {
+    TestBed.configureTestingModule({});
+  });
+
+  it('should register with the form-field as the control', () => {
+    const fixture = TestBed.createComponent(FormFieldHost);
+    fixture.detectChanges();
+    const ff = fixture.debugElement.query(By.directive(FormFieldComponent))
+      .componentInstance as FormFieldComponent;
+    expect(ff.control()).toBeTruthy();
+    expect(ff.control()?.controlType).toBe('checkbox');
+  });
+
+  it('should associate the label "for" attribute with the checkbox id', () => {
+    const fixture = TestBed.createComponent(FormFieldHost);
+    fixture.detectChanges();
+    const label = fixture.nativeElement.querySelector('label[twLabel]') as HTMLLabelElement;
+    const checkbox = getCheckbox(fixture);
+    expect(label.getAttribute('for')).toBe(checkbox.id);
+  });
+
+  it('should merge the hint id into aria-describedby', () => {
+    const fixture = TestBed.createComponent(FormFieldHost);
+    fixture.detectChanges();
+    const hint = fixture.nativeElement.querySelector('[twHint]') as HTMLElement;
+    const describedBy = getCheckbox(fixture).getAttribute('aria-describedby') ?? '';
+    expect(describedBy.split(' ')).toContain(hint.id);
+  });
+
+  it('should flip aria-invalid="true" and switch describedby to error once touched + invalid', () => {
+    const fixture = TestBed.createComponent(FormFieldHost);
+    fixture.detectChanges();
+    const ctrl = fixture.componentInstance.formGroup.controls.terms;
+    ctrl.markAsTouched();
+    ctrl.updateValueAndValidity();
+    fixture.detectChanges();
+    expect(getCheckbox(fixture).getAttribute('aria-invalid')).toBe('true');
+    const error = fixture.nativeElement.querySelector('[twError]') as HTMLElement;
+    const describedBy = getCheckbox(fixture).getAttribute('aria-describedby') ?? '';
+    expect(describedBy.split(' ')).toContain(error.id);
+  });
+
+  it('should report required=true when the bound control has Validators.requiredTrue', () => {
+    const fixture = TestBed.createComponent(FormFieldHost);
+    fixture.detectChanges();
+    expect(getCheckbox(fixture).getAttribute('aria-required')).toBe('true');
+  });
+});
+
+// ── ErrorStateMatcher / errorState ───────────────────────────────
+
+@Component({
+  imports: [CheckboxComponent, ReactiveFormsModule],
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  template: `<tw-checkbox label="Reactive required" [formControl]="control" />`,
+})
+class ReactiveRequiredHost {
+  readonly control = new FormControl<boolean>(false, {
+    nonNullable: true,
+    validators: [Validators.requiredTrue],
+  });
+}
+
+describe('CheckboxComponent error state', () => {
+  beforeEach(() => {
+    TestBed.configureTestingModule({});
+  });
+
+  it('should not be in error state while pristine even when invalid', () => {
+    const fixture = TestBed.createComponent(ReactiveRequiredHost);
+    fixture.detectChanges();
+    expect(fixture.componentInstance.control.invalid).toBe(true);
+    expect(getCheckbox(fixture).hasAttribute('aria-invalid')).toBe(false);
+  });
+
+  it('should flip aria-invalid="true" once touched + invalid', () => {
+    const fixture = TestBed.createComponent(ReactiveRequiredHost);
+    fixture.detectChanges();
+    fixture.componentInstance.control.markAsTouched();
+    fixture.componentInstance.control.updateValueAndValidity();
+    fixture.detectChanges();
+    expect(getCheckbox(fixture).getAttribute('aria-invalid')).toBe('true');
+  });
+
+  it('should swap the box border to error-500 when not active and in error state', () => {
+    const fixture = TestBed.createComponent(ReactiveRequiredHost);
+    fixture.detectChanges();
+    fixture.componentInstance.control.markAsTouched();
+    fixture.componentInstance.control.updateValueAndValidity();
+    fixture.detectChanges();
+    const box = fixture.nativeElement.querySelector('tw-checkbox > span > span') as HTMLElement;
+    expect(box.className).toContain('border-error-500');
+  });
+
+  it('should clear aria-invalid after the user fixes the value', () => {
+    const fixture = TestBed.createComponent(ReactiveRequiredHost);
+    fixture.detectChanges();
+    fixture.componentInstance.control.markAsTouched();
+    fixture.componentInstance.control.updateValueAndValidity();
+    fixture.detectChanges();
+    expect(getCheckbox(fixture).getAttribute('aria-invalid')).toBe('true');
+    getCheckbox(fixture).click();
+    fixture.detectChanges();
+    expect(getCheckbox(fixture).hasAttribute('aria-invalid')).toBe(false);
+  });
+});
+
+// ── Hidden native input for form submission ──────────────────────
+
+@Component({
+  imports: [CheckboxComponent],
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  template: `
+    <form #f>
+      <tw-checkbox name="terms" [checked]="true" label="Accept" />
+    </form>
+  `,
+})
+class NativeFormHost {}
+
+describe('CheckboxComponent hidden native input', () => {
+  const focusMonitorSpy = {
+    monitor: vi.fn(),
+    stopMonitoring: vi.fn(),
+  };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    TestBed.configureTestingModule({
+      providers: [{ provide: FocusMonitor, useValue: focusMonitorSpy }],
+    });
+  });
+
+  it('should render a visually hidden input[type=checkbox] inside the host', () => {
+    const fixture = TestBed.createComponent(NativeFormHost);
+    fixture.detectChanges();
+    const input = fixture.nativeElement.querySelector('tw-checkbox input[type=checkbox]') as HTMLInputElement;
+    expect(input).toBeTruthy();
+    expect(input.className).toContain('sr-only');
+    expect(input.getAttribute('aria-hidden')).toBe('true');
+    expect(input.tabIndex).toBe(-1);
+  });
+
+  it('should mirror name, checked, and disabled onto the hidden input', () => {
+    const fixture = TestBed.createComponent(NativeFormHost);
+    fixture.detectChanges();
+    const input = fixture.nativeElement.querySelector('tw-checkbox input[type=checkbox]') as HTMLInputElement;
+    expect(input.name).toBe('terms');
+    expect(input.checked).toBe(true);
+    expect(input.disabled).toBe(false);
+  });
+
+  it('should include the checkbox in the form FormData on submit', () => {
+    const fixture = TestBed.createComponent(NativeFormHost);
+    fixture.detectChanges();
+    const formEl = fixture.nativeElement.querySelector('form') as HTMLFormElement;
+    const data = new FormData(formEl);
+    expect(data.get('terms')).toBe('on');
+  });
+});
+
+// ── Mixed label/description API precedence ───────────────────────
+
+@Component({
+  imports: [CheckboxComponent],
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  template: `
+    <tw-checkbox label="Input label" description="Input description">
+      <span data-testid="custom-label">Projected label</span>
+      <span slot="description" data-testid="custom-desc">Projected description</span>
+    </tw-checkbox>
+  `,
+})
+class MixedHost {}
+
+describe('CheckboxComponent label/description precedence', () => {
+  const focusMonitorSpy = {
+    monitor: vi.fn(),
+    stopMonitoring: vi.fn(),
+  };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    TestBed.configureTestingModule({
+      providers: [{ provide: FocusMonitor, useValue: focusMonitorSpy }],
+    });
+  });
+
+  it('should render projected label and hide the input label text', () => {
+    const fixture = TestBed.createComponent(MixedHost);
+    fixture.detectChanges();
+    const labelText = fixture.nativeElement.querySelector('tw-checkbox')!.textContent ?? '';
+    expect(labelText).toContain('Projected label');
+    expect(labelText).not.toContain('Input label');
+  });
+
+  it('should render projected description and hide the input description text', () => {
+    const fixture = TestBed.createComponent(MixedHost);
+    fixture.detectChanges();
+    const labelText = fixture.nativeElement.querySelector('tw-checkbox')!.textContent ?? '';
+    expect(labelText).toContain('Projected description');
+    expect(labelText).not.toContain('Input description');
+  });
+});
+
+// ── focused() signal ─────────────────────────────────────────────
+
+describe('CheckboxComponent focused signal', () => {
+  beforeEach(() => {
+    TestBed.configureTestingModule({});
+  });
+
+  it('should expose focused() signal that flips on focus/blur', () => {
+    const fixture = TestBed.createComponent(BasicHost);
+    fixture.detectChanges();
+    const instance = fixture.debugElement.query(By.directive(CheckboxComponent))
+      .componentInstance as CheckboxComponent;
+    const el = getCheckbox(fixture);
+    expect(instance.focused()).toBe(false);
+    el.focus();
+    el.dispatchEvent(new FocusEvent('focus'));
+    fixture.detectChanges();
+    expect(instance.focused()).toBe(true);
+    el.blur();
+    el.dispatchEvent(new FocusEvent('blur'));
+    fixture.detectChanges();
+    expect(instance.focused()).toBe(false);
+  });
+});
+
+// ── Signal-forms required validator ──────────────────────────────
+
+@Component({
+  imports: [CheckboxComponent, FormField],
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  template: `<tw-checkbox label="Signal required" [formField]="signalForm.accepted" />`,
+})
+class SignalRequiredHost {
+  protected readonly model = signal({ accepted: false });
+  readonly signalForm = form(this.model, (p) => {
+    required(p.accepted);
+  });
+}
+
+describe('CheckboxComponent signal-forms required', () => {
+  const focusMonitorSpy = {
+    monitor: vi.fn(),
+    stopMonitoring: vi.fn(),
+  };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    TestBed.configureTestingModule({
+      providers: [{ provide: FocusMonitor, useValue: focusMonitorSpy }],
+    });
+  });
+
+  it('should report aria-required="true" from a signal-forms required rule', () => {
+    const fixture = TestBed.createComponent(SignalRequiredHost);
+    fixture.detectChanges();
+    expect(getCheckbox(fixture).getAttribute('aria-required')).toBe('true');
   });
 });

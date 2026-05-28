@@ -1,28 +1,40 @@
 import {
   ChangeDetectionStrategy,
   Component,
-  EventEmitter,
-  type OnDestroy,
-  signal,
+  type EventEmitter,
+  inject,
+  type Signal,
   ViewEncapsulation,
   computed,
 } from '@angular/core';
 import { CdkDialogContainer } from '@angular/cdk/dialog';
 import { CdkPortalOutlet } from '@angular/cdk/portal';
+import {
+  coerceOverlayDuration,
+  mergeOverlayPanelClass,
+  OverlayContainerCoordinator,
+  type OverlayContainerAnimationEvent,
+  type OverlayContainerState,
+} from 'ngx-tw/core';
 import { tv } from 'tailwind-variants';
 import { type TwDialogConfig } from './dialog-config';
 
 /** Lifecycle states a dialog passes through. */
-export type TwDialogState = 'opening' | 'open' | 'closing' | 'closed';
+export type DialogState = OverlayContainerState;
 
 /** Event emitted when the dialog's animation state transitions. */
-export interface TwDialogAnimationEvent {
-  /** New state that the dialog just transitioned into. */
-  state: TwDialogState;
-  /** Duration, in ms, of the transition that triggered the event. */
-  totalTime: number;
-}
+export type DialogAnimationEvent = OverlayContainerAnimationEvent;
 
+// Dialog uses a `data-[state]` driven CSS transition rather than the project's
+// `animate.enter`/`animate.leave` keyframes. Justification:
+//   1. The ref owns the open/close lifecycle (state signal, observables) and
+//      needs runtime-configurable enter/exit durations per `TwDialog.open()`
+//      call — `animate.enter` only accepts a static class name.
+//   2. The container drives the same CSS variables (opacity + scale) for both
+//      transitions, so a single `transition-[opacity,transform]` rule with a
+//      data-state attribute is simpler than two keyframe declarations.
+// All other library overlays (popover, menu, tooltip) use animate.enter/leave;
+// this divergence is intentional and isolated to the dialog container.
 const dialogContainerVariants = tv(
   {
     slots: {
@@ -45,13 +57,14 @@ const dialogContainerVariants = tv(
   { twMerge: true },
 );
 
-/** Fallback padding (ms) added to transition timers in case `transitionend` is swallowed. */
-const ANIMATION_FALLBACK_PADDING = 50;
-
 /**
  * Dialog container rendered inside the CDK overlay. Wraps the user-provided
  * content in a Tailwind-styled surface and coordinates enter/exit transitions
  * with {@link TwDialogRef}.
+ *
+ * The animation state machine, `aria-describedby` queue, and panel-class
+ * merge are shared with `SheetContainer` via {@link OverlayContainerCoordinator}
+ * (component-scoped — see `providers: [OverlayContainerCoordinator]`).
  *
  * @docs-private
  */
@@ -61,6 +74,7 @@ const ANIMATION_FALLBACK_PADDING = 50;
   changeDetection: ChangeDetectionStrategy.OnPush,
   encapsulation: ViewEncapsulation.None,
   imports: [CdkPortalOutlet],
+  providers: [OverlayContainerCoordinator],
   host: {
     tabindex: '-1',
     '[attr.id]': '_config.id || null',
@@ -68,121 +82,69 @@ const ANIMATION_FALLBACK_PADDING = 50;
     '[attr.aria-modal]': '_config.ariaModal',
     '[attr.aria-labelledby]': '_config.ariaLabel ? null : _ariaLabelledByQueue[0]',
     '[attr.aria-label]': '_config.ariaLabel',
-    '[attr.aria-describedby]': '_config.ariaDescribedBy || null',
+    '[attr.aria-describedby]': 'ariaDescribedByAttr()',
     '[attr.data-state]': 'state()',
     '[class]': 'hostClasses()',
     '[style.transition-duration.ms]': 'transitionDuration()',
   },
 })
-export class TwDialogContainer extends CdkDialogContainer<TwDialogConfig> implements OnDestroy {
-  /** Lifecycle state of the dialog's enter/exit animation. */
-  readonly state = signal<TwDialogState>('opening');
+export class DialogContainer extends CdkDialogContainer<TwDialogConfig> {
+  private readonly coordinator = inject(OverlayContainerCoordinator);
 
-  /** Count of action bars currently projected (used by consumers to adapt padding). */
-  readonly actionSectionCount = signal(0);
+  /** Lifecycle state of the dialog's enter/exit animation. */
+  readonly state: Signal<DialogState> = this.coordinator.state;
 
   /** Emits whenever the animation state transitions. */
-  readonly animationStateChanged = new EventEmitter<TwDialogAnimationEvent>();
+  readonly animationStateChanged: EventEmitter<DialogAnimationEvent> =
+    this.coordinator.animationStateChanged;
 
   /** Resolved enter-animation duration in ms. */
   readonly enterAnimationDuration: number;
   /** Resolved exit-animation duration in ms. */
   readonly exitAnimationDuration: number;
 
-  private _animationTimer: ReturnType<typeof setTimeout> | null = null;
-
   private readonly sizeVariant = computed(() => {
     const size = this._config.size ?? 'md';
     return dialogContainerVariants({ size });
   });
 
-  protected readonly hostClasses = computed(() => {
-    const base = this.sizeVariant().host();
-    const extra = this._config.panelClass;
-    if (!extra) return base;
-    return Array.isArray(extra) ? [base, ...extra].join(' ') : `${base} ${extra}`;
-  });
+  protected readonly hostClasses = computed(() =>
+    mergeOverlayPanelClass(this.sizeVariant().host(), this._config.panelClass),
+  );
 
-  protected readonly transitionDuration = computed(() => {
-    const current = this.state();
-    if (current === 'opening' || current === 'open') return this.enterAnimationDuration;
-    if (current === 'closing') return this.exitAnimationDuration;
-    return 0;
-  });
+  protected readonly ariaDescribedByAttr = computed(
+    () =>
+      this._config.ariaDescribedBy ||
+      this.coordinator.describedByIds()[0] ||
+      null,
+  );
+
+  protected readonly transitionDuration = this.coordinator.transitionDuration;
 
   constructor() {
     super();
-    this.enterAnimationDuration = coerceDuration(this._config.enterAnimationDuration, 150);
-    this.exitAnimationDuration = coerceDuration(this._config.exitAnimationDuration, 120);
+    this.enterAnimationDuration = coerceOverlayDuration(this._config.enterAnimationDuration, 150);
+    this.exitAnimationDuration = coerceOverlayDuration(this._config.exitAnimationDuration, 120);
+    this.coordinator.setDurations(this.enterAnimationDuration, this.exitAnimationDuration);
   }
 
   protected override _contentAttached(): void {
     super._contentAttached();
-    this._startEnterAnimation();
+    this.coordinator.startEnterAnimation();
   }
 
   /** Triggered by the dialog ref to play the exit transition before disposing the overlay. */
   _startExitAnimation(): void {
-    this.state.set('closing');
-    this.animationStateChanged.emit({ state: 'closing', totalTime: this.exitAnimationDuration });
-
-    this._runAnimationTimer(this.exitAnimationDuration, () => {
-      this.state.set('closed');
-      this.animationStateChanged.emit({ state: 'closed', totalTime: this.exitAnimationDuration });
-    });
+    this.coordinator.startExitAnimation();
   }
 
-  /** Adjust the projected action section count. */
-  _updateActionSectionCount(delta: number): void {
-    this.actionSectionCount.update((c) => c + delta);
+  /** Registers a description id for the container's `aria-describedby`. */
+  _addAriaDescribedBy(id: string): void {
+    this.coordinator.addAriaDescribedBy(id);
   }
 
-  override ngOnDestroy(): void {
-    super.ngOnDestroy();
-    this._clearTimer();
-    this.animationStateChanged.complete();
+  /** Removes a previously registered description id. */
+  _removeAriaDescribedBy(id: string): void {
+    this.coordinator.removeAriaDescribedBy(id);
   }
-
-  private _startEnterAnimation(): void {
-    this.animationStateChanged.emit({ state: 'opening', totalTime: this.enterAnimationDuration });
-
-    if (this.enterAnimationDuration === 0) {
-      this.state.set('open');
-      this.animationStateChanged.emit({ state: 'open', totalTime: 0 });
-      return;
-    }
-
-    // Defer state change one frame so the browser applies the initial (hidden)
-    // styles before transitioning to the "open" state.
-    requestAnimationFrame(() => {
-      this.state.set('open');
-      this._runAnimationTimer(this.enterAnimationDuration, () => {
-        this.animationStateChanged.emit({
-          state: 'open',
-          totalTime: this.enterAnimationDuration,
-        });
-      });
-    });
-  }
-
-  private _runAnimationTimer(duration: number, callback: () => void): void {
-    this._clearTimer();
-    if (duration === 0) {
-      callback();
-      return;
-    }
-    this._animationTimer = setTimeout(callback, duration + ANIMATION_FALLBACK_PADDING);
-  }
-
-  private _clearTimer(): void {
-    if (this._animationTimer !== null) {
-      clearTimeout(this._animationTimer);
-      this._animationTimer = null;
-    }
-  }
-}
-
-function coerceDuration(value: number | undefined, fallback: number): number {
-  if (value == null || value < 0 || !Number.isFinite(value)) return fallback;
-  return value;
 }

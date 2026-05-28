@@ -5,6 +5,7 @@ import {
   model,
   output,
 } from '@angular/core';
+import { TW_SORT_HANDLE } from 'ngx-tw/core';
 
 /** Sort direction. `null` represents the cleared (unsorted) state. */
 export type SortDirection = 'asc' | 'desc' | null;
@@ -53,6 +54,16 @@ export function getSortDirectionCycle(
  * Container directive that holds the current sort state (`active` id + `direction`) and
  * coordinates with child `SortHeaderComponent` instances. Compose with any rendering layer —
  * tables, lists, custom grids — by placing child headers inside an element marked `[twSort]`.
+ *
+ * @remarks
+ * **`tw*` input/output aliases.** Every `input()` / `output()` / `model()` on this directive
+ * carries a `tw*` alias (e.g. `'twSortActive'`, `'twSortDirection'`, `'twSortChange'`). The
+ * aliases namespace bindings under the directive selector so they cannot collide with
+ * attributes the host element already owns (a `<table>` consumer binding `[active]` would
+ * otherwise be ambiguous). This mirrors Angular Material's `mat*` aliasing precedent on
+ * `MatSort`. Compodoc surfaces both the field name and the alias; consumer templates MUST
+ * bind via the aliased name (`[twSortActive]`, `(twSortChange)`, …). Removing an alias is a
+ * breaking API change requiring a major version bump.
  */
 @Directive({
   selector: '[twSort]',
@@ -60,6 +71,7 @@ export function getSortDirectionCycle(
   host: {
     'class': 'tw-sort',
   },
+  providers: [{ provide: TW_SORT_HANDLE, useExisting: SortDirective }],
 })
 export class SortDirective {
   /** The id of the currently sorted header, or `null` when nothing is sorted. Two-way bindable via `[(twSortActive)]`. Defaults to `null`. */

@@ -428,8 +428,7 @@ export class BreadcrumbsComponent<T = unknown> {
     const pushSeparator = (key: string) =>
       entries.push({ kind: 'separator', key: `sep-${key}` });
 
-    const collapsing =
-      max > 0 && all.length > 2 && all.length > max && all.length > 2;
+    const collapsing = max > 0 && all.length > 2 && all.length > max;
     const effectiveMax = Math.max(max, 2);
     const shouldCollapse = collapsing && all.length > effectiveMax;
 

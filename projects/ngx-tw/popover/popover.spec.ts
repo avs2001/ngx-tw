@@ -4,6 +4,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { OverlayModule } from '@angular/cdk/overlay';
 import { PopoverDirective, type PopoverPosition } from './popover';
 import { PopoverCloseDirective } from './popover-close';
+import { PopoverTitleDirective } from './popover-title';
 import { POPOVER_DATA, POPOVER_REF } from './popover-tokens';
 import type { TwColor, TwSize } from 'ngx-tw/core';
 
@@ -185,6 +186,44 @@ class PopoverContentComponent {
   `,
 })
 class NoClosePopoverHost {}
+
+@Component({
+  imports: [PopoverDirective, PopoverTitleDirective],
+  template: `
+    <button [twPopover]="content">Open</button>
+    <ng-template #content>
+      <h3 twPopoverTitle id="settings-title">Settings</h3>
+      <p>Body</p>
+    </ng-template>
+  `,
+})
+class TitlePopoverHost {}
+
+@Component({
+  imports: [PopoverDirective, PopoverTitleDirective],
+  template: `
+    <button
+      [twPopover]="content"
+      twPopoverAriaLabel="Explicit label"
+    >Open</button>
+    <ng-template #content>
+      <h3 twPopoverTitle id="overridden">Heading</h3>
+    </ng-template>
+  `,
+})
+class AriaLabelOverridePopoverHost {}
+
+@Component({
+  imports: [PopoverDirective],
+  template: `
+    <button id="other-target">Other</button>
+    <button id="trigger" [twPopover]="content" #pop="twPopover">Open</button>
+    <ng-template #content><p>Body</p></ng-template>
+  `,
+})
+class FocusElsewherePopoverHost {
+  readonly pop = viewChild.required<PopoverDirective>('pop');
+}
 
 // ── Constants ──
 
@@ -675,6 +714,69 @@ describe('PopoverDirective', () => {
       const overlayId = getOverlayPopover()!.getAttribute('id');
       expect(getTrigger(fixture).getAttribute('aria-controls')).toBe(overlayId);
     });
+
+    it('should set aria-modal="true" when focus is trapped (default)', () => {
+      const fixture = TestBed.configureTestingModule({
+        imports: [BasicPopoverHost, OverlayModule],
+      }).createComponent(BasicPopoverHost);
+      fixture.detectChanges();
+
+      clickTrigger(fixture);
+      fixture.detectChanges();
+
+      expect(getOverlayPopover()!.getAttribute('aria-modal')).toBe('true');
+    });
+
+    it('should not set aria-modal when twPopoverTrapFocus=false', () => {
+      @Component({
+        imports: [PopoverDirective],
+        template: `
+          <button [twPopover]="content" [twPopoverTrapFocus]="false">Open</button>
+          <ng-template #content><p>Body</p></ng-template>
+        `,
+      })
+      class NoTrapHost {}
+
+      const fixture = TestBed.configureTestingModule({
+        imports: [NoTrapHost, OverlayModule],
+      }).createComponent(NoTrapHost);
+      fixture.detectChanges();
+
+      clickTrigger(fixture);
+      fixture.detectChanges();
+
+      expect(getOverlayPopover()!.hasAttribute('aria-modal')).toBe(false);
+    });
+
+    it('should expose aria-labelledby for projected PopoverTitleDirective', () => {
+      const fixture = TestBed.configureTestingModule({
+        imports: [TitlePopoverHost, OverlayModule],
+      }).createComponent(TitlePopoverHost);
+      fixture.detectChanges();
+
+      clickTrigger(fixture);
+      fixture.detectChanges();
+
+      const heading = document.getElementById('settings-title');
+      expect(heading).toBeTruthy();
+      expect(getOverlayPopover()!.getAttribute('aria-labelledby')).toBe(
+        'settings-title',
+      );
+    });
+
+    it('should prefer twPopoverAriaLabel over labelledby queue', () => {
+      const fixture = TestBed.configureTestingModule({
+        imports: [AriaLabelOverridePopoverHost, OverlayModule],
+      }).createComponent(AriaLabelOverridePopoverHost);
+      fixture.detectChanges();
+
+      clickTrigger(fixture);
+      fixture.detectChanges();
+
+      const overlay = getOverlayPopover()!;
+      expect(overlay.getAttribute('aria-label')).toBe('Explicit label');
+      expect(overlay.getAttribute('aria-labelledby')).toBeNull();
+    });
   });
 
   describe('outputs', () => {
@@ -799,6 +901,30 @@ describe('PopoverDirective', () => {
       fixture.detectChanges();
 
       expect(document.activeElement).toBe(getTrigger(fixture));
+    });
+
+    it('should not return focus when consumer has moved focus to another element', () => {
+      const fixture = TestBed.configureTestingModule({
+        imports: [FocusElsewherePopoverHost, OverlayModule],
+      }).createComponent(FocusElsewherePopoverHost);
+      fixture.detectChanges();
+
+      const trigger = fixture.nativeElement.querySelector('#trigger') as HTMLButtonElement;
+      const other = fixture.nativeElement.querySelector('#other-target') as HTMLButtonElement;
+
+      trigger.click();
+      fixture.detectChanges();
+
+      // Move focus to another element BEFORE closing.
+      other.focus();
+      expect(document.activeElement).toBe(other);
+
+      fixture.componentInstance.pop().close();
+      fixture.detectChanges();
+      flushClose(fixture);
+
+      // Focus must remain on the consumer's chosen element, not bounce back.
+      expect(document.activeElement).toBe(other);
     });
   });
 

@@ -1,8 +1,10 @@
 import { ChangeDetectionStrategy, Component } from '@angular/core';
+import { CodeBlockComponent } from 'ngx-tw/code-block';
 
 @Component({
   selector: 'app-code-block-api',
   changeDetection: ChangeDetectionStrategy.OnPush,
+  imports: [CodeBlockComponent],
   template: `
     <!-- CodeBlockComponent -->
     <section class="mb-10">
@@ -45,12 +47,18 @@ import { ChangeDetectionStrategy, Component } from '@angular/core';
               <td class="px-4 py-2 font-mono text-xs text-fg-muted">false</td>
               <td class="px-4 py-2 text-fg-muted">When true, wraps long lines instead of horizontal scrolling.</td>
             </tr>
+            <tr>
+              <td class="px-4 py-2 font-mono text-xs">labels</td>
+              <td class="px-4 py-2 font-mono text-xs text-fg-muted">CodeBlockLabels</td>
+              <td class="px-4 py-2 font-mono text-xs text-fg-muted">{{ '{}' }}</td>
+              <td class="px-4 py-2 text-fg-muted">Localizable strings for the copy button aria-labels and the screen-reader announcement. Partial override; missing fields use English defaults.</td>
+            </tr>
           </tbody>
         </table>
       </div>
 
       <h3 class="text-xs font-semibold text-fg-muted uppercase tracking-wide mb-2">Outputs</h3>
-      <div class="overflow-x-auto border border-border rounded-lg">
+      <div class="overflow-x-auto border border-border rounded-lg mb-6">
         <table class="w-full text-sm">
           <thead>
             <tr class="bg-surface-muted text-left">
@@ -68,27 +76,75 @@ import { ChangeDetectionStrategy, Component } from '@angular/core';
           </tbody>
         </table>
       </div>
+
+      <h3 class="text-xs font-semibold text-fg-muted uppercase tracking-wide mb-2">Content Slots</h3>
+      <div class="overflow-x-auto border border-border rounded-lg">
+        <table class="w-full text-sm">
+          <thead>
+            <tr class="bg-surface-muted text-left">
+              <th class="px-4 py-2 font-medium text-fg-muted">Selector</th>
+              <th class="px-4 py-2 font-medium text-fg-muted">Directive</th>
+              <th class="px-4 py-2 font-medium text-fg-muted">Description</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-border-muted">
+            <tr>
+              <td class="px-4 py-2 font-mono text-xs">[twCodeBlockHeader]</td>
+              <td class="px-4 py-2 font-mono text-xs text-fg-muted">CodeBlockHeaderDirective</td>
+              <td class="px-4 py-2 text-fg-muted">Projects content into the header alongside the language label (e.g. filename, status pill, secondary actions).</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
     </section>
 
     <!-- Types -->
     <section class="mb-10">
       <h2 class="text-sm font-semibold mb-3">Types</h2>
-      <div class="bg-surface-sunken border border-border rounded-lg p-4">
-        <pre class="text-sm font-mono whitespace-pre text-fg"><code>type CodeBlockVariant = 'filled' | 'outlined';</code></pre>
-      </div>
+      <tw-code-block [code]="typesSnippet" language="ts" />
     </section>
 
     <!-- Accessibility -->
     <section>
       <h2 class="text-sm font-semibold mb-3">Accessibility</h2>
       <ul class="list-disc list-inside text-sm text-fg-muted space-y-1.5">
-        <li>Code region has <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">role="region"</code> and <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">tabindex="0"</code> for keyboard scrolling</li>
-        <li>Dynamic <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">aria-label</code> on code region: "{{ '{' }}language{{ '}' }} code" or "Code"</li>
-        <li>Copy button has dynamic <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">aria-label</code>: "Copy code" / "Copied"</li>
-        <li>Screen reader announcement via CDK <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">LiveAnnouncer</code> on copy</li>
-        <li>All icons marked <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">aria-hidden="true"</code></li>
+        <li>
+          Code region has
+          <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">role="region"</code> and
+          <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">tabindex="0"</code> for keyboard scrolling
+        </li>
+        <li>
+          Dynamic
+          <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">aria-label</code>
+          on code region: "&lcub;language&rcub; code" or "Code"
+        </li>
+        <li>
+          Copy button has dynamic
+          <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">aria-label</code>: "Copy code" / "Copied"
+          (override via the
+          <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">labels</code> input)
+        </li>
+        <li>
+          Screen reader announcement via CDK
+          <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">LiveAnnouncer</code> on copy
+        </li>
+        <li>
+          All icons marked
+          <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">aria-hidden="true"</code>
+        </li>
       </ul>
     </section>
   `,
 })
-export class CodeBlockApi {}
+export class CodeBlockApi {
+  protected readonly typesSnippet = `type CodeBlockVariant = 'filled' | 'outlined';
+
+interface CodeBlockLabels {
+  /** aria-label for the copy button in its resting state. Default: 'Copy code'. */
+  copy?: string;
+  /** aria-label for the copy button after a successful copy. Default: 'Copied'. */
+  copied?: string;
+  /** Text passed to LiveAnnouncer after a successful copy. Default: 'Copied to clipboard'. */
+  announcement?: string;
+}`;
+}

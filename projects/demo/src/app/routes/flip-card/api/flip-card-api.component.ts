@@ -47,6 +47,12 @@ import { CodeBlockComponent } from 'ngx-tw/code-block';
               <td class="px-4 py-2 font-mono text-xs text-fg-muted">false</td>
               <td class="px-4 py-2 text-fg-muted">Freezes the current face and blocks every trigger; the host also drops out of the tab order.</td>
             </tr>
+            <tr>
+              <td class="px-4 py-2 font-mono text-xs">ariaLabel</td>
+              <td class="px-4 py-2 font-mono text-xs text-fg-muted">string | undefined</td>
+              <td class="px-4 py-2 font-mono text-xs text-fg-muted">undefined</td>
+              <td class="px-4 py-2 text-fg-muted">Accessible name for the host. In manual mode the host is a region and AXE requires an accessible name; a default of 'Flip card' is applied if no value is provided. Override it to describe the surface (for example, 'Invoice summary').</td>
+            </tr>
           </tbody>
         </table>
       </div>

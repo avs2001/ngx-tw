@@ -111,28 +111,17 @@ import { CodeBlockComponent } from 'ngx-tw/code-block';
               <td class="px-4 py-2 text-fg-muted">3rd-click behavior for <code class="font-mono">mode="range"</code> after a committed range (§21.2). <code class="font-mono">'nearest-edge'</code> drags the closer endpoint; <code class="font-mono">'require-clear'</code> rejects with <code class="font-mono">data-state-invalid-flash</code>.</td>
             </tr>
             <tr>
-              <td class="px-4 py-2 font-mono text-xs">allowBackwardRange</td>
-              <td class="px-4 py-2 font-mono text-xs text-fg-muted">boolean</td>
-              <td class="px-4 py-2 font-mono text-xs text-fg-muted">false</td>
-              <td class="px-4 py-2 text-fg-muted">Skip the auto-swap path; commit ranges with <code class="font-mono">start &gt; end</code> as-clicked.</td>
-            </tr>
-            <tr>
-              <td class="px-4 py-2 font-mono text-xs">allowSingleDayRange</td>
-              <td class="px-4 py-2 font-mono text-xs text-fg-muted">boolean</td>
-              <td class="px-4 py-2 font-mono text-xs text-fg-muted">true</td>
-              <td class="px-4 py-2 text-fg-muted">When <code class="font-mono">false</code>, clicking the same date twice flashes invalid instead of committing <code class="font-mono">&#123;start, end: start&#125;</code>.</td>
-            </tr>
-            <tr>
-              <td class="px-4 py-2 font-mono text-xs">persistPartialRange</td>
-              <td class="px-4 py-2 font-mono text-xs text-fg-muted">boolean</td>
-              <td class="px-4 py-2 font-mono text-xs text-fg-muted">true</td>
-              <td class="px-4 py-2 text-fg-muted">Whether the in-flight draft survives view navigation while SELECTING.</td>
-            </tr>
-            <tr>
-              <td class="px-4 py-2 font-mono text-xs">disableRangesCrossingDisabledDates</td>
-              <td class="px-4 py-2 font-mono text-xs text-fg-muted">boolean</td>
-              <td class="px-4 py-2 font-mono text-xs text-fg-muted">false</td>
-              <td class="px-4 py-2 text-fg-muted">Reject committing a range whose interior crosses a disabled date — flashes the second-click cell.</td>
+              <td class="px-4 py-2 font-mono text-xs">rangeBehavior</td>
+              <td class="px-4 py-2 font-mono text-xs text-fg-muted">Partial&lt;RangeBehaviorConfig&gt;</td>
+              <td class="px-4 py-2 font-mono text-xs text-fg-muted">&#123;&#125;</td>
+              <td class="px-4 py-2 text-fg-muted">
+                Range-mode behavior knobs as a single config object. Unset fields use the per-field defaults documented on
+                <code class="font-mono">RangeBehaviorConfig</code>:
+                <code class="font-mono">allowSingleDayRange: true</code>,
+                <code class="font-mono">persistPartialRange: true</code>,
+                <code class="font-mono">allowBackwardRange: false</code>,
+                <code class="font-mono">disableRangesCrossingDisabledDates: false</code>.
+              </td>
             </tr>
             <tr>
               <td class="px-4 py-2 font-mono text-xs">dateClass</td>

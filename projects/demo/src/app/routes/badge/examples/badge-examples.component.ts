@@ -1,5 +1,5 @@
 import { ChangeDetectionStrategy, Component, signal } from '@angular/core';
-import { BadgeComponent } from 'ngx-tw/badge';
+import { BadgeComponent, BadgeDotDirective } from 'ngx-tw/badge';
 import { ButtonDirective } from 'ngx-tw/button';
 import { IconComponent } from 'ngx-tw/icon';
 import { AvatarComponent } from 'ngx-tw/avatar';
@@ -14,7 +14,7 @@ const SIZES: TwSize[] = ['xs', 'sm', 'md', 'lg', 'xl'];
 @Component({
   selector: 'app-badge-examples',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [BadgeComponent, ButtonDirective, IconComponent, AvatarComponent, CodeBlockComponent],
+  imports: [BadgeComponent, BadgeDotDirective, ButtonDirective, IconComponent, AvatarComponent, CodeBlockComponent],
   template: `
     <section class="mb-10">
       <h2 class="text-sm font-semibold mb-3">Variants</h2>
@@ -213,21 +213,19 @@ const SIZES: TwSize[] = ['xs', 'sm', 'md', 'lg', 'xl'];
     <section class="mb-10">
       <h2 class="text-sm font-semibold mb-3">Dot Indicator</h2>
       <p class="text-sm text-fg-muted leading-relaxed max-w-2xl mb-4">
-        Set
-        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">dot</code>
-        to render the badge as a small colored dot with no label, padding, or content. Use it for
+        Use the
+        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">twBadgeDot</code>
+        directive to render a small colored dot with no label, padding, or content. Use it for
         presence indicators, unread markers, or to signal a state next to an independent label.
-        The dot size tracks
-        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">size</code>,
-        and
-        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">pill</code>
-        is implied by the shape.
+        The dot size tracks the
+        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">size</code>
+        input.
       </p>
       <div class="rounded-lg border border-border p-6 bg-surface-raised mb-4">
         <div class="flex flex-wrap items-center gap-3">
           @for (c of colors; track c) {
             <div class="flex items-center gap-2">
-              <span twBadge [dot]="true" [color]="c"></span>
+              <span twBadgeDot [color]="c"></span>
               <span class="text-xs text-fg-muted">{{ c }}</span>
             </div>
           }
@@ -238,7 +236,10 @@ const SIZES: TwSize[] = ['xs', 'sm', 'md', 'lg', 'xl'];
         A standalone dot has no text for screen readers. Pair it with a visible label (as above) or
         add an
         <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">aria-label</code>
-        to the host that describes the state it represents.
+        to the host that describes the state it represents. When the dot represents a value that
+        actually changes (e.g. a new-messages indicator), set
+        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">[live]="true"</code>
+        to expose the dot as an ARIA live region.
       </p>
     </section>
 
@@ -270,6 +271,16 @@ const SIZES: TwSize[] = ['xs', 'sm', 'md', 'lg', 'xl'];
         <tw-code-block [code]="dismissibleTsSnippet" language="ts" />
         <tw-code-block [code]="dismissibleHtmlSnippet" language="html" />
       </div>
+      <p class="text-sm text-fg-muted leading-relaxed max-w-2xl mt-4">
+        Set
+        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">dismissLabel</code>
+        to localize the close-button
+        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">aria-label</code>:
+        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">[dismissLabel]="'Fermer'"</code>.
+        The hit target meets the
+        <a href="https://www.w3.org/WAI/WCAG22/Understanding/target-size-minimum.html" class="text-primary-600 hover:underline">WCAG 2.5.8</a>
+        minimum (24px) and grows with the badge size.
+      </p>
     </section>
 
     <section>
@@ -371,39 +382,46 @@ const SIZES: TwSize[] = ['xs', 'sm', 'md', 'lg', 'xl'];
           </div>
         </div>
         <div class="flex items-center justify-center p-8 rounded-lg bg-surface-sunken">
-          @switch (playLeading()) {
-            @case ('icon') {
-              <span
-                twBadge
-                [variant]="playVariant()"
-                [color]="playColor()"
-                [size]="playSize()"
-                [pill]="playPill()"
-                [dismissible]="playDismissible()"
-                [dot]="playDot()"
-              ><tw-icon name="star" />Badge</span>
-            }
-            @case ('avatar') {
-              <span
-                twBadge
-                [variant]="playVariant()"
-                [color]="playColor()"
-                [size]="playSize()"
-                [pill]="playPill()"
-                [dismissible]="playDismissible()"
-                [dot]="playDot()"
-              ><tw-avatar src="https://i.pravatar.cc/40?u=play" alt="User" />Badge</span>
-            }
-            @default {
-              <span
-                twBadge
-                [variant]="playVariant()"
-                [color]="playColor()"
-                [size]="playSize()"
-                [pill]="playPill()"
-                [dismissible]="playDismissible()"
-                [dot]="playDot()"
-              >Badge</span>
+          @if (playDot()) {
+            <!--
+              The dot indicator is rendered by a distinct directive ([twBadgeDot])
+              because its shape — no padding, no children, no dismiss — is
+              structurally different from the labelled badge. Variant, pill,
+              dismissible, and leading toggles do not apply in dot mode.
+            -->
+            <span twBadgeDot [color]="playColor()" [size]="playSize()"></span>
+          } @else {
+            @switch (playLeading()) {
+              @case ('icon') {
+                <span
+                  twBadge
+                  [variant]="playVariant()"
+                  [color]="playColor()"
+                  [size]="playSize()"
+                  [pill]="playPill()"
+                  [dismissible]="playDismissible()"
+                ><tw-icon name="star" />Badge</span>
+              }
+              @case ('avatar') {
+                <span
+                  twBadge
+                  [variant]="playVariant()"
+                  [color]="playColor()"
+                  [size]="playSize()"
+                  [pill]="playPill()"
+                  [dismissible]="playDismissible()"
+                ><tw-avatar src="https://i.pravatar.cc/40?u=play" alt="User" />Badge</span>
+              }
+              @default {
+                <span
+                  twBadge
+                  [variant]="playVariant()"
+                  [color]="playColor()"
+                  [size]="playSize()"
+                  [pill]="playPill()"
+                  [dismissible]="playDismissible()"
+                >Badge</span>
+              }
             }
           }
         </div>
@@ -482,7 +500,7 @@ export class BadgeExamples {
   protected readonly dotSnippet = `
 @for (c of colors; track c) {
   <div class="flex items-center gap-2">
-    <span twBadge [dot]="true" [color]="c"></span>
+    <span twBadgeDot [color]="c"></span>
     <span class="text-xs text-fg-muted">{{ c }}</span>
   </div>
 }`.trim();

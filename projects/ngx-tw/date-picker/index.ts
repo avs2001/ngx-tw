@@ -6,5 +6,10 @@ export type {
   DatePickerInputEvent,
   DatePickerChangeEvent,
   DatePickerOpenedEvent,
+  DatePickerPreset,
+  DatePickerTimeConfig,
   TimePickerFormat,
+  CalendarViewState,
+  DateFilterFn,
+  DateClassFn,
 } from './date-picker';

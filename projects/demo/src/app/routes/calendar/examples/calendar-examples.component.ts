@@ -11,7 +11,9 @@ import {
   CalendarComponent,
   CalendarSingleDirective,
   CalendarPresetsDirective,
+  type CalendarMode,
   type CalendarRangeValue,
+  type CalendarValue,
   type DateFilterFn,
 } from 'ngx-tw/calendar';
 import { ButtonDirective } from 'ngx-tw/button';
@@ -101,7 +103,7 @@ function fmt(d: Date | null | undefined): string {
     <section class="mb-10">
       <h2 class="text-sm font-semibold mb-3">Constraints (min / max / disabled dates / disabled weekdays)</h2>
       <p class="text-sm text-fg-muted leading-relaxed max-w-2xl mb-4">
-        Phase 4 ships the full §10.1 constraint surface. All sources OR-combine — a date is
+        All constraint sources OR-combine — a date is
         disabled if any of <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">minDate</code>,
         <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">maxDate</code>,
         <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">dateFilter</code>,
@@ -154,15 +156,15 @@ function fmt(d: Date | null | undefined): string {
     </section>
 
     <section class="mb-10">
-      <h2 class="text-sm font-semibold mb-3">Range click behavior (§21.2)</h2>
+      <h2 class="text-sm font-semibold mb-3">Range click behavior</h2>
       <p class="text-sm text-fg-muted leading-relaxed max-w-2xl mb-4">
         After a complete range, the third click branches on <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">rangeClickBehavior</code>:
         <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">'restart'</code> (default) starts over,
         <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">'nearest-edge'</code> drags the closer endpoint to the click,
         and <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">'require-clear'</code> rejects the click and
         flashes the cell as invalid (<code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">data-state-invalid-flash</code>).
-        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">allowBackwardRange</code> skips the auto-swap;
-        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">allowSingleDayRange</code> rejects same-day clicks.
+        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">[rangeBehavior]="&#123; allowBackwardRange: true &#125;"</code> skips the auto-swap;
+        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">[rangeBehavior]="&#123; allowSingleDayRange: false &#125;"</code> rejects same-day clicks.
         Keyboard arrow-key moves during SELECTING drive the <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">rangePreview</code> output,
         same as hover.
       </p>
@@ -182,8 +184,8 @@ function fmt(d: Date | null | undefined): string {
       <p class="text-sm text-fg-muted leading-relaxed max-w-2xl mb-4">
         Attach <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">twCalendarPresets</code>
         to any container projected inside the calendar to render a presets rail above
-        the grid. Phase 12 will add a first-class <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">presets</code>
-        input with a11y semantics and revalidation per §25; today it is a manual slot.
+        the grid. A future iteration will add a first-class <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">presets</code>
+        input with built-in a11y semantics; today it is a manual slot.
       </p>
       <div class="rounded-lg border border-border p-6 bg-surface-raised mb-4 flex flex-col items-center gap-3">
         <tw-calendar
@@ -203,6 +205,45 @@ function fmt(d: Date | null | undefined): string {
     </section>
 
     <section class="mb-10">
+      <h2 class="text-sm font-semibold mb-3">Template-Driven Forms</h2>
+      <p class="text-sm text-fg-muted leading-relaxed max-w-2xl mb-4">
+        Bind with <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">[(ngModel)]</code>
+        to drive the calendar from a template-driven form. The calendar's
+        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">ControlValueAccessor</code>
+        wires the bound value to the same writeValue path used by reactive forms — the
+        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">required</code>
+        attribute drops in via the inferred
+        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">NgControl</code>.
+      </p>
+      <div class="rounded-lg border border-border p-6 bg-surface-raised mb-4 flex flex-col gap-3">
+        <form #tdForm="ngForm" class="flex flex-col gap-3">
+          <tw-calendar
+            aria-label="Template-driven date"
+            name="meetingDate"
+            [(ngModel)]="meetingDate"
+            (ngModelChange)="onMeetingDateChange()"
+            [startAt]="fixedDate"
+            required
+          />
+          <div class="flex flex-wrap items-center gap-3 text-xs font-mono">
+            <span class="text-fg-muted">value = {{ meetingDateLabel() }}</span>
+            <span class="text-fg-muted">touched = {{ tdForm.touched }}</span>
+            <span class="text-fg-muted">valid = {{ tdForm.valid }}</span>
+          </div>
+          <div class="flex flex-wrap gap-2">
+            <button twButton size="sm" variant="outline" type="button" (click)="setMeetingDateToday()">
+              Write today
+            </button>
+            <button twButton size="sm" variant="outline" type="button" (click)="clearMeetingDate()">
+              Clear
+            </button>
+          </div>
+        </form>
+      </div>
+      <tw-code-block [code]="templateDrivenSnippet" language="html" />
+    </section>
+
+    <section class="mb-10">
       <h2 class="text-sm font-semibold mb-3">Reactive forms</h2>
       <p class="text-sm text-fg-muted leading-relaxed max-w-2xl mb-4">
         The calendar implements <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">ControlValueAccessor</code>
@@ -211,7 +252,7 @@ function fmt(d: Date | null | undefined): string {
         drives the value directly. The required validator surfaces
         <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">calendarRequired</code>
         whenever the control is empty, and <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">FormGroup.reset()</code>
-        restores the displayed month per §6.5.
+        restores the displayed month.
       </p>
       <div class="rounded-lg border border-border p-6 bg-surface-raised mb-4 flex flex-col gap-3" [formGroup]="reactiveForm">
         <tw-calendar aria-label="Reactive" formControlName="date" [startAt]="fixedDate" />
@@ -243,8 +284,8 @@ function fmt(d: Date | null | undefined): string {
         Binding <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">[formField]</code> to
         <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">form(signal&lt;Date | null&gt;).date</code>
         drives the calendar through the <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">CalendarSingleDirective</code>
-        — a typed <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">FormValueControl&lt;Date | null&gt;</code>
-        per §7.3. Disabled / readonly / required flags propagate from the field to the calendar automatically.
+        — a typed <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">FormValueControl&lt;Date | null&gt;</code>.
+        Disabled / readonly / required flags propagate from the field to the calendar automatically.
       </p>
       <div class="rounded-lg border border-border p-6 bg-surface-raised mb-4 flex flex-col gap-3">
         <tw-calendar
@@ -256,6 +297,85 @@ function fmt(d: Date | null | undefined): string {
         <div class="flex flex-wrap items-center gap-3 text-xs font-mono">
           <span class="text-fg-muted">value = {{ signalValueLabel() }}</span>
           <span class="text-fg-muted">valid = {{ signalValidLabel() }}</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- Playground -->
+    <section class="mb-10">
+      <h2 class="text-sm font-semibold mb-3">Playground</h2>
+      <p class="text-sm text-fg-muted leading-relaxed max-w-2xl mb-4">
+        Combine the calendar's most-used inputs to sanity-check a configuration. Switch
+        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">mode</code>
+        to see the value shape change, toggle
+        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">bordered</code>
+        to see the embedded vs popover chrome, and adjust
+        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">monthColumns</code>
+        for side-by-side months.
+      </p>
+      <div class="rounded-lg border border-border p-6 bg-surface-raised">
+        <div class="flex flex-wrap gap-4 mb-6">
+          <div>
+            <label class="block text-xs font-medium text-fg-muted mb-1">Mode</label>
+            <div class="flex gap-1">
+              @for (m of playModes; track m) {
+                <button twButton variant="ghost" color="neutral" size="xs"
+                        [class.!bg-primary-100]="playMode() === m"
+                        [class.!text-primary-700]="playMode() === m"
+                        (click)="setPlayMode(m)">{{ m }}</button>
+              }
+            </div>
+          </div>
+          <div>
+            <label for="playMonthColumns" class="block text-xs font-medium text-fg-muted mb-1">monthColumns ({{ playMonthColumns() }})</label>
+            <input
+              id="playMonthColumns"
+              type="range"
+              min="1"
+              max="3"
+              [value]="playMonthColumns()"
+              (input)="playMonthColumns.set(+$any($event.target).value)"
+              class="w-32"
+            />
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-fg-muted mb-1">Chrome</label>
+            <div class="flex gap-1">
+              <button twButton variant="ghost" color="neutral" size="xs"
+                      [class.!bg-primary-100]="playBordered()"
+                      [class.!text-primary-700]="playBordered()"
+                      (click)="playBordered.update(v => !v)">bordered</button>
+            </div>
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-fg-muted mb-1">State</label>
+            <div class="flex gap-1">
+              <button twButton variant="ghost" color="neutral" size="xs"
+                      [class.!bg-primary-100]="playDisabled()"
+                      [class.!text-primary-700]="playDisabled()"
+                      (click)="playDisabled.update(v => !v)">disabled</button>
+              <button twButton variant="ghost" color="neutral" size="xs"
+                      [class.!bg-primary-100]="playReadonly()"
+                      [class.!text-primary-700]="playReadonly()"
+                      (click)="playReadonly.update(v => !v)">readonly</button>
+            </div>
+          </div>
+        </div>
+        <div class="p-6 rounded-lg bg-surface-sunken flex flex-col items-center gap-3">
+          <tw-calendar
+            aria-label="Playground"
+            [mode]="playMode()"
+            [value]="playValue()"
+            (valueChange)="onPlayValueChange($event)"
+            [startAt]="fixedDate"
+            [monthColumns]="playMonthColumns()"
+            [bordered]="playBordered()"
+            [disabled]="playDisabled()"
+            [readonly]="playReadonly()"
+          />
+          <p data-testid="output-playground" class="text-xs text-fg-muted mt-2 font-mono">
+            mode = {{ playMode() }} · value = {{ playValueLabel() }}
+          </p>
         </div>
       </div>
     </section>
@@ -335,6 +455,25 @@ export class CalendarExamples {
     this.presetRange.set({ start, end });
   }
 
+  // Template-driven
+  protected meetingDate: Date | null = null;
+  private readonly meetingDateRev = signal(0);
+  protected readonly meetingDateLabel = computed(() => {
+    this.meetingDateRev();
+    return fmt(this.meetingDate);
+  });
+  protected onMeetingDateChange(): void {
+    this.meetingDateRev.update((n) => n + 1);
+  }
+  protected setMeetingDateToday(): void {
+    this.meetingDate = new Date();
+    this.meetingDateRev.update((n) => n + 1);
+  }
+  protected clearMeetingDate(): void {
+    this.meetingDate = null;
+    this.meetingDateRev.update((n) => n + 1);
+  }
+
   // Reactive
   protected readonly reactiveForm = new FormGroup({
     date: new FormControl<Date | null>(null, { validators: [Validators.required] }),
@@ -385,6 +524,33 @@ export class CalendarExamples {
     this.signalForm().valid() ? 'true' : 'false',
   );
 
+  // Playground
+  protected readonly playModes: readonly CalendarMode[] = ['single', 'multiple', 'range'];
+  protected readonly playMode = signal<CalendarMode>('single');
+  protected readonly playMonthColumns = signal(1);
+  protected readonly playBordered = signal(true);
+  protected readonly playDisabled = signal(false);
+  protected readonly playReadonly = signal(false);
+  protected readonly playValue = signal<CalendarValue<CalendarMode, Date>>(null);
+  protected setPlayMode(m: CalendarMode): void {
+    this.playMode.set(m);
+    // Reset the value to a mode-appropriate empty so the calendar doesn't see a wrong-shape value.
+    if (m === 'single') this.playValue.set(null);
+    else if (m === 'multiple') this.playValue.set([]);
+    else this.playValue.set({ start: null, end: null });
+  }
+  protected onPlayValueChange(v: CalendarValue<CalendarMode, Date>): void {
+    this.playValue.set(v);
+  }
+  protected readonly playValueLabel = computed(() => {
+    const v = this.playValue();
+    const m = this.playMode();
+    if (m === 'single') return fmt(v as Date | null);
+    if (m === 'multiple') return `${(v as Date[]).length} picked`;
+    const r = v as CalendarRangeValue<Date>;
+    return `${fmt(r.start)} → ${fmt(r.end)}`;
+  });
+
   // Snippets
   protected readonly singleSnippet = `<tw-calendar aria-label="Pick a date" [(value)]="value" />`;
   protected readonly rangeSnippet = `<tw-calendar
@@ -397,4 +563,11 @@ export class CalendarExamples {
   mode="multiple"
   [(value)]="dates"
 />`;
+  protected readonly templateDrivenSnippet = `<form #tdForm="ngForm">
+  <tw-calendar
+    name="meetingDate"
+    [(ngModel)]="meetingDate"
+    required
+  />
+</form>`;
 }

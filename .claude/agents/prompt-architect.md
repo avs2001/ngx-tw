@@ -22,6 +22,12 @@ a structured prompt document.
 
 ---
 
+# Operating mode
+
+Treat your own conclusions as suspicious until verified. For any non-trivial prompt — new components, overlay/CDK composition, form-control specs, `public-api.ts` additions — call the `advisor` tool before committing to an approach and again before finalizing the prompt. Surface unresolved assumptions explicitly in the closing summary; never finalize a prompt with hidden uncertainty.
+
+---
+
 # Pre-flight — ALWAYS do this first
 
 Before writing a single word of the prompt, gather context by running the steps below.

@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component } from '@angular/core';
+import { ChangeDetectionStrategy, Component, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import {
   BreadcrumbsComponent,
@@ -73,7 +73,7 @@ interface RouterCmd {
       <div class="rounded-lg border border-border p-6 bg-surface-raised mb-4">
         <tw-breadcrumbs [items]="basicItems">
           <ng-template twBreadcrumbsSeparator>
-            <span class="text-fg-subtle font-medium px-0.5">/</span>
+            <span class="text-fg-subtle">/</span>
           </ng-template>
         </tw-breadcrumbs>
       </div>
@@ -194,7 +194,7 @@ interface RouterCmd {
     </section>
 
     <!-- Disabled item -->
-    <section>
+    <section class="mb-10">
       <h2 class="text-sm font-semibold mb-3">Disabled hop</h2>
       <p class="text-sm text-fg-muted leading-relaxed max-w-2xl mb-4">
         Set
@@ -208,10 +208,84 @@ interface RouterCmd {
       </div>
       <tw-code-block [code]="disabledSnippet" language="html" />
     </section>
+
+    <!-- Playground -->
+    <section>
+      <h2 class="text-sm font-semibold mb-3">Playground</h2>
+      <p class="text-sm text-fg-muted leading-relaxed max-w-2xl mb-4">
+        Toggle every visual input on a single trail. Increase
+        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">maxItems</code>
+        to clear the overflow menu, swap
+        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">separator</code>
+        to compare the default chevron against a slash, and step through the
+        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">size</code>
+        scale to see typography and gap scale together.
+      </p>
+      <div class="rounded-lg border border-border p-6 bg-surface-raised">
+        <div class="flex flex-wrap gap-4 mb-6">
+          <div>
+            <label class="block text-xs font-medium text-fg-muted mb-1">Size</label>
+            <div class="flex gap-1">
+              @for (s of sizes; track s) {
+                <button
+                  type="button"
+                  class="px-2 py-1 text-xs font-medium rounded-md transition-colors hover:bg-surface-muted"
+                  [class.!bg-primary-100]="playSize() === s"
+                  [class.!text-primary-700]="playSize() === s"
+                  (click)="playSize.set(s)"
+                >{{ s }}</button>
+              }
+            </div>
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-fg-muted mb-1">Separator</label>
+            <div class="flex gap-1">
+              @for (sep of separators; track sep) {
+                <button
+                  type="button"
+                  class="px-2 py-1 text-xs font-medium rounded-md transition-colors hover:bg-surface-muted"
+                  [class.!bg-primary-100]="playSeparator() === sep"
+                  [class.!text-primary-700]="playSeparator() === sep"
+                  (click)="playSeparator.set(sep)"
+                >{{ sep }}</button>
+              }
+            </div>
+          </div>
+          <div>
+            <label for="playMaxItems" class="block text-xs font-medium text-fg-muted mb-1">maxItems ({{ playMaxItems() || 'unlimited' }})</label>
+            <input
+              id="playMaxItems"
+              type="range"
+              min="0"
+              max="6"
+              [value]="playMaxItems()"
+              (input)="playMaxItems.set(+$any($event.target).value)"
+              class="w-32"
+            />
+          </div>
+        </div>
+        <div class="p-6 rounded-lg bg-surface-sunken">
+          <tw-breadcrumbs
+            data-testid="playground"
+            [items]="longTrail"
+            [size]="playSize()"
+            [separator]="playSeparator()"
+            [maxItems]="playMaxItems()"
+            ariaLabel="Playground breadcrumbs"
+          />
+        </div>
+      </div>
+    </section>
   `,
 })
 export class BreadcrumbsExamples {
   protected readonly sizes = SIZES;
+  protected readonly separators: readonly string[] = ['chevron-right', 'slash'];
+
+  // Playground
+  protected readonly playSize = signal<TwSize>('md');
+  protected readonly playSeparator = signal<string>('chevron-right');
+  protected readonly playMaxItems = signal(0);
 
   protected readonly basicItems: readonly TwBreadcrumbsItem[] = [
     { label: 'Home', href: '/' },
@@ -258,7 +332,7 @@ export class BreadcrumbsExamples {
 
   protected readonly separatorTemplateSnippet = `<tw-breadcrumbs [items]="items">
   <ng-template twBreadcrumbsSeparator>
-    <span class="text-fg-subtle font-medium px-0.5">/</span>
+    <span class="text-fg-subtle">/</span>
   </ng-template>
 </tw-breadcrumbs>`;
 

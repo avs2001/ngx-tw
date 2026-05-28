@@ -129,7 +129,7 @@ test.describe('Dialog', () => {
     await dialog.sizeTrigger('md').click();
     await dialog.waitForOpen();
 
-    // The TwDialogTitleDirective generates a unique id and pushes it onto
+    // The DialogTitleDirective generates a unique id and pushes it onto
     // the container's aria-labelledby queue. The exact id is generated, but
     // it must resolve to the title element with the expected text.
     const labelledBy = await dialog.topDialog.getAttribute('aria-labelledby');

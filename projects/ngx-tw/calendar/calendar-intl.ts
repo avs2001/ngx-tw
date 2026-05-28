@@ -185,6 +185,9 @@ export class CalendarIntl {
     return `Skipped ${count} ${noun} to ${destination}`;
   }
 
+  /** Live-region message announced when a click is rejected and the cell flashes (e.g. `'require-clear'` rejection, disabled-cross range commit). */
+  selectionRejectedAnnouncement = 'Selection rejected';
+
   /**
    * When `true`, the calendar suppresses live-region announcements for the
    * affected user actions. Override in tests or low-noise environments.

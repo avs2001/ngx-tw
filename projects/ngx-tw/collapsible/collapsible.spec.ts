@@ -2,11 +2,13 @@ import { Component, signal } from '@angular/core';
 import { type ComponentFixture, TestBed } from '@angular/core/testing';
 import { LiveAnnouncer } from '@angular/cdk/a11y';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import type { TwColor, TwSize } from 'ngx-tw/core';
 import {
   CollapsibleComponent,
   CollapsibleGroupComponent,
   CollapsibleTriggerDirective,
   CollapsibleIconDirective,
+  type CollapsibleDisplay,
   type CollapsibleVariant,
 } from './collapsible';
 
@@ -18,7 +20,7 @@ import {
     <tw-collapsible
       [disabled]="disabled()"
       [keepAlive]="keepAlive()"
-      [variant]="variant()"
+      [display]="display()"
       [(open)]="open"
       (toggled)="lastToggled = $event"
     >
@@ -31,7 +33,7 @@ class StandaloneHost {
   open = signal(false);
   disabled = signal(false);
   keepAlive = signal(false);
-  variant = signal<CollapsibleVariant>('default');
+  display = signal<CollapsibleDisplay>({});
   lastToggled: boolean | undefined;
 }
 
@@ -73,7 +75,7 @@ class CustomIconHost {}
   `,
 })
 class AccordionHost {
-  activePanel = signal<string | string[]>('');
+  activePanel = signal<string | string[] | null>(null);
 }
 
 // ── Test host for independent group ──
@@ -94,7 +96,7 @@ class AccordionHost {
   `,
 })
 class IndependentGroupHost {
-  openPanels = signal<string | string[]>([]);
+  openPanels = signal<string | string[] | null>([]);
 }
 
 // ── Test host for keepAlive ──
@@ -154,13 +156,80 @@ describe('CollapsibleComponent', () => {
     });
 
     it('should render all variants without error', () => {
-      const variants = ['default', 'bordered', 'ghost', 'filled'] as const;
+      const variants: CollapsibleVariant[] = ['default', 'bordered', 'ghost', 'filled'];
       const fixture = createFixture(StandaloneHost);
       for (const variant of variants) {
-        fixture.componentInstance.variant.set(variant);
+        fixture.componentInstance.display.set({ variant });
         expect(() => fixture.detectChanges()).not.toThrow();
       }
     });
+  });
+
+  // ── Display config ──
+
+  describe('Display config', () => {
+    it('should fall back to defaults when display is empty', () => {
+      const fixture = createFixture(StandaloneHost);
+      const root = fixture.nativeElement.querySelector('tw-collapsible');
+      // Default variant adds `border-b border-border`
+      expect(root.className).toContain('border-b');
+      expect(root.className).toContain('border-border');
+    });
+
+    it('should merge a partial display config with defaults', () => {
+      const fixture = createFixture(StandaloneHost);
+      // Pass only `variant`; `color` and `size` should keep their defaults
+      fixture.componentInstance.display.set({ variant: 'bordered' });
+      fixture.detectChanges();
+
+      const root = fixture.nativeElement.querySelector('tw-collapsible');
+      expect(root.className).toContain('border');
+      // Default size `md` -> trigger has `px-4 py-2`
+      const trigger = fixture.nativeElement.querySelector('[twcollapsibletrigger]');
+      expect(trigger.className).toContain('px-4');
+      expect(trigger.className).toContain('py-2');
+    });
+
+    const sizePaddingMap: Record<TwSize, { x: string; y: string }> = {
+      xs: { x: 'px-2', y: 'py-1' },
+      sm: { x: 'px-3', y: 'py-1.5' },
+      md: { x: 'px-4', y: 'py-2' },
+      lg: { x: 'px-5', y: 'py-2.5' },
+      xl: { x: 'px-6', y: 'py-3' },
+    };
+
+    for (const [size, padding] of Object.entries(sizePaddingMap) as [TwSize, { x: string; y: string }][]) {
+      it(`should apply ${padding.x} ${padding.y} when size is ${size}`, () => {
+        const fixture = createFixture(StandaloneHost);
+        fixture.componentInstance.display.set({ size });
+        fixture.detectChanges();
+
+        const trigger = fixture.nativeElement.querySelector('[twcollapsibletrigger]');
+        expect(trigger.className).toContain(padding.x);
+        expect(trigger.className).toContain(padding.y);
+      });
+    }
+
+    const borderedColors: TwColor[] = [
+      'primary',
+      'secondary',
+      'accent',
+      'info',
+      'success',
+      'warning',
+      'error',
+    ];
+
+    for (const color of borderedColors) {
+      it(`should apply border-${color}-300 when variant=bordered color=${color}`, () => {
+        const fixture = createFixture(StandaloneHost);
+        fixture.componentInstance.display.set({ variant: 'bordered', color });
+        fixture.detectChanges();
+
+        const root = fixture.nativeElement.querySelector('tw-collapsible');
+        expect(root.className).toContain(`border-${color}-300`);
+      });
+    }
   });
 
   // ── Inputs and outputs ──
@@ -279,12 +348,6 @@ describe('CollapsibleComponent', () => {
       expect(panel.getAttribute('aria-labelledby')).toBe(trigger.getAttribute('id'));
     });
 
-    it('should set role="button" on trigger', () => {
-      const fixture = createFixture(StandaloneHost);
-      const trigger = fixture.nativeElement.querySelector('[twcollapsibletrigger]');
-      expect(trigger.getAttribute('role')).toBe('button');
-    });
-
     it('should set aria-disabled on disabled trigger', () => {
       const fixture = createFixture(StandaloneHost);
       fixture.componentInstance.disabled.set(true);
@@ -292,6 +355,30 @@ describe('CollapsibleComponent', () => {
 
       const trigger = fixture.nativeElement.querySelector('[twcollapsibletrigger]');
       expect(trigger.getAttribute('aria-disabled')).toBe('true');
+    });
+
+    it('should set tabindex=0 on enabled trigger', () => {
+      const fixture = createFixture(StandaloneHost);
+      const trigger = fixture.nativeElement.querySelector('[twcollapsibletrigger]');
+      expect(trigger.getAttribute('tabindex')).toBe('0');
+    });
+
+    it('should set tabindex=-1 on disabled trigger so it leaves the tab sequence', () => {
+      const fixture = createFixture(StandaloneHost);
+      fixture.componentInstance.disabled.set(true);
+      fixture.detectChanges();
+
+      const trigger = fixture.nativeElement.querySelector('[twcollapsibletrigger]');
+      expect(trigger.getAttribute('tabindex')).toBe('-1');
+    });
+
+    it('should apply focus-visible outline classes on trigger', () => {
+      const fixture = createFixture(StandaloneHost);
+      const trigger = fixture.nativeElement.querySelector('[twcollapsibletrigger]');
+
+      expect(trigger.className).toContain('focus-visible:outline-2');
+      expect(trigger.className).toContain('focus-visible:outline-offset-2');
+      expect(trigger.className).toContain('focus-visible:outline-primary-500');
     });
 
     it('should announce state change via LiveAnnouncer', () => {
@@ -453,6 +540,58 @@ describe('CollapsibleComponent', () => {
       fixture.detectChanges();
 
       expect(fixture.componentInstance.openPanels()).toEqual(['x', 'y']);
+    });
+  });
+
+  // ── Dev-mode value-shape warnings ──
+
+  describe('Dev-mode value shape warnings', () => {
+    it('should warn when accordion=true but value is an array', () => {
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      const fixture = createFixture(AccordionHost);
+
+      fixture.componentInstance.activePanel.set(['a', 'b']);
+      fixture.detectChanges();
+
+      expect(warnSpy).toHaveBeenCalledWith(
+        expect.stringContaining('accordion'),
+      );
+      warnSpy.mockRestore();
+    });
+
+    it('should warn when accordion=false but value is a non-empty string', () => {
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      const fixture = createFixture(IndependentGroupHost);
+
+      fixture.componentInstance.openPanels.set('x');
+      fixture.detectChanges();
+
+      expect(warnSpy).toHaveBeenCalledWith(
+        expect.stringContaining('independent'),
+      );
+      warnSpy.mockRestore();
+    });
+
+    it('should not warn when accordion=true and value is a string', () => {
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      const fixture = createFixture(AccordionHost);
+
+      fixture.componentInstance.activePanel.set('a');
+      fixture.detectChanges();
+
+      expect(warnSpy).not.toHaveBeenCalled();
+      warnSpy.mockRestore();
+    });
+
+    it('should not warn when accordion=false and value is an array', () => {
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      const fixture = createFixture(IndependentGroupHost);
+
+      fixture.componentInstance.openPanels.set(['x']);
+      fixture.detectChanges();
+
+      expect(warnSpy).not.toHaveBeenCalled();
+      warnSpy.mockRestore();
     });
   });
 

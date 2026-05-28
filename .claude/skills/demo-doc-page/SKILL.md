@@ -39,6 +39,35 @@ If `routes/select/` is no longer the canonical reference, ask the user which com
 
 ---
 
+## Operating mode: self-skeptical
+
+This skill operates in **self-skeptical mode**: treat your own output as suspicious until verified. Mantra: *verified progress beats fast guesses*. Most demo work is mechanical and the checklists in § 9 do the heavy lifting; skepticism focuses on the two places errors compound — the **inventory pass** (misidentify an API and you copy the wrong pattern everywhere) and the **design-sensibility gate** (mis-decide and the demo reads generic).
+
+### The loop
+
+Understand → Plan → Act → Challenge → Verify → Revise. The § 9 checklists are your verify step.
+
+### Assumption ledger (inline)
+
+Maintain a short ledger of guesses **in your response**, not in a file. 3–6 bullets, one line each:
+
+- **Assume:** `<thing>` — **Why:** `<source>` — **If wrong:** `<consequence>` — **Verified by:** `<grep | read | none-yet>`
+
+Cover at minimum: `tw-code-block`'s input shape (content projection vs `[code]`) and its language-attribute name, whether `frontend-design` is in `<available_skills>`, the public-symbol names you'll list in API tables, and the route path your new page wires into.
+
+### Advisor checkpoint
+
+- **REQUIRED only when the design-sensibility gate fires** — i.e., the component is on the trigger list **and** `frontend-design` is available. After reading the canonical reference and `frontend-design`'s SKILL.md, but before composing any demo interior, state your composition plan in your response (which demos, what realistic content, where realism actually matters) and then call `advisor`. The red-team pass on the plan is cheaper than rewriting two demo surfaces. *This call replaces the silent-decision step in § 8 Shared orientation step 4 for trigger-list components — the gate's "note in your end-of-turn summary that you consulted `frontend-design`" requirement stays.*
+- **Advisory for everything else** — prose edits, structural-only refactors, pages outside the trigger list, and primitives that show themselves (Button, Input, etc.). Call `advisor` only if something material feels off (a public-API symbol you can't find, a `tw-code-block` shape that doesn't match your read of its source).
+
+If advisor disagrees with evidence you already gathered, surface the conflict in your response and call `advisor` once more naming the constraint that should break the tie. Do not silently switch.
+
+### Evidence-first, no silent success
+
+The end-of-turn summary names what you *verified*, not just what you *did*. If a § 9 checklist item failed and you moved on anyway, surface it explicitly under **Unresolved** in your closing message. Never declare done with hidden uncertainty.
+
+---
+
 ## Code blocks: use `tw-code-block`
 
 All code samples on every doc page — Overview's Basic Usage and Import, Examples' paired snippets, API's Types section — render through the library's `tw-code-block` component. **Do not** use raw `<pre>` + sunken-div wrappers.
@@ -646,9 +675,9 @@ Reference other components inline by their route path: `<a routerLink="/button" 
   - Is the component being documented on the "Design sensibility" trigger list (Card, Modal, Dialog, Drawer, Sheet, Accordion, Popover with rich content, Table, DataGrid, Stats, List, Timeline, Toast, Alert, Notification, Banner, composite form examples, or any Playground with 5+ controls)?
   - Is `frontend-design` in `<available_skills>` (from step 1)?
 
-   If **both answers are yes**, reading `frontend-design`'s SKILL.md is the next action — do it now, before creating or editing any demo content. Apply its composition/realism guidance only; the typography, color, and aesthetic-direction overrides in the "Design sensibility" intro section are **non-negotiable**. In your end-of-turn summary, note that you consulted `frontend-design` and why.
+   If **both answers are yes**, reading `frontend-design`'s SKILL.md is the next action — do it now, before creating or editing any demo content. Apply its composition/realism guidance only; the typography, color, and aesthetic-direction overrides in the "Design sensibility" intro section are **non-negotiable**. Then engage the self-skeptical advisor checkpoint: state your composition plan (which demos, what realistic content, where realism actually moves the needle) in your response, then call `advisor`. Apply concrete corrections; surface unresolved conflicts and re-call if needed. Only then compose demo interiors. In your end-of-turn summary, note that you consulted both `frontend-design` and `advisor`.
 
-   If either answer is no, skip to the next step silently. Do **not** surface the skip in your end-of-turn summary — "Button is not on the trigger list" is noise, not signal. The gate is still a required decision point (you must actually answer both questions before proceeding), but the user only needs to hear about it when the answer leads to action.
+   If either answer is no, skip to the next step silently. Do **not** surface the skip in your end-of-turn summary — "Button is not on the trigger list" is noise, not signal. The gate is still a required decision point (you must actually answer both questions before proceeding), but the user only needs to hear about it when the answer leads to action. The advisor call is **not** required on this silent path — the structural checklists in § 9 carry the rest.
 
 ### When **creating a new page**
 
@@ -687,7 +716,8 @@ If you want a structural-only refactor on a trigger-list component (explicitly l
 New page:
 
 - [ ] Inventory pass done; `tw-code-block` API confirmed; `frontend-design` availability noted
-- [ ] **Design sensibility gate resolved:** explicitly decided whether to read `frontend-design` (based on trigger list × availability); if yes, read before composing any demo content. Skips are silent — don't mention the gate in the summary unless it fired.
+- [ ] Assumption ledger stated inline (3–6 bullets, each marked verified or `none-yet`)
+- [ ] **Design sensibility gate resolved:** explicitly decided whether to read `frontend-design` (based on trigger list × availability); if yes, read **and** called `advisor` on the composition plan before composing any demo content. Skips are silent — don't mention the gate in the summary unless it fired.
 - [ ] Folder and 5 files match § 1 naming
 - [ ] `{name}.routes.ts` matches § 2 with only the three tokens changed
 - [ ] Routes wired into the parent demo router
@@ -712,7 +742,8 @@ New page:
 Refactor:
 
 - [ ] Inventory pass done; `frontend-design` availability noted
-- [ ] **Design sensibility gate resolved:** explicitly decided whether to read `frontend-design`; if yes, read before touching demo content. Skips are silent — don't mention the gate in the summary unless it fired.
+- [ ] Assumption ledger stated inline (3–6 bullets, each marked verified or `none-yet`)
+- [ ] **Design sensibility gate resolved:** explicitly decided whether to read `frontend-design`; if yes, read **and** called `advisor` on the composition plan before touching demo content. Skips are silent — don't mention the gate in the summary unless it fired.
 - [ ] Shell migrated to canonical form
 - [ ] `tw-item` is leading-aligned — strip any `align="center"` or centering classes from the migrated header
 - [ ] Overview section order verified; drift renamed

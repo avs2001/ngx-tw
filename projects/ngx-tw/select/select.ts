@@ -15,6 +15,7 @@ import {
   isDevMode,
   linkedSignal,
   model,
+  type OnInit,
   output,
   signal,
   type Signal,
@@ -23,19 +24,29 @@ import {
   ViewContainerRef,
 } from '@angular/core';
 import { NgTemplateOutlet } from '@angular/common';
-import { type ControlValueAccessor, NG_VALUE_ACCESSOR } from '@angular/forms';
 import {
-  type ConnectedPosition,
-  Overlay,
-  type OverlayRef,
-  type ScrollStrategy,
-} from '@angular/cdk/overlay';
+  type ControlValueAccessor,
+  FormGroupDirective,
+  NgControl,
+  NgForm,
+} from '@angular/forms';
+import { Overlay, type OverlayRef } from '@angular/cdk/overlay';
 import { ComponentPortal } from '@angular/cdk/portal';
+import { Platform } from '@angular/cdk/platform';
 import { FocusMonitor, LiveAnnouncer } from '@angular/cdk/a11y';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { Subscription } from 'rxjs';
+import { merge, Subscription } from 'rxjs';
 import { tv } from 'tailwind-variants';
-import type { TwColor, TwSize } from 'ngx-tw/core';
+import {
+  buildSelectLikePositions,
+  consumeOverlayEscape,
+  type ErrorStateMatcher,
+  resolveSelectScrollStrategy,
+  TW_ERROR_STATE_MATCHER,
+  type TwColor,
+  type TwFormSubmitted,
+  type TwSize,
+} from 'ngx-tw/core';
 import {
   FormFieldComponent,
   type FormFieldControl,
@@ -138,7 +149,7 @@ export interface SelectVisibleOption<T, O = unknown> {
 }
 
 // Duration for leave animation — matches theme/_base.css scale-out/fade-out.
-const ANIMATION_DURATION = 150;
+const ANIMATION_DURATION = 120;
 
 // ── tv() config ───────────────────────────────────────────────────
 
@@ -147,15 +158,17 @@ const selectVariants = tv(
     slots: {
       root: 'relative inline-block w-full',
       trigger:
-        'w-full inline-flex items-center gap-2 text-fg cursor-pointer transition-[color,border-color,background-color,box-shadow] duration-200 motion-reduce:transition-none',
+        'w-full inline-flex items-center gap-2 text-fg cursor-pointer transition-[color,border-color,background-color,box-shadow] duration-normal motion-reduce:transition-none',
       valueText: 'flex-1 min-w-0 text-left truncate',
       placeholderText: 'flex-1 min-w-0 text-left truncate text-fg-subtle',
-      chevron: 'shrink-0 text-fg-muted transition-transform duration-200 motion-reduce:transition-none',
+      chevron: 'shrink-0 text-fg-muted transition-transform duration-normal motion-reduce:transition-none',
       clearButton:
-        'inline-flex items-center justify-center shrink-0 rounded-md text-fg-muted hover:text-fg hover:bg-surface-muted transition-colors duration-200 motion-reduce:transition-none size-5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500',
+        'inline-flex items-center justify-center shrink-0 rounded-md text-fg-muted hover:text-fg hover:bg-surface-muted transition-colors duration-normal motion-reduce:transition-none size-5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500',
     },
     variants: {
       size: {
+        // xs density: chevron uses `size-3.5` (14px) — half-step that lines up
+        // with text-xs inside the compact trigger.
         xs: { trigger: 'px-2 py-1 text-xs', chevron: 'size-3.5' },
         sm: { trigger: 'px-3 py-1.5 text-sm', chevron: 'size-4' },
         md: { trigger: 'px-4 py-2 text-sm', chevron: 'size-4' },
@@ -169,7 +182,7 @@ const selectVariants = tv(
         },
         naked: {
           trigger:
-            'bg-transparent border-0 rounded-none p-0 focus:outline-none focus-visible:outline-none',
+            'bg-transparent border-0 rounded-none p-0 focus-visible:outline-none',
         },
       },
       open: {
@@ -214,28 +227,29 @@ const selectVariants = tv(
   { twMerge: true },
 );
 
-// ── Option-state color lookups (static for Tailwind v4 scanning) ──
+// ── Option-state color lookups ──
+// Slot tokens own light/dark contrast — no `dark:`, no shade picks.
 
 const OPTION_SELECTED_BG: Record<TwColor, string> = {
-  primary: 'bg-primary-50 dark:bg-primary-950/40',
-  secondary: 'bg-secondary-50 dark:bg-secondary-950/40',
-  accent: 'bg-accent-50 dark:bg-accent-950/40',
-  neutral: 'bg-surface-muted',
-  info: 'bg-info-50 dark:bg-info-950/40',
-  success: 'bg-success-50 dark:bg-success-950/40',
-  warning: 'bg-warning-50 dark:bg-warning-950/40',
-  error: 'bg-error-50 dark:bg-error-950/40',
+  primary: 'bg-primary-soft',
+  secondary: 'bg-secondary-soft',
+  accent: 'bg-accent-soft',
+  neutral: 'bg-neutral-soft',
+  info: 'bg-info-soft',
+  success: 'bg-success-soft',
+  warning: 'bg-warning-soft',
+  error: 'bg-error-soft',
 };
 
 const OPTION_CHECKMARK_COLOR: Record<TwColor, string> = {
-  primary: 'text-primary-600',
-  secondary: 'text-secondary-600',
-  accent: 'text-accent-600',
+  primary: 'text-primary-icon',
+  secondary: 'text-secondary-icon',
+  accent: 'text-accent-icon',
   neutral: 'text-fg',
-  info: 'text-info-600',
-  success: 'text-success-600',
-  warning: 'text-warning-600',
-  error: 'text-error-600',
+  info: 'text-info-icon',
+  success: 'text-success-icon',
+  warning: 'text-warning-icon',
+  error: 'text-error-icon',
 };
 
 // ── Template directives (content-projected slots) ─────────────────
@@ -323,17 +337,6 @@ function defaultOptionGroup(o: unknown): string | undefined {
   return (o as { group?: string }).group;
 }
 
-// ── Overlay positions ──
-
-function buildSelectPositions(offset: number): ConnectedPosition[] {
-  return [
-    { originX: 'start', originY: 'bottom', overlayX: 'start', overlayY: 'top', offsetY: offset },
-    { originX: 'end', originY: 'bottom', overlayX: 'end', overlayY: 'top', offsetY: offset },
-    { originX: 'start', originY: 'top', overlayX: 'start', overlayY: 'bottom', offsetY: -offset },
-    { originX: 'end', originY: 'top', overlayX: 'end', overlayY: 'bottom', offsetY: -offset },
-  ];
-}
-
 // ── SelectComponent ──
 
 /**
@@ -346,11 +349,6 @@ function buildSelectPositions(offset: number): ConnectedPosition[] {
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [NgTemplateOutlet],
   providers: [
-    {
-      provide: NG_VALUE_ACCESSOR,
-      useExisting: forwardRef(() => SelectComponent),
-      multi: true,
-    },
     {
       provide: TW_FORM_FIELD_CONTROL,
       useExisting: forwardRef(() => SelectComponent),
@@ -369,10 +367,10 @@ function buildSelectPositions(offset: number): ConnectedPosition[] {
       [attr.aria-activedescendant]="activeDescendantId() || null"
       [attr.aria-autocomplete]="searchable() ? 'list' : 'none'"
       [attr.aria-label]="ariaLabel() || null"
-      [attr.aria-labelledby]="ariaLabelledby() || null"
+      [attr.aria-labelledby]="labelledBy() || null"
       [attr.aria-describedby]="describedBy() || null"
       [attr.aria-required]="requiredInput() || null"
-      [attr.aria-invalid]="errorStateSignal() || null"
+      [attr.aria-invalid]="errorState() || null"
       [attr.aria-disabled]="isDisabled() || null"
       [disabled]="isDisabled()"
       [attr.data-variant]="resolvedVariant()"
@@ -433,7 +431,7 @@ function buildSelectPositions(offset: number): ConnectedPosition[] {
   },
 })
 export class SelectComponent<T = unknown>
-  implements ControlValueAccessor, FormFieldControl<T | readonly T[]>
+  implements ControlValueAccessor, FormFieldControl<T | readonly T[]>, OnInit
 {
   /** Array of options to render in the panel. Accepts either `TwSelectOption<T>` objects or arbitrary records read via the accessor inputs. Defaults to an empty array. */
   readonly options = input<readonly unknown[]>([]);
@@ -514,6 +512,9 @@ export class SelectComponent<T = unknown>
   /** ID of an external element that describes the combobox. */
   readonly ariaDescribedby = input<string | undefined>(undefined, { alias: 'aria-describedby' });
 
+  /** Per-instance override of the {@link ErrorStateMatcher}. When omitted, the select uses the `TW_ERROR_STATE_MATCHER` token's value. */
+  readonly errorStateMatcher = input<ErrorStateMatcher | undefined>(undefined);
+
   /** Equality comparator for option values. Defaults to `Object.is`. */
   readonly compareWith = input<(a: T, b: T) => boolean>(Object.is);
 
@@ -558,7 +559,12 @@ export class SelectComponent<T = unknown>
   private readonly destroyRef = inject(DestroyRef);
   private readonly focusMonitor = inject(FocusMonitor);
   private readonly liveAnnouncer = inject(LiveAnnouncer);
+  private readonly platform = inject(Platform);
   private readonly formField = inject(FormFieldComponent, { optional: true });
+  private readonly ngControl = inject(NgControl, { optional: true, self: true });
+  private readonly parentForm = inject(NgForm, { optional: true });
+  private readonly parentFormGroup = inject(FormGroupDirective, { optional: true });
+  private readonly defaultMatcher = inject(TW_ERROR_STATE_MATCHER);
 
   // ── Identity ──
 
@@ -582,10 +588,11 @@ export class SelectComponent<T = unknown>
   readonly activeIndex = signal<number>(-1);
   /** @internal */
   readonly focusedSignal = signal(false);
-  /** @internal */
-  readonly errorStateSignal = signal(false);
   private readonly cvaDisabled = signal(false);
+  private readonly _ngControlRev = signal(0);
+  private readonly _formSubmitRev = signal(0);
   private readonly describedByIdsSignal = signal<readonly string[]>([]);
+  private readonly labelledByIdsSignal = signal<readonly string[]>([]);
   private readonly closingSignal = signal(false);
 
   private onChange: (value: T | readonly T[] | null) => void = () => {};
@@ -595,6 +602,7 @@ export class SelectComponent<T = unknown>
   private readonly overlayInstanceSignal = signal<SelectOverlayComponent<T> | null>(null);
   private perOpenSubs: Subscription | null = null;
   private closeTimer: ReturnType<typeof setTimeout> | null = null;
+  private resizeObserver: ResizeObserver | null = null;
 
   private get overlayInstance(): SelectOverlayComponent<T> | null {
     return this.overlayInstanceSignal();
@@ -697,6 +705,15 @@ export class SelectComponent<T = unknown>
     return merged.length ? merged.join(' ') : '';
   });
 
+  /** @internal Merged `aria-labelledby`: form-field-pushed label ids + consumer-supplied `aria-labelledby`. */
+  readonly labelledBy = computed(() => {
+    const extra = this.labelledByIdsSignal();
+    const user = this.ariaLabelledby();
+    const merged = [...extra];
+    if (user) merged.push(...user.split(/\s+/).filter(Boolean));
+    return merged.length ? merged.join(' ') : '';
+  });
+
   /** @internal Resolved close-on-select behaviour. */
   readonly resolvedCloseOnSelect = computed(() => {
     const explicit = this.closeOnSelect();
@@ -754,7 +771,7 @@ export class SelectComponent<T = unknown>
     const sizeClass = this.optionSizeClass();
     const color = this.color();
     const base =
-      'relative flex items-center cursor-pointer select-none text-fg gap-2 transition-colors duration-200 motion-reduce:transition-none';
+      'relative flex items-center cursor-pointer select-none text-fg gap-2 transition-colors duration-normal motion-reduce:transition-none';
     const parts: string[] = [base, sizeClass];
     if (disabled) {
       parts.push('opacity-50 pointer-events-none');
@@ -781,12 +798,22 @@ export class SelectComponent<T = unknown>
   readonly disabled: Signal<boolean> = this.isDisabled;
   /** @internal */
   readonly required: Signal<boolean> = computed(() => this.requiredInput());
-  /** @internal */
-  readonly errorState: Signal<boolean> = this.errorStateSignal.asReadonly();
+  /** @internal Error-state per the configured `ErrorStateMatcher`. Reads the bound `NgControl.invalid` through the matcher. */
+  readonly errorState: Signal<boolean> = computed(() => {
+    this._ngControlRev();
+    this._formSubmitRev();
+    const matcher = this.errorStateMatcher() ?? this.defaultMatcher;
+    const form: TwFormSubmitted | null =
+      (this.parentFormGroup as TwFormSubmitted | null) ??
+      (this.parentForm as TwFormSubmitted | null);
+    return matcher.isErrorState(this.ngControl?.control ?? null, form);
+  });
   /** @internal */
   readonly controlType = 'select';
   /** @internal */
   readonly userAriaDescribedBy: Signal<string | undefined> = computed(() => this.ariaDescribedby());
+  /** @internal */
+  readonly userAriaLabelledby: Signal<string | undefined> = computed(() => this.ariaLabelledby());
 
   /** @internal Public read-only view of the current value for FormFieldControl. */
   // Overriding `value` typing from the model by using an explicit computed that matches the abstract signature.
@@ -796,6 +823,14 @@ export class SelectComponent<T = unknown>
   // ── Constructor ──
 
   constructor() {
+    // Material-style CVA wiring: declare ourselves as the value accessor on any
+    // host-level `NgControl` (FormControlDirective, NgModel, etc.). This avoids
+    // the circular-DI that a static `NG_VALUE_ACCESSOR` provider would create
+    // because `NgControl` is injected with `self: true` on the same element.
+    if (this.ngControl) {
+      this.ngControl.valueAccessor = this;
+    }
+
     // Mirror parent `open` model into overlay lifecycle.
     effect(() => {
       const shouldOpen = this.open();
@@ -812,31 +847,52 @@ export class SelectComponent<T = unknown>
     });
 
     // Push state into overlay component whenever anything relevant changes.
+    // Reads happen in the tracked phase; writes to the overlay instance are
+    // wrapped in `untracked()` so they never feed back into this effect.
     effect(() => {
       const instance = this.overlayInstance;
       if (!instance) return;
-      instance.size.set(this.size());
-      instance.color.set(this.color());
-      instance.multiple.set(this.multiple());
-      instance.searchable.set(this.searchable());
-      instance.panelMaxHeight.set(this.panelMaxHeight());
-      instance.emptyMessage.set(this.emptyMessage());
-      instance.search.set(this.search());
-      instance.activeIndex.set(this.activeIndex());
-      instance.renderedRows.set(this.renderedRows());
-      instance.visibleOptions.set(this.visibleOptions());
-      instance.optionTemplate.set(this.optionTemplateChild());
-      instance.emptyTemplate.set(this.emptyTemplateChild());
-      instance.headerTemplate.set(this.headerTemplateChild());
-      instance.footerTemplate.set(this.footerTemplateChild());
-      instance.optionLabelFn.set(this.optionLabel());
-      instance.selectedChecker.set((index: number) => this.isVisibleOptionSelected(index));
-      instance.computeOptionClass.set(this.computeOptionClass);
-      instance.checkmarkColorClass.set(this.checkmarkColorClass());
-      instance.panelClassValue.set(this.resolvePanelClass());
-      instance.listboxId.set(this.listboxId);
-      instance.searchInputId.set(this.searchInputId);
-      instance.optionIdFn.set(this.optionId);
+      const size = this.size();
+      const color = this.color();
+      const multiple = this.multiple();
+      const searchable = this.searchable();
+      const panelMaxHeight = this.panelMaxHeight();
+      const emptyMessage = this.emptyMessage();
+      const search = this.search();
+      const activeIndex = this.activeIndex();
+      const renderedRows = this.renderedRows();
+      const visibleOptions = this.visibleOptions();
+      const optionTemplate = this.optionTemplateChild();
+      const emptyTemplate = this.emptyTemplateChild();
+      const headerTemplate = this.headerTemplateChild();
+      const footerTemplate = this.footerTemplateChild();
+      const optionLabelFn = this.optionLabel();
+      const checkmarkColorClass = this.checkmarkColorClass();
+      const panelClassValue = this.resolvePanelClass();
+      untracked(() => {
+        instance.size.set(size);
+        instance.color.set(color);
+        instance.multiple.set(multiple);
+        instance.searchable.set(searchable);
+        instance.panelMaxHeight.set(panelMaxHeight);
+        instance.emptyMessage.set(emptyMessage);
+        instance.search.set(search);
+        instance.activeIndex.set(activeIndex);
+        instance.renderedRows.set(renderedRows);
+        instance.visibleOptions.set(visibleOptions);
+        instance.optionTemplate.set(optionTemplate);
+        instance.emptyTemplate.set(emptyTemplate);
+        instance.headerTemplate.set(headerTemplate);
+        instance.footerTemplate.set(footerTemplate);
+        instance.optionLabelFn.set(optionLabelFn);
+        instance.selectedChecker.set((index: number) => this.isVisibleOptionSelected(index));
+        instance.computeOptionClass.set(this.computeOptionClass);
+        instance.checkmarkColorClass.set(checkmarkColorClass);
+        instance.panelClassValue.set(panelClassValue);
+        instance.listboxId.set(this.listboxId);
+        instance.searchInputId.set(this.searchInputId);
+        instance.optionIdFn.set(this.optionId);
+      });
     });
 
     // Emit searchChange whenever the user types.
@@ -869,9 +925,15 @@ export class SelectComponent<T = unknown>
     const monitorSub = this.focusMonitor
       .monitor(this.elementRef, true)
       .subscribe((origin) => {
+        const wasFocused = this.focusedSignal();
         this.focusedSignal.set(!!origin);
         if (!origin) {
           this.onTouched();
+          if (wasFocused) {
+            // Blur often flips `touched` on the bound `NgControl`; bump the
+            // revision so `errorState` recomputes.
+            this._ngControlRev.update((n) => n + 1);
+          }
         }
       });
 
@@ -880,6 +942,8 @@ export class SelectComponent<T = unknown>
       this.focusMonitor.stopMonitoring(this.elementRef);
       this.clearCloseTimer();
       this.perOpenSubs?.unsubscribe();
+      this.resizeObserver?.disconnect();
+      this.resizeObserver = null;
       this.overlayRef?.dispose();
       this.overlayRef = null;
       this.overlayInstanceSignal.set(null);
@@ -1173,6 +1237,7 @@ export class SelectComponent<T = unknown>
   }
 
   private scrollActiveIntoView(): void {
+    if (!this.platform.isBrowser) return;
     queueMicrotask(() => {
       const id = this.activeDescendantId();
       if (!id) return;
@@ -1282,19 +1347,27 @@ export class SelectComponent<T = unknown>
     const positionStrategy = this.overlayService
       .position()
       .flexibleConnectedTo(this.elementRef)
-      .withPositions(buildSelectPositions(this.offset()))
+      .withPositions(buildSelectLikePositions(this.offset()))
       .withFlexibleDimensions(false)
       .withPush(false)
       .withViewportMargin(8);
 
     this.overlayRef = this.overlayService.create({
       positionStrategy,
-      scrollStrategy: this.resolveScrollStrategy(),
+      scrollStrategy: resolveSelectScrollStrategy(this.scrollStrategy(), this.overlayService),
       hasBackdrop: true,
       backdropClass: 'cdk-overlay-transparent-backdrop',
       panelClass: 'tw-select-panel',
     });
+    this.installResizeObserver();
     this.updateOverlaySize();
+  }
+
+  private installResizeObserver(): void {
+    if (!this.platform.isBrowser || typeof ResizeObserver === 'undefined') return;
+    this.resizeObserver?.disconnect();
+    this.resizeObserver = new ResizeObserver(() => this.updateOverlaySize());
+    this.resizeObserver.observe(this.elementRef.nativeElement);
   }
 
   private updateOverlaySize(): void {
@@ -1341,29 +1414,11 @@ export class SelectComponent<T = unknown>
         .subscribe(() => this.closePanel()),
     );
 
-    this.perOpenSubs.add(
-      this.overlayRef
-        .keydownEvents()
-        .pipe(takeUntilDestroyed(this.destroyRef))
-        .subscribe((event) => {
-          if (event.key === 'Escape') {
-            event.preventDefault();
-            this.closePanel();
-          }
-        }),
-    );
-  }
-
-  private resolveScrollStrategy(): ScrollStrategy {
-    const s = this.scrollStrategy();
-    switch (s) {
-      case 'close':
-        return this.overlayService.scrollStrategies.close();
-      case 'block':
-        return this.overlayService.scrollStrategies.block();
-      default:
-        return this.overlayService.scrollStrategies.reposition();
-    }
+    const teardownEscape = consumeOverlayEscape(this.overlayRef, (event) => {
+      event.preventDefault();
+      this.closePanel();
+    });
+    this.perOpenSubs.add(() => teardownEscape());
   }
 
   private resolvePanelClass(): string {
@@ -1431,6 +1486,11 @@ export class SelectComponent<T = unknown>
     this.describedByIdsSignal.set([...ids]);
   }
 
+  /** @internal Receives the merged `aria-labelledby` ids from the wrapping form-field. The trigger needs explicit labelledby because it's a non-native combobox button — `<label for>` does not reach it. */
+  setLabelledByIds(ids: string[]): void {
+    this.labelledByIdsSignal.set([...ids]);
+  }
+
   /** @internal */
   onContainerClick(event: MouseEvent): void {
     if (this.isDisabled()) return;
@@ -1441,8 +1501,27 @@ export class SelectComponent<T = unknown>
     }
   }
 
-  /** @internal Setter for error state, callable by future NgControl integration. */
-  _setErrorState(invalid: boolean): void {
-    this.errorStateSignal.set(invalid);
+  ngOnInit(): void {
+    // NgControl's `control` is set by the parent FormControl* directive before
+    // children's `ngOnInit`. Subscribe here so errorState reacts to status/value
+    // changes on the bound control.
+    const ctrl = this.ngControl?.control;
+    if (ctrl) {
+      const streams = [ctrl.statusChanges, ctrl.valueChanges].filter(
+        (s): s is NonNullable<typeof s> => !!s,
+      );
+      if (streams.length) {
+        merge(...streams)
+          .pipe(takeUntilDestroyed(this.destroyRef))
+          .subscribe(() => this._ngControlRev.update((n) => n + 1));
+      }
+    }
+
+    const submit = this.parentFormGroup?.ngSubmit ?? this.parentForm?.ngSubmit;
+    if (submit) {
+      submit
+        .pipe(takeUntilDestroyed(this.destroyRef))
+        .subscribe(() => this._formSubmitRev.update((n) => n + 1));
+    }
   }
 }

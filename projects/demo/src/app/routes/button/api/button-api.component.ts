@@ -27,31 +27,31 @@ import { CodeBlockComponent } from 'ngx-tw/code-block';
               <td class="px-4 py-2 font-mono text-xs">variant</td>
               <td class="px-4 py-2 font-mono text-xs text-fg-muted">ButtonVariant</td>
               <td class="px-4 py-2 font-mono text-xs text-fg-muted">'solid'</td>
-              <td class="px-4 py-2 text-fg-muted">Controls the visual style of the button.</td>
+              <td class="px-4 py-2 text-fg-muted">Controls the visual style. Defaults to <code>'solid'</code>.</td>
             </tr>
             <tr>
               <td class="px-4 py-2 font-mono text-xs">color</td>
               <td class="px-4 py-2 font-mono text-xs text-fg-muted">TwColor</td>
               <td class="px-4 py-2 font-mono text-xs text-fg-muted">'primary'</td>
-              <td class="px-4 py-2 text-fg-muted">Sets the semantic color palette.</td>
+              <td class="px-4 py-2 text-fg-muted">Sets the semantic color palette. Defaults to <code>'primary'</code>.</td>
             </tr>
             <tr>
               <td class="px-4 py-2 font-mono text-xs">size</td>
               <td class="px-4 py-2 font-mono text-xs text-fg-muted">TwSize</td>
               <td class="px-4 py-2 font-mono text-xs text-fg-muted">'md'</td>
-              <td class="px-4 py-2 text-fg-muted">Controls padding, font size, and icon size.</td>
+              <td class="px-4 py-2 text-fg-muted">Controls the size (padding, font size, icon size). Defaults to <code>'md'</code>.</td>
             </tr>
             <tr>
               <td class="px-4 py-2 font-mono text-xs">disabled</td>
               <td class="px-4 py-2 font-mono text-xs text-fg-muted">boolean</td>
               <td class="px-4 py-2 font-mono text-xs text-fg-muted">false</td>
-              <td class="px-4 py-2 text-fg-muted">Prevents interaction and applies muted styling.</td>
+              <td class="px-4 py-2 text-fg-muted">When true, prevents interaction and applies muted styling. Defaults to <code>false</code>.</td>
             </tr>
             <tr>
               <td class="px-4 py-2 font-mono text-xs">loading</td>
               <td class="px-4 py-2 font-mono text-xs text-fg-muted">boolean</td>
               <td class="px-4 py-2 font-mono text-xs text-fg-muted">false</td>
-              <td class="px-4 py-2 text-fg-muted">Shows a loading state and blocks interaction while async work is in flight.</td>
+              <td class="px-4 py-2 text-fg-muted">When true, blocks clicks and sets <code>aria-busy="true"</code>. Defaults to <code>false</code>. The directive does not render a spinner or status text — compose them in the projected content.</td>
             </tr>
           </tbody>
         </table>
@@ -79,7 +79,7 @@ import { CodeBlockComponent } from 'ngx-tw/code-block';
               <td class="px-4 py-2 font-mono text-xs">twButtonIcon</td>
               <td class="px-4 py-2 font-mono text-xs text-fg-muted">'' | 'leading' | 'trailing'</td>
               <td class="px-4 py-2 font-mono text-xs text-fg-muted">'leading'</td>
-              <td class="px-4 py-2 text-fg-muted">Position of the icon relative to the button label.</td>
+              <td class="px-4 py-2 text-fg-muted">Position of the icon relative to the button label. Defaults to <code>'leading'</code>.</td>
             </tr>
           </tbody>
         </table>

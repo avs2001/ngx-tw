@@ -132,7 +132,7 @@ import { CodeBlockComponent } from 'ngx-tw/code-block';
       <ul class="list-disc list-inside text-sm text-fg-muted space-y-1.5">
         <li>One directive for both <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">&lt;input&gt;</code> and <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">&lt;textarea&gt;</code></li>
         <li>Implements <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">FormFieldControl&lt;string&gt;</code> — plugs into <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">tw-form-field</code> automatically</li>
-        <li>Standalone mode paints its own border / focus ring using semantic tokens</li>
+        <li>Standalone mode paints its own border / focus ring using semantic tokens, with a <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">size</code> axis (xs → xl) for density</li>
         <li>Works with reactive, template-driven, and signal forms (Angular's native value accessors)</li>
         <li>Infers <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">required</code> from <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">Validators.required</code> and reflects <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">disabled</code> from a bound <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">NgControl</code></li>
         <li>Exposes <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">focused</code>, <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">empty</code>, <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">errorState</code> signals the form-field reads for label floating and error styling</li>

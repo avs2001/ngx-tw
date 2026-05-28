@@ -1,19 +1,31 @@
 import {
+  afterRenderEffect,
   ChangeDetectionStrategy,
   Component,
   computed,
+  Directive,
   ElementRef,
   inject,
   signal,
+  type TemplateRef,
   viewChild,
+  viewChildren,
 } from '@angular/core';
-import type { TimePickerFormat, TwColor, TwSize } from 'ngx-tw/core';
+import type {
+  RangeBehaviorConfig,
+  TimePickerFormat,
+  TwColor,
+  TwSize,
+} from 'ngx-tw/core';
 import {
   CalendarComponent,
   provideRangeSelectionStrategy,
+  type CalendarCell,
+  type CalendarViewState,
+  type DateClassFn,
   type DateRange,
-  type TwCalendarView,
-  type TwDateFilter,
+  type DateFilterFn,
+  type RangeClickBehavior,
   TwDateRange,
   type ViewChangeEvent,
 } from 'ngx-tw/calendar';
@@ -23,6 +35,32 @@ import {
   type TimePickerChangeEvent,
 } from 'ngx-tw/time-picker';
 import type { DateRangePickerMonths, DateRangePreset } from './date-range-picker';
+
+/**
+ * Internal directive that adopts a preset `<button>` into the picker's
+ * roving-tabindex listbox model. The directive's own host binding wins over
+ * `twButton`'s default `tabindex=null`, ensuring the active option carries
+ * `tabindex="0"` on the very first paint.
+ *
+ * @internal
+ */
+@Directive({
+  selector: 'button[twDateRangePresetOption]',
+  host: {
+    '[attr.tabindex]': 'tabindex()',
+  },
+})
+export class DateRangePresetOptionDirective {
+  private readonly elementRef = inject(ElementRef<HTMLButtonElement>);
+
+  /** @internal Tab-index — `'0'` on the active option, `'-1'` on the rest. */
+  readonly tabindex = signal<string>('-1');
+
+  /** @internal */
+  focus(): void {
+    this.elementRef.nativeElement.focus();
+  }
+}
 
 /**
  * Internal overlay panel for `tw-date-range-picker`. Hosts the optional preset
@@ -35,7 +73,12 @@ import type { DateRangePickerMonths, DateRangePreset } from './date-range-picker
 @Component({
   selector: 'tw-date-range-picker-overlay',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [CalendarComponent, TimePickerComponent, ButtonDirective],
+  imports: [
+    CalendarComponent,
+    TimePickerComponent,
+    ButtonDirective,
+    DateRangePresetOptionDirective,
+  ],
   providers: [provideRangeSelectionStrategy()],
   host: {
     '[class]': 'panelClasses()',
@@ -43,26 +86,29 @@ import type { DateRangePickerMonths, DateRangePreset } from './date-range-picker
     '[attr.role]': '"dialog"',
     '[attr.aria-modal]': '"true"',
     '[attr.aria-label]': 'dialogAriaLabel()',
-    '[animate.enter]': '"scale-in fade-in"',
-    '[animate.leave]': 'leaving() ? "scale-out fade-out" : ""',
+    '[animate.enter]': '"scale-in"',
+    '[animate.leave]': 'leaving() ? "scale-out" : ""',
   },
   template: `
     @if (presets().length) {
       <div
-        class="flex flex-col gap-1 p-2 border-r border-border bg-surface-muted min-w-[10rem]"
+        class="flex flex-col gap-1 p-2 border-r border-border bg-surface-muted min-w-40"
         role="listbox"
+        tabindex="-1"
         aria-label="Preset ranges"
+        (keydown)="onPresetListKeydown($event)"
       >
-        @for (preset of presets(); track presetKey($index, preset)) {
+        @for (preset of presets(); track presetKey($index, preset); let i = $index) {
           <button
             twButton
+            twDateRangePresetOption
             variant="ghost"
             size="sm"
             type="button"
             role="option"
             class="w-full justify-start"
             [attr.aria-selected]="isActivePreset(preset) ? 'true' : 'false'"
-            (click)="handlePreset(preset)"
+            (click)="handlePreset(preset, i)"
           >
             {{ preset.label }}
           </button>
@@ -83,6 +129,14 @@ import type { DateRangePickerMonths, DateRangePreset } from './date-range-picker
         [minDate]="minDate()"
         [maxDate]="maxDate()"
         [dateFilter]="dateFilter()"
+        [dateClass]="dateClass()"
+        [cellTemplate]="cellTemplate()"
+        [locale]="locale()"
+        [firstDayOfWeek]="firstDayOfWeek()"
+        [minRangeLength]="minRangeLength()"
+        [maxRangeLength]="maxRangeLength()"
+        [rangeBehavior]="rangeBehavior()"
+        [rangeClickBehavior]="rangeClickBehavior()"
         [attr.aria-label]="calendarAriaLabel()"
         (valueChange)="onCalendarRangeSelected($event)"
         (viewChange)="onViewChanged($event)"
@@ -158,6 +212,7 @@ import type { DateRangePickerMonths, DateRangePreset } from './date-range-picker
 export class DateRangePickerOverlayComponent<D = unknown> {
   private readonly elementRef = inject(ElementRef<HTMLElement>);
   private readonly calendarRef = viewChild<CalendarComponent<'range', D>>('calendar');
+  private readonly presetOptions = viewChildren(DateRangePresetOptionDirective);
 
   // ── Config signals set by the parent ──
 
@@ -170,15 +225,15 @@ export class DateRangePickerOverlayComponent<D = unknown> {
   /** @internal */
   readonly maxDate = signal<D | null>(null);
   /** @internal */
-  readonly dateFilter = signal<TwDateFilter<D> | null>(null);
+  readonly dateFilter = signal<DateFilterFn<D> | null>(null);
   /** @internal */
-  readonly startView = signal<TwCalendarView>('day');
+  readonly startView = signal<CalendarViewState>('day');
   /** @internal */
   readonly numberOfMonths = signal<DateRangePickerMonths>(2);
   /** @internal Current pending range shown as selected in the calendar. */
   readonly pendingRange = signal<TwDateRange<D> | null>(null);
   /** @internal */
-  readonly currentView = signal<TwCalendarView>('day');
+  readonly currentView = signal<CalendarViewState>('day');
   /** @internal */
   readonly presets = signal<readonly DateRangePreset<D>[]>([]);
   /** @internal */
@@ -216,6 +271,25 @@ export class DateRangePickerOverlayComponent<D = unknown> {
   /** @internal */
   readonly leaving = signal(false);
 
+  // ── Forwarded calendar config ──
+
+  /** @internal */
+  readonly minRangeLength = signal<number | null>(null);
+  /** @internal */
+  readonly maxRangeLength = signal<number | null>(null);
+  /** @internal */
+  readonly rangeBehavior = signal<Partial<RangeBehaviorConfig>>({});
+  /** @internal */
+  readonly rangeClickBehavior = signal<RangeClickBehavior>('restart');
+  /** @internal */
+  readonly firstDayOfWeek = signal<number | null>(null);
+  /** @internal */
+  readonly locale = signal<string | null>(null);
+  /** @internal */
+  readonly dateClass = signal<DateClassFn<D> | null>(null);
+  /** @internal */
+  readonly cellTemplate = signal<TemplateRef<{ $implicit: CalendarCell<D> }> | null>(null);
+
   // ── Callbacks set by the parent ──
 
   /** @internal */
@@ -227,7 +301,7 @@ export class DateRangePickerOverlayComponent<D = unknown> {
   /** @internal */
   readonly onEndTimeChange = signal<(date: D | null) => void>(() => {});
   /** @internal */
-  readonly onViewChange = signal<(view: TwCalendarView) => void>(() => {});
+  readonly onViewChange = signal<(view: CalendarViewState) => void>(() => {});
   /** @internal */
   readonly onToday = signal<() => void>(() => {});
   /** @internal */
@@ -310,8 +384,70 @@ export class DateRangePickerOverlayComponent<D = unknown> {
     this.onEndTimeChange()(event.value);
   }
 
+  // ── Preset listbox keyboard ──
+
+  /** @internal Roving tabindex pointer — index of the focusable preset option. */
+  readonly activeOptionIndex = signal<number>(0);
+
+  constructor() {
+    // Drive the directive's `tabindex` signal from `activeOptionIndex`. We
+    // use `afterRenderEffect` so the directive instances are already created
+    // when we read them (regular `effect` may run before the view init).
+    afterRenderEffect(() => {
+      const options = this.presetOptions();
+      const active = this.activeOptionIndex();
+      for (let i = 0; i < options.length; i++) {
+        options[i].tabindex.set(i === active ? '0' : '-1');
+      }
+    });
+  }
+
   /** @internal */
-  handlePreset(preset: DateRangePreset<D>): void {
+  onPresetListKeydown(event: KeyboardEvent): void {
+    const options = this.presetOptions();
+    const count = options.length;
+    if (count === 0) return;
+    const current = this.activeOptionIndex();
+    const move = (next: number): void => {
+      const idx = ((next % count) + count) % count;
+      this.activeOptionIndex.set(idx);
+      options[idx]?.focus();
+    };
+
+    switch (event.key) {
+      case 'ArrowDown':
+        event.preventDefault();
+        move(current + 1);
+        return;
+      case 'ArrowUp':
+        event.preventDefault();
+        move(current - 1);
+        return;
+      case 'Home':
+        event.preventDefault();
+        move(0);
+        return;
+      case 'End':
+        event.preventDefault();
+        move(count - 1);
+        return;
+      case 'Enter':
+      case ' ': {
+        const preset = this.presets()[current];
+        if (preset) {
+          event.preventDefault();
+          this.handlePreset(preset, current);
+        }
+        return;
+      }
+      default:
+        return;
+    }
+  }
+
+  /** @internal */
+  handlePreset(preset: DateRangePreset<D>, index?: number): void {
+    if (typeof index === 'number') this.activeOptionIndex.set(index);
     this.onPresetSelect()(preset);
   }
 

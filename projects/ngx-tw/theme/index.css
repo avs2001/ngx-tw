@@ -1,10 +1,47 @@
 @import "tailwindcss";
 
+/* ===== Dark variant binding =====
+   Re-binds Tailwind's `dark:` variant so it activates on the same condition
+   that flips the semantic tokens in `_dark.css`:
+     1. an explicit `[data-theme="dark"]` ancestor, OR
+     2. `prefers-color-scheme: dark` AND no explicit `data-theme` opt-out.
+
+   Without this binding `dark:` defaults to `@media (prefers-color-scheme: dark)`,
+   which drifts from the `[data-theme="dark"]` selector — producing inverted
+   token state but un-inverted dark utilities (or vice versa) whenever OS
+   preference disagrees with the consumer's chosen theme. Keep this rule in
+   lock-step with the activation predicates in `_dark.css`. */
+@custom-variant dark {
+  &:where([data-theme="dark"], [data-theme="dark"] *) {
+    @slot;
+  }
+  @media (prefers-color-scheme: dark) {
+    &:where(
+      :root:not([data-theme="light"]):not([data-theme="high-contrast"]),
+      :root:not([data-theme="light"]):not([data-theme="high-contrast"]) *
+    ) {
+      @slot;
+    }
+  }
+}
+
 /* Scan library source for Tailwind class usage */
 @source "../src/**/*.ts";
 
-/* Palette extensions */
-@import "./_palette.css";
+/* ===== Slot-token utility safelist =====
+   Components consume role slot utilities (`bg-info-soft`, `text-info-fg`, …)
+   that are often assembled from template literals (`bg-${role}-soft`).
+   Tailwind v4's heuristic scanner only picks up literal class names, so we
+   enumerate every role × slot combination here. Touch this list when a new
+   role is introduced or a new slot is added to `_semantic.css`. */
+@source inline("{,hover:}bg-{primary,secondary,accent,neutral,info,success,warning,error}-{soft,soft-hover,solid,solid-hover}");
+@source inline("text-{primary,secondary,accent,neutral,info,success,warning,error}-{soft-fg,soft-fg-muted,solid-fg,fg,icon}");
+@source inline("text-{primary,secondary,accent,neutral,info,success,warning,error}-solid-fg/80");
+@source inline("border-{primary,secondary,accent,neutral,info,success,warning,error}-{border,border-strong}");
+@source inline("ring-{primary,secondary,accent,neutral,info,success,warning,error}-{border,border-strong}");
+
+/* Font stacks + animation duration tokens (Tailwind v4 `@theme` extensions) */
+@import "./_typography.css";
 
 /* Semantic token definitions */
 @import "./_semantic.css";

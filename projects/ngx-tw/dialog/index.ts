@@ -1,9 +1,9 @@
 export { TwDialog, provideTwDialog } from './dialog';
 export { TwDialogRef } from './dialog-ref';
 export {
-  TwDialogContainer,
-  type TwDialogAnimationEvent,
-  type TwDialogState,
+  DialogContainer,
+  type DialogAnimationEvent,
+  type DialogState,
 } from './dialog-container';
 export {
   TwDialogConfig,
@@ -16,12 +16,13 @@ export {
   type TwDialogScrollStrategy,
 } from './dialog-config';
 export {
-  TwDialogTitleDirective,
-  TwDialogSubtitleDirective,
-  TwDialogContentDirective,
-  TwDialogActionsDirective,
-  TwDialogCloseDirective,
-  TwDialogIconDirective,
-  TwDialogHeaderDirective,
-  type TwDialogActionsAlign,
+  DialogTitleDirective,
+  DialogSubtitleDirective,
+  DialogDescriptionDirective,
+  DialogContentDirective,
+  DialogActionsDirective,
+  DialogCloseDirective,
+  DialogIconDirective,
+  DialogHeaderDirective,
+  type DialogActionsAlign,
 } from './dialog-content';

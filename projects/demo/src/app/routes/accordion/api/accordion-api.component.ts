@@ -1,10 +1,11 @@
 import { ChangeDetectionStrategy, Component } from '@angular/core';
 import { RouterLink } from '@angular/router';
+import { CodeBlockComponent } from 'ngx-tw/code-block';
 
 @Component({
   selector: 'app-accordion-api',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [RouterLink],
+  imports: [CodeBlockComponent, RouterLink],
   template: `
     <!-- AccordionComponent -->
     <section class="mb-10">
@@ -77,12 +78,12 @@ import { RouterLink } from '@angular/router';
     <!-- Types -->
     <section>
       <h2 class="text-sm font-semibold mb-3">Types</h2>
-      <div class="bg-surface-sunken border border-border rounded-lg p-4">
-        <pre class="text-sm font-mono whitespace-pre text-fg"><code>type AccordionType = 'single' | 'multiple';
-
-type AccordionVariant = 'default' | 'bordered' | 'ghost';</code></pre>
-      </div>
+      <tw-code-block [code]="typesSnippet" language="ts" />
     </section>
   `,
 })
-export class AccordionApi {}
+export class AccordionApi {
+  protected readonly typesSnippet = `type AccordionType = 'single' | 'multiple';
+
+type AccordionVariant = 'default' | 'bordered' | 'ghost';`;
+}

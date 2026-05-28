@@ -11,9 +11,12 @@ import {
   ElementRef,
   inject,
   input,
+  isDevMode,
+  linkedSignal,
   model,
   output,
   signal,
+  untracked,
   ViewEncapsulation,
 } from '@angular/core';
 import { FocusableOption, FocusKeyManager, LiveAnnouncer } from '@angular/cdk/a11y';
@@ -23,14 +26,30 @@ import type { TwColor, TwSize } from 'ngx-tw/core';
 /** Visual style of the collapsible container. */
 export type CollapsibleVariant = 'default' | 'bordered' | 'ghost' | 'filled';
 
+/** Decorative axes bundled into a single collapsible input. */
+export interface CollapsibleDisplay {
+  /** Visual style of the panel container. Defaults to `'default'`. */
+  variant?: CollapsibleVariant;
+  /** Semantic color; applies to the `bordered` and `filled` variants. Defaults to `'neutral'`. */
+  color?: TwColor;
+  /** Padding scale for the trigger and content sections. Defaults to `'md'`. */
+  size?: TwSize;
+}
+
+const DISPLAY_DEFAULTS: Required<CollapsibleDisplay> = {
+  variant: 'default',
+  color: 'neutral',
+  size: 'md',
+};
+
 // ── tv() config ──
 
 const collapsibleVariants = tv({
   slots: {
     root: 'block rounded-lg overflow-hidden',
     trigger:
-      'flex w-full items-center justify-between gap-3 bg-transparent border-0 appearance-none cursor-pointer text-sm font-medium text-fg transition-colors duration-200 motion-reduce:transition-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500',
-    icon: 'size-5 shrink-0 text-fg-muted transition-transform duration-200 motion-reduce:transition-none',
+      'flex w-full items-center justify-between gap-3 bg-transparent border-0 appearance-none cursor-pointer text-sm font-medium text-fg transition-colors duration-normal motion-reduce:transition-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500',
+    icon: 'size-5 shrink-0 text-fg-muted transition-transform duration-normal motion-reduce:transition-none',
     content: 'text-sm text-fg',
   },
   variants: {
@@ -132,17 +151,23 @@ export class CollapsibleIconDirective {
 
 // ── CollapsibleTriggerDirective ──
 
+/**
+ * Marks the toggle element inside a `<tw-collapsible>`. Apply this to a
+ * native `<button>`; the directive wires up ARIA, keyboard handling, and
+ * focus management. Custom hosts (e.g. `<div>`) are not supported.
+ */
 @Component({
   selector: '[twCollapsibleTrigger]',
   changeDetection: ChangeDetectionStrategy.OnPush,
+  // ViewEncapsulation.None — the directive's host IS the consumer's <button>;
+  // scoped styles can't reach a host that lives outside this component's tree.
   encapsulation: ViewEncapsulation.None,
   host: {
-    'role': 'button',
     '[class]': 'classes()',
     '[attr.aria-expanded]': 'collapsible.open()',
     '[attr.aria-controls]': 'collapsible.panelId',
     '[attr.aria-disabled]': 'collapsible.disabled() || null',
-    '[attr.tabindex]': '0',
+    '[attr.tabindex]': 'collapsible.disabled() ? -1 : 0',
     '[attr.id]': 'collapsible.triggerId',
     '(click)': 'onClick()',
     '(keydown)': 'onKeydown($event)',
@@ -232,14 +257,8 @@ export class CollapsibleComponent {
   /** Unique identifier for this panel. Required when used inside a group. */
   readonly value = input<string>('');
 
-  /** Controls the visual style. Defaults to `'default'`. */
-  readonly variant = input<CollapsibleVariant>('default');
-
-  /** Sets the semantic color. Applies to `bordered` and `filled` variants. Defaults to `'neutral'`. */
-  readonly color = input<TwColor>('neutral');
-
-  /** Controls padding of trigger and content sections. Defaults to `'md'`. */
-  readonly size = input<TwSize>('md');
+  /** Bundles decorative axes: `variant`, `color`, `size`. Accepts a partial; unset keys fall back to the defaults (`{ variant: 'default', color: 'neutral', size: 'md' }`). */
+  readonly display = input<CollapsibleDisplay>({});
 
   /** When true, the panel cannot be toggled and appears dimmed. Defaults to `false`. */
   readonly disabled = input(false, { transform: booleanAttribute });
@@ -264,20 +283,38 @@ export class CollapsibleComponent {
   readonly triggerId = `${this.componentId}-trigger`;
   readonly panelId = `${this.componentId}-panel`;
 
-  /** @internal Tracks whether the panel has been opened at least once (for keepAlive mode). */
-  readonly activated = signal(false);
+  /**
+   * @internal Tracks whether the panel has been opened at least once (for keepAlive mode).
+   *
+   * Latches to `true` the first time `open` is `true` and stays `true` for the
+   * lifetime of the component. Implemented as a `linkedSignal` so the derivation
+   * lives next to the source — `activated()` reads cleanly as "derived from open".
+   */
+  readonly activated = linkedSignal<boolean, boolean>({
+    source: () => this.open(),
+    computation: (open, prev) => (prev?.value ?? false) || open,
+  });
+
+  // ── Resolved display config ──
+
+  /** @internal Resolved decorative configuration. */
+  readonly resolvedDisplay = computed<Required<CollapsibleDisplay>>(() => ({
+    ...DISPLAY_DEFAULTS,
+    ...this.display(),
+  }));
 
   // ── Variant classes ──
 
-  private readonly variantResult = computed(() =>
-    collapsibleVariants({
-      variant: this.variant(),
-      color: this.color(),
-      size: this.size(),
+  private readonly variantResult = computed(() => {
+    const { variant, color, size } = this.resolvedDisplay();
+    return collapsibleVariants({
+      variant,
+      color,
+      size,
       disabled: this.disabled(),
       inGroup: !!this.group,
-    }),
-  );
+    });
+  });
 
   readonly rootClasses = computed(() => this.variantResult().root());
   readonly triggerClasses = computed(() => this.variantResult().trigger());
@@ -288,15 +325,6 @@ export class CollapsibleComponent {
     const base = this.contentClasses();
     return this.keepAlive() ? `${base} collapsible-keep-alive` : base;
   });
-
-  constructor() {
-    // Track activation for keepAlive mode
-    effect(() => {
-      if (this.open() && !this.activated()) {
-        this.activated.set(true);
-      }
-    });
-  }
 
   /** @internal Toggle the open state. Called by the trigger directive. */
   toggle(): void {
@@ -331,19 +359,44 @@ export class CollapsibleComponent {
   selector: 'tw-collapsible-group',
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: {
-    'role': 'group',
+    // Use bindings (not static attributes) so subclasses can override the values.
+    // Angular DOES inherit host metadata across `extends`; literal-string entries
+    // can't be turned off by a subclass, but binding expressions are evaluated
+    // against the actual instance and so respect subclass overrides of the
+    // backing signal/computed.
+    '[attr.role]': 'hostRole()',
     '[class]': 'hostClasses()',
   },
   template: `<ng-content />`,
 })
 export class CollapsibleGroupComponent {
-  /** When true, only one panel can be open at a time. Defaults to `false`. */
+  /**
+   * When true, only one panel can be open at a time.
+   *
+   * `AccordionComponent` (subclass) ignores this input and drives the same
+   * behaviour from its own `type` input via the `isAccordionMode()` /
+   * `canCollapseSingleMode()` virtual hooks below. Consumers using
+   * `<tw-collapsible-group>` directly should bind this input; consumers using
+   * `<tw-accordion>` should bind `type="single"` / `type="multiple"` instead.
+   *
+   * Defaults to `false`.
+   */
   readonly accordion = input(false, { transform: booleanAttribute });
 
-  /** The value(s) of currently open panels. String in accordion mode, string array in independent mode. Two-way bindable. */
-  readonly value = model<string | string[]>('');
+  /** The value(s) of currently open panels. String in accordion mode, string array in independent mode. `null` when no panel is open in accordion mode. Two-way bindable. Defaults to `null`. */
+  readonly value = model<string | string[] | null>(null);
 
-  /** @internal */
+  /**
+   * @internal Wrapper `role` attribute. Subclasses may override (e.g.
+   * `AccordionComponent` returns `null` per APG — accordions don't carry
+   * `role="group"`).
+   */
+  readonly hostRole = computed<string | null>(() => 'group');
+
+  /**
+   * @internal Host class string. Subclasses may override to provide their own
+   * variant-driven string (e.g. `AccordionComponent.rootClasses`).
+   */
   readonly hostClasses = computed(() => 'block rounded-lg overflow-hidden divide-y divide-border');
 
   /** @internal */
@@ -353,6 +406,28 @@ export class CollapsibleGroupComponent {
   readonly triggers = contentChildren(CollapsibleTriggerDirective, { descendants: true });
 
   private keyManager: FocusKeyManager<CollapsibleTriggerDirective> | null = null;
+
+  /**
+   * @internal Whether the group is in single-open-panel mode.
+   *
+   * Subclasses override to bridge their own input surface (e.g. `AccordionComponent`
+   * returns `this.type() === 'single'`). All internal toggle/sync/warn logic reads
+   * the mode through this hook, never `accordion()` directly — that lets the
+   * subclass drive mode from `type` without redeclaring the parent's signal input.
+   */
+  protected isAccordionMode(): boolean {
+    return this.accordion();
+  }
+
+  /**
+   * @internal Whether re-clicking the open panel in single mode closes it.
+   *
+   * Defaults to `true` for the bare group component (re-clicking always closes).
+   * `AccordionComponent` overrides to honour its `collapsible` opt-out input.
+   */
+  protected canCollapseSingleMode(): boolean {
+    return true;
+  }
 
   constructor() {
     // Sync children open states from the group value
@@ -366,15 +441,32 @@ export class CollapsibleGroupComponent {
       const items = this.items();
       if (items.length === 0) return;
 
-      for (const item of items) {
-        const itemValue = item.value();
-        if (this.accordion()) {
-          item.setOpen(itemValue === val);
-        } else {
-          const openValues = Array.isArray(val) ? val : [];
-          item.setOpen(openValues.includes(itemValue));
+      // Read mode via the virtual hook so subclass overrides take effect.
+      const accordion = this.isAccordionMode();
+
+      if (isDevMode()) {
+        if (accordion && Array.isArray(val)) {
+          console.warn(
+            '[tw-collapsible-group] `value` is an array but the group is in accordion mode. Use a single string (or null) in accordion mode.',
+          );
+        } else if (!accordion && typeof val === 'string' && val !== '') {
+          console.warn(
+            '[tw-collapsible-group] `value` is a string but the group is in independent mode. Use a string[] in independent mode.',
+          );
         }
       }
+
+      untracked(() => {
+        for (const item of items) {
+          const itemValue = item.value();
+          if (accordion) {
+            item.setOpen(itemValue === val);
+          } else {
+            const openValues = Array.isArray(val) ? val : [];
+            item.setOpen(openValues.includes(itemValue));
+          }
+        }
+      });
     });
 
     // Rebuild FocusKeyManager whenever the trigger set changes
@@ -399,9 +491,10 @@ export class CollapsibleGroupComponent {
   private syncChildrenFromValue(): void {
     const val = this.value();
     const items = this.items();
+    const accordion = this.isAccordionMode();
     for (const item of items) {
       const itemValue = item.value();
-      if (this.accordion()) {
+      if (accordion) {
         item.setOpen(itemValue === val);
       } else {
         const openValues = Array.isArray(val) ? val : [];
@@ -416,7 +509,7 @@ export class CollapsibleGroupComponent {
     const isCurrentlyOpen = item.open();
     const next = !isCurrentlyOpen;
 
-    if (this.accordion()) {
+    if (this.isAccordionMode()) {
       if (next) {
         // Close all others, open this one
         for (const child of this.items()) {
@@ -427,9 +520,10 @@ export class CollapsibleGroupComponent {
         item.setOpen(true);
         this.value.set(itemValue);
       } else {
-        // Close this one
+        // Close this one — honour the subclass's collapsible opt-out, if any.
+        if (!this.canCollapseSingleMode()) return;
         item.setOpen(false);
-        this.value.set('');
+        this.value.set(null);
       }
     } else {
       // Independent mode

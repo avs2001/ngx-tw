@@ -10,6 +10,7 @@ export type TableSectionName =
   | 'Custom No-Data Row'
   | 'Custom Header Template'
   | 'Sortable Columns'
+  | 'Selection'
   | 'Responsive — Stack Below Breakpoint'
   | 'Admin Pattern — Toolbar, Sort & Pagination'
   | 'Playground';
@@ -31,6 +32,7 @@ export class TablePage {
   readonly noDataSection: Locator;
   readonly customHeaderSection: Locator;
   readonly sortableSection: Locator;
+  readonly selectionSection: Locator;
   readonly responsiveSection: Locator;
   readonly adminSection: Locator;
   readonly playgroundSection: Locator;
@@ -46,6 +48,7 @@ export class TablePage {
     this.noDataSection = this.section('Custom No-Data Row');
     this.customHeaderSection = this.section('Custom Header Template');
     this.sortableSection = this.section('Sortable Columns');
+    this.selectionSection = this.section('Selection');
     this.responsiveSection = this.section('Responsive — Stack Below Breakpoint');
     this.adminSection = this.section('Admin Pattern — Toolbar, Sort & Pagination');
     this.playgroundSection = this.section('Playground');

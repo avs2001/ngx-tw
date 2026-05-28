@@ -578,6 +578,32 @@ describe('PaginatorComponent — variants', () => {
     const nav = fixture.nativeElement.querySelector('tw-paginator');
     expect(nav.querySelector('[data-tw-paginator-nav]')).toBeNull();
   });
+
+  it('routes the `color` input through the active page button tokens', () => {
+    host.color.set('error');
+    fixture.detectChanges();
+    const active = fixture.nativeElement.querySelector(
+      '[data-tw-paginator-nav="page"][aria-current="page"]',
+    ) as HTMLElement;
+    expect(active).toBeTruthy();
+    const cls = active.className;
+    expect(cls).toContain('bg-error-600');
+    expect(cls).toContain('text-on-error');
+    expect(cls).toContain('border-error-600');
+    expect(cls).not.toContain('text-white');
+  });
+
+  it('uses the warning-specific `-500` shade on the active page when color=warning', () => {
+    host.color.set('warning');
+    fixture.detectChanges();
+    const active = fixture.nativeElement.querySelector(
+      '[data-tw-paginator-nav="page"][aria-current="page"]',
+    ) as HTMLElement;
+    const cls = active.className;
+    // Warning role keeps -500 per `theme/_semantic.css` ("yellow signage convention").
+    expect(cls).toContain('bg-warning-500');
+    expect(cls).toContain('text-on-warning');
+  });
 });
 
 // ── ARIA + keyboard ──
@@ -631,19 +657,16 @@ describe('PaginatorComponent — accessibility', () => {
   });
 
   it('moves focus with ArrowRight / ArrowLeft', async () => {
-    const next = queryNavButton(fixture, 'next') as HTMLButtonElement;
     const pages = queryPageButtons(fixture);
     const pageOne = pages[0];
     pageOne.focus();
     expect(document.activeElement).toBe(pageOne);
 
-    const navGroup = fixture.nativeElement.querySelector(
-      '[data-tw-paginator-nav="next"]',
-    )?.parentElement;
-    expect(navGroup).toBeTruthy();
-
-    navGroup!.dispatchEvent(
-      new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true }),
+    // CDK FocusKeyManager reads `event.keyCode`, NOT `event.key` (jsdom does not
+    // populate `keyCode` from `key`). All paginator keyboard tests must dispatch
+    // both fields explicitly. ArrowRight=39, ArrowLeft=37, Home=36, End=35.
+    pageOne.dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'ArrowRight', keyCode: 39, bubbles: true }),
     );
     fixture.detectChanges();
     // ArrowRight from page 1 (index of pageOne in focusables) moves to page 2.
@@ -651,18 +674,56 @@ describe('PaginatorComponent — accessibility', () => {
   });
 
   it('moves focus to the first focusable on Home', async () => {
-    const navGroup = fixture.nativeElement.querySelector(
-      '[data-tw-paginator-nav="next"]',
-    )?.parentElement as HTMLElement;
     const last = queryNavButton(fixture, 'last') as HTMLButtonElement;
     last.focus();
-    navGroup.dispatchEvent(
-      new KeyboardEvent('keydown', { key: 'Home', bubbles: true }),
+    last.dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'Home', keyCode: 36, bubbles: true }),
     );
     fixture.detectChanges();
-    // First focusable should receive focus — `prev` button is disabled on page 1,
-    // so the first focusable is the first page button or next; either way not "last".
+    // First focusable should receive focus — `prev`/`first` are disabled on page 1,
+    // so the first non-disabled focusable is the first page button.
     expect(document.activeElement).not.toBe(last);
+  });
+
+  it('moves focus to the last focusable on End', async () => {
+    const pages = queryPageButtons(fixture);
+    const pageOne = pages[0];
+    pageOne.focus();
+    pageOne.dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'End', keyCode: 35, bubbles: true }),
+    );
+    fixture.detectChanges();
+    // Last focusable should receive focus — `next`/`last` are enabled on page 1
+    // (we're not at the last page), so focus lands on one of them.
+    expect(document.activeElement).not.toBe(pageOne);
+    expect(document.activeElement).not.toBe(document.body);
+  });
+
+  it('skips disabled controls during arrow navigation', async () => {
+    // On page 1 the `first` and `prev` buttons are disabled. ArrowLeft from
+    // page 1 should NOT move focus (the manager skips disabled items, and
+    // there is no enabled focusable to the left).
+    const pages = queryPageButtons(fixture);
+    const pageOne = pages[0];
+    pageOne.focus();
+    pageOne.dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'ArrowLeft', keyCode: 37, bubbles: true }),
+    );
+    fixture.detectChanges();
+    // The disabled `first`/`prev` controls must be skipped; pageOne keeps focus.
+    expect(document.activeElement).toBe(pageOne);
+  });
+
+  it('renders the default-color active page button with the primary semantic tokens (no raw `text-white`)', () => {
+    const active = fixture.nativeElement.querySelector(
+      '[data-tw-paginator-nav="page"][aria-current="page"]',
+    ) as HTMLElement;
+    expect(active).toBeTruthy();
+    const cls = active.className;
+    expect(cls).toContain('bg-primary-600');
+    expect(cls).toContain('text-on-primary');
+    expect(cls).toContain('border-primary-600');
+    expect(cls).not.toContain('text-white');
   });
 
   it('announces page changes via LiveAnnouncer', async () => {

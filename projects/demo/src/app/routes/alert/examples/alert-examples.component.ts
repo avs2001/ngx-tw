@@ -94,9 +94,12 @@ const DISMISSIBLE_INITIAL: readonly DismissibleAlert[] = [
       </div>
       <tw-code-block [code]="variantsSnippet" language="html" />
       <p class="text-sm text-fg-muted leading-relaxed max-w-2xl mt-4">
-        Every variant × color pair is contrast-checked, so
-        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">solid</code> warnings
-        use black text on yellow and every other color uses white.
+        Every variant × color pair is contrast-checked. Solid variants apply the
+        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">text-on-{{ '{role}' }}</code>
+        foreground token so each combination meets WCAG AA against its filled background —
+        warnings and successes pick up the deep
+        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">-950</code>
+        foreground while the others stay white.
       </p>
     </section>
 
@@ -254,17 +257,22 @@ const DISMISSIBLE_INITIAL: readonly DismissibleAlert[] = [
     <section class="mb-10">
       <h2 class="text-sm font-semibold mb-3">Politeness</h2>
       <p class="text-sm text-fg-muted leading-relaxed max-w-2xl mb-4">
-        The alert text is read through CDK's
-        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">LiveAnnouncer</code>
-        when the component mounts. Default to
-        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">'polite'</code>.
+        The
+        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">politeness</code>
+        input drives the host
+        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">role</code>:
+        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">'polite'</code>
+        renders
+        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">role="status"</code>
+        and is the right default — the message is announced when the screen reader next pauses.
         Use
         <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">'assertive'</code>
-        only for errors that interrupt what the user is doing — it will cut off the screen
-        reader's current utterance. Set
+        (maps to
+        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">role="alert"</code>)
+        only for errors that must interrupt — it cuts off the screen reader's current utterance.
+        Set
         <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">'off'</code>
-        when the alert is purely decorative (e.g., inside a notification center that is already
-        announced separately).
+        to drop the role entirely when a parent notification system owns the announcement.
       </p>
       <div class="rounded-lg border border-border p-6 bg-surface-raised mb-4 space-y-3">
         @for (p of politenessValues; track p) {

@@ -138,9 +138,9 @@ import { CodeBlockComponent } from 'ngx-tw/code-block';
         <li>Optional
           <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">Today / Clear / Cancel / Apply</code>
           action bar for touch contexts</li>
-        <li>Built-in time picker — toggle
-          <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">withTime</code>
-          to capture hour, minute, and (optionally) second alongside the date
+        <li>Built-in time picker — pass a
+          <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">timeConfig</code>
+          object to capture hour, minute, and (optionally) second alongside the date
         </li>
         <li>Clear-button affordance in the trigger plus a programmatic
           <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">clear()</code>

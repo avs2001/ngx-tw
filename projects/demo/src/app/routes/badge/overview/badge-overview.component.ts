@@ -64,9 +64,12 @@ import { CodeBlockComponent } from 'ngx-tw/code-block';
           <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">tw-avatar</code>
           via content projection — the badge auto-detects and adjusts spacing
         </li>
-        <li>Dismissible mode with a built-in close button and a
+        <li>Dismissible mode with a built-in close button, a
           <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">dismissed</code>
-          output
+          output, and a localizable
+          <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">dismissLabel</code>
+          for the button's
+          <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">aria-label</code>
         </li>
         <li>Attribute selector:
           <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">[twBadge]</code>

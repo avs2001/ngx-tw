@@ -255,6 +255,37 @@ const ROUNDED: SegmentedControlRounded[] = ['pill', 'md'];
       <tw-code-block [code]="statesSnippet" language="html" />
     </section>
 
+    <!-- Customization -->
+    <section class="mb-10">
+      <h2 class="text-sm font-semibold mb-3">Customization</h2>
+      <p class="text-sm text-fg-muted leading-relaxed max-w-2xl mb-4">
+        Use Angular's standard
+        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">[class]</code>
+        binding on
+        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">&lt;tw-segmented-control&gt;</code>
+        and each
+        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">&lt;tw-segmented-option&gt;</code>
+        to layer utilities. To force-override a built-in utility (for example
+        replacing the pill radius with
+        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">rounded-md</code>),
+        use the
+        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">!</code>
+        important prefix or write the rule in your own stylesheet.
+      </p>
+      <div class="rounded-lg border border-border p-6 bg-surface-raised mb-4">
+        <tw-segmented-control
+          [(value)]="customValue"
+          class="shadow-md ring-1 ring-primary-200 dark:ring-primary-800"
+          aria-label="Customized"
+        >
+          <tw-segmented-option value="day" class="uppercase tracking-wide">Day</tw-segmented-option>
+          <tw-segmented-option value="week" class="uppercase tracking-wide">Week</tw-segmented-option>
+          <tw-segmented-option value="month" class="uppercase tracking-wide">Month</tw-segmented-option>
+        </tw-segmented-control>
+      </div>
+      <tw-code-block [code]="customizationSnippet" language="html" />
+    </section>
+
     <!-- Template-Driven Forms -->
     <section class="mb-10">
       <h2 class="text-sm font-semibold mb-3">Template-Driven Forms</h2>
@@ -501,6 +532,7 @@ export class SegmentedControlExamples {
   protected readonly iconValue = signal<string | null>('grid');
   protected readonly disabledOptionValue = signal<string | null>('free');
   protected readonly disabledGroupValue = signal<string | null>('light');
+  protected readonly customValue = signal<string | null>('day');
 
   // Forms
   protected readonly tdView = signal<string | null>('list');
@@ -600,6 +632,16 @@ export class SegmentedControlExamples {
   <tw-segmented-option value="light">Light</tw-segmented-option>
   <tw-segmented-option value="dark">Dark</tw-segmented-option>
   <tw-segmented-option value="system">System</tw-segmented-option>
+</tw-segmented-control>`;
+
+  protected readonly customizationSnippet = `<tw-segmented-control
+  [(value)]="view"
+  class="shadow-md ring-1 ring-primary-200 dark:ring-primary-800"
+  aria-label="Customized"
+>
+  <tw-segmented-option value="day" class="uppercase tracking-wide">Day</tw-segmented-option>
+  <tw-segmented-option value="week" class="uppercase tracking-wide">Week</tw-segmented-option>
+  <tw-segmented-option value="month" class="uppercase tracking-wide">Month</tw-segmented-option>
 </tw-segmented-control>`;
 
   protected readonly tdTsSnippet = `protected readonly view = signal<string | null>('list');`;

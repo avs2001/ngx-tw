@@ -18,7 +18,7 @@ export type SpinnerSize = TwSize | 'inherit';
 
 const spinnerVariants = tv({
   slots: {
-    root: 'inline-flex items-center justify-center shrink-0 align-middle',
+    root: 'relative inline-flex items-center justify-center shrink-0 align-middle',
     svg: 'size-full animate-spin motion-reduce:animate-none',
     track: '',
     stroke: '',
@@ -62,7 +62,7 @@ const spinnerVariants = tv({
  *
  * Designed to compose inside other ngx-tw components:
  * - Inside `<button twButton [loading]="true">` — inherits the button's text color via `color="current"`.
- * - Inside `<tw-form-field>` as `[slot="suffix"]` — indicates async validation / pending load.
+ * - Inside `<tw-form-field>` as `twSuffix` — indicates async validation / pending load.
  * - Inline with text using `size="inherit"` — scales with the surrounding font.
  * - Centered inside cards or overlay wrappers for region-level loading states.
  *
@@ -70,7 +70,7 @@ const spinnerVariants = tv({
  * ```html
  * <tw-spinner />
  * <tw-spinner color="success" size="lg" />
- * <tw-spinner slot="suffix" size="sm" label="Validating email" />
+ * <tw-spinner twSuffix size="sm" label="Validating email" />
  * ```
  */
 @Component({
@@ -135,7 +135,7 @@ export class SpinnerComponent {
   /** Sets the spinner dimensions. `'inherit'` sizes the spinner to `1em` so it matches the surrounding font size (useful for inline text indicators). Defaults to `'md'`. */
   readonly size = input<SpinnerSize>('md');
 
-  /** When true, renders a subtle ring behind the rotating stroke. Only applies to the `'circular'` variant. Defaults to `true`. */
+  /** When true, renders a subtle ring behind the rotating stroke. Without the track ring the spinner reads as a partial arc, not a loading indicator. Only applies to the `'circular'` variant. Defaults to `true`. */
   readonly track = input(true);
 
   /** Accessible label announced by assistive technology. Rendered in a visually hidden span. Defaults to `'Loading'`. */

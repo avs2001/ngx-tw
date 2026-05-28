@@ -3,8 +3,8 @@ import { type ComponentFixture, TestBed } from '@angular/core/testing';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { OverlayModule } from '@angular/cdk/overlay';
 import { TooltipDirective } from './tooltip';
-import type { TwColor } from 'ngx-tw/core';
-import type { TooltipPosition, TooltipSize } from './tooltip';
+import type { TwColor, TwSize } from 'ngx-tw/core';
+import type { TooltipPosition } from './tooltip';
 
 // ── Test host components ──
 
@@ -29,7 +29,7 @@ class BasicTooltipHost {}
 })
 class StyledTooltipHost {
   color: TwColor = 'neutral';
-  size: TooltipSize = 'md';
+  size: TwSize = 'md';
   position: TooltipPosition = 'top';
 }
 
@@ -125,6 +125,22 @@ class EventTooltipHost {
 })
 class DelayTooltipHost {}
 
+@Component({
+  imports: [TooltipDirective],
+  template: `
+    <button
+      twTooltip="With panel class"
+      [twTooltipPanelClass]="panelClass()"
+      [twTooltipShowDelay]="0"
+    >
+      Class
+    </button>
+  `,
+})
+class PanelClassTooltipHost {
+  readonly panelClass = signal<string>('max-w-md custom-class');
+}
+
 // ── Helpers ──
 
 function getOverlayTooltip(): HTMLElement | null {
@@ -132,7 +148,7 @@ function getOverlayTooltip(): HTMLElement | null {
 }
 
 function getTooltipPanel(): HTMLElement | null {
-  return document.querySelector('tw-tooltip-overlay div');
+  return document.querySelector('tw-tooltip-overlay div div');
 }
 
 function getTrigger(fixture: ComponentFixture<unknown>): HTMLButtonElement {
@@ -252,10 +268,26 @@ describe('TooltipDirective', () => {
         expect(tooltip!.getAttribute('role')).toBe('tooltip');
       });
     }
+
+    it('should use text-on-{role} tokens for solid color foregrounds', () => {
+      const fixture = TestBed.configureTestingModule({
+        imports: [StyledTooltipHost, OverlayModule],
+      }).createComponent(StyledTooltipHost);
+      fixture.componentInstance.color = 'success';
+      fixture.detectChanges();
+
+      hoverTrigger(fixture);
+      vi.advanceTimersByTime(200);
+      fixture.detectChanges();
+
+      const panel = getTooltipPanel();
+      expect(panel?.className).toContain('text-on-success');
+      expect(panel?.className).not.toContain('text-white');
+    });
   });
 
   describe('sizes', () => {
-    const sizes: TooltipSize[] = ['sm', 'md', 'lg'];
+    const sizes: TwSize[] = ['xs', 'sm', 'md', 'lg', 'xl'];
 
     for (const size of sizes) {
       it(`should render size="${size}" without errors`, () => {
@@ -284,6 +316,10 @@ describe('TooltipDirective', () => {
       'top-end',
       'bottom-start',
       'bottom-end',
+      'left-start',
+      'left-end',
+      'right-start',
+      'right-end',
     ];
 
     for (const pos of positions) {
@@ -372,6 +408,24 @@ describe('TooltipDirective', () => {
       fixture.detectChanges();
       expect(getOverlayTooltip()).toBeNull();
     });
+
+    it('should not show on focus or mouseenter while disabled', () => {
+      const fixture = TestBed.configureTestingModule({
+        imports: [DisabledTooltipHost, OverlayModule],
+      }).createComponent(DisabledTooltipHost);
+      fixture.componentInstance.disabled.set(true);
+      fixture.detectChanges();
+
+      focusTrigger(fixture);
+      vi.advanceTimersByTime(200);
+      fixture.detectChanges();
+      expect(getOverlayTooltip()).toBeNull();
+
+      hoverTrigger(fixture);
+      vi.advanceTimersByTime(200);
+      fixture.detectChanges();
+      expect(getOverlayTooltip()).toBeNull();
+    });
   });
 
   describe('arrow', () => {
@@ -387,7 +441,6 @@ describe('TooltipDirective', () => {
 
       const tooltip = getOverlayTooltip();
       expect(tooltip).toBeTruthy();
-      // Arrow is a div with rotate-45 class inside the panel
       const arrowEl = tooltip!.querySelector('.rotate-45');
       expect(arrowEl).toBeTruthy();
     });
@@ -492,7 +545,7 @@ describe('TooltipDirective', () => {
       expect(getOverlayTooltip()!.getAttribute('role')).toBe('tooltip');
     });
 
-    it('should set aria-describedby on trigger when tooltip is visible', () => {
+    it('should set aria-describedby on trigger when tooltip is visible (via AriaDescriber)', () => {
       const fixture = TestBed.configureTestingModule({
         imports: [BasicTooltipHost, OverlayModule],
       }).createComponent(BasicTooltipHost);
@@ -505,8 +558,15 @@ describe('TooltipDirective', () => {
       vi.advanceTimersByTime(200);
       fixture.detectChanges();
 
-      const tooltipId = getOverlayTooltip()!.getAttribute('id');
-      expect(button.getAttribute('aria-describedby')).toBe(tooltipId);
+      // CDK `AriaDescriber` generates its own id (`cdk-describedby-message-*`)
+      // and references the hidden description element, NOT the role=tooltip
+      // overlay's `tw-tooltip-N` id. The hidden message element carries the
+      // tooltip text so screen readers announce it on focus.
+      const describedBy = button.getAttribute('aria-describedby');
+      expect(describedBy).toBeTruthy();
+      expect(describedBy).not.toMatch(/^tw-tooltip-/);
+      const referenced = document.getElementById(describedBy!);
+      expect(referenced?.textContent).toContain('Hello tooltip');
     });
 
     it('should remove aria-describedby when tooltip is hidden', () => {
@@ -539,6 +599,88 @@ describe('TooltipDirective', () => {
       const id = getOverlayTooltip()!.getAttribute('id');
       expect(id).toBeTruthy();
       expect(id).toMatch(/^tw-tooltip-\d+$/);
+    });
+
+    it('should route description through AriaDescriber (hidden message container present)', () => {
+      const fixture = TestBed.configureTestingModule({
+        imports: [BasicTooltipHost, OverlayModule],
+      }).createComponent(BasicTooltipHost);
+      fixture.detectChanges();
+
+      hoverTrigger(fixture);
+      vi.advanceTimersByTime(200);
+      fixture.detectChanges();
+
+      // After migration to CDK `AriaDescriber`, the hidden message container
+      // MUST exist; it is the element `aria-describedby` references for the
+      // accessible description.
+      const cdkContainers = document.querySelectorAll(
+        '.cdk-describedby-message-container',
+      );
+      expect(cdkContainers.length).toBeGreaterThan(0);
+
+      const trigger = getTrigger(fixture);
+      const describedBy = trigger.getAttribute('aria-describedby');
+      expect(describedBy).toBeTruthy();
+      // The referenced element is the AriaDescriber-generated hidden span,
+      // NOT the role=tooltip overlay.
+      const referenced = document.getElementById(describedBy!);
+      expect(referenced?.textContent).toContain('Hello tooltip');
+      expect(referenced?.getAttribute('role')).not.toBe('tooltip');
+    });
+
+    it('should set aria-describedby on each trigger element when nested tooltips share a message', () => {
+      @Component({
+        imports: [TooltipDirective],
+        template: `
+          <button twTooltip="Same message" [twTooltipShowDelay]="0">
+            <span twTooltip="Same message" [twTooltipShowDelay]="0">child</span>
+          </button>
+        `,
+      })
+      class DedupHost {}
+
+      const fixture = TestBed.configureTestingModule({
+        imports: [DedupHost, OverlayModule],
+      }).createComponent(DedupHost);
+      fixture.detectChanges();
+
+      // Trigger both tooltips by dispatching mouseenter on the outer + inner.
+      const button = fixture.nativeElement.querySelector('button')!;
+      const span = fixture.nativeElement.querySelector('span')!;
+      button.dispatchEvent(new MouseEvent('mouseenter', { bubbles: true }));
+      span.dispatchEvent(new MouseEvent('mouseenter', { bubbles: true }));
+      vi.advanceTimersByTime(0);
+      fixture.detectChanges();
+
+      // Each trigger gets exactly one aria-describedby id token; AriaDescriber
+      // dedupes the underlying message text into a single hidden container
+      // (asserted in the previous test) so AT does not announce duplicates.
+      const buttonDesc = button.getAttribute('aria-describedby') ?? '';
+      const spanDesc = span.getAttribute('aria-describedby') ?? '';
+      expect(buttonDesc.split(/\s+/).filter(Boolean).length).toBe(1);
+      expect(spanDesc.split(/\s+/).filter(Boolean).length).toBe(1);
+    });
+
+    it('should wire aria-describedby to the role=tooltip overlay for TemplateRef content (fallback path)', () => {
+      const fixture = TestBed.configureTestingModule({
+        imports: [TemplateTooltipHost, OverlayModule],
+      }).createComponent(TemplateTooltipHost);
+      fixture.detectChanges();
+
+      hoverTrigger(fixture);
+      vi.advanceTimersByTime(0);
+      fixture.detectChanges();
+
+      const trigger = getTrigger(fixture);
+      const describedBy = trigger.getAttribute('aria-describedby');
+      expect(describedBy).toBeTruthy();
+      // TemplateRef content bypasses AriaDescriber (which dedupes by string
+      // key); aria-describedby falls back to the overlay's tw-tooltip-N id so
+      // AT still has a description target.
+      expect(describedBy).toMatch(/^tw-tooltip-\d+$/);
+      const referenced = document.getElementById(describedBy!);
+      expect(referenced?.getAttribute('role')).toBe('tooltip');
     });
   });
 
@@ -621,6 +763,39 @@ describe('TooltipDirective', () => {
       vi.advanceTimersByTime(0);
       fixture.detectChanges();
       expect(getOverlayTooltip()).toBeNull();
+    });
+  });
+
+  describe('panel class', () => {
+    it('should merge consumer-supplied panel class into the panel slot', () => {
+      const fixture = TestBed.configureTestingModule({
+        imports: [PanelClassTooltipHost, OverlayModule],
+      }).createComponent(PanelClassTooltipHost);
+      fixture.detectChanges();
+
+      hoverTrigger(fixture);
+      vi.advanceTimersByTime(0);
+      fixture.detectChanges();
+
+      const panel = getTooltipPanel();
+      expect(panel?.className).toContain('max-w-md');
+      expect(panel?.className).toContain('custom-class');
+    });
+
+    it('should accept multiple classes in a space-separated string', () => {
+      const fixture = TestBed.configureTestingModule({
+        imports: [PanelClassTooltipHost, OverlayModule],
+      }).createComponent(PanelClassTooltipHost);
+      fixture.componentInstance.panelClass.set('a-class b-class');
+      fixture.detectChanges();
+
+      hoverTrigger(fixture);
+      vi.advanceTimersByTime(0);
+      fixture.detectChanges();
+
+      const panel = getTooltipPanel();
+      expect(panel?.className).toContain('a-class');
+      expect(panel?.className).toContain('b-class');
     });
   });
 

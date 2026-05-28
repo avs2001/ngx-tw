@@ -239,9 +239,23 @@ import { CodeBlockComponent } from 'ngx-tw/code-block';
     </section>
 
     <!-- Types -->
-    <section>
+    <section class="mb-10">
       <h2 class="text-sm font-semibold mb-3">Types</h2>
       <tw-code-block [code]="typesSnippet" language="ts" />
+    </section>
+
+    <!-- Internationalisation -->
+    <section>
+      <h2 class="text-sm font-semibold mb-3">Internationalisation</h2>
+      <p class="text-sm text-fg-muted leading-relaxed max-w-2xl mb-4">
+        Every accessible label and live-region announcement is sourced from
+        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">TimePickerIntl</code>.
+        Provide a partial override anywhere in the injector tree with
+        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">provideTimePickerIntl</code>
+        to localise field labels, the meridiem option labels, and the spoken
+        announcements.
+      </p>
+      <tw-code-block [code]="intlSnippet" language="ts" />
     </section>
   `,
 })
@@ -268,4 +282,23 @@ interface TimePickerInputEvent<D> {
   rawText: string;
   parsed: D | null;
 }`;
+
+  protected readonly intlSnippet = `import { provideTimePickerIntl } from 'ngx-tw/time-picker';
+
+export const appConfig: ApplicationConfig = {
+  providers: [
+    provideTimePickerIntl({
+      groupLabel: 'Heure',
+      hoursLabel: 'Heures',
+      minutesLabel: 'Minutes',
+      secondsLabel: 'Secondes',
+      meridiemGroupLabel: 'AM ou PM',
+      amLabel: 'Matin',
+      pmLabel: 'Soir',
+      clearLabel: 'Effacer l\\'heure',
+      clearedAnnouncement: 'Heure effacée',
+      selectedAnnouncement: (time) => \`\${time} sélectionnée\`,
+    }),
+  ],
+};`;
 }

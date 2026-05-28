@@ -68,6 +68,24 @@ describe('IconComponent', () => {
       expect(svg.querySelector('polyline')).not.toBeNull();
       expect(svg.querySelector('polygon')).toBeNull();
     });
+
+    it('should rebuild SVG when name toggles from a value to undefined and back', () => {
+      fixture.componentRef.setInput('name', 'star');
+      fixture.detectChanges();
+      const svgBefore = fixture.nativeElement.querySelector('svg');
+      expect(svgBefore).not.toBeNull();
+
+      fixture.componentRef.setInput('name', undefined);
+      fixture.detectChanges();
+      expect(fixture.nativeElement.querySelector('svg')).toBeNull();
+
+      fixture.componentRef.setInput('name', 'check');
+      fixture.detectChanges();
+      const svgAfter = fixture.nativeElement.querySelector('svg');
+      expect(svgAfter).not.toBeNull();
+      expect(svgAfter).not.toBe(svgBefore);
+      expect(svgAfter.querySelector('polyline')).not.toBeNull();
+    });
   });
 
   // === Color variants ===
@@ -113,22 +131,29 @@ describe('IconComponent', () => {
     }
   });
 
-  // === Stroke width ===
+  // === SVG config ===
 
-  describe('Stroke width', () => {
-    it('should apply strokeWidth to the SVG', () => {
+  describe('SVG config', () => {
+    it('should default strokeWidth to 2 when svg config is unset', () => {
       fixture.componentRef.setInput('name', 'star');
-      fixture.componentRef.setInput('strokeWidth', 3);
+      fixture.detectChanges();
+
+      const svg = fixture.nativeElement.querySelector('svg');
+      expect(svg.getAttribute('stroke-width')).toBe('2');
+    });
+
+    it('should apply svg.strokeWidth to the SVG', () => {
+      fixture.componentRef.setInput('name', 'star');
+      fixture.componentRef.setInput('svg', { strokeWidth: 3 });
       fixture.detectChanges();
 
       const svg = fixture.nativeElement.querySelector('svg');
       expect(svg.getAttribute('stroke-width')).toBe('3');
     });
 
-    it('should scale stroke width inversely with size when absoluteStrokeWidth is true', () => {
+    it('should scale stroke width inversely with size when svg.absoluteStrokeWidth is true', () => {
       fixture.componentRef.setInput('name', 'star');
-      fixture.componentRef.setInput('strokeWidth', 2);
-      fixture.componentRef.setInput('absoluteStrokeWidth', true);
+      fixture.componentRef.setInput('svg', { strokeWidth: 2, absoluteStrokeWidth: true });
       fixture.componentRef.setInput('size', 'xl');
       fixture.detectChanges();
 
@@ -137,22 +162,17 @@ describe('IconComponent', () => {
       expect(svg.getAttribute('stroke-width')).toBe('1.5');
     });
 
-    it('should not scale stroke width when absoluteStrokeWidth is false', () => {
+    it('should not scale stroke width when svg.absoluteStrokeWidth is false', () => {
       fixture.componentRef.setInput('name', 'star');
-      fixture.componentRef.setInput('strokeWidth', 2);
-      fixture.componentRef.setInput('absoluteStrokeWidth', false);
+      fixture.componentRef.setInput('svg', { strokeWidth: 2, absoluteStrokeWidth: false });
       fixture.componentRef.setInput('size', 'xl');
       fixture.detectChanges();
 
       const svg = fixture.nativeElement.querySelector('svg');
       expect(svg.getAttribute('stroke-width')).toBe('2');
     });
-  });
 
-  // === ViewBox ===
-
-  describe('ViewBox', () => {
-    it('should use default viewBox "0 0 24 24"', () => {
+    it('should use default viewBox "0 0 24 24" when svg config is unset', () => {
       fixture.componentRef.setInput('name', 'star');
       fixture.detectChanges();
 
@@ -160,13 +180,23 @@ describe('IconComponent', () => {
       expect(svg.getAttribute('viewBox')).toBe('0 0 24 24');
     });
 
-    it('should apply custom viewBox', () => {
+    it('should apply custom svg.viewBox', () => {
       fixture.componentRef.setInput('img', CHECK_ICON);
-      fixture.componentRef.setInput('viewBox', '0 0 16 16');
+      fixture.componentRef.setInput('svg', { viewBox: '0 0 16 16' });
       fixture.detectChanges();
 
       const svg = fixture.nativeElement.querySelector('svg');
       expect(svg.getAttribute('viewBox')).toBe('0 0 16 16');
+    });
+
+    it('should merge partial svg config with defaults for unset fields', () => {
+      fixture.componentRef.setInput('name', 'star');
+      fixture.componentRef.setInput('svg', { strokeWidth: 1.5 });
+      fixture.detectChanges();
+
+      const svg = fixture.nativeElement.querySelector('svg');
+      expect(svg.getAttribute('stroke-width')).toBe('1.5');
+      expect(svg.getAttribute('viewBox')).toBe('0 0 24 24');
     });
   });
 
@@ -252,26 +282,26 @@ describe('IconComponent', () => {
       expect(svgAfter).toBe(svgBefore);
     });
 
-    it('should rebuild SVG when strokeWidth changes', () => {
+    it('should rebuild SVG when svg.strokeWidth changes', () => {
       fixture.componentRef.setInput('name', 'star');
       fixture.detectChanges();
 
       const svgBefore = fixture.nativeElement.querySelector('svg');
 
-      fixture.componentRef.setInput('strokeWidth', 3);
+      fixture.componentRef.setInput('svg', { strokeWidth: 3 });
       fixture.detectChanges();
 
       const svgAfter = fixture.nativeElement.querySelector('svg');
       expect(svgAfter).not.toBe(svgBefore);
     });
 
-    it('should rebuild SVG when viewBox changes', () => {
+    it('should rebuild SVG when svg.viewBox changes', () => {
       fixture.componentRef.setInput('name', 'star');
       fixture.detectChanges();
 
       const svgBefore = fixture.nativeElement.querySelector('svg');
 
-      fixture.componentRef.setInput('viewBox', '0 0 16 16');
+      fixture.componentRef.setInput('svg', { viewBox: '0 0 16 16' });
       fixture.detectChanges();
 
       const svgAfter = fixture.nativeElement.querySelector('svg');

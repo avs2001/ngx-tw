@@ -55,6 +55,53 @@ import { CodeBlockComponent } from 'ngx-tw/code-block';
     </section>
 
     <section class="mb-10">
+      <h2 class="text-sm font-semibold mb-3">Composition patterns</h2>
+      <p class="text-sm text-fg-muted leading-relaxed max-w-2xl mb-4">
+        The card is intentionally non-interactive and unannotated for assistive
+        technology — it is a styling container, not a semantic element. When a card
+        needs keyboard focus, click handling, or a landmark role, compose the right
+        primitive around or inside it instead of adding inputs to
+        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">tw-card</code>.
+      </p>
+
+      <h3 class="text-xs font-semibold text-fg-muted uppercase tracking-wide mt-6 mb-2">Clickable card</h3>
+      <p class="text-sm text-fg-muted leading-relaxed max-w-2xl mb-3">
+        Wrap the card in a native
+        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">&lt;a&gt;</code>
+        or
+        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">&lt;button&gt;</code>
+        when the whole surface should activate a single destination. The native
+        element supplies the role, tab stop, keyboard handling, and focus ring; the
+        card stays purely visual.
+      </p>
+      <tw-code-block [code]="clickableCardSnippet" language="html" />
+
+      <h3 class="text-xs font-semibold text-fg-muted uppercase tracking-wide mt-6 mb-2">Interactive rows inside a card</h3>
+      <p class="text-sm text-fg-muted leading-relaxed max-w-2xl mb-3">
+        For a list of selectable rows inside a card, use
+        <a routerLink="/item" class="text-primary-600 hover:underline">tw-item</a>
+        with the
+        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">interactive</code>
+        input. Each item carries its own role, tabindex, focus ring, and
+        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">selected</code>
+        output — the card only frames them.
+      </p>
+      <tw-code-block [code]="interactiveRowSnippet" language="html" />
+
+      <h3 class="text-xs font-semibold text-fg-muted uppercase tracking-wide mt-6 mb-2">Card as a landmark region</h3>
+      <p class="text-sm text-fg-muted leading-relaxed max-w-2xl mb-3">
+        When a card represents a discrete document region (an article preview, a
+        labelled stat panel), promote it to a landmark by adding
+        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">role</code>
+        and an
+        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">aria-labelledby</code>
+        pointing at the header element. The card stays a generic container; the
+        consumer chooses the semantic.
+      </p>
+      <tw-code-block [code]="landmarkSnippet" language="html" />
+    </section>
+
+    <section class="mb-10">
       <h2 class="text-sm font-semibold mb-3">Key Features</h2>
       <ul class="list-disc list-inside text-sm text-fg-muted space-y-1.5">
         <li>Three variants:
@@ -124,4 +171,34 @@ export class CardOverview {
   CardFooterDirective,
   CardMediaDirective,
 } from 'ngx-tw/card';`;
+
+  protected readonly clickableCardSnippet = `<a routerLink="/reports/q1" class="block focus:outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500 rounded-lg">
+  <tw-card>
+    <div twCardHeader>Q1 revenue report</div>
+    <div twCardBody>
+      <p>Total revenue climbed to $2.4M, up 18% year-over-year.</p>
+    </div>
+    <div twCardFooter>Updated April 22, 2026</div>
+  </tw-card>
+</a>`;
+
+  protected readonly interactiveRowSnippet = `<tw-card variant="outlined" size="xs">
+  @for (member of teamMembers; track member.id) {
+    <tw-item
+      twCardBody
+      interactive
+      (selected)="openProfile(member)"
+    >
+      <span twItemTitle>{{ member.name }}</span>
+      <span twItemDescription>{{ member.role }}</span>
+    </tw-item>
+  }
+</tw-card>`;
+
+  protected readonly landmarkSnippet = `<tw-card role="region" aria-labelledby="q1-report-title">
+  <div twCardHeader id="q1-report-title">Q1 revenue report</div>
+  <div twCardBody>
+    <p>Total revenue climbed to $2.4M, up 18% year-over-year.</p>
+  </div>
+</tw-card>`;
 }

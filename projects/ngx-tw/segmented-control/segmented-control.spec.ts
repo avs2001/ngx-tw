@@ -5,7 +5,7 @@ import { FormControl, FormsModule, ReactiveFormsModule } from '@angular/forms';
 import { form, FormField } from '@angular/forms/signals';
 import { SegmentedControlComponent, SegmentedControlOptionComponent } from './segmented-control';
 import type { SegmentedControlVariant, SegmentedControlRounded } from './segmented-control';
-import type { TwColor, TwSize } from 'ngx-tw/core';
+import type { TwColor, TwOrientation, TwSize } from 'ngx-tw/core';
 
 // ── Test hosts ──
 
@@ -21,10 +21,11 @@ import type { TwColor, TwSize } from 'ngx-tw/core';
       [size]="size()"
       [orientation]="orientation()"
       [disabled]="disabled()"
+      [class]="rootClass()"
     >
-      <tw-segmented-option value="a">Option A</tw-segmented-option>
-      <tw-segmented-option value="b">Option B</tw-segmented-option>
-      <tw-segmented-option value="c" [disabled]="optionCDisabled()">Option C</tw-segmented-option>
+      <tw-segmented-option value="a" [class]="optionClass()">Option A</tw-segmented-option>
+      <tw-segmented-option value="b" [class]="optionClass()">Option B</tw-segmented-option>
+      <tw-segmented-option value="c" [disabled]="optionCDisabled()" [class]="optionClass()">Option C</tw-segmented-option>
     </tw-segmented-control>
   `,
 })
@@ -34,9 +35,11 @@ class TestHost {
   rounded = signal<SegmentedControlRounded>('pill');
   color = signal<TwColor>('primary');
   size = signal<TwSize>('md');
-  orientation = signal<'horizontal' | 'vertical'>('horizontal');
+  orientation = signal<TwOrientation>('horizontal');
   disabled = signal(false);
   optionCDisabled = signal(false);
+  rootClass = signal('');
+  optionClass = signal('');
 }
 
 @Component({
@@ -238,6 +241,35 @@ describe('SegmentedControl', () => {
       expect(options[1].getAttribute('aria-checked')).toBe('true');
       expect(host.selected()).toBe('b');
     });
+
+    it('should apply -solid-fg slot on filled-variant active option for every role', () => {
+      const cases: { color: TwColor; cls: string }[] = [
+        { color: 'primary', cls: 'text-primary-solid-fg' },
+        { color: 'secondary', cls: 'text-secondary-solid-fg' },
+        { color: 'accent', cls: 'text-accent-solid-fg' },
+        { color: 'info', cls: 'text-info-solid-fg' },
+        { color: 'success', cls: 'text-success-solid-fg' },
+        { color: 'warning', cls: 'text-warning-solid-fg' },
+        { color: 'error', cls: 'text-error-solid-fg' },
+      ];
+      host.variant.set('filled');
+      for (const { color, cls } of cases) {
+        host.color.set(color);
+        fixture.detectChanges();
+        const active = getOptions(fixture)[0];
+        expect(active.className).toContain(cls);
+      }
+    });
+
+    it('should consume slot tokens on outline-variant active option (no `dark:` overrides)', () => {
+      host.variant.set('outline');
+      host.color.set('primary');
+      fixture.detectChanges();
+      const active = getOptions(fixture)[0];
+      expect(active.className).toContain('ring-primary-border-strong');
+      expect(active.className).toContain('text-primary-fg');
+      expect(active.className).not.toMatch(/\bdark:/);
+    });
   });
 
   // ── Interactions ──
@@ -408,6 +440,108 @@ describe('SegmentedControl', () => {
       expect(options[1].getAttribute('tabindex')).toBe('0');
     });
   });
+
+  // ── Customization (standard `[class]` binding) ──
+  // `rootClass` and `optionClass` inputs were removed — consumers use
+  // Angular's standard `[class]` binding instead. `tv()` runs with
+  // `twMerge: true` so consumer classes still win on conflicts.
+
+  describe('Customization', () => {
+    it('should merge consumer [class] onto the radiogroup root', () => {
+      host.rootClass.set('shadow-2xl my-marker');
+      fixture.detectChanges();
+      const control = getControl(fixture);
+      expect(control.classList).toContain('shadow-2xl');
+      expect(control.classList).toContain('my-marker');
+    });
+
+    it('should merge consumer [class] onto every option', () => {
+      host.optionClass.set('uppercase tracking-wide');
+      fixture.detectChanges();
+      for (const opt of getOptions(fixture)) {
+        expect(opt.classList).toContain('uppercase');
+        expect(opt.classList).toContain('tracking-wide');
+      }
+    });
+
+    it('should keep consumer [class] on disabled options', () => {
+      host.optionClass.set('uppercase');
+      host.optionCDisabled.set(true);
+      fixture.detectChanges();
+      const disabledOption = getOptions(fixture)[2];
+      expect(disabledOption.classList).toContain('uppercase');
+      expect(disabledOption.classList).toContain('opacity-50');
+    });
+
+  });
+
+  // ── Compound variants resolution ──
+  // tv() compoundVariants own the active styling for every (variant × color)
+  // tuple. These tests assert the resolved class strings match the documented
+  // contract — adding new colors or variants requires extending the compound
+  // table, not patching consumer code.
+
+  describe('Compound variants', () => {
+    it('should apply inactive option styling on non-active options regardless of variant', () => {
+      const variants: SegmentedControlVariant[] = ['surface', 'filled', 'outline'];
+      for (const v of variants) {
+        host.variant.set(v);
+        fixture.detectChanges();
+        const inactive = getOptions(fixture)[1];
+        expect(inactive.className).toContain('text-fg-muted');
+        expect(inactive.className).toContain('hover:text-fg');
+      }
+    });
+
+    it('should apply surface-variant active classes for every color', () => {
+      const cases: { color: TwColor; cls: string }[] = [
+        { color: 'primary', cls: 'text-primary-fg' },
+        { color: 'secondary', cls: 'text-secondary-fg' },
+        { color: 'accent', cls: 'text-accent-fg' },
+        { color: 'info', cls: 'text-info-fg' },
+        { color: 'success', cls: 'text-success-fg' },
+        { color: 'warning', cls: 'text-warning-fg' },
+        { color: 'error', cls: 'text-error-fg' },
+      ];
+      host.variant.set('surface');
+      for (const { color, cls } of cases) {
+        host.color.set(color);
+        fixture.detectChanges();
+        const active = getOptions(fixture)[0];
+        expect(active.className).toContain('bg-surface');
+        expect(active.className).toContain('shadow-sm');
+        expect(active.className).toContain(cls);
+      }
+    });
+
+    it('should apply disabled option classes via tv() variant, not a short-circuit', () => {
+      host.optionCDisabled.set(true);
+      fixture.detectChanges();
+      const disabled = getOptions(fixture)[2];
+      expect(disabled.className).toContain('opacity-50');
+      expect(disabled.className).toContain('pointer-events-none');
+      expect(disabled.className).toContain('cursor-default');
+    });
+
+    it('should keep the active color underneath the disabled layer (no short-circuit)', () => {
+      // Behavior change in S16: with the disabled axis moved into the tv()
+      // variant block, a disabled+active option still resolves its active
+      // color compound — it's now visually "faded but still selected" rather
+      // than collapsed to muted styling. Locks the new behavior in.
+      host.variant.set('filled');
+      host.color.set('success');
+      host.selected.set('c');
+      host.optionCDisabled.set(true);
+      fixture.detectChanges();
+      const activeDisabled = getOptions(fixture)[2];
+      // Active color compound is still applied (faded-but-selected).
+      expect(activeDisabled.className).toContain('bg-success-solid');
+      expect(activeDisabled.className).toContain('text-success-solid-fg');
+      // Disabled axis adds the opacity / pointer-events layer on top.
+      expect(activeDisabled.className).toContain('opacity-50');
+      expect(activeDisabled.className).toContain('pointer-events-none');
+    });
+  });
 });
 
 // ── ControlValueAccessor ──
@@ -516,5 +650,29 @@ describe('SegmentedControl signal forms', () => {
     fixture.detectChanges();
     const options = getOptions(fixture);
     expect(options[1].getAttribute('aria-checked')).toBe('true');
+  });
+});
+
+// ── Dev-mode parent guard ──
+
+@Component({
+  imports: [SegmentedControlOptionComponent],
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  template: `<tw-segmented-option value="orphan">Orphan</tw-segmented-option>`,
+})
+class OrphanOptionHost {}
+
+describe('SegmentedControlOption — dev-mode parent guard', () => {
+  it('should log a console.error when rendered outside a parent <tw-segmented-control>', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    await TestBed.configureTestingModule({
+      imports: [OrphanOptionHost],
+    }).compileComponents();
+    const fixture = TestBed.createComponent(OrphanOptionHost);
+    fixture.detectChanges();
+    expect(errorSpy).toHaveBeenCalledWith(
+      expect.stringContaining('<tw-segmented-option> must be a child of <tw-segmented-control>'),
+    );
+    errorSpy.mockRestore();
   });
 });

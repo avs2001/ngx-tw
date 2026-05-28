@@ -2,11 +2,11 @@ import { ChangeDetectionStrategy, Component, inject, type TemplateRef, viewChild
 import { RouterLink } from '@angular/router';
 import {
   TwDialog,
-  TwDialogActionsDirective,
-  TwDialogCloseDirective,
-  TwDialogContentDirective,
-  TwDialogSubtitleDirective,
-  TwDialogTitleDirective,
+  DialogActionsDirective,
+  DialogCloseDirective,
+  DialogContentDirective,
+  DialogSubtitleDirective,
+  DialogTitleDirective,
 } from 'ngx-tw/dialog';
 import { ButtonDirective } from 'ngx-tw/button';
 import { CodeBlockComponent } from 'ngx-tw/code-block';
@@ -16,11 +16,11 @@ import { CodeBlockComponent } from 'ngx-tw/code-block';
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
     ButtonDirective,
-    TwDialogTitleDirective,
-    TwDialogSubtitleDirective,
-    TwDialogContentDirective,
-    TwDialogActionsDirective,
-    TwDialogCloseDirective,
+    DialogTitleDirective,
+    DialogSubtitleDirective,
+    DialogContentDirective,
+    DialogActionsDirective,
+    DialogCloseDirective,
     CodeBlockComponent,
     RouterLink,
   ],
@@ -45,14 +45,18 @@ import { CodeBlockComponent } from 'ngx-tw/code-block';
         <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">role="dialog"</code>
         (or
         <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">"alertdialog"</code>
-        for destructive confirmations) and, when
-        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">ariaModal</code>
-        is set, makes the rest of the page inert. The
+        for destructive confirmations) and ships with
+        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">aria-modal="true"</code>
+        by default so the rest of the page is treated as inert by assistive tech. The
         <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">twDialogTitle</code>
-        directive auto-registers its id with the container's
+        and
+        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">twDialogDescription</code>
+        directives auto-register their ids with the container's
         <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">aria-labelledby</code>
-        queue, so the dialog always has an accessible name as long as you render a titled header —
-        otherwise pass
+        and
+        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">aria-describedby</code>
+        queues, so the dialog always has an accessible name and description as long as you render a
+        titled header — otherwise pass
         <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">ariaLabel</code>
         in the config.
       </p>
@@ -238,12 +242,13 @@ export const appConfig: ApplicationConfig = {
   TwDialog,
   TwDialogRef,
   TW_DIALOG_DATA,
-  TwDialogTitleDirective,
-  TwDialogSubtitleDirective,
-  TwDialogContentDirective,
-  TwDialogActionsDirective,
-  TwDialogCloseDirective,
-  TwDialogHeaderDirective,
-  TwDialogIconDirective,
+  DialogTitleDirective,
+  DialogSubtitleDirective,
+  DialogDescriptionDirective,
+  DialogContentDirective,
+  DialogActionsDirective,
+  DialogCloseDirective,
+  DialogHeaderDirective,
+  DialogIconDirective,
 } from 'ngx-tw/dialog';`;
 }

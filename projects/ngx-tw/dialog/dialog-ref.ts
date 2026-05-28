@@ -4,7 +4,7 @@ import { ESCAPE, hasModifierKey } from '@angular/cdk/keycodes';
 import { filter, merge, type Observable, ReplaySubject, take } from 'rxjs';
 import type { FocusOrigin } from '@angular/cdk/a11y';
 import type { TwDialogConfig } from './dialog-config';
-import type { TwDialogContainer, TwDialogState } from './dialog-container';
+import type { DialogContainer, DialogState } from './dialog-container';
 
 /**
  * Reference to a dialog opened via {@link TwDialog.open}. Drives the dialog
@@ -21,24 +21,23 @@ export class TwDialogRef<R = unknown, C = unknown> {
   readonly componentRef: ComponentRef<C> | null = null;
 
   /** Current lifecycle state. Reactively readable. */
-  readonly state: Signal<TwDialogState>;
+  readonly state: Signal<DialogState>;
 
   /** When `true`, close-via-escape and close-via-backdrop are disabled. */
   disableClose: boolean | undefined;
 
-  private readonly stateSignal = signal<TwDialogState>('opening');
+  private readonly stateSignal = signal<DialogState>('opening');
   private readonly afterOpenedSubject = new ReplaySubject<void>(1);
   private readonly beforeClosedSubject = new ReplaySubject<R | undefined>(1);
   private readonly afterClosedSubject = new ReplaySubject<R | undefined>(1);
 
   private pendingResult: R | undefined;
   private closeFocusOrigin: FocusOrigin | undefined;
-  private closeFallbackTimer: ReturnType<typeof setTimeout> | null = null;
 
   constructor(
     private readonly cdkRef: CdkDialogRef<R, C>,
     readonly config: TwDialogConfig<unknown, R>,
-    readonly containerInstance: TwDialogContainer,
+    readonly containerInstance: DialogContainer,
   ) {
     this.id = cdkRef.id;
     this.disableClose = config.disableClose;
@@ -59,18 +58,15 @@ export class TwDialogRef<R = unknown, C = unknown> {
         this.afterOpenedSubject.complete();
       });
 
+    // The container owns the exit-animation fallback timer (see
+    // ANIMATION_FALLBACK_PADDING in dialog-container.ts), so we trust its
+    // `closed` emission and run finishClose exactly once from here.
     animationChanges
       .pipe(
         filter((event) => event.state === 'closed'),
         take(1),
       )
-      .subscribe(() => {
-        if (this.closeFallbackTimer) {
-          clearTimeout(this.closeFallbackTimer);
-          this.closeFallbackTimer = null;
-        }
-        this.finishClose();
-      });
+      .subscribe(() => this.finishClose());
 
     cdkRef.overlayRef.detachments().subscribe(() => {
       if (this.stateSignal() !== 'closed') {
@@ -169,23 +165,11 @@ export class TwDialogRef<R = unknown, C = unknown> {
 
     this.cdkRef.overlayRef.detachBackdrop();
     this.containerInstance._startExitAnimation();
-
-    // Fallback timer ensures we clean up even if `animationStateChanged` is missed
-    // (e.g. the host view is destroyed mid-animation).
-    this.closeFallbackTimer = setTimeout(
-      () => this.finishClose(),
-      this.containerInstance.exitAnimationDuration + 100,
-    );
   }
 
   private finishClose(): void {
     if (this.stateSignal() === 'closed') return;
     this.stateSignal.set('closed');
-
-    if (this.closeFallbackTimer) {
-      clearTimeout(this.closeFallbackTimer);
-      this.closeFallbackTimer = null;
-    }
 
     this.afterClosedSubject.next(this.pendingResult);
     this.afterClosedSubject.complete();

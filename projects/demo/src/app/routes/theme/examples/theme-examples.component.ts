@@ -2,10 +2,8 @@ import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 import {
   ThemeService,
   ThemeDirective,
-  THEMES,
-  RESOLVED_THEMES,
-  type Theme,
-  type ResolvedTheme,
+  TW_THEMES,
+  TW_RESOLVED_THEMES,
 } from 'ngx-tw/theme';
 
 interface TokenSwatch {
@@ -146,7 +144,7 @@ const TOKEN_GROUPS: TokenGroup[] = [
         <div class="flex gap-2 mb-4">
           @for (t of themes; track t) {
             <button
-              class="px-4 py-2 rounded-md text-sm font-medium transition-colors duration-200
+              class="px-4 py-2 rounded-md text-sm font-medium transition-colors duration-normal
                      border border-border
                      focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500"
               [class.bg-primary-600]="themeService.theme() === t"
@@ -162,7 +160,7 @@ const TOKEN_GROUPS: TokenGroup[] = [
         </div>
         <button
           class="px-4 py-2 rounded-md text-sm font-medium bg-primary-600 text-white
-                 hover:bg-primary-700 transition-colors duration-200
+                 hover:bg-primary-700 transition-colors duration-normal
                  focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500"
           (click)="themeService.cycleTheme()"
         >
@@ -240,7 +238,7 @@ export const appConfig = {{ '{' }}
 })
 export class ThemeExamples {
   protected readonly themeService = inject(ThemeService);
-  protected readonly themes = THEMES;
-  protected readonly resolvedThemes = RESOLVED_THEMES;
+  protected readonly themes = TW_THEMES;
+  protected readonly resolvedThemes = TW_RESOLVED_THEMES;
   protected readonly tokenGroups = TOKEN_GROUPS;
 }

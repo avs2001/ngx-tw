@@ -27,49 +27,55 @@ import { CodeBlockComponent } from 'ngx-tw/code-block';
               <td class="px-4 py-2 font-mono text-xs">twTooltip</td>
               <td class="px-4 py-2 font-mono text-xs text-fg-muted">string | TemplateRef&lt;void&gt;</td>
               <td class="px-4 py-2 font-mono text-xs text-fg-muted">required</td>
-              <td class="px-4 py-2 text-fg-muted">The tooltip content; strings render as text and are registered with <code class="font-mono">AriaDescriber</code>, while a <code class="font-mono">TemplateRef</code> renders via <code class="font-mono">ngTemplateOutlet</code>.</td>
+              <td class="px-4 py-2 text-fg-muted">The tooltip content. Strings render as text; TemplateRef renders via ngTemplateOutlet.</td>
             </tr>
             <tr>
               <td class="px-4 py-2 font-mono text-xs">twTooltipPosition</td>
               <td class="px-4 py-2 font-mono text-xs text-fg-muted">TooltipPosition</td>
               <td class="px-4 py-2 font-mono text-xs text-fg-muted">'top'</td>
-              <td class="px-4 py-2 text-fg-muted">Preferred placement relative to the trigger; CDK flips to a fallback side if the preferred position doesn't fit the viewport.</td>
+              <td class="px-4 py-2 text-fg-muted">Preferred placement relative to the trigger. CDK handles fallback. Defaults to <code class="font-mono">'top'</code>.</td>
             </tr>
             <tr>
               <td class="px-4 py-2 font-mono text-xs">twTooltipColor</td>
               <td class="px-4 py-2 font-mono text-xs text-fg-muted">TwColor</td>
               <td class="px-4 py-2 font-mono text-xs text-fg-muted">'neutral'</td>
-              <td class="px-4 py-2 text-fg-muted">Semantic color palette for the tooltip panel and arrow.</td>
+              <td class="px-4 py-2 text-fg-muted">Semantic color palette for the tooltip. Defaults to <code class="font-mono">'neutral'</code>.</td>
             </tr>
             <tr>
               <td class="px-4 py-2 font-mono text-xs">twTooltipSize</td>
-              <td class="px-4 py-2 font-mono text-xs text-fg-muted">TooltipSize</td>
+              <td class="px-4 py-2 font-mono text-xs text-fg-muted">TwSize</td>
               <td class="px-4 py-2 font-mono text-xs text-fg-muted">'md'</td>
-              <td class="px-4 py-2 text-fg-muted">Controls panel padding, font size, and maximum width.</td>
+              <td class="px-4 py-2 text-fg-muted">Controls padding, font size, and maximum width. Defaults to <code class="font-mono">'md'</code>.</td>
             </tr>
             <tr>
               <td class="px-4 py-2 font-mono text-xs">twTooltipShowDelay</td>
               <td class="px-4 py-2 font-mono text-xs text-fg-muted">number</td>
               <td class="px-4 py-2 font-mono text-xs text-fg-muted">200</td>
-              <td class="px-4 py-2 text-fg-muted">Milliseconds to wait before showing after the trigger event.</td>
+              <td class="px-4 py-2 text-fg-muted">Milliseconds to wait before showing after trigger. Defaults to <code class="font-mono">200</code>.</td>
             </tr>
             <tr>
               <td class="px-4 py-2 font-mono text-xs">twTooltipHideDelay</td>
               <td class="px-4 py-2 font-mono text-xs text-fg-muted">number</td>
               <td class="px-4 py-2 font-mono text-xs text-fg-muted">0</td>
-              <td class="px-4 py-2 text-fg-muted">Milliseconds to wait before hiding after the trigger ends.</td>
+              <td class="px-4 py-2 text-fg-muted">Milliseconds to wait before hiding after trigger ends. Defaults to <code class="font-mono">0</code>.</td>
             </tr>
             <tr>
               <td class="px-4 py-2 font-mono text-xs">twTooltipDisabled</td>
               <td class="px-4 py-2 font-mono text-xs text-fg-muted">boolean</td>
               <td class="px-4 py-2 font-mono text-xs text-fg-muted">false</td>
-              <td class="px-4 py-2 text-fg-muted">When true, suppresses all triggers and tears down any visible overlay immediately.</td>
+              <td class="px-4 py-2 text-fg-muted">When true, tooltip never shows. Defaults to <code class="font-mono">false</code>.</td>
             </tr>
             <tr>
               <td class="px-4 py-2 font-mono text-xs">twTooltipArrow</td>
               <td class="px-4 py-2 font-mono text-xs text-fg-muted">boolean</td>
               <td class="px-4 py-2 font-mono text-xs text-fg-muted">true</td>
-              <td class="px-4 py-2 text-fg-muted">When true, renders an arrow pointing to the trigger side.</td>
+              <td class="px-4 py-2 text-fg-muted">When true, renders an arrow pointing to the trigger. Defaults to <code class="font-mono">true</code>.</td>
+            </tr>
+            <tr>
+              <td class="px-4 py-2 font-mono text-xs">twTooltipPanelClass</td>
+              <td class="px-4 py-2 font-mono text-xs text-fg-muted">string | string[]</td>
+              <td class="px-4 py-2 font-mono text-xs text-fg-muted">''</td>
+              <td class="px-4 py-2 text-fg-muted">Optional class string (space-separated) merged into the panel slot for consumer customization.</td>
             </tr>
           </tbody>
         </table>

@@ -1,7 +1,6 @@
 import {
   computed,
   Directive,
-  ElementRef,
   inject,
   input,
   type OnDestroy,
@@ -10,9 +9,8 @@ import {
 import { _IdGenerator } from '@angular/cdk/a11y';
 import { CdkScrollable } from '@angular/cdk/scrolling';
 import type { TwColor } from 'ngx-tw/core';
-import { TwDialog } from './dialog';
 import { TwDialogRef } from './dialog-ref';
-import { TwDialogContainer } from './dialog-container';
+import { DialogContainer } from './dialog-container';
 
 /**
  * Header wrapper for a dialog. Provides consistent padding and spacing for
@@ -25,17 +23,19 @@ import { TwDialogContainer } from './dialog-container';
     class: 'flex items-start gap-3 px-6 pt-6 pb-4',
   },
 })
-export class TwDialogHeaderDirective {}
+export class DialogHeaderDirective {}
 
+// Slot tokens own light/dark contrast — no `dark:` overrides, no shade picks.
+// See role slot conventions in `projects/ngx-tw/theme/_semantic.css`.
 const ICON_COLOR_CLASSES: Record<TwColor, string> = {
-  primary: 'bg-primary-50 text-primary-600 dark:bg-primary-950 dark:text-primary-300',
-  secondary: 'bg-secondary-50 text-secondary-600 dark:bg-secondary-950 dark:text-secondary-300',
-  accent: 'bg-accent-50 text-accent-600 dark:bg-accent-950 dark:text-accent-300',
-  neutral: 'bg-surface-muted text-fg',
-  info: 'bg-info-50 text-info-600 dark:bg-info-950 dark:text-info-300',
-  success: 'bg-success-50 text-success-600 dark:bg-success-950 dark:text-success-300',
-  warning: 'bg-warning-50 text-warning-600 dark:bg-warning-950 dark:text-warning-300',
-  error: 'bg-error-50 text-error-600 dark:bg-error-950 dark:text-error-300',
+  primary: 'bg-primary-soft text-primary-icon',
+  secondary: 'bg-secondary-soft text-secondary-icon',
+  accent: 'bg-accent-soft text-accent-icon',
+  neutral: 'bg-neutral-soft text-neutral-icon',
+  info: 'bg-info-soft text-info-icon',
+  success: 'bg-success-soft text-success-icon',
+  warning: 'bg-warning-soft text-warning-icon',
+  error: 'bg-error-soft text-error-icon',
 };
 
 /**
@@ -48,7 +48,7 @@ const ICON_COLOR_CLASSES: Record<TwColor, string> = {
     '[class]': 'classes()',
   },
 })
-export class TwDialogIconDirective {
+export class DialogIconDirective {
   /** Semantic color for the icon container. Defaults to a neutral surface. */
   readonly color = input<TwColor | undefined>(undefined);
 
@@ -66,30 +66,32 @@ export class TwDialogIconDirective {
 @Directive({
   selector: '[twDialogTitle], tw-dialog-title',
   host: {
-    class: 'text-base font-semibold text-fg',
+    class: 'text-sm font-semibold text-fg',
     '[id]': 'id()',
   },
 })
-export class TwDialogTitleDirective implements OnInit, OnDestroy {
+export class DialogTitleDirective implements OnInit, OnDestroy {
   private readonly generatedId = inject(_IdGenerator).getId('tw-dialog-title-');
-  private readonly elementRef = inject<ElementRef<HTMLElement>>(ElementRef);
-  private readonly dialog = inject(TwDialog, { optional: true });
-  private dialogRef = inject<TwDialogRef<unknown, unknown>>(TwDialogRef, { optional: true });
+  private readonly dialogRef = inject<TwDialogRef<unknown, unknown>>(TwDialogRef, {
+    optional: true,
+  });
+  // Ancestor-DI fallback for the rare case where `TwDialogRef` is not in the
+  // directive's injector chain (e.g. heavily nested template portals). The
+  // container ALWAYS resolves via element-injector traversal because the
+  // directive lives inside `<tw-dialog-container>`'s DOM tree.
+  private readonly container = inject(DialogContainer, { optional: true, skipSelf: true });
 
   /** Custom id for the title element. Defaults to a generated unique id. */
   readonly id = input<string>(this.generatedId);
 
   ngOnInit(): void {
-    if (!this.dialogRef && this.dialog) {
-      this.dialogRef = findEnclosingDialog(this.elementRef, this.dialog) ?? null;
-    }
-    const container = this.dialogRef?.containerInstance;
-    if (container) container._addAriaLabelledBy(this.id());
+    const containerInstance = this.dialogRef?.containerInstance ?? this.container;
+    if (containerInstance) containerInstance._addAriaLabelledBy(this.id());
   }
 
   ngOnDestroy(): void {
-    const container = this.dialogRef?.containerInstance;
-    if (container) container._removeAriaLabelledBy(this.id());
+    const containerInstance = this.dialogRef?.containerInstance ?? this.container;
+    if (containerInstance) containerInstance._removeAriaLabelledBy(this.id());
   }
 }
 
@@ -100,7 +102,40 @@ export class TwDialogTitleDirective implements OnInit, OnDestroy {
     class: 'text-sm text-fg-muted',
   },
 })
-export class TwDialogSubtitleDirective {}
+export class DialogSubtitleDirective {}
+
+/**
+ * Dialog description. Registers its ID with the container's `aria-describedby`
+ * queue so screen readers announce the descriptive paragraph after the title.
+ * Mirrors {@link DialogTitleDirective} but for `aria-describedby`.
+ */
+@Directive({
+  selector: '[twDialogDescription], tw-dialog-description',
+  host: {
+    '[id]': 'id()',
+  },
+})
+export class DialogDescriptionDirective implements OnInit, OnDestroy {
+  private readonly generatedId = inject(_IdGenerator).getId('tw-dialog-description-');
+  private readonly dialogRef = inject<TwDialogRef<unknown, unknown>>(TwDialogRef, {
+    optional: true,
+  });
+  // Ancestor-DI fallback — see DialogTitleDirective.
+  private readonly container = inject(DialogContainer, { optional: true, skipSelf: true });
+
+  /** Custom id for the description element. Defaults to a generated unique id. */
+  readonly id = input<string>(this.generatedId);
+
+  ngOnInit(): void {
+    const containerInstance = this.dialogRef?.containerInstance ?? this.container;
+    if (containerInstance) containerInstance._addAriaDescribedBy(this.id());
+  }
+
+  ngOnDestroy(): void {
+    const containerInstance = this.dialogRef?.containerInstance ?? this.container;
+    if (containerInstance) containerInstance._removeAriaDescribedBy(this.id());
+  }
+}
 
 /**
  * Scrollable content region of the dialog. Apply between the header and the
@@ -114,10 +149,10 @@ export class TwDialogSubtitleDirective {}
     class: 'flex-1 overflow-y-auto px-6 py-4 text-sm text-fg',
   },
 })
-export class TwDialogContentDirective {}
+export class DialogContentDirective {}
 
 /** Horizontal alignment for dialog action buttons. */
-export type TwDialogActionsAlign = 'start' | 'center' | 'end';
+export type DialogActionsAlign = 'start' | 'center' | 'end';
 
 /**
  * Bottom action bar of a dialog. Use inside the dialog content or template to
@@ -129,13 +164,9 @@ export type TwDialogActionsAlign = 'start' | 'center' | 'end';
     '[class]': 'classes()',
   },
 })
-export class TwDialogActionsDirective implements OnInit, OnDestroy {
+export class DialogActionsDirective {
   /** Horizontal alignment of the action buttons. Defaults to `'end'`. */
-  readonly align = input<TwDialogActionsAlign>('end');
-
-  private readonly elementRef = inject<ElementRef<HTMLElement>>(ElementRef);
-  private readonly dialog = inject(TwDialog, { optional: true });
-  private dialogRef = inject<TwDialogRef<unknown, unknown>>(TwDialogRef, { optional: true });
+  readonly align = input<DialogActionsAlign>('end');
 
   protected readonly classes = computed(() => {
     const align = this.align();
@@ -143,19 +174,6 @@ export class TwDialogActionsDirective implements OnInit, OnDestroy {
       align === 'start' ? 'justify-start' : align === 'center' ? 'justify-center' : 'justify-end';
     return `flex flex-wrap items-center gap-2 px-6 py-4 border-t border-border-muted ${justify}`;
   });
-
-  ngOnInit(): void {
-    if (!this.dialogRef && this.dialog) {
-      this.dialogRef = findEnclosingDialog(this.elementRef, this.dialog) ?? null;
-    }
-    const container = this.dialogRef?.containerInstance;
-    if (container) container._updateActionSectionCount(1);
-  }
-
-  ngOnDestroy(): void {
-    const container = this.dialogRef?.containerInstance;
-    if (container) container._updateActionSectionCount(-1);
-  }
 }
 
 /**
@@ -169,38 +187,18 @@ export class TwDialogActionsDirective implements OnInit, OnDestroy {
     '[attr.type]': 'type()',
   },
 })
-export class TwDialogCloseDirective implements OnInit {
+export class DialogCloseDirective {
   /** Value passed to `afterClosed()` when the button is clicked. */
   readonly twDialogClose = input<unknown>(undefined);
 
   /** Native button `type`. Defaults to `'button'` to avoid accidental form submission. */
   readonly type = input<'button' | 'submit' | 'reset'>('button');
 
-  private readonly elementRef = inject<ElementRef<HTMLElement>>(ElementRef);
-  private readonly dialog = inject(TwDialog, { optional: true });
-  private dialogRef = inject<TwDialogRef<unknown, unknown>>(TwDialogRef, { optional: true });
-
-  ngOnInit(): void {
-    if (!this.dialogRef && this.dialog) {
-      this.dialogRef = findEnclosingDialog(this.elementRef, this.dialog) ?? null;
-    }
-  }
+  private readonly dialogRef = inject<TwDialogRef<unknown, unknown>>(TwDialogRef, {
+    optional: true,
+  });
 
   protected onClick(): void {
     this.dialogRef?.close(this.twDialogClose());
   }
-}
-
-function findEnclosingDialog(
-  elementRef: ElementRef<HTMLElement>,
-  dialog: TwDialog,
-): TwDialogRef<unknown, unknown> | undefined {
-  let parent: HTMLElement | null = elementRef.nativeElement.parentElement;
-  while (parent && parent.tagName.toLowerCase() !== 'tw-dialog-container') {
-    parent = parent.parentElement;
-  }
-  if (!parent) return undefined;
-  const id = parent.getAttribute('id');
-  if (!id) return undefined;
-  return dialog.getDialogById(id);
 }

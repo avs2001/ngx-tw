@@ -14,16 +14,20 @@ import {
   isDevMode,
   signal,
   type Signal,
+  untracked,
   viewChild,
 } from '@angular/core';
 import { tv } from 'tailwind-variants';
-import type { TwColor } from 'ngx-tw/core';
+import type { TwColor, TwSize } from 'ngx-tw/core';
 
 /** Visual appearance of the form-field container. */
 export type FormFieldAppearance = 'outline' | 'filled';
 
-/** Floating label behavior. */
-export type FloatLabel = 'auto' | 'always';
+/** Floating label behavior. `'never'` disables floating entirely; the label wrapper is not rendered and the wrapped control's placeholder is always visible. */
+export type FloatLabel = 'auto' | 'always' | 'never';
+
+/** Subscript (hint/error row) sizing strategy. `'fixed'` always reserves vertical space; `'dynamic'` collapses the row when no hint/error is projected. */
+export type SubscriptSizing = 'fixed' | 'dynamic';
 
 /**
  * Contract every ngx-tw form-field-compatible control must implement. A
@@ -45,15 +49,27 @@ export abstract class FormFieldControl<T = unknown> {
   abstract readonly required: Signal<boolean>;
   /** Whether the control should be rendered as invalid. Usually derived from `NgControl.invalid` combined with `touched`/`submitted`. */
   abstract readonly errorState: Signal<boolean>;
+  /** Active validation errors map keyed by validator name (e.g. `{ required: true, email: true }`). Returns `null` when the control has no validation errors. Drives `[twError match="…"]` filtering inside the form-field. Optional — controls without a backing `NgControl` may omit it. */
+  readonly errors?: Signal<Record<string, unknown> | null>;
   /** Optional control-type identifier (e.g. `'input'`, `'select'`). When set, the form-field appends `tw-form-field-type-{controlType}` to its host for styling hooks. */
   abstract readonly controlType?: string;
   /** Optional consumer-supplied `aria-describedby` ids the form-field preserves when merging in hint/error ids. */
   abstract readonly userAriaDescribedBy?: Signal<string | undefined>;
+  /** Optional consumer-supplied `aria-labelledby` ids the form-field preserves when merging in the projected label id. Controls that consume label pushdown (non-native triggers) override this. */
+  readonly userAriaLabelledby?: Signal<string | undefined>;
 
   /** Called by the form-field to push the merged `aria-describedby` ids back onto the control's host element. */
   abstract setDescribedByIds(ids: string[]): void;
   /** Called when the form-field container is clicked. Concrete controls typically focus their underlying native element or open a panel. */
   abstract onContainerClick(event: MouseEvent): void;
+  /**
+   * Called by the form-field to push the merged `aria-labelledby` ids onto the control's host element.
+   * Default is a no-op — native `<input>` controls rely on the label's `for=` attribute for the canonical association.
+   * Non-native controls (combobox triggers, date-pickers, etc.) override this to set the attribute explicitly.
+   */
+  setLabelledByIds(_ids: string[]): void {
+    // Default no-op. Controls override when label pushdown is required for accessibility.
+  }
 }
 
 /**
@@ -75,30 +91,36 @@ const formFieldVariants = tv({
   slots: {
     root: 'block text-fg',
     controlWrapper:
-      'relative flex items-stretch gap-2 rounded-md bg-transparent transition-colors duration-200 motion-reduce:transition-none',
-    infix: 'relative flex-1 flex items-center min-w-0 [&_input::placeholder]:transition-opacity [&_input::placeholder]:duration-200 [&_textarea::placeholder]:transition-opacity [&_textarea::placeholder]:duration-200',
+      'relative flex items-stretch gap-2 rounded-md bg-transparent transition-colors duration-normal motion-reduce:transition-none',
+    infix: 'relative flex-1 flex items-center min-w-0 [&_input::placeholder]:transition-opacity [&_input::placeholder]:duration-normal [&_textarea::placeholder]:transition-opacity [&_textarea::placeholder]:duration-normal',
     labelWrapper:
-      'absolute pointer-events-none flex items-center max-w-[calc(100%-1.5rem)] transition-[top,left,color,transform] duration-200 motion-reduce:transition-none origin-[top_left]',
+      'absolute pointer-events-none flex items-center max-w-[calc(100%-1.5rem)] transition-[top,left,color,transform] duration-normal motion-reduce:transition-none origin-[top_left]',
     label:
-      'text-fg-muted truncate transition-[font-size,color] duration-200 motion-reduce:transition-none',
+      'text-fg-muted truncate transition-[font-size,color] duration-normal motion-reduce:transition-none',
     requiredMarker: 'text-error-600 ml-0.5',
     prefix: 'flex items-center shrink-0 text-fg-muted',
     suffix: 'flex items-center shrink-0 text-fg-muted',
-    subscriptWrapper: 'mt-1 min-h-5 text-xs flex gap-2',
+    subscriptWrapper: 'mt-1 text-xs flex gap-2',
     hint: 'text-fg-muted',
     error: 'text-error-600 font-medium',
   },
   variants: {
     appearance: {
       outline: {
-        controlWrapper:
-          'border border-border px-3 py-2 hover:border-border-strong',
+        controlWrapper: 'border border-border hover:border-border-strong',
       },
       filled: {
         controlWrapper:
-          'bg-surface-muted border-b border-border px-3 pt-6 pb-2 hover:bg-surface-sunken',
+          'bg-surface-muted border-b border-border hover:bg-surface-sunken',
         infix: 'items-end',
       },
+    },
+    size: {
+      xs: {},
+      sm: {},
+      md: {},
+      lg: {},
+      xl: {},
     },
     color: {
       primary: {},
@@ -121,12 +143,14 @@ const formFieldVariants = tv({
     labelFloated: {
       true: {
         labelWrapper: 'top-1 left-2',
-        label: 'text-xs',
       },
       false: {
         labelWrapper: 'top-1/2 -translate-y-1/2 left-3',
-        label: 'text-sm',
       },
+    },
+    subscriptReserve: {
+      true: { subscriptWrapper: 'min-h-5' },
+      false: {},
     },
     disabled: {
       true: { root: 'opacity-50 pointer-events-none' },
@@ -134,6 +158,30 @@ const formFieldVariants = tv({
     },
   },
   compoundVariants: [
+    // ── Padding × (appearance, size) ──
+    { appearance: 'outline', size: 'xs', class: { controlWrapper: 'px-2 py-1' } },
+    { appearance: 'outline', size: 'sm', class: { controlWrapper: 'px-3 py-1.5' } },
+    { appearance: 'outline', size: 'md', class: { controlWrapper: 'px-3 py-2' } },
+    { appearance: 'outline', size: 'lg', class: { controlWrapper: 'px-4 py-2.5' } },
+    { appearance: 'outline', size: 'xl', class: { controlWrapper: 'px-5 py-3' } },
+    { appearance: 'filled', size: 'xs', class: { controlWrapper: 'px-2 pt-5 pb-1' } },
+    { appearance: 'filled', size: 'sm', class: { controlWrapper: 'px-3 pt-5 pb-1.5' } },
+    { appearance: 'filled', size: 'md', class: { controlWrapper: 'px-3 pt-6 pb-2' } },
+    { appearance: 'filled', size: 'lg', class: { controlWrapper: 'px-4 pt-7 pb-2.5' } },
+    { appearance: 'filled', size: 'xl', class: { controlWrapper: 'px-5 pt-8 pb-3' } },
+
+    // ── Label font-size × (size, labelFloated) ──
+    { size: 'xs', labelFloated: false, class: { label: 'text-xs' } },
+    { size: 'xs', labelFloated: true, class: { label: 'text-2xs' } },
+    { size: 'sm', labelFloated: false, class: { label: 'text-sm' } },
+    { size: 'sm', labelFloated: true, class: { label: 'text-xs' } },
+    { size: 'md', labelFloated: false, class: { label: 'text-sm' } },
+    { size: 'md', labelFloated: true, class: { label: 'text-xs' } },
+    { size: 'lg', labelFloated: false, class: { label: 'text-base' } },
+    { size: 'lg', labelFloated: true, class: { label: 'text-sm' } },
+    { size: 'xl', labelFloated: false, class: { label: 'text-base' } },
+    { size: 'xl', labelFloated: true, class: { label: 'text-sm' } },
+
     // ── Outline + focused → colored border ──
     { appearance: 'outline', focused: true, color: 'primary', class: { controlWrapper: 'border-primary-500' } },
     { appearance: 'outline', focused: true, color: 'secondary', class: { controlWrapper: 'border-secondary-500' } },
@@ -167,7 +215,7 @@ const formFieldVariants = tv({
     // ── Outline + floated label → sit centered on the top border with a surface notch ──
     { appearance: 'outline', labelFloated: true, class: { labelWrapper: 'bg-surface px-1 top-0 -translate-y-1/2' } },
 
-    // ── Filled + resting label → align vertically with the input (input is items-end inside an asymmetric pt-6 pb-2 container) ──
+    // ── Filled + resting label → align vertically with the input baseline (input is items-end inside an asymmetric pt/pb container) ──
     { appearance: 'filled', labelFloated: false, class: { labelWrapper: 'top-[calc(50%+0.5rem)]' } },
 
     // ── Invalid overrides (declared last so twMerge lets them win) ──
@@ -177,10 +225,12 @@ const formFieldVariants = tv({
   ],
   defaultVariants: {
     appearance: 'outline',
+    size: 'md',
     color: 'primary',
     focused: false,
     invalid: false,
     labelFloated: false,
+    subscriptReserve: true,
     disabled: false,
   },
 }, {
@@ -199,6 +249,7 @@ const formFieldVariants = tv({
 })
 export class LabelDirective {
   private readonly formField = inject(FormFieldComponent);
+  private readonly elementRef = inject(ElementRef<HTMLElement>);
 
   /** @internal */
   readonly id = `tw-form-field-label-${nextLabelId++}`;
@@ -208,6 +259,17 @@ export class LabelDirective {
 
   /** @internal */
   readonly classes = computed(() => this.formField.labelClasses());
+
+  constructor() {
+    if (isDevMode()) {
+      const tag = this.elementRef.nativeElement.tagName;
+      if (tag !== 'LABEL') {
+        console.warn(
+          `[tw-form-field] twLabel should be applied to a <label> element for the native \`for\`/\`id\` association to work; got <${tag.toLowerCase()}>. Non-native controls (e.g. tw-select) still receive label pushdown via aria-labelledby.`,
+        );
+      }
+    }
+  }
 }
 
 // ── HintDirective ──
@@ -249,6 +311,7 @@ export class HintDirective {
     'aria-live': 'polite',
     '[attr.id]': 'id',
     '[class]': 'classes()',
+    '[class.hidden]': '!shouldShow()',
   },
 })
 export class ErrorDirective {
@@ -257,6 +320,16 @@ export class ErrorDirective {
   /** @internal */
   readonly id = `tw-form-field-error-${nextErrorId++}`;
 
+  /** Validation error key this message is bound to (e.g. `'required'`, `'email'`, `'minlength'`). When set, the error renders only while the surrounding control reports that key in its active validation errors. When omitted, the error displays whenever the form-field is in an error state — useful as a generic fallback. */
+  readonly match = input<string | undefined>(undefined);
+
+  /** @internal Whether this error should display given the control's active error keys. */
+  readonly shouldShow = computed(() => {
+    const key = this.match();
+    if (!key) return true;
+    return this.formField.activeErrorKeys().has(key);
+  });
+
   /** @internal */
   readonly classes = computed(() => this.formField.errorClasses());
 }
@@ -264,34 +337,69 @@ export class ErrorDirective {
 // ── PrefixDirective ──
 
 @Directive({
-  selector: '[slot="prefix"]',
+  selector: '[twPrefix]',
   host: {
-    '[class]': 'classes()',
+    '[class]': 'prefixClasses()',
   },
 })
 export class PrefixDirective {
-  private readonly formField = inject(FormFieldComponent);
+  protected readonly formField = inject(FormFieldComponent);
 
   /** @internal Used by the form-field to measure the prefix area and align the resting label after it. */
   readonly elementRef = inject(ElementRef<HTMLElement>);
 
   /** @internal */
-  readonly classes = computed(() => this.formField.prefixClasses());
+  readonly prefixClasses = computed(() => this.formField.prefixClasses());
 }
 
 // ── SuffixDirective ──
 
 @Directive({
-  selector: '[slot="suffix"]',
+  selector: '[twSuffix]',
   host: {
-    '[class]': 'classes()',
+    '[class]': 'suffixClasses()',
   },
 })
 export class SuffixDirective {
-  private readonly formField = inject(FormFieldComponent);
+  protected readonly formField = inject(FormFieldComponent);
 
   /** @internal */
-  readonly classes = computed(() => this.formField.suffixClasses());
+  readonly suffixClasses = computed(() => this.formField.suffixClasses());
+}
+
+// ── PrefixIconDirective / SuffixIconDirective ──
+// Opt-in directives that apply a glyph-sized adornment (`size-5 text-fg-muted shrink-0`) so consumers
+// don't pick `size-4` vs `size-5` ad-hoc. Use these for SVG icons; use [twPrefix]/[twSuffix]
+// when the adornment is text (currency, units, kbd hints).
+// They extend Prefix/SuffixDirective so the form-field's content query picks them up as a prefix/suffix
+// when computing the resting-label offset.
+
+@Directive({
+  selector: '[twPrefixIcon]',
+  host: {
+    '[class]': 'prefixClasses()',
+  },
+  providers: [{ provide: PrefixDirective, useExisting: PrefixIconDirective }],
+})
+export class PrefixIconDirective extends PrefixDirective {
+  /** @internal */
+  override readonly prefixClasses = computed(
+    () => `${this.formField.prefixClasses()} size-5`,
+  );
+}
+
+@Directive({
+  selector: '[twSuffixIcon]',
+  host: {
+    '[class]': 'suffixClasses()',
+  },
+  providers: [{ provide: SuffixDirective, useExisting: SuffixIconDirective }],
+})
+export class SuffixIconDirective extends SuffixDirective {
+  /** @internal */
+  override readonly suffixClasses = computed(
+    () => `${this.formField.suffixClasses()} size-5`,
+  );
 }
 
 // ── FormFieldComponent ──
@@ -309,8 +417,14 @@ export class FormFieldComponent implements AfterContentInit {
   /** Visual appearance of the field container. `'outline'` draws a full border around the control; `'filled'` uses a filled surface with a bottom border. Defaults to `'outline'`. */
   readonly appearance = input<FormFieldAppearance>('outline');
 
-  /** Floating label behavior. `'auto'` floats the label above the control when focused or non-empty; `'always'` keeps it floated. Defaults to `'auto'`. */
+  /** Density of the field container. Maps to the inline-padding scale (`px-2 py-1` xs … `px-5 py-3` xl) and the floating-label font scale. Defaults to `'md'`. */
+  readonly size = input<TwSize>('md');
+
+  /** Floating label behavior. `'auto'` floats when focused or non-empty; `'always'` stays floated; `'never'` disables floating entirely (the label wrapper is not rendered and the wrapped control's placeholder is always visible). Defaults to `'auto'`. */
   readonly floatLabel = input<FloatLabel>('auto');
+
+  /** Subscript sizing strategy. `'fixed'` always reserves a 20px row for hints/errors so adjacent fields align; `'dynamic'` collapses the row when no hint/error is projected. Defaults to `'fixed'`. */
+  readonly subscriptSizing = input<SubscriptSizing>('fixed');
 
   /** Hides the visual required marker (`*`) even when the wrapped control is required. `aria-required` on the control is unaffected. Defaults to `false`. */
   readonly hideRequiredMarker = input(false);
@@ -351,9 +465,16 @@ export class FormFieldComponent implements AfterContentInit {
   /** @internal */
   readonly isRequired = computed(() => !!this.control()?.required());
 
+  /** @internal Whether the floating label wrapper should render at all. `'never'` opts out entirely. */
+  readonly shouldRenderLabelWrapper = computed(
+    () => this.hasLabel() && this.floatLabel() !== 'never',
+  );
+
   /** @internal */
   readonly shouldLabelFloat = computed(() => {
-    if (this.floatLabel() === 'always') return true;
+    const mode = this.floatLabel();
+    if (mode === 'never') return false;
+    if (mode === 'always') return true;
     const ctrl = this.control();
     if (!ctrl) return false;
     return ctrl.focused() || !ctrl.empty();
@@ -369,6 +490,24 @@ export class FormFieldComponent implements AfterContentInit {
     this.isInvalid() && this.errorChildren().length > 0 ? 'error' : 'hint',
   );
 
+  /** @internal Set of validation error keys currently active on the bound control (e.g. `Set('required', 'email')`). Empty when the control has no `errors` signal or no active errors. Read by `[twError match="…"]` to decide whether to display. */
+  readonly activeErrorKeys = computed<ReadonlySet<string>>(() => {
+    const errs = this.control()?.errors?.();
+    return new Set(errs ? Object.keys(errs) : []);
+  });
+
+  /** @internal Whether the subscript row has anything to render right now. */
+  readonly hasSubscriptContent = computed(() => {
+    if (this.subscriptMode() === 'error') return this.errorChildren().length > 0;
+    return this.hintChildren().length > 0;
+  });
+
+  /** @internal Whether the subscript wrapper renders. In `'fixed'` mode it always renders to reserve vertical space; in `'dynamic'` mode it collapses when empty. */
+  readonly shouldRenderSubscript = computed(() => {
+    if (this.subscriptSizing() === 'fixed') return true;
+    return this.hasSubscriptContent();
+  });
+
   private readonly controlTypeClass = computed(() => {
     const type = this.control()?.controlType;
     return type ? `tw-form-field-type-${type}` : '';
@@ -377,10 +516,12 @@ export class FormFieldComponent implements AfterContentInit {
   private readonly variantResult = computed(() =>
     formFieldVariants({
       appearance: this.appearance(),
+      size: this.size(),
       color: this.color(),
       focused: this.isFocused(),
       invalid: this.isInvalid(),
       labelFloated: this.shouldLabelFloat(),
+      subscriptReserve: this.subscriptSizing() === 'fixed',
       disabled: this.isDisabled(),
     }),
   );
@@ -396,7 +537,10 @@ export class FormFieldComponent implements AfterContentInit {
   /** @internal */
   readonly infixClasses = computed(() => {
     const base = this.variantResult().infix();
-    const hidePlaceholder = this.hasLabel() && !this.shouldLabelFloat();
+    // Hide the placeholder while the resting label is occupying the same space.
+    // `floatLabel='never'` keeps the placeholder visible regardless of label projection.
+    const hidePlaceholder =
+      this.shouldRenderLabelWrapper() && !this.shouldLabelFloat();
     return hidePlaceholder
       ? `${base} [&_input::placeholder]:opacity-0 [&_textarea::placeholder]:opacity-0`
       : base;
@@ -419,13 +563,17 @@ export class FormFieldComponent implements AfterContentInit {
   readonly errorClasses = computed(() => this.variantResult().error());
 
   constructor() {
-    // Push merged aria-describedby ids to the control whenever hint/error lists or the subscript mode change.
+    // Push merged aria-describedby ids to the control whenever hint/error lists, the subscript mode, or per-error `match` visibility change.
     effect(() => {
       const ctrl = this.control();
       if (!ctrl) return;
       const ids: string[] = [];
       if (this.subscriptMode() === 'error') {
-        for (const e of this.errorChildren()) ids.push(e.id);
+        for (const e of this.errorChildren()) {
+          // Filter by `shouldShow()` so `[twError match="…"]` entries that
+          // don't match the active validation keys are not announced.
+          if (e.shouldShow()) ids.push(e.id);
+        }
       } else {
         for (const h of this.hintChildren()) ids.push(h.id);
       }
@@ -435,17 +583,38 @@ export class FormFieldComponent implements AfterContentInit {
           if (id) ids.push(id);
         }
       }
-      ctrl.setDescribedByIds(ids);
+      untracked(() => ctrl.setDescribedByIds(ids));
+    });
+
+    // Push merged aria-labelledby ids (projected label id + user-supplied) to the control.
+    // Native inputs ignore this in practice (the `for=`/`id` association wins) but non-native
+    // triggers (combobox, date-picker) need the explicit attribute for screen readers.
+    effect(() => {
+      const ctrl = this.control();
+      if (!ctrl) return;
+      const ids: string[] = [];
+      const labelId = this.labelChild()?.id;
+      if (labelId && this.shouldRenderLabelWrapper()) ids.push(labelId);
+      const userIds = ctrl.userAriaLabelledby?.();
+      if (userIds) {
+        for (const id of userIds.split(/\s+/)) {
+          if (id) ids.push(id);
+        }
+      }
+      untracked(() => ctrl.setLabelledByIds(ids));
     });
 
     // Dev-mode validation: at most one hint per alignment.
+    // Reports via `console.error` instead of `throw` so an authoring mistake
+    // surfaces during development without crashing the surrounding effect graph
+    // (which would otherwise leave Angular in an unrecoverable error state).
     effect(() => {
       if (!isDevMode()) return;
       const hints = this.hintChildren();
       const startCount = hints.filter((h) => h.effectiveAlign() === 'start').length;
       const endCount = hints.filter((h) => h.effectiveAlign() === 'end').length;
       if (startCount > 1 || endCount > 1) {
-        throw new Error(
+        console.error(
           'tw-form-field: only one twHint per alignment ("start" / "end") is allowed.',
         );
       }

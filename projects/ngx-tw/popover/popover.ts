@@ -25,7 +25,6 @@ import {
 } from '@angular/cdk/overlay';
 import { CdkPortalOutlet, ComponentPortal, TemplatePortal } from '@angular/cdk/portal';
 import { FocusTrapFactory } from '@angular/cdk/a11y';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Subscription } from 'rxjs';
 import { tv } from 'tailwind-variants';
 import type { TwColor, TwSize } from 'ngx-tw/core';
@@ -54,7 +53,7 @@ export type PopoverPosition =
   | 'right-end';
 
 /** Scroll strategy for the popover overlay. */
-export type PopoverScrollStrategy = 'reposition' | 'close' | 'block';
+export type PopoverScrollStrategy = 'reposition' | 'close' | 'block' | 'noop';
 
 /** Backdrop behavior for the popover. */
 export type PopoverBackdrop = 'transparent' | 'dimmed' | 'none';
@@ -66,14 +65,14 @@ export type PopoverTrigger = 'click' | 'focus' | 'manual';
 type ArrowDirection = 'top' | 'bottom' | 'left' | 'right';
 
 /** Duration of leave animation in ms (must match _base.css scale-out/fade-out). */
-const ANIMATION_DURATION = 150;
+const ANIMATION_DURATION = 120;
 
 // ── Variant config ──
 
 const popoverVariants = tv(
   {
     slots: {
-      wrapper: 'relative z-50',
+      wrapper: 'relative',
       panel:
         'bg-surface-overlay text-fg text-sm border border-border rounded-lg shadow-md overflow-hidden',
       arrow: 'absolute size-2.5 rotate-45 bg-surface-overlay border border-border',
@@ -244,9 +243,11 @@ let nextPopoverId = 0;
     class: 'origin-center',
     '[id]': 'id',
     '[attr.role]': '"dialog"',
-    '[attr.aria-label]': 'ariaLabel()',
-    '[animate.enter]': '"scale-in fade-in"',
-    '[animate.leave]': '"scale-out fade-out"',
+    '[attr.aria-modal]': 'ariaModal() ? "true" : null',
+    '[attr.aria-label]': 'ariaLabel() ?? null',
+    '[attr.aria-labelledby]': 'computedAriaLabelledBy()',
+    '[animate.enter]': '"scale-in"',
+    '[animate.leave]': '"scale-out"',
   },
   template: `
     <div [class]="wrapperClasses()">
@@ -267,8 +268,23 @@ class PopoverOverlayComponent {
   readonly showArrow = signal(true);
   readonly arrowDirection = signal<ArrowDirection>('top');
   readonly ariaLabel = signal<string | undefined>(undefined);
+  readonly ariaModal = signal(true);
+  readonly ariaLabelledByQueue = signal<readonly string[]>([]);
   readonly panelClass = signal<string>('');
   readonly portal = signal<TemplatePortal<PopoverTemplateContext> | ComponentPortal<unknown> | null>(null);
+
+  readonly computedAriaLabelledBy = computed(() => {
+    if (this.ariaLabel()) return null;
+    return this.ariaLabelledByQueue()[0] ?? null;
+  });
+
+  _addAriaLabelledBy(id: string): void {
+    this.ariaLabelledByQueue.update((q) => (q.includes(id) ? q : [...q, id]));
+  }
+
+  _removeAriaLabelledBy(id: string): void {
+    this.ariaLabelledByQueue.update((q) => q.filter((existing) => existing !== id));
+  }
 
   private readonly variantResult = computed(() =>
     popoverVariants({ size: this.size() }),
@@ -329,21 +345,29 @@ export class PopoverDirective {
   /** Pixel distance between trigger and panel edge. Defaults to `8`. */
   readonly twPopoverOffset = input(8);
 
+  // Default true: the panel reads as a floating callout without the arrow; opt-out
+  // is intended for compact iconic triggers where the arrow would crowd the layout.
   /** Whether to render a directional arrow pointing at the trigger. Defaults to `true`. */
   readonly twPopoverArrow = input(true);
 
   /** Backdrop behavior. `'transparent'` catches outside clicks invisibly. `'dimmed'` adds a semi-transparent overlay. `'none'` disables the backdrop. Defaults to `'transparent'`. */
   readonly twPopoverBackdrop = input<PopoverBackdrop>('transparent');
 
+  // Default true: clicking away is the universal dismiss gesture for floating panels;
+  // opt-out is for popovers that own multi-step flows the user must complete.
   /** Whether clicking outside the panel closes the popover. Only relevant when backdrop is `'none'`. Defaults to `true`. */
   readonly twPopoverCloseOnOutside = input(true);
 
+  // Default true: WAI-ARIA dialog pattern mandates Escape closes; opt-out is for
+  // popovers that own a child layer (nested dialog/menu) that should consume Escape first.
   /** Whether pressing Escape closes the popover. Defaults to `true`. */
   readonly twPopoverCloseOnEscape = input(true);
 
   /** CDK scroll strategy for the overlay. Defaults to `'reposition'`. */
   readonly twPopoverScrollStrategy = input<PopoverScrollStrategy>('reposition');
 
+  // Default true: matches the role="dialog" baseline — a focus-trapped panel announces
+  // itself as modal-ish; opt-out for inline popovers acting as informational tooltips.
   /** Whether to trap focus inside the popover panel using CDK FocusTrapFactory. Defaults to `true`. */
   readonly twPopoverTrapFocus = input(true);
 
@@ -378,6 +402,8 @@ export class PopoverDirective {
   private perOpenSubs: Subscription | null = null;
   private closing = false;
   private closeTimer: ReturnType<typeof setTimeout> | null = null;
+  /** Tracked focus-blur close timer; cleared on destroy so it can't fire post-teardown. */
+  private blurCloseTimer: ReturnType<typeof setTimeout> | null = null;
   private readonly overlayId = signal<string | null>(null);
 
   /** The overlay component's id for aria-controls binding. */
@@ -401,6 +427,10 @@ export class PopoverDirective {
 
     this.destroyRef.onDestroy(() => {
       this.clearCloseTimer();
+      if (this.blurCloseTimer !== null) {
+        clearTimeout(this.blurCloseTimer);
+        this.blurCloseTimer = null;
+      }
       this.destroyFocusTrap();
       this.perOpenSubs?.unsubscribe();
       this.disposeOverlay();
@@ -449,7 +479,9 @@ export class PopoverDirective {
 
   protected onHostBlur(): void {
     if (this.twPopoverTriggerOn() === 'focus') {
-      setTimeout(() => {
+      if (this.blurCloseTimer !== null) clearTimeout(this.blurCloseTimer);
+      this.blurCloseTimer = setTimeout(() => {
+        this.blurCloseTimer = null;
         const activeEl = document.activeElement;
         const overlayEl = this.overlayRef?.overlayElement;
         if (overlayEl && overlayEl.contains(activeEl)) return;
@@ -480,11 +512,26 @@ export class PopoverDirective {
     if (this.closing) return;
     this.closing = true;
 
+    // Restore focus to the trigger UNLESS the consumer has deliberately moved
+    // focus to a different focusable element outside the overlay. We detect
+    // that by checking whether the active element is a real focusable target
+    // outside the overlay — body/null means focus is "unset" and we should
+    // still restore (the typical case after Escape or backdrop click).
+    const overlayEl = this.overlayRef?.overlayElement;
+    const activeEl = document.activeElement as HTMLElement | null;
+    const focusOutsideOverlayIntentionally =
+      !!activeEl &&
+      activeEl !== document.body &&
+      activeEl !== this.elementRef.nativeElement &&
+      !overlayEl?.contains(activeEl);
+
     // 1. Destroy focus trap so focus can leave
     this.destroyFocusTrap();
 
-    // 2. Return focus to trigger
-    this.elementRef.nativeElement.focus();
+    // 2. Return focus to trigger only when appropriate
+    if (!focusOutsideOverlayIntentionally) {
+      this.elementRef.nativeElement.focus();
+    }
 
     // 3. Wait for leave animation, then detach
     this.closeTimer = setTimeout(() => {
@@ -507,21 +554,28 @@ export class PopoverDirective {
     }, ANIMATION_DURATION);
   }
 
-  private ensureOverlay(): void {
-    if (this.overlayRef) return;
+  private currentPositionStrategy: FlexibleConnectedPositionStrategy | null = null;
 
+  private buildPositionStrategy(): FlexibleConnectedPositionStrategy {
     const positions = buildPositions(
       this.twPopoverPosition(),
       this.twPopoverOffset(),
     );
 
-    const positionStrategy = this.overlay
+    return this.overlay
       .position()
       .flexibleConnectedTo(this.elementRef)
       .withPositions(positions)
       .withFlexibleDimensions(false)
       .withPush(true)
       .withViewportMargin(8);
+  }
+
+  private ensureOverlay(): void {
+    if (this.overlayRef) return;
+
+    const positionStrategy = this.buildPositionStrategy();
+    this.currentPositionStrategy = positionStrategy;
 
     const backdrop = this.twPopoverBackdrop();
     const hasBackdrop = backdrop !== 'none';
@@ -537,45 +591,13 @@ export class PopoverDirective {
       backdropClass,
       panelClass: 'tw-popover-panel',
     });
-
-    // Overlay-lifetime subscription: update arrow direction on position change
-    positionStrategy.positionChanges
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe((change) => {
-        if (this.popoverInstance) {
-          const dir = resolveArrowDirection(change.connectionPair);
-          this.popoverInstance.arrowDirection.set(dir);
-        }
-      });
   }
 
   private updatePositionStrategy(): void {
     if (!this.overlayRef) return;
-
-    const positions = buildPositions(
-      this.twPopoverPosition(),
-      this.twPopoverOffset(),
-    );
-
-    const positionStrategy = this.overlay
-      .position()
-      .flexibleConnectedTo(this.elementRef)
-      .withPositions(positions)
-      .withFlexibleDimensions(false)
-      .withPush(true)
-      .withViewportMargin(8);
-
+    const positionStrategy = this.buildPositionStrategy();
+    this.currentPositionStrategy = positionStrategy;
     this.overlayRef.updatePositionStrategy(positionStrategy);
-
-    // Re-subscribe to position changes for the new strategy
-    positionStrategy.positionChanges
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe((change) => {
-        if (this.popoverInstance) {
-          const dir = resolveArrowDirection(change.connectionPair);
-          this.popoverInstance.arrowDirection.set(dir);
-        }
-      });
   }
 
   private subscribePerOpen(): void {
@@ -607,6 +629,19 @@ export class PopoverDirective {
         }
       }),
     );
+
+    // Per-open position change subscription — torn down on close to prevent
+    // accumulation when the directive is opened/closed many times.
+    if (this.currentPositionStrategy) {
+      this.perOpenSubs.add(
+        this.currentPositionStrategy.positionChanges.subscribe((change) => {
+          if (this.popoverInstance) {
+            const dir = resolveArrowDirection(change.connectionPair);
+            this.popoverInstance.arrowDirection.set(dir);
+          }
+        }),
+      );
+    }
   }
 
   private attachContent(): void {
@@ -625,10 +660,19 @@ export class PopoverDirective {
     this.popoverInstance.color.set(this.twPopoverColor());
     this.popoverInstance.showArrow.set(this.twPopoverArrow());
     this.popoverInstance.ariaLabel.set(this.twPopoverAriaLabel());
+    this.popoverInstance.ariaModal.set(this.twPopoverTrapFocus());
+    this.popoverInstance.ariaLabelledByQueue.set([]);
     this.popoverInstance.panelClass.set(this.resolvePanelClass());
 
-    // Provide POPOVER_REF for both template and component content
-    const popoverRef: PopoverRef = { close: () => this.close() };
+    // Provide POPOVER_REF for both template and component content. Title directives
+    // call _addAriaLabelledBy / _removeAriaLabelledBy to register their id with the
+    // overlay's aria-labelledby queue.
+    const overlayInstance = this.popoverInstance;
+    const popoverRef: PopoverRef = {
+      close: () => this.close(),
+      _addAriaLabelledBy: (id) => overlayInstance._addAriaLabelledBy(id),
+      _removeAriaLabelledBy: (id) => overlayInstance._removeAriaLabelledBy(id),
+    };
 
     // Create the content portal
     if (content instanceof TemplateRef) {
@@ -699,6 +743,8 @@ export class PopoverDirective {
         return this.overlay.scrollStrategies.close();
       case 'block':
         return this.overlay.scrollStrategies.block();
+      case 'noop':
+        return this.overlay.scrollStrategies.noop();
       default:
         return this.overlay.scrollStrategies.reposition();
     }

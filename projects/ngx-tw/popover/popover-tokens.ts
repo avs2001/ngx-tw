@@ -12,6 +12,10 @@ export interface PopoverTemplateContext<T = unknown> {
 export interface PopoverRef {
   /** Closes the popover. */
   close(): void;
+  /** @internal — used by `PopoverTitleDirective` to register itself with `aria-labelledby`. */
+  _addAriaLabelledBy?: (id: string) => void;
+  /** @internal — used by `PopoverTitleDirective` to unregister itself. */
+  _removeAriaLabelledBy?: (id: string) => void;
 }
 
 /** Injection token providing arbitrary data to popover component content. */

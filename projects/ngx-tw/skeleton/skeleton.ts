@@ -17,7 +17,7 @@ const skeletonVariants = tv(
   {
     slots: {
       root: 'block bg-surface-muted overflow-hidden relative isolate',
-      container: 'flex flex-col gap-2',
+      container: 'relative flex flex-col gap-2',
       row: 'block bg-surface-muted overflow-hidden relative isolate w-full',
       sr: 'sr-only',
     },
@@ -104,7 +104,7 @@ export class SkeletonComponent {
   /** Number of stacked text rows to render. Only applies when `shape` is `'text'`. Values greater than 1 render N rows in a vertical stack with a `0.5rem` gap; the last row is rendered at 60% width to mimic a paragraph's final line. Ignored for `'rectangle'` and `'circle'`. Defaults to `1`. */
   readonly lines = input<number>(1);
 
-  /** When true, the skeleton announces itself as a busy live region via `role="status"`, `aria-busy="true"`, `aria-live="polite"`, and a visually-hidden label. When false (default), the skeleton is fully hidden from assistive technology with `aria-hidden="true"` — appropriate when a parent already owns the loading announcement. */
+  /** When true, the skeleton announces itself as a busy live region via `role="status"`, `aria-busy="true"`, `aria-live="polite"`, and a visually-hidden label. When false, the skeleton is fully hidden from assistive technology with `aria-hidden="true"` — appropriate when a parent already owns the loading announcement. Defaults to `false`. */
   readonly announce = input(false, { transform: booleanAttribute });
 
   protected readonly mode = computed<'single' | 'multi'>(() =>

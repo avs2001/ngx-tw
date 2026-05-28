@@ -14,13 +14,16 @@ import {
   ReactiveFormsModule,
   Validators,
 } from '@angular/forms';
-import { describe, it, expect, beforeEach } from 'vitest';
+import { form, FormField, minLength, required } from '@angular/forms/signals';
+import { AutofillMonitor } from '@angular/cdk/text-field';
+import { Subject } from 'rxjs';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import {
   FormFieldComponent,
   LabelDirective,
   TW_FORM_FIELD_CONTROL,
 } from 'ngx-tw/form-field';
-import type { ErrorStateMatcher } from 'ngx-tw/core';
+import type { ErrorStateMatcher, TwSize } from 'ngx-tw/core';
 import { InputDirective, TW_INPUT_VALUE_ACCESSOR } from './input';
 
 // ── Host harnesses ──
@@ -35,6 +38,7 @@ import { InputDirective, TW_INPUT_VALUE_ACCESSOR } from './input';
       [disabled]="disabled()"
       [required]="required()"
       [readonly]="readonly()"
+      [size]="size()"
     />
   `,
 })
@@ -43,6 +47,16 @@ class StandaloneInputHost {
   readonly disabled = signal(false);
   readonly required = signal(false);
   readonly readonly = signal(false);
+  readonly size = signal<TwSize>('md');
+  readonly directive = viewChild.required(InputDirective);
+}
+
+@Component({
+  imports: [InputDirective],
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  template: `<input twInput id="my-explicit-input" />`,
+})
+class ExplicitIdHost {
   readonly directive = viewChild.required(InputDirective);
 }
 
@@ -132,6 +146,20 @@ class AccessorHost {
   readonly directive = viewChild.required(InputDirective);
 }
 
+@Component({
+  imports: [InputDirective, FormField],
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  template: `<input twInput [formField]="signalForm.fullName" />`,
+})
+class SignalFormsHost {
+  readonly model = signal({ fullName: '' });
+  readonly signalForm = form(this.model, (p) => {
+    required(p.fullName);
+    minLength(p.fullName, 2);
+  });
+  readonly directive = viewChild.required(InputDirective);
+}
+
 // ── Helpers ──
 
 function inputEl<T>(fixture: ComponentFixture<T>): HTMLInputElement {
@@ -178,6 +206,69 @@ describe('InputDirective', () => {
 
     it('keeps type="text" by default on the native element', () => {
       expect(inputEl(fixture).getAttribute('type')).toBe('text');
+    });
+  });
+
+  describe('explicit id', () => {
+    it('round-trips an explicit `id` to the host attribute', async () => {
+      await TestBed.configureTestingModule({
+        imports: [ExplicitIdHost],
+      }).compileComponents();
+      const ef = TestBed.createComponent(ExplicitIdHost);
+      ef.detectChanges();
+      expect(inputEl(ef).id).toBe('my-explicit-input');
+      expect(ef.componentInstance.directive().id()).toBe('my-explicit-input');
+    });
+  });
+
+  describe('size axis (standalone)', () => {
+    let fixture: ComponentFixture<StandaloneInputHost>;
+
+    beforeEach(async () => {
+      await TestBed.configureTestingModule({
+        imports: [StandaloneInputHost],
+      }).compileComponents();
+      fixture = TestBed.createComponent(StandaloneInputHost);
+      fixture.detectChanges();
+    });
+
+    it('defaults to md padding and font (`px-4 py-2 text-sm`)', () => {
+      const cls = inputEl(fixture).className;
+      expect(cls).toContain('px-4');
+      expect(cls).toContain('py-2');
+      expect(cls).toContain('text-sm');
+    });
+
+    it.each([
+      ['xs', 'px-2', 'py-1', 'text-xs'],
+      ['sm', 'px-3', 'py-1.5', 'text-sm'],
+      ['md', 'px-4', 'py-2', 'text-sm'],
+      ['lg', 'px-5', 'py-2.5', 'text-base'],
+      ['xl', 'px-6', 'py-3', 'text-base'],
+    ] as const)(
+      'maps size="%s" to %s %s %s',
+      (size, px, py, font) => {
+        fixture.componentInstance.size.set(size);
+        fixture.detectChanges();
+        const cls = inputEl(fixture).className;
+        expect(cls).toContain(px);
+        expect(cls).toContain(py);
+        expect(cls).toContain(font);
+      },
+    );
+  });
+
+  describe('size axis (in form-field)', () => {
+    it('strips padding entirely when wrapped — wrapper carries density', async () => {
+      await TestBed.configureTestingModule({
+        imports: [InFormFieldHost],
+      }).compileComponents();
+      const ff = TestBed.createComponent(InFormFieldHost);
+      ff.detectChanges();
+      await ff.whenStable();
+      const cls = inputEl(ff).className;
+      expect(cls).toContain('p-0');
+      expect(cls).not.toContain('px-4');
     });
   });
 
@@ -476,6 +567,78 @@ describe('InputDirective', () => {
       fireInput(ta, 'multi\nline');
       fixture.detectChanges();
       expect(fixture.componentInstance.directive().value()).toBe('multi\nline');
+    });
+  });
+
+  describe('signal forms', () => {
+    it('flips errorState once a required signal-field is touched and invalid', async () => {
+      await TestBed.configureTestingModule({
+        imports: [SignalFormsHost],
+      }).compileComponents();
+      const fixture = TestBed.createComponent(SignalFormsHost);
+      fixture.detectChanges();
+      await fixture.whenStable();
+
+      // Pristine: invalid but not touched → no error state.
+      expect(fixture.componentInstance.directive().errorState()).toBe(false);
+
+      const el = inputEl(fixture);
+      el.focus();
+      el.dispatchEvent(new FocusEvent('focus'));
+      el.blur();
+      el.dispatchEvent(new FocusEvent('blur'));
+      fixture.detectChanges();
+      await fixture.whenStable();
+
+      expect(fixture.componentInstance.directive().errorState()).toBe(true);
+      expect(el.getAttribute('aria-invalid')).toBe('true');
+    });
+
+    it('reflects field value updates from the model', async () => {
+      await TestBed.configureTestingModule({
+        imports: [SignalFormsHost],
+      }).compileComponents();
+      const fixture = TestBed.createComponent(SignalFormsHost);
+      fixture.detectChanges();
+      await fixture.whenStable();
+
+      const el = inputEl(fixture);
+      fireInput(el, 'Ada');
+      fixture.detectChanges();
+      await fixture.whenStable();
+      expect(fixture.componentInstance.signalForm.fullName().value()).toBe('Ada');
+    });
+  });
+
+  describe('autofill monitor', () => {
+    it('marks the directive non-empty when AutofillMonitor fires `isAutofilled: true`', async () => {
+      const autofillSubject = new Subject<{ target: Element; isAutofilled: boolean }>();
+      const autofillStub = {
+        monitor: vi.fn(() => autofillSubject.asObservable()),
+        stopMonitoring: vi.fn(),
+      };
+
+      await TestBed.configureTestingModule({
+        imports: [StandaloneInputHost],
+        providers: [{ provide: AutofillMonitor, useValue: autofillStub }],
+      }).compileComponents();
+      const fixture = TestBed.createComponent(StandaloneInputHost);
+      fixture.detectChanges();
+      await fixture.whenStable();
+
+      // Bare element value is empty.
+      expect(fixture.componentInstance.directive().empty()).toBe(true);
+
+      const el = inputEl(fixture);
+      autofillSubject.next({ target: el, isAutofilled: true });
+      fixture.detectChanges();
+
+      expect(autofillStub.monitor).toHaveBeenCalledWith(el);
+      expect(fixture.componentInstance.directive().empty()).toBe(false);
+
+      autofillSubject.next({ target: el, isAutofilled: false });
+      fixture.detectChanges();
+      expect(fixture.componentInstance.directive().empty()).toBe(true);
     });
   });
 });

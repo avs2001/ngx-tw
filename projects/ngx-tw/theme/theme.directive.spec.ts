@@ -1,7 +1,7 @@
 import { Component, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { ThemeDirective } from './theme.directive';
-import type { ResolvedTheme } from './theme.types';
+import type { TwResolvedTheme } from './theme.types';
 import { describe, it, expect } from 'vitest';
 
 @Component({
@@ -9,7 +9,7 @@ import { describe, it, expect } from 'vitest';
   template: `<div [twTheme]="theme()" id="target"></div>`,
 })
 class TestHost {
-  theme = signal<ResolvedTheme>('light');
+  theme = signal<TwResolvedTheme>('light');
 }
 
 describe('ThemeDirective', () => {

@@ -7,16 +7,22 @@ import {
   Validators,
 } from '@angular/forms';
 import { email, form, FormField, required } from '@angular/forms/signals';
-import type { TwColor } from 'ngx-tw/core';
+import type { TwColor, TwSize } from 'ngx-tw/core';
 import {
   ErrorDirective,
   FormFieldComponent,
   HintDirective,
   LabelDirective,
   PrefixDirective,
+  PrefixIconDirective,
   SuffixDirective,
+  SuffixIconDirective,
 } from 'ngx-tw/form-field';
-import type { FloatLabel, FormFieldAppearance } from 'ngx-tw/form-field';
+import type {
+  FloatLabel,
+  FormFieldAppearance,
+  SubscriptSizing,
+} from 'ngx-tw/form-field';
 import { InputDirective } from 'ngx-tw/input';
 import { ButtonDirective } from 'ngx-tw/button';
 import { CodeBlockComponent } from 'ngx-tw/code-block';
@@ -25,7 +31,9 @@ const COLORS: TwColor[] = [
   'primary', 'secondary', 'accent', 'neutral', 'info', 'success', 'warning', 'error',
 ];
 const APPEARANCES: FormFieldAppearance[] = ['outline', 'filled'];
-const FLOAT_LABELS: FloatLabel[] = ['auto', 'always'];
+const FLOAT_LABELS: FloatLabel[] = ['auto', 'always', 'never'];
+const SIZES: TwSize[] = ['xs', 'sm', 'md', 'lg', 'xl'];
+const SUBSCRIPT_SIZINGS: SubscriptSizing[] = ['fixed', 'dynamic'];
 
 @Component({
   selector: 'app-form-field-examples',
@@ -36,7 +44,9 @@ const FLOAT_LABELS: FloatLabel[] = ['auto', 'always'];
     HintDirective,
     ErrorDirective,
     PrefixDirective,
+    PrefixIconDirective,
     SuffixDirective,
+    SuffixIconDirective,
     InputDirective,
     ButtonDirective,
     CodeBlockComponent,
@@ -45,9 +55,9 @@ const FLOAT_LABELS: FloatLabel[] = ['auto', 'always'];
     FormField,
   ],
   template: `
-    <!-- Appearance -->
+    <!-- Variants -->
     <section class="mb-10">
-      <h2 class="text-sm font-semibold mb-3">Appearance</h2>
+      <h2 class="text-sm font-semibold mb-3">Variants</h2>
       <p class="text-sm text-fg-muted leading-relaxed max-w-2xl mb-4">
         The
         <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">appearance</code>
@@ -74,6 +84,32 @@ const FLOAT_LABELS: FloatLabel[] = ['auto', 'always'];
         </div>
       </div>
       <tw-code-block [code]="appearanceSnippet" language="html" />
+    </section>
+
+    <!-- Size -->
+    <section class="mb-10">
+      <h2 class="text-sm font-semibold mb-3">Size</h2>
+      <p class="text-sm text-fg-muted leading-relaxed max-w-2xl mb-4">
+        The
+        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">size</code>
+        input controls density. It maps to the inline-padding scale
+        (<code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">px-2 py-1</code>
+        at xs through
+        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">px-5 py-3</code>
+        at xl) and scales the floating-label font alongside, so the label always reads at the
+        right weight for the row it sits on.
+      </p>
+      <div class="rounded-lg border border-border p-6 bg-surface-raised mb-4">
+        <div class="space-y-3">
+          @for (s of sizes; track s) {
+            <tw-form-field [size]="s" class="max-w-md">
+              <label twLabel>{{ s }} density</label>
+              <input twInput [placeholder]="'Size ' + s" />
+            </tw-form-field>
+          }
+        </div>
+      </div>
+      <tw-code-block [code]="sizeSnippet" language="html" />
     </section>
 
     <!-- Colors -->
@@ -120,9 +156,14 @@ const FLOAT_LABELS: FloatLabel[] = ['auto', 'always'];
         <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">always</code>
         when you need the label visible from the start — typically when fields have
         placeholders the user should read before filling the value.
+        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">never</code>
+        disables floating entirely: the label wrapper is omitted and the placeholder is always
+        visible, useful for compact placeholder-only fields paired with the
+        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">filled</code>
+        appearance.
       </p>
       <div class="rounded-lg border border-border p-6 bg-surface-raised mb-4">
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
           <tw-form-field floatLabel="auto">
             <label twLabel>Auto (default)</label>
             <input twInput />
@@ -132,9 +173,52 @@ const FLOAT_LABELS: FloatLabel[] = ['auto', 'always'];
             <label twLabel>Always floated</label>
             <input twInput placeholder="e.g. Remote, EU" />
           </tw-form-field>
+
+          <tw-form-field floatLabel="never" appearance="filled">
+            <label twLabel>Never floated</label>
+            <input twInput placeholder="Search…" />
+          </tw-form-field>
         </div>
       </div>
       <tw-code-block [code]="floatLabelSnippet" language="html" />
+    </section>
+
+    <!-- Subscript sizing -->
+    <section class="mb-10">
+      <h2 class="text-sm font-semibold mb-3">Subscript Sizing</h2>
+      <p class="text-sm text-fg-muted leading-relaxed max-w-2xl mb-4">
+        By default the form-field reserves a 20px row under each control for hints or errors so
+        adjacent fields stay vertically aligned. In dense layouts with no hints, switch to
+        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">subscriptSizing="dynamic"</code>
+        and the row collapses entirely.
+      </p>
+      <div class="rounded-lg border border-border p-6 bg-surface-raised mb-4">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div class="space-y-3">
+            <p class="text-xs font-medium text-fg-muted uppercase tracking-wide">Fixed (default)</p>
+            <tw-form-field>
+              <label twLabel>First name</label>
+              <input twInput placeholder="Alex" />
+            </tw-form-field>
+            <tw-form-field>
+              <label twLabel>Last name</label>
+              <input twInput placeholder="Morgan" />
+            </tw-form-field>
+          </div>
+          <div class="space-y-3">
+            <p class="text-xs font-medium text-fg-muted uppercase tracking-wide">Dynamic</p>
+            <tw-form-field subscriptSizing="dynamic">
+              <label twLabel>First name</label>
+              <input twInput placeholder="Alex" />
+            </tw-form-field>
+            <tw-form-field subscriptSizing="dynamic">
+              <label twLabel>Last name</label>
+              <input twInput placeholder="Morgan" />
+            </tw-form-field>
+          </div>
+        </div>
+      </div>
+      <tw-code-block [code]="subscriptSizingSnippet" language="html" />
     </section>
 
     <!-- States -->
@@ -186,9 +270,9 @@ const FLOAT_LABELS: FloatLabel[] = ['auto', 'always'];
       <h2 class="text-sm font-semibold mb-3">Prefix &amp; Suffix</h2>
       <p class="text-sm text-fg-muted leading-relaxed max-w-2xl mb-4">
         Project adornments through
-        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">slot="prefix"</code>
+        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">twPrefix</code>
         and
-        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">slot="suffix"</code>
+        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">twSuffix</code>
         for currency symbols, units, search icons, and keyboard shortcut hints. The resting
         label shifts right to sit flush against the prefix, so the layout still reads as a
         single cohesive row.
@@ -197,35 +281,74 @@ const FLOAT_LABELS: FloatLabel[] = ['auto', 'always'];
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
           <tw-form-field>
             <label twLabel>Amount</label>
-            <span slot="prefix" class="font-medium text-fg">$</span>
+            <span twPrefix class="font-medium text-fg">$</span>
             <input twInput type="number" placeholder="0.00" />
-            <span slot="suffix" class="text-xs font-medium">USD</span>
+            <span twSuffix class="text-xs font-medium">USD</span>
             <span twHint>Pre-tax total.</span>
           </tw-form-field>
 
           <tw-form-field appearance="filled">
             <label twLabel>Search</label>
-            <svg slot="prefix" class="size-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+            <svg twPrefix class="size-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
               <path fill-rule="evenodd" d="M9 3.5a5.5 5.5 0 100 11 5.5 5.5 0 000-11zM2 9a7 7 0 1112.452 4.391l3.328 3.329a.75.75 0 11-1.06 1.06l-3.329-3.328A7 7 0 012 9z" clip-rule="evenodd"/>
             </svg>
             <input twInput placeholder="Search invoices, clients, or projects" />
-            <kbd slot="suffix" class="text-2xs font-mono bg-surface-sunken border border-border rounded px-1.5 py-0.5 text-fg-muted">⌘K</kbd>
+            <kbd twSuffix class="text-2xs font-mono bg-surface-sunken border border-border rounded px-1.5 py-0.5 text-fg-muted">⌘K</kbd>
           </tw-form-field>
 
           <tw-form-field>
             <label twLabel>Website</label>
-            <span slot="prefix" class="text-fg-muted font-mono text-xs">https://</span>
+            <span twPrefix class="text-fg-muted font-mono text-xs">https://</span>
             <input twInput placeholder="example.com" />
           </tw-form-field>
 
           <tw-form-field>
             <label twLabel>Storage quota</label>
             <input twInput type="number" placeholder="100" />
-            <span slot="suffix" class="text-xs font-medium">GB</span>
+            <span twSuffix class="text-xs font-medium">GB</span>
           </tw-form-field>
         </div>
       </div>
       <tw-code-block [code]="prefixSuffixSnippet" language="html" />
+    </section>
+
+    <!-- Icon prefix/suffix -->
+    <section class="mb-10">
+      <h2 class="text-sm font-semibold mb-3">Icon Adornments</h2>
+      <p class="text-sm text-fg-muted leading-relaxed max-w-2xl mb-4">
+        For SVG icons, prefer
+        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">twPrefixIcon</code>
+        and
+        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">twSuffixIcon</code>.
+        These apply the canonical glyph size
+        (<code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">size-5</code>)
+        alongside the standard prefix/suffix classes so consumers don't pick
+        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">size-4</code>
+        vs
+        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">size-5</code>
+        ad-hoc.
+      </p>
+      <div class="rounded-lg border border-border p-6 bg-surface-raised mb-4">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <tw-form-field>
+            <label twLabel>Search</label>
+            <svg twPrefixIcon viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+              <path fill-rule="evenodd" d="M9 3.5a5.5 5.5 0 100 11 5.5 5.5 0 000-11zM2 9a7 7 0 1112.452 4.391l3.328 3.329a.75.75 0 11-1.06 1.06l-3.329-3.328A7 7 0 012 9z" clip-rule="evenodd"/>
+            </svg>
+            <input twInput placeholder="Search invoices…" />
+          </tw-form-field>
+
+          <tw-form-field>
+            <label twLabel>Email</label>
+            <input twInput type="email" placeholder="you@company.com" />
+            <svg twSuffixIcon viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+              <path d="M3 4a2 2 0 00-2 2v1.161l8.441 4.221a1.25 1.25 0 001.118 0L19 7.162V6a2 2 0 00-2-2H3z"/>
+              <path d="M19 8.839l-7.77 3.885a2.75 2.75 0 01-2.46 0L1 8.839V14a2 2 0 002 2h14a2 2 0 002-2V8.839z"/>
+            </svg>
+          </tw-form-field>
+        </div>
+      </div>
+      <tw-code-block [code]="iconAdornmentsSnippet" language="html" />
     </section>
 
     <!-- Hints -->
@@ -327,8 +450,10 @@ const FLOAT_LABELS: FloatLabel[] = ['auto', 'always'];
         <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">FormGroup</code>,
         every field mirrors its control's validity and touched state. Project one
         <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">twError</code>
-        per failure condition and let the form-field swap the hint for the active error when
-        the control enters its error state. Press
+        per failure condition and use the
+        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">match</code>
+        input to bind it to a specific validator key — the form-field renders only the matching
+        message when the control enters its error state. Press
         <strong class="text-fg">Validate</strong>
         to mark every control as touched and surface all pending errors at once.
       </p>
@@ -339,17 +464,13 @@ const FLOAT_LABELS: FloatLabel[] = ['auto', 'always'];
               <label twLabel>Full name</label>
               <input twInput formControlName="name" placeholder="Alex Morgan" />
               <span twHint>How teammates will see you in the workspace.</span>
-              @if (inviteForm.controls.name.hasError('required')) {
-                <span twError>Enter your full name.</span>
-              }
-              @if (inviteForm.controls.name.hasError('minlength')) {
-                <span twError>Name must be at least 2 characters.</span>
-              }
+              <span twError match="required">Enter your full name.</span>
+              <span twError match="minlength">Name must be at least 2 characters.</span>
             </tw-form-field>
 
             <tw-form-field>
               <label twLabel>Work email</label>
-              <span slot="prefix">
+              <span twPrefix>
                 <svg class="size-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
                   <path d="M3 4a2 2 0 00-2 2v1.161l8.441 4.221a1.25 1.25 0 001.118 0L19 7.162V6a2 2 0 00-2-2H3z"/>
                   <path d="M19 8.839l-7.77 3.885a2.75 2.75 0 01-2.46 0L1 8.839V14a2 2 0 002 2h14a2 2 0 002-2V8.839z"/>
@@ -357,25 +478,18 @@ const FLOAT_LABELS: FloatLabel[] = ['auto', 'always'];
               </span>
               <input twInput type="email" formControlName="email" placeholder="you@company.com" />
               <span twHint>Invitation and receipts go here.</span>
-              @if (inviteForm.controls.email.hasError('required')) {
-                <span twError>Email is required.</span>
-              }
-              @if (inviteForm.controls.email.hasError('email')) {
-                <span twError>Enter a valid email address.</span>
-              }
+              <span twError match="required">Email is required.</span>
+              <span twError match="email">Enter a valid email address.</span>
             </tw-form-field>
 
             <tw-form-field appearance="filled">
               <label twLabel>Seat count</label>
               <input twInput type="number" formControlName="seats" min="1" max="50" />
-              <span slot="suffix" class="text-xs font-medium">seats</span>
+              <span twSuffix class="text-xs font-medium">seats</span>
               <span twHint>Between 1 and 50.</span>
-              @if (inviteForm.controls.seats.hasError('required')) {
-                <span twError>Pick a seat count.</span>
-              }
-              @if (inviteForm.controls.seats.hasError('min') || inviteForm.controls.seats.hasError('max')) {
-                <span twError>Must be between 1 and 50.</span>
-              }
+              <span twError match="required">Pick a seat count.</span>
+              <span twError match="min">Must be at least 1.</span>
+              <span twError match="max">Must be 50 or fewer.</span>
             </tw-form-field>
           </div>
 
@@ -427,9 +541,8 @@ const FLOAT_LABELS: FloatLabel[] = ['auto', 'always'];
           <label twLabel>Email (signal forms)</label>
           <input twInput type="email" [formField]="signalForm.email" placeholder="you@company.com" />
           <span twHint>Used for account recovery.</span>
-          @if (signalForm.email().errors().length && signalForm.email().touched()) {
-            <span twError>Enter a valid email.</span>
-          }
+          <span twError match="required">Email is required.</span>
+          <span twError match="email">Enter a valid email.</span>
         </tw-form-field>
         <p class="text-xs text-fg-muted mt-3 font-mono">
           value = "{{ signalForm.email().value() || '' }}" ·
@@ -462,7 +575,7 @@ const FLOAT_LABELS: FloatLabel[] = ['auto', 'always'];
       <div class="rounded-lg border border-border p-6 bg-surface-raised">
         <div class="flex flex-wrap gap-4 mb-6">
           <div>
-            <label class="block text-xs font-medium text-fg-muted mb-1">Appearance</label>
+            <label class="block text-xs font-medium text-fg-muted mb-1">Variant</label>
             <div class="flex gap-1">
               @for (a of appearances; track a) {
                 <button
@@ -471,6 +584,20 @@ const FLOAT_LABELS: FloatLabel[] = ['auto', 'always'];
                   [class.!text-primary-700]="playAppearance() === a"
                   (click)="playAppearance.set(a)"
                 >{{ a }}</button>
+              }
+            </div>
+          </div>
+
+          <div>
+            <label class="block text-xs font-medium text-fg-muted mb-1">Size</label>
+            <div class="flex gap-1">
+              @for (s of sizes; track s) {
+                <button
+                  twButton variant="ghost" color="neutral" size="xs"
+                  [class.!bg-primary-100]="playSize() === s"
+                  [class.!text-primary-700]="playSize() === s"
+                  (click)="playSize.set(s)"
+                >{{ s }}</button>
               }
             </div>
           </div>
@@ -485,6 +612,20 @@ const FLOAT_LABELS: FloatLabel[] = ['auto', 'always'];
                   [class.!text-primary-700]="playFloatLabel() === f"
                   (click)="playFloatLabel.set(f)"
                 >{{ f }}</button>
+              }
+            </div>
+          </div>
+
+          <div>
+            <label class="block text-xs font-medium text-fg-muted mb-1">Subscript</label>
+            <div class="flex gap-1">
+              @for (s of subscriptSizings; track s) {
+                <button
+                  twButton variant="ghost" color="neutral" size="xs"
+                  [class.!bg-primary-100]="playSubscriptSizing() === s"
+                  [class.!text-primary-700]="playSubscriptSizing() === s"
+                  (click)="playSubscriptSizing.set(s)"
+                >{{ s }}</button>
               }
             </div>
           </div>
@@ -550,13 +691,15 @@ const FLOAT_LABELS: FloatLabel[] = ['auto', 'always'];
           <tw-form-field
             class="max-w-md"
             [appearance]="playAppearance()"
+            [size]="playSize()"
             [floatLabel]="playFloatLabel()"
+            [subscriptSizing]="playSubscriptSizing()"
             [color]="playColor()"
             [hideRequiredMarker]="playHideMarker()"
           >
             <label twLabel>Domain</label>
             @if (playPrefix()) {
-              <span slot="prefix" class="text-fg-muted font-mono text-xs">https://</span>
+              <span twPrefix class="text-fg-muted font-mono text-xs">https://</span>
             }
             <input
               twInput
@@ -567,7 +710,7 @@ const FLOAT_LABELS: FloatLabel[] = ['auto', 'always'];
               placeholder="example.com"
             />
             @if (playSuffix()) {
-              <span slot="suffix" class="text-xs font-medium">.com</span>
+              <span twSuffix class="text-xs font-medium">.com</span>
             }
             <span twHint>Where visitors will reach your site.</span>
             @if (playHintEnd()) {
@@ -584,6 +727,8 @@ export class FormFieldExamples {
   protected readonly colors = COLORS;
   protected readonly appearances = APPEARANCES;
   protected readonly floatLabels = FLOAT_LABELS;
+  protected readonly sizes = SIZES;
+  protected readonly subscriptSizings = SUBSCRIPT_SIZINGS;
 
   // Section-local state
   protected readonly projectName = signal('Payments rewrite');
@@ -614,7 +759,9 @@ export class FormFieldExamples {
 
   // Playground
   protected readonly playAppearance = signal<FormFieldAppearance>('outline');
+  protected readonly playSize = signal<TwSize>('md');
   protected readonly playFloatLabel = signal<FloatLabel>('auto');
+  protected readonly playSubscriptSizing = signal<SubscriptSizing>('fixed');
   protected readonly playColor = signal<TwColor>('primary');
   protected readonly playRequired = signal(false);
   protected readonly playHideMarker = signal(false);
@@ -694,6 +841,42 @@ export class FormFieldExamples {
 <tw-form-field floatLabel="always">
   <label twLabel>Always floated</label>
   <input twInput placeholder="e.g. Remote, EU" />
+</tw-form-field>
+
+<tw-form-field floatLabel="never" appearance="filled">
+  <label twLabel>Never floated</label>
+  <input twInput placeholder="Search…" />
+</tw-form-field>`;
+
+  protected readonly sizeSnippet = `@for (s of sizes; track s) {
+  <tw-form-field [size]="s">
+    <label twLabel>{{ s }} density</label>
+    <input twInput [placeholder]="'Size ' + s" />
+  </tw-form-field>
+}`;
+
+  protected readonly subscriptSizingSnippet = `<!-- Default: reserves space for hints/errors -->
+<tw-form-field>
+  <label twLabel>First name</label>
+  <input twInput />
+</tw-form-field>
+
+<!-- Dense: collapses the subscript when nothing to show -->
+<tw-form-field subscriptSizing="dynamic">
+  <label twLabel>First name</label>
+  <input twInput />
+</tw-form-field>`;
+
+  protected readonly iconAdornmentsSnippet = `<tw-form-field>
+  <label twLabel>Search</label>
+  <svg twPrefixIcon viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">…</svg>
+  <input twInput placeholder="Search invoices…" />
+</tw-form-field>
+
+<tw-form-field>
+  <label twLabel>Email</label>
+  <input twInput type="email" placeholder="you@company.com" />
+  <svg twSuffixIcon viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">…</svg>
 </tw-form-field>`;
 
   protected readonly statesSnippet = `<!-- Disabled -->
@@ -717,17 +900,17 @@ export class FormFieldExamples {
 
   protected readonly prefixSuffixSnippet = `<tw-form-field>
   <label twLabel>Amount</label>
-  <span slot="prefix">$</span>
+  <span twPrefix>$</span>
   <input twInput type="number" placeholder="0.00" />
-  <span slot="suffix">USD</span>
+  <span twSuffix>USD</span>
   <span twHint>Pre-tax total.</span>
 </tw-form-field>
 
 <tw-form-field appearance="filled">
   <label twLabel>Search</label>
-  <svg slot="prefix" class="size-4">…</svg>
+  <svg twPrefix class="size-4">…</svg>
   <input twInput placeholder="Search invoices, clients, or projects" />
-  <kbd slot="suffix">⌘K</kbd>
+  <kbd twSuffix>⌘K</kbd>
 </tw-form-field>`;
 
   protected readonly hintsSnippet = `<tw-form-field>
@@ -778,33 +961,25 @@ export class FormFieldExamples {
     <label twLabel>Full name</label>
     <input twInput formControlName="name" placeholder="Alex Morgan" />
     <span twHint>How teammates will see you in the workspace.</span>
-    @if (inviteForm.controls.name.hasError('required')) {
-      <span twError>Enter your full name.</span>
-    }
-    @if (inviteForm.controls.name.hasError('minlength')) {
-      <span twError>Name must be at least 2 characters.</span>
-    }
+    <span twError match="required">Enter your full name.</span>
+    <span twError match="minlength">Name must be at least 2 characters.</span>
   </tw-form-field>
 
   <tw-form-field>
     <label twLabel>Work email</label>
     <input twInput type="email" formControlName="email" />
     <span twHint>Invitation and receipts go here.</span>
-    @if (inviteForm.controls.email.hasError('required')) {
-      <span twError>Email is required.</span>
-    }
-    @if (inviteForm.controls.email.hasError('email')) {
-      <span twError>Enter a valid email address.</span>
-    }
+    <span twError match="required">Email is required.</span>
+    <span twError match="email">Enter a valid email address.</span>
   </tw-form-field>
 
   <tw-form-field appearance="filled">
     <label twLabel>Seat count</label>
     <input twInput type="number" formControlName="seats" min="1" max="50" />
-    <span slot="suffix">seats</span>
-    @if (inviteForm.controls.seats.hasError('required')) {
-      <span twError>Pick a seat count.</span>
-    }
+    <span twSuffix>seats</span>
+    <span twError match="required">Pick a seat count.</span>
+    <span twError match="min">Must be at least 1.</span>
+    <span twError match="max">Must be 50 or fewer.</span>
   </tw-form-field>
 </form>`;
 
@@ -818,8 +993,7 @@ protected readonly inviteForm = form(this.model, (p) => {
   <label twLabel>Email</label>
   <input twInput type="email" [formField]="inviteForm.email" />
   <span twHint>Used for account recovery.</span>
-  @if (inviteForm.email().errors().length && inviteForm.email().touched()) {
-    <span twError>Enter a valid email.</span>
-  }
+  <span twError match="required">Email is required.</span>
+  <span twError match="email">Enter a valid email.</span>
 </tw-form-field>`;
 }

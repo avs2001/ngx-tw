@@ -21,8 +21,6 @@
  *   - Inline cell editing
  *   - Filter UI primitives
  *   - Arrow-key "grid" pattern keyboard navigation (APG)
- *   - Full selection checkbox rendering (selection API is declared; rendering ships later)
- *   - Sticky-edge shadows
  */
 
 import { NgTemplateOutlet } from '@angular/common';
@@ -56,7 +54,11 @@ import {
   type CdkTableDataSourceInput,
 } from '@angular/cdk/table';
 import { tv } from 'tailwind-variants';
-import type { TwBreakpoint, TwSize } from 'ngx-tw/core';
+import { CheckboxComponent } from 'ngx-tw/checkbox';
+import { TW_SORT_HANDLE, type TwBreakpoint, type TwSize } from 'ngx-tw/core';
+
+/** Possible values for the `aria-sort` attribute on a sortable column header. */
+export type TwColumnAriaSort = 'ascending' | 'descending' | 'none' | null;
 
 // ── Public types ─────────────────────────────────────────────────────
 
@@ -188,6 +190,10 @@ export interface TwTableLabels {
   expandRowLabel: string;
   /** Accessible label for the collapse-row toggle button. */
   collapseRowLabel: string;
+  /** Accessible label for the master "select all" checkbox in the leading selection column. */
+  selectAllLabel: string;
+  /** Accessible label template for each per-row selection checkbox. Variable: `{index}` (1-based). */
+  selectRowLabel: string;
 }
 
 /** Default English labels for the table. */
@@ -200,6 +206,8 @@ export const DEFAULT_TABLE_LABELS: Readonly<TwTableLabels> = {
   selectionAnnouncement: '{count} rows selected',
   expandRowLabel: 'Expand row',
   collapseRowLabel: 'Collapse row',
+  selectAllLabel: 'Select all rows',
+  selectRowLabel: 'Select row {index}',
 };
 
 /** Context provided to every data-cell template (`*twCellDef`). Generic over the row type `T`. */
@@ -333,7 +341,7 @@ const tableVariants = tv(
       // individual cells. Consequence: borders on row groups (`<thead>`, `<tfoot>`,
       // `<tr>`) don't render — all separators must be applied to cells directly.
       table:
-        'w-full border-separate border-spacing-0 text-start align-middle [&>thead>tr>th]:font-semibold [&>thead>tr>th]:text-fg [&>thead>tr>th]:tracking-tight [&>tbody>tr]:transition-colors [&>tbody>tr]:duration-200 [&>tbody>tr]:motion-reduce:transition-none [&>tfoot>tr>td]:border-t [&>tfoot>tr>td]:border-border',
+        'w-full border-separate border-spacing-0 text-start align-middle [&>thead>tr>th]:font-semibold [&>thead>tr>th]:text-fg [&>thead>tr>th]:tracking-tight [&>tbody>tr]:transition-colors [&>tbody>tr]:duration-normal [&>tbody>tr]:motion-reduce:transition-none [&>tfoot>tr>td]:border-t [&>tfoot>tr>td]:border-border',
       th: 'text-start font-semibold text-fg tracking-tight align-middle',
       td: 'text-fg align-middle',
       footerTd: 'text-fg font-medium align-middle',
@@ -342,7 +350,7 @@ const tableVariants = tv(
       emptyIcon: 'size-10 shrink-0 text-fg-subtle',
       emptyMessage: 'text-sm text-fg-muted',
       loadingOverlay:
-        'absolute inset-0 flex items-center justify-center gap-3 bg-surface/70 backdrop-blur-[1px] z-20 pointer-events-auto',
+        'absolute inset-0 flex items-center justify-center gap-3 bg-surface/70 backdrop-blur-sm z-20 pointer-events-auto',
       loadingMessage: 'text-sm text-fg-muted',
       errorState:
         'flex flex-col items-center justify-center gap-2 px-4 py-12 text-center',
@@ -352,6 +360,10 @@ const tableVariants = tv(
       paginationSlot: 'empty:hidden border-t border-border px-2 py-2',
       expansionRow: 'bg-surface-sunken',
       expansionCell: 'p-0',
+      // The leading `_selection` column hosts checkboxes only — override the standard
+      // text alignment + padding so the control stays centered in a narrow column.
+      selectionHeader: 'w-12 text-center align-middle',
+      selectionCell: 'w-12 text-center align-middle',
     },
     variants: {
       variant: {
@@ -430,7 +442,7 @@ const tableVariants = tv(
         stickyHeader: true,
         variant: 'striped',
         class: {
-          table: '[&>thead>tr>th]:shadow-[0_1px_0_0_var(--color-border)]',
+          table: '[&>thead>tr>th]:shadow-table-sticky',
         },
       },
     ],
@@ -485,14 +497,21 @@ const STACK_CELL_UTILITIES: Record<TwBreakpoint, string> = {
 };
 
 // CDK handles `position: sticky` + left/right offsets via its sticky styler.
-// We only add the decorative background + z-index so overlapping cells stay opaque.
+// We only add the decorative background + z-index so overlapping cells stay opaque,
+// plus a hairline shadow on the inner edge so the pinned column reads as floating
+// over scrolled content. Direction follows the pinned edge:
+//   sticky-start (pinned left)  → 1px shadow on the right side
+//   sticky-end   (pinned right) → 1px shadow on the left side
 const STICKY_CELL_ZINDEX = 'z-[5]';
+const STICKY_START_SHADOW = 'shadow-table-sticky-cell-start';
+const STICKY_END_SHADOW = 'shadow-table-sticky-cell-end';
 
 const INTERACTIVE_TAGS = new Set([
   'BUTTON',
   'A',
   'INPUT',
   'SELECT',
+  'OPTION',
   'TEXTAREA',
   'LABEL',
   'SUMMARY',
@@ -524,13 +543,13 @@ function coerceCssSize(value: string | number | null | undefined): string | null
 
 /** Structural directive on an `<ng-template>` (or a star-directive host) defining a column's data-cell template. Typed as `TwCellContext<T>`. */
 @Directive({ selector: '[twCellDef]' })
-export class TwCellDefDirective<T = unknown> {
+export class CellDefDirective<T = unknown> {
   /** @internal */
   readonly template = inject(TemplateRef<TwCellContext<T>>);
 
   /** @internal */
   static ngTemplateContextGuard<T>(
-    _dir: TwCellDefDirective<T>,
+    _dir: CellDefDirective<T>,
     _ctx: unknown,
   ): _ctx is TwCellContext<T> {
     return true;
@@ -539,13 +558,13 @@ export class TwCellDefDirective<T = unknown> {
 
 /** Structural directive defining a column's header-cell template. Typed as `TwHeaderCellContext`. */
 @Directive({ selector: '[twHeaderCellDef]' })
-export class TwHeaderCellDefDirective {
+export class HeaderCellDefDirective {
   /** @internal */
   readonly template = inject(TemplateRef<TwHeaderCellContext>);
 
   /** @internal */
   static ngTemplateContextGuard(
-    _dir: TwHeaderCellDefDirective,
+    _dir: HeaderCellDefDirective,
     _ctx: unknown,
   ): _ctx is TwHeaderCellContext {
     return true;
@@ -554,13 +573,13 @@ export class TwHeaderCellDefDirective {
 
 /** Structural directive defining a column's footer-cell template. Typed as `TwFooterCellContext<T>`. */
 @Directive({ selector: '[twFooterCellDef]' })
-export class TwFooterCellDefDirective<T = unknown> {
+export class FooterCellDefDirective<T = unknown> {
   /** @internal */
   readonly template = inject(TemplateRef<TwFooterCellContext<T>>);
 
   /** @internal */
   static ngTemplateContextGuard<T>(
-    _dir: TwFooterCellDefDirective<T>,
+    _dir: FooterCellDefDirective<T>,
     _ctx: unknown,
   ): _ctx is TwFooterCellContext<T> {
     return true;
@@ -577,13 +596,13 @@ export class TwFooterCellDefDirective<T = unknown> {
 /** Structural directive on an `<ng-template>` declaring the no-data row fallback. Takes precedence over `[slot="empty"]` when both are present. */
 @Directive({
   selector: 'ng-template[twNoDataRow]',
-  providers: [{ provide: CdkNoDataRow, useExisting: TwNoDataRowDirective }],
+  providers: [{ provide: CdkNoDataRow, useExisting: NoDataRowDirective }],
 })
-export class TwNoDataRowDirective extends CdkNoDataRow {}
+export class NoDataRowDirective extends CdkNoDataRow {}
 
 /** Structural directive on an `<ng-template>` declaring the row-expansion template. Requires `[multiTemplateRows]="true"` on the parent `<tw-table>`. */
 @Directive({ selector: 'ng-template[twRowExpansion]' })
-export class TwRowExpansionDirective<T = unknown> {
+export class RowExpansionDirective<T = unknown> {
   /** Optional predicate that decides whether this expansion renders for a given row. Defaults to `undefined` (render for every expanded row). */
   readonly predicate = input<((row: T, index: number) => boolean) | undefined>(
     undefined,
@@ -595,7 +614,7 @@ export class TwRowExpansionDirective<T = unknown> {
 
   /** @internal */
   static ngTemplateContextGuard<T>(
-    _dir: TwRowExpansionDirective<T>,
+    _dir: RowExpansionDirective<T>,
     _ctx: unknown,
   ): _ctx is TwRowExpansionContext<T> {
     return true;
@@ -648,17 +667,28 @@ export class ColumnComponent<T = unknown> {
   /** Label used as `data-label` on cells in responsive `'stack'` mode. Falls back to `headerLabel`, then `name`. Defaults to `undefined`. */
   readonly stackLabel = input<string | undefined>(undefined);
 
+  /**
+   * Explicit override for the column header's `aria-sort` attribute. When unset (the default),
+   * the column derives its `aria-sort` from a parent `[twSort]` directive via the `TW_SORT_HANDLE`
+   * token — the column is treated as active when the directive's `active` id matches this column's
+   * `name`. Set explicitly to `'ascending'` / `'descending'` / `'none'` to override; `null` disables
+   * the attribute entirely. Defaults to `null`.
+   */
+  readonly sortState = input<TwColumnAriaSort>(null);
+
   /** @internal Stable identifier used for DOM `data-*` hooks. */
   readonly columnId = `tw-column-${nextColumnId++}`;
 
+  private readonly sortHandle = inject(TW_SORT_HANDLE, { optional: true });
+
   /** @internal Consumer-projected header-cell template (optional). */
-  readonly headerCellDef = contentChild(TwHeaderCellDefDirective);
+  readonly headerCellDef = contentChild(HeaderCellDefDirective);
 
   /** @internal Consumer-projected data-cell template. */
-  readonly cellDef = contentChild(TwCellDefDirective<T>);
+  readonly cellDef = contentChild(CellDefDirective<T>);
 
   /** @internal Consumer-projected footer-cell template (optional). */
-  readonly footerCellDef = contentChild(TwFooterCellDefDirective<T>);
+  readonly footerCellDef = contentChild(FooterCellDefDirective<T>);
 
   /** @internal Index in the visible column set — pushed by the parent table. */
   readonly columnIndex = signal(0);
@@ -719,6 +749,23 @@ export class ColumnComponent<T = unknown> {
     [this.dataCellPrefix(), this.extraFooterClass()].filter(Boolean).join(' '),
   );
 
+  /**
+   * @internal `aria-sort` value for the column's `<th>`. Explicit `sortState` wins; otherwise the
+   * column auto-resolves against a parent `[twSort]` directive (`TW_SORT_HANDLE`). Returns `null`
+   * when no sort is wired or the column is not the active sort, so the attribute is omitted.
+   */
+  readonly ariaSort = computed<TwColumnAriaSort>(() => {
+    const explicit = this.sortState();
+    if (explicit !== null) return explicit;
+    const handle = this.sortHandle;
+    if (!handle) return null;
+    if (handle.active() !== this.name()) return null;
+    const direction = handle.direction();
+    if (direction === 'asc') return 'ascending';
+    if (direction === 'desc') return 'descending';
+    return null;
+  });
+
   readonly headerContext = computed<TwHeaderCellContext>(() => ({
     $implicit: this.name(),
     column: this.name(),
@@ -773,7 +820,7 @@ let nextTableId = 0;
   selector: 'tw-table',
   exportAs: 'twTable',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [CdkTableModule, NgTemplateOutlet],
+  imports: [CdkTableModule, NgTemplateOutlet, CheckboxComponent],
   templateUrl: './table.html',
   host: {
     '[class]': 'hostClasses()',
@@ -843,10 +890,10 @@ export class TableComponent<T = unknown> {
   readonly columns = contentChildren(ColumnComponent<T>, { descendants: true });
 
   /** @internal Projected custom no-data row (takes precedence over the fallback empty state). */
-  readonly noDataRow = contentChild(TwNoDataRowDirective, { descendants: true });
+  readonly noDataRow = contentChild(NoDataRowDirective, { descendants: true });
 
   /** @internal Projected expansion row template. */
-  readonly expansionTemplate = contentChild(TwRowExpansionDirective<T>, { descendants: true });
+  readonly expansionTemplate = contentChild(RowExpansionDirective<T>, { descendants: true });
 
   // ── View children ──
 
@@ -1024,6 +1071,14 @@ export class TableComponent<T = unknown> {
   readonly paginationSlotClasses = computed(() => this._variantResult().paginationSlot());
   readonly expansionRowClasses = computed(() => this._variantResult().expansionRow());
   readonly expansionCellClasses = computed(() => this._variantResult().expansionCell());
+  readonly selectionHeaderClasses = computed(() => {
+    const base = this._variantResult().selectionHeader();
+    return [base, this.thClasses()].filter(Boolean).join(' ');
+  });
+  readonly selectionCellClasses = computed(() => {
+    const base = this._variantResult().selectionCell();
+    return [base, this.tdClasses()].filter(Boolean).join(' ');
+  });
 
   // ── CdkTable wiring ──
   //
@@ -1049,7 +1104,7 @@ export class TableComponent<T = unknown> {
     });
 
     // Bridge the projected no-data row to CdkTable.
-    let registeredNoDataRow: TwNoDataRowDirective | null = null;
+    let registeredNoDataRow: NoDataRowDirective | null = null;
     effect(() => {
       const table = this.cdkTable();
       const noDataRow = this.noDataRow() ?? null;
@@ -1087,7 +1142,11 @@ export class TableComponent<T = unknown> {
 
           const display = col.resolvedDisplay();
           const decor: string[] = [];
-          if (display.sticky) decor.push(STICKY_CELL_ZINDEX, 'bg-surface-raised');
+          if (display.sticky === 'start') {
+            decor.push(STICKY_CELL_ZINDEX, 'bg-surface-raised', STICKY_START_SHADOW);
+          } else if (display.sticky === 'end') {
+            decor.push(STICKY_CELL_ZINDEX, 'bg-surface-raised', STICKY_END_SHADOW);
+          }
           if (display.hideBelow && responsiveMode === 'hide') {
             decor.push(HIDE_BELOW_UTILITIES[display.hideBelow]);
           }
@@ -1146,6 +1205,11 @@ export class TableComponent<T = unknown> {
     });
 
     // Loading announcement.
+    //
+    // The effect tracks `this.loading()` only; reads of labels / rows are wrapped
+    // in `untracked()` so unrelated upstream signals (label updates, row mutations
+    // that don't toggle loading) don't re-announce. The announcement should fire
+    // once per loading-state transition, never on incidental data changes.
     effect(() => {
       const loading = this.loading();
       const labels = untracked(() => this.resolvedLabels());
@@ -1247,5 +1311,72 @@ export class TableComponent<T = unknown> {
       removed: nextSelected ? [] : [row],
       previous,
     });
+  }
+
+  /**
+   * Adds every row in the current data snapshot to `selected` that isn't already selected.
+   * Emits `selectionChange` if anything changed. Only the array data-source path can compute a
+   * full snapshot — for `Observable<T[]>` or `DataSource<T>` data inputs this is a no-op.
+   */
+  selectAll(): void {
+    const rows = this.resolvedRows();
+    if (rows.length === 0) return;
+    const previous = this.selected();
+    const previousSet = new Set(previous);
+    const added: T[] = [];
+    for (const row of rows) {
+      if (!previousSet.has(row)) added.push(row);
+    }
+    if (added.length === 0) return;
+    const next: T[] = [...previous, ...added];
+    this.selected.set(next);
+    this.selectionChange.emit({ selected: next, added, removed: [], previous });
+  }
+
+  /** Clears every currently-selected row. Emits `selectionChange` if anything was selected. */
+  clearSelection(): void {
+    const previous = this.selected();
+    if (previous.length === 0) return;
+    this.selected.set([]);
+    this.selectionChange.emit({ selected: [], added: [], removed: previous, previous });
+  }
+
+  /** @internal Returns `aria-selected` for a data row, or `null` to omit the attribute when selection is disabled. */
+  rowAriaSelected(row: T): 'true' | 'false' | null {
+    if (!this.resolvedSelection().enabled) return null;
+    return this.isSelected(row) ? 'true' : 'false';
+  }
+
+  /**
+   * @internal Tri-state summary of the current selection vs. the visible data snapshot.
+   * `'none'` — nothing selected; `'some'` — partial; `'all'` — every snapshot row is selected.
+   */
+  readonly masterSelectionState = computed<'none' | 'some' | 'all'>(() => {
+    const rows = this.resolvedRows();
+    if (rows.length === 0) return 'none';
+    const selected = this.selected();
+    if (selected.length === 0) return 'none';
+    const selectedSet = new Set(selected);
+    for (const row of rows) {
+      if (!selectedSet.has(row)) return 'some';
+    }
+    return 'all';
+  });
+
+  /** @internal Whether the master "select all" checkbox should render checked. */
+  readonly masterChecked = computed(() => this.masterSelectionState() === 'all');
+
+  /** @internal Whether the master "select all" checkbox should render indeterminate. */
+  readonly masterIndeterminate = computed(() => this.masterSelectionState() === 'some');
+
+  /** @internal Wires the master checkbox change event to `selectAll` / `clearSelection`. */
+  toggleMasterSelection(checked: boolean): void {
+    if (checked) this.selectAll();
+    else this.clearSelection();
+  }
+
+  /** @internal Formatted accessible label for a per-row selection checkbox. */
+  selectRowLabel(rowIndex: number): string {
+    return formatLabel(this.resolvedLabels().selectRowLabel, { index: rowIndex + 1 });
   }
 }

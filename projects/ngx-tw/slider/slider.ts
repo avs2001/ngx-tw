@@ -15,7 +15,6 @@ import {
   computed,
   DestroyRef,
   ElementRef,
-  forwardRef,
   inject,
   input,
   isDevMode,
@@ -24,13 +23,27 @@ import {
   type OnInit,
   output,
   signal,
+  type Signal,
   viewChild,
 } from '@angular/core';
-import { type ControlValueAccessor, NG_VALUE_ACCESSOR } from '@angular/forms';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import {
+  type ControlValueAccessor,
+  FormGroupDirective,
+  NgControl,
+  NgForm,
+} from '@angular/forms';
 import { FocusMonitor } from '@angular/cdk/a11y';
 import { Directionality } from '@angular/cdk/bidi';
+import { merge } from 'rxjs';
 import { tv } from 'tailwind-variants';
-import type { TwColor, TwSize } from 'ngx-tw/core';
+import {
+  type ErrorStateMatcher,
+  TW_ERROR_STATE_MATCHER,
+  type TwColor,
+  type TwSize,
+  type TwFormSubmitted,
+} from 'ngx-tw/core';
 
 /** Visual style of the slider fill. */
 export type SliderVariant = 'solid' | 'soft' | 'outline';
@@ -121,17 +134,17 @@ const sliderVariants = tv(
       description: 'text-xs text-fg-muted empty:hidden',
       region: 'relative flex items-center touch-none',
       rail:
-        'relative w-full rounded-full bg-surface-muted transition-colors duration-200 motion-reduce:transition-none',
+        'relative w-full rounded-full bg-surface-muted transition-colors duration-normal motion-reduce:transition-none',
       fill:
-        'absolute inset-y-0 rounded-full transition-colors duration-200 motion-reduce:transition-none',
+        'absolute inset-y-0 rounded-full transition-colors duration-normal motion-reduce:transition-none',
       marksRow: 'absolute inset-0 pointer-events-none',
       mark:
-        'absolute top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full bg-surface transition-colors duration-200 motion-reduce:transition-none',
+        'absolute top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full bg-surface transition-colors duration-normal motion-reduce:transition-none',
       markActive: '',
       thumb:
-        'absolute top-1/2 -translate-x-1/2 -translate-y-1/2 inline-flex items-center justify-center rounded-full border-2 bg-surface-raised shadow-sm cursor-grab active:cursor-grabbing touch-none focus-visible:outline-2 focus-visible:outline-offset-2 transition-[transform,box-shadow] duration-150 motion-reduce:transition-none hover:shadow-md data-[dragging=true]:shadow-md data-[dragging=true]:scale-110',
+        'absolute top-1/2 -translate-x-1/2 -translate-y-1/2 inline-flex items-center justify-center rounded-full border-2 bg-surface-raised shadow-sm cursor-grab active:cursor-grabbing touch-none focus-visible:outline-2 focus-visible:outline-offset-2 transition-[transform,box-shadow] duration-fast motion-reduce:transition-none hover:shadow-md data-[dragging=true]:shadow-md data-[dragging=true]:scale-110',
       bubble:
-        'absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-0.5 rounded-md bg-fg text-surface text-xs font-medium tabular-nums whitespace-nowrap pointer-events-none opacity-0 transition-opacity duration-150 motion-reduce:transition-none',
+        'absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-0.5 rounded-md bg-fg text-surface text-xs font-medium tabular-nums whitespace-nowrap pointer-events-none opacity-0 transition-opacity duration-fast motion-reduce:transition-none',
       bubbleVisible: 'opacity-100',
       markLabelsRow: 'relative w-full mt-2',
       markLabel:
@@ -140,35 +153,37 @@ const sliderVariants = tv(
     },
     variants: {
       size: {
+        // Thumb sizes follow the square-interactive scale (WCAG 2.2 SC 2.5.8 target-size).
+        // Rail/mark/region adjust independently for proportional visual weight.
         xs: {
           rail: 'h-1',
-          thumb: 'size-3',
-          mark: 'size-1',
-          region: 'h-3 py-1',
+          thumb: 'size-6',
+          mark: 'size-2',
+          region: 'h-6 py-1',
         },
         sm: {
           rail: 'h-1.5',
-          thumb: 'size-4',
-          mark: 'size-1',
-          region: 'h-4 py-1',
+          thumb: 'size-7',
+          mark: 'size-2.5',
+          region: 'h-7 py-1',
         },
         md: {
           rail: 'h-2',
-          thumb: 'size-5',
-          mark: 'size-1.5',
-          region: 'h-5 py-1.5',
+          thumb: 'size-8',
+          mark: 'size-3',
+          region: 'h-8 py-1.5',
         },
         lg: {
           rail: 'h-2.5',
-          thumb: 'size-6',
-          mark: 'size-2',
-          region: 'h-6 py-2',
+          thumb: 'size-9',
+          mark: 'size-3',
+          region: 'h-9 py-2',
         },
         xl: {
           rail: 'h-3',
-          thumb: 'size-7',
-          mark: 'size-2',
-          region: 'h-7 py-2',
+          thumb: 'size-10',
+          mark: 'size-3',
+          region: 'h-10 py-2',
         },
       },
       variant: {
@@ -231,13 +246,6 @@ const toNumber = (value: SliderValue | null | undefined, fallback: number): numb
 @Component({
   selector: 'tw-slider',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  providers: [
-    {
-      provide: NG_VALUE_ACCESSOR,
-      useExisting: forwardRef(() => SliderComponent),
-      multi: true,
-    },
-  ],
   template: `
     @if (hasHeader()) {
       <div [class]="headerClasses()">
@@ -295,6 +303,8 @@ const toNumber = (value: SliderValue | null | undefined, fallback: number): numb
             [attr.aria-valuetext]="format(startValue())"
             [attr.aria-orientation]="'horizontal'"
             [attr.aria-disabled]="isDisabled() || null"
+            [attr.aria-required]="required() || null"
+            [attr.aria-invalid]="errorState() || null"
             [attr.data-dragging]="activeThumb() === 'start'"
             [attr.tabindex]="isDisabled() ? -1 : 0"
             (pointerdown)="onThumbPointerDown($event, 'start')"
@@ -322,6 +332,8 @@ const toNumber = (value: SliderValue | null | undefined, fallback: number): numb
             [attr.aria-valuetext]="format(endValue())"
             [attr.aria-orientation]="'horizontal'"
             [attr.aria-disabled]="isDisabled() || null"
+            [attr.aria-required]="required() || null"
+            [attr.aria-invalid]="errorState() || null"
             [attr.data-dragging]="activeThumb() === 'end'"
             [attr.tabindex]="isDisabled() ? -1 : 0"
             (pointerdown)="onThumbPointerDown($event, 'end')"
@@ -350,6 +362,8 @@ const toNumber = (value: SliderValue | null | undefined, fallback: number): numb
             [attr.aria-valuetext]="format(singleValue())"
             [attr.aria-orientation]="'horizontal'"
             [attr.aria-disabled]="isDisabled() || null"
+            [attr.aria-required]="required() || null"
+            [attr.aria-invalid]="errorState() || null"
             [attr.data-dragging]="activeThumb() === 'single'"
             [attr.tabindex]="isDisabled() ? -1 : 0"
             (pointerdown)="onThumbPointerDown($event, 'single')"
@@ -457,16 +471,40 @@ export class SliderComponent implements ControlValueAccessor, OnInit {
   /** Two-way bound slider value. A `number` for single mode, or `[start, end]` for range mode. Updates on every interaction. */
   readonly value = model<SliderValue>(0);
 
-  /** Fires continuously while the user drags or holds a key. Payload matches the current `value`. */
-  readonly input = output<SliderValue>();
+  /** Fires continuously while the user drags or holds a key. Payload matches the current `value`. Template event name is `input` — the TS-side identifier is `valueInput` to avoid shadowing the imported `input` factory. */
+  readonly valueInput = output<SliderValue>({ alias: 'input' });
 
   /** Fires when the user commits a change (pointer release, key release, or blur after keyboard change). Payload matches the current `value`. */
   readonly change = output<SliderValue>();
+
+  /** Per-instance override of the {@link ErrorStateMatcher}. When omitted, the component uses the `TW_ERROR_STATE_MATCHER` token's value. */
+  readonly errorStateMatcher = input<ErrorStateMatcher | undefined>(undefined);
 
   private readonly focusMonitor = inject(FocusMonitor);
   private readonly elementRef = inject(ElementRef<HTMLElement>);
   private readonly destroyRef = inject(DestroyRef);
   private readonly directionality = inject(Directionality, { optional: true });
+  private readonly ngControl = inject(NgControl, { optional: true, self: true });
+  private readonly parentForm = inject(NgForm, { optional: true });
+  private readonly parentFormGroup = inject(FormGroupDirective, { optional: true });
+  private readonly defaultMatcher = inject(TW_ERROR_STATE_MATCHER);
+
+  private readonly _ngControlRev = signal(0);
+  private readonly _formSubmitRev = signal(0);
+
+  /** Whether the form control is in an error state per the configured `ErrorStateMatcher`. */
+  readonly errorState: Signal<boolean> = computed(() => {
+    this._ngControlRev();
+    this._formSubmitRev();
+    // Read focus so blur-driven `touched` transitions repaint the error
+    // border even when the underlying control's status/value didn't change.
+    this.focusedThumb();
+    const matcher = this.errorStateMatcher() ?? this.defaultMatcher;
+    const form: TwFormSubmitted | null =
+      (this.parentFormGroup as TwFormSubmitted | null) ??
+      (this.parentForm as TwFormSubmitted | null);
+    return matcher.isErrorState(this.ngControl?.control ?? null, form);
+  });
 
   private readonly region = viewChild.required<ElementRef<HTMLElement>>('region');
   private readonly startThumb = viewChild<ElementRef<HTMLButtonElement>>('startThumb');
@@ -505,6 +543,14 @@ export class SliderComponent implements ControlValueAccessor, OnInit {
   private keyboardDirty = false;
 
   constructor() {
+    // Material-style CVA wiring: declare ourselves as the value accessor on any
+    // host-level `NgControl` (FormControlDirective, NgModel, etc.). This avoids
+    // the circular-DI that a static `NG_VALUE_ACCESSOR` provider would create
+    // because `NgControl` is injected with `self: true` on the same element.
+    if (this.ngControl) {
+      this.ngControl.valueAccessor = this;
+    }
+
     afterNextRender(() => {
       if (isDevMode() && !this.hasAccessibleName()) {
         console.warn(
@@ -654,29 +700,56 @@ export class SliderComponent implements ControlValueAccessor, OnInit {
     () => `${this.variantResult().thumb()} ${THUMB_BORDER[this.color()]} ${FOCUS_RING[this.color()]}`,
   );
 
-  /** @internal Mark dot color depends on whether it falls inside the filled segment. */
-  markClassFor(markValue: number): string {
+  /**
+   * @internal Memoized class map for mark dots — keyed by mark value. Recomputed
+   * only when the variant slots, fill range, or marks list changes; lookups
+   * from the template (`markClassFor(markValue)`) are O(1) Map reads.
+   */
+  private readonly markClassMap = computed(() => {
     const base = this.variantResult().mark();
     const lo = this.range() ? this.startValue() : this.min();
     const hi = this.range() ? this.endValue() : this.singleValue();
-    const inside = markValue >= lo && markValue <= hi;
-    if (inside) {
-      // Inside the filled segment — use surface contrast so the dot stays visible.
-      return `${base} bg-surface`;
+    const insideClass = `${base} bg-surface`;
+    const outsideClass = `${base} bg-fg-muted/30`;
+    const map = new Map<number, string>();
+    for (const mark of this.marksResolved()) {
+      const inside = mark.value >= lo && mark.value <= hi;
+      map.set(mark.value, inside ? insideClass : outsideClass);
     }
-    return `${base} bg-fg-muted/30`;
+    return { map, outsideClass };
+  });
+
+  /** @internal Mark dot color depends on whether it falls inside the filled segment. */
+  markClassFor(markValue: number): string {
+    const { map, outsideClass } = this.markClassMap();
+    return map.get(markValue) ?? outsideClass;
   }
+
+  /**
+   * @internal Memoized bubble classes per thumb — enumerated once per
+   * dependency change so each `bubbleClassFor(thumb)` is a single object
+   * property read.
+   */
+  private readonly bubbleClassMap = computed<Record<ThumbId, string>>(() => {
+    const base = this.variantResult().bubble();
+    if (!this.showValue()) {
+      return { single: base, start: base, end: base };
+    }
+    const visibleClass = `${base} ${this.variantResult().bubbleVisible()}`;
+    const active = this.activeThumb();
+    const focused = this.focusedThumb();
+    const classFor = (thumb: ThumbId): string =>
+      active === thumb || focused === thumb ? visibleClass : base;
+    return {
+      single: classFor('single'),
+      start: classFor('start'),
+      end: classFor('end'),
+    };
+  });
 
   /** @internal Bubble visibility depends on drag / focus / hover state. */
   bubbleClassFor(thumb: ThumbId): string {
-    const base = this.variantResult().bubble();
-    if (!this.showValue()) return base;
-    const active = this.activeThumb() === thumb;
-    const focused = this.focusedThumb() === thumb;
-    if (active || focused) {
-      return `${base} ${this.variantResult().bubbleVisible()}`;
-    }
-    return base;
+    return this.bubbleClassMap()[thumb];
   }
 
   // ── Accessible-name resolution ─────────────────────────────
@@ -896,7 +969,7 @@ export class SliderComponent implements ControlValueAccessor, OnInit {
     }
     const current = this.currentValue();
     this.value.set(current);
-    if (emitInput) this.input.emit(current);
+    if (emitInput) this.valueInput.emit(current);
   }
 
   private updateValueFromClientX(
@@ -993,18 +1066,45 @@ export class SliderComponent implements ControlValueAccessor, OnInit {
   // ── Lifecycle ─────────────────────────────────────────────
 
   ngOnInit(): void {
-    this.focusMonitor.monitor(this.elementRef, true).subscribe((origin) => {
-      if (origin === null) {
-        this.focusedThumb.set(null);
-        return;
+    this.focusMonitor
+      .monitor(this.elementRef, true)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((origin) => {
+        if (origin === null) {
+          this.focusedThumb.set(null);
+          return;
+        }
+        const active = this.elementRef.nativeElement.ownerDocument?.activeElement;
+        if (!active) return;
+        if (active === this.singleThumb()?.nativeElement) this.focusedThumb.set('single');
+        else if (active === this.startThumb()?.nativeElement) this.focusedThumb.set('start');
+        else if (active === this.endThumb()?.nativeElement) this.focusedThumb.set('end');
+        else this.focusedThumb.set(null);
+      });
+
+    // Re-run the error-state matcher when the bound control's status/value
+    // changes or the parent form is submitted. `ngOnInit` is the natural
+    // mount point — by here, the parent `FormControl*` directive's
+    // `ngOnChanges` has already populated `ngControl.control`.
+    const ctrl = this.ngControl?.control;
+    if (ctrl) {
+      const streams = [ctrl.statusChanges, ctrl.valueChanges].filter(
+        (s): s is NonNullable<typeof s> => !!s,
+      );
+      if (streams.length) {
+        merge(...streams)
+          .pipe(takeUntilDestroyed(this.destroyRef))
+          .subscribe(() => this._ngControlRev.update((v) => v + 1));
       }
-      const active = this.elementRef.nativeElement.ownerDocument?.activeElement;
-      if (!active) return;
-      if (active === this.singleThumb()?.nativeElement) this.focusedThumb.set('single');
-      else if (active === this.startThumb()?.nativeElement) this.focusedThumb.set('start');
-      else if (active === this.endThumb()?.nativeElement) this.focusedThumb.set('end');
-      else this.focusedThumb.set(null);
-    });
+    }
+
+    const submit = this.parentFormGroup?.ngSubmit ?? this.parentForm?.ngSubmit;
+    if (submit) {
+      submit
+        .pipe(takeUntilDestroyed(this.destroyRef))
+        .subscribe(() => this._formSubmitRev.update((v) => v + 1));
+    }
+
     this.destroyRef.onDestroy(() => {
       this.focusMonitor.stopMonitoring(this.elementRef);
       for (const { target } of this.capturedPointers.values()) {

@@ -70,6 +70,9 @@ export abstract class CalendarViewBase<D> {
   /** `true` when the parent calendar allows more than one cell to be selected at once. Drives `aria-multiselectable` on the grid host. */
   readonly multiSelectable: InputSignal<boolean> = input<boolean>(false);
 
+  /** `true` when the parent calendar is in read-only mode. Drives `aria-readonly` on the grid host. */
+  readonly readonlyGrid: InputSignal<boolean> = input<boolean>(false);
+
   /** Optional cell-content override. */
   readonly cellTemplate: InputSignal<TemplateRef<{ $implicit: CalendarCell<D> }> | null> =
     input<TemplateRef<{ $implicit: CalendarCell<D> }> | null>(null);

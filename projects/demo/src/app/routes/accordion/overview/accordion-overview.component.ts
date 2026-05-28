@@ -1,5 +1,6 @@
 import { ChangeDetectionStrategy, Component } from '@angular/core';
 import { AccordionComponent } from 'ngx-tw/accordion';
+import { CodeBlockComponent } from 'ngx-tw/code-block';
 import {
   CollapsibleComponent,
   CollapsibleTriggerDirective,
@@ -8,7 +9,7 @@ import {
 @Component({
   selector: 'app-accordion-overview',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [AccordionComponent, CollapsibleComponent, CollapsibleTriggerDirective],
+  imports: [AccordionComponent, CodeBlockComponent, CollapsibleComponent, CollapsibleTriggerDirective],
   template: `
     <section class="mb-10">
       <h2 class="text-sm font-semibold mb-3">Description</h2>
@@ -82,22 +83,12 @@ import {
           </tw-collapsible>
         </tw-accordion>
       </div>
-      <div class="bg-surface-sunken border border-border rounded-lg p-4">
-        <pre class="text-sm font-mono whitespace-pre text-fg"><code>&#60;tw-accordion variant="bordered"&#62;
-  &#60;tw-collapsible value="a"&#62;
-    &#60;button twCollapsibleTrigger&#62;What is ngx-tw?&#60;/button&#62;
-    &#60;p&#62;An Angular component library...&#60;/p&#62;
-  &#60;/tw-collapsible&#62;
-&#60;/tw-accordion&#62;</code></pre>
-      </div>
+      <tw-code-block [code]="usageSnippet" language="html" />
     </section>
 
     <section class="mb-10">
       <h2 class="text-sm font-semibold mb-3">Import</h2>
-      <div class="bg-surface-sunken border border-border rounded-lg p-4">
-        <pre class="text-sm font-mono whitespace-pre text-fg"><code>import {{ '{' }} AccordionComponent {{ '}' }} from 'ngx-tw/accordion';
-import {{ '{' }} CollapsibleComponent, CollapsibleTriggerDirective {{ '}' }} from 'ngx-tw/collapsible';</code></pre>
-      </div>
+      <tw-code-block [code]="importSnippet" language="ts" />
     </section>
 
     <section>
@@ -114,4 +105,14 @@ import {{ '{' }} CollapsibleComponent, CollapsibleTriggerDirective {{ '}' }} fro
     </section>
   `,
 })
-export class AccordionOverview {}
+export class AccordionOverview {
+  protected readonly usageSnippet = `<tw-accordion variant="bordered">
+  <tw-collapsible value="a">
+    <button twCollapsibleTrigger>What is ngx-tw?</button>
+    <p>An Angular component library...</p>
+  </tw-collapsible>
+</tw-accordion>`;
+
+  protected readonly importSnippet = `import { AccordionComponent } from 'ngx-tw/accordion';
+import { CollapsibleComponent, CollapsibleTriggerDirective } from 'ngx-tw/collapsible';`;
+}

@@ -50,17 +50,19 @@ const sortHeaderVariants = tv(
     slots: {
       host: 'group select-none',
       container:
-        'inline-flex items-center gap-1.5 cursor-pointer rounded-md font-medium text-fg transition-colors duration-200 motion-reduce:transition-none hover:bg-surface-muted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500',
+        'inline-flex items-center gap-1.5 cursor-pointer rounded-md font-medium text-fg transition-colors duration-normal motion-reduce:transition-none hover:bg-surface-muted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500',
       label: 'min-w-0',
       arrow:
-        'inline-flex shrink-0 items-center justify-center transition-opacity duration-200 motion-reduce:transition-none',
+        'inline-flex shrink-0 items-center justify-center transition-opacity duration-normal motion-reduce:transition-none',
       arrowIcon:
-        'shrink-0 transition-transform duration-200 motion-reduce:transition-none',
+        'shrink-0 transition-transform duration-normal motion-reduce:transition-none',
     },
     variants: {
       size: {
         xs: {
           container: 'px-2 py-1 text-xs',
+          // `size-3.5` half-step: only icon size aligning with text-xs without
+          // dominating it; codified per CLAUDE.md.
           arrowIcon: 'size-3.5',
         },
         sm: {
@@ -174,7 +176,11 @@ export class SortHeaderComponent implements OnInit, AfterViewInit, OnDestroy {
       );
     }
 
-    // Sync the AriaDescriber description when sortActionDescription changes.
+    // Reactive: re-tags the host whenever `sortActionDescription` (a public
+    // signal input) changes; consumers may swap the description at runtime for
+    // i18n / state-driven copy. Cleanup runs in `ngOnDestroy`. Not a one-shot
+    // `afterNextRender`: that would freeze the description at first render and
+    // silently ignore subsequent rebinds.
     effect(() => {
       const description = this.sortActionDescription();
       const el = this.containerRef()?.nativeElement;

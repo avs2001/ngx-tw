@@ -38,20 +38,22 @@ import { CodeBlockComponent } from 'ngx-tw/code-block';
     <section class="mb-10">
       <h2 class="text-sm font-semibold mb-3">Accessibility</h2>
       <p class="text-sm text-fg-muted leading-relaxed max-w-2xl mb-4">
-        The host element carries
-        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">role="alert"</code>
-        by default so assistive tech picks the message up as it enters the DOM. The component also
-        announces its text content through CDK's
-        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">LiveAnnouncer</code>
-        at render time using the
+        The host element exposes an ARIA live region whose
+        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">role</code>
+        is derived from the
         <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">politeness</code>
-        input — use
+        input —
         <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">'polite'</code>
-        (the default) for most cases,
+        (the default) maps to
+        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">role="status"</code>
+        and is announced when the screen reader next pauses;
         <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">'assertive'</code>
-        for errors that interrupt, and
+        maps to
+        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">role="alert"</code>
+        and interrupts the current utterance — reserve it for errors that need immediate attention;
         <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">'off'</code>
-        when the alert sits inside a larger notification system that owns the announcement.
+        drops the role entirely so the alert never announces (use it inside notification centres
+        that own the announcement).
       </p>
 
       <div class="overflow-x-auto border border-border rounded-lg">
@@ -65,11 +67,11 @@ import { CodeBlockComponent } from 'ngx-tw/code-block';
           <tbody class="divide-y divide-border-muted">
             <tr>
               <td class="px-4 py-2 font-mono text-xs">role</td>
-              <td class="px-4 py-2 text-fg-muted">Host is <code class="font-mono">role="alert"</code> — an ARIA live region that announces its contents when it appears.</td>
+              <td class="px-4 py-2 text-fg-muted">Bound to <code class="font-mono">politeness</code>: <code class="font-mono">polite → status</code>, <code class="font-mono">assertive → alert</code>, <code class="font-mono">off → null</code>. The live-region role announces the alert text once on insertion.</td>
             </tr>
             <tr>
-              <td class="px-4 py-2 font-mono text-xs">LiveAnnouncer</td>
-              <td class="px-4 py-2 text-fg-muted">Text content is announced through CDK's LiveAnnouncer on first render, respecting the configured politeness.</td>
+              <td class="px-4 py-2 font-mono text-xs">Single announcement</td>
+              <td class="px-4 py-2 text-fg-muted">Announcement comes from the role's implicit live region — no separate <code class="font-mono">LiveAnnouncer</code> call, so screen readers read the message exactly once.</td>
             </tr>
             <tr>
               <td class="px-4 py-2 font-mono text-xs">Icons</td>
@@ -77,11 +79,11 @@ import { CodeBlockComponent } from 'ngx-tw/code-block';
             </tr>
             <tr>
               <td class="px-4 py-2 font-mono text-xs">Dismiss button</td>
-              <td class="px-4 py-2 text-fg-muted">Carries <code class="font-mono">aria-label="Dismiss"</code> and receives a visible focus ring via <code class="font-mono">focus-visible</code>.</td>
+              <td class="px-4 py-2 text-fg-muted">Carries a localizable label via the <code class="font-mono">dismissLabel</code> input (defaults to <code class="font-mono">"Dismiss"</code>) and receives a visible focus ring via <code class="font-mono">focus-visible</code>.</td>
             </tr>
             <tr>
               <td class="px-4 py-2 font-mono text-xs">Contrast</td>
-              <td class="px-4 py-2 text-fg-muted">Every variant × color combination is authored to meet WCAG AA contrast ratios.</td>
+              <td class="px-4 py-2 text-fg-muted">Every variant × color combination is authored to meet WCAG AA contrast ratios in both light and dark mode.</td>
             </tr>
           </tbody>
         </table>
@@ -137,8 +139,8 @@ import { CodeBlockComponent } from 'ngx-tw/code-block';
         <li>4 projection slots: <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">twAlertIcon</code>, <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">twAlertTitle</code>, <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">twAlertContent</code>, <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">twAlertActions</code></li>
         <li>Optional dismiss button with a <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">dismissed</code> output event</li>
         <li>Leave animation — dismissed alerts fade out via <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">animate.leave</code></li>
-        <li>Screen-reader announcements via CDK <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">LiveAnnouncer</code> with configurable politeness</li>
-        <li><code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">role="alert"</code> by default — no ARIA wiring required on your side</li>
+        <li>Single screen-reader announcement via a politeness-driven host role (<code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">status</code> / <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">alert</code> / none)</li>
+        <li>Localizable dismiss button label via the <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">dismissLabel</code> input</li>
         <li>Composable with <a routerLink="/components/button" class="text-primary-600 hover:underline">Button</a> for action CTAs inside the alert body</li>
         <li>Respects <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">prefers-reduced-motion</code> on transitions</li>
       </ul>
