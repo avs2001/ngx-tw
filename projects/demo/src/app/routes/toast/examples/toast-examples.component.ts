@@ -14,9 +14,9 @@ import {
   type ToastRef,
   type ToastSeverity,
   type ToastTemplateContext,
-} from 'ngx-tw/toast';
-import { ButtonDirective } from 'ngx-tw/button';
-import { CodeBlockComponent } from 'ngx-tw/code-block';
+} from '@cdevhub/ngx-tw/toast';
+import { ButtonDirective } from '@cdevhub/ngx-tw/button';
+import { CodeBlockComponent } from '@cdevhub/ngx-tw/code-block';
 
 const POSITIONS: ToastPosition[] = [
   'top-left',

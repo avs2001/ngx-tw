@@ -5,8 +5,8 @@ import {
   CardHeaderDirective,
   CardBodyDirective,
   CardFooterDirective,
-} from 'ngx-tw/card';
-import { CodeBlockComponent } from 'ngx-tw/code-block';
+} from '@cdevhub/ngx-tw/card';
+import { CodeBlockComponent } from '@cdevhub/ngx-tw/code-block';
 
 @Component({
   selector: 'app-card-overview',
@@ -170,7 +170,7 @@ export class CardOverview {
   CardBodyDirective,
   CardFooterDirective,
   CardMediaDirective,
-} from 'ngx-tw/card';`;
+} from '@cdevhub/ngx-tw/card';`;
 
   protected readonly clickableCardSnippet = `<a routerLink="/reports/q1" class="block focus:outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500 rounded-lg">
   <tw-card>

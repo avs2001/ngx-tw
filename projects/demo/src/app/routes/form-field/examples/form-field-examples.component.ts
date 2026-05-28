@@ -7,7 +7,7 @@ import {
   Validators,
 } from '@angular/forms';
 import { email, form, FormField, required } from '@angular/forms/signals';
-import type { TwColor, TwSize } from 'ngx-tw/core';
+import type { TwColor, TwSize } from '@cdevhub/ngx-tw/core';
 import {
   ErrorDirective,
   FormFieldComponent,
@@ -17,15 +17,15 @@ import {
   PrefixIconDirective,
   SuffixDirective,
   SuffixIconDirective,
-} from 'ngx-tw/form-field';
+} from '@cdevhub/ngx-tw/form-field';
 import type {
   FloatLabel,
   FormFieldAppearance,
   SubscriptSizing,
-} from 'ngx-tw/form-field';
-import { InputDirective } from 'ngx-tw/input';
-import { ButtonDirective } from 'ngx-tw/button';
-import { CodeBlockComponent } from 'ngx-tw/code-block';
+} from '@cdevhub/ngx-tw/form-field';
+import { InputDirective } from '@cdevhub/ngx-tw/input';
+import { ButtonDirective } from '@cdevhub/ngx-tw/button';
+import { CodeBlockComponent } from '@cdevhub/ngx-tw/code-block';
 
 const COLORS: TwColor[] = [
   'primary', 'secondary', 'accent', 'neutral', 'info', 'success', 'warning', 'error',

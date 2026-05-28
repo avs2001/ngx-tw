@@ -1,13 +1,13 @@
 import { ChangeDetectionStrategy, Component } from '@angular/core';
 import { RouterLink } from '@angular/router';
-import { ButtonDirective } from 'ngx-tw/button';
+import { ButtonDirective } from '@cdevhub/ngx-tw/button';
 import {
   MenuComponent,
   MenuTriggerDirective,
   MenuItemDirective,
-} from 'ngx-tw/menu';
-import { SeparatorComponent } from 'ngx-tw/separator';
-import { CodeBlockComponent } from 'ngx-tw/code-block';
+} from '@cdevhub/ngx-tw/menu';
+import { SeparatorComponent } from '@cdevhub/ngx-tw/separator';
+import { CodeBlockComponent } from '@cdevhub/ngx-tw/code-block';
 
 @Component({
   selector: 'app-menu-overview',
@@ -199,5 +199,5 @@ export class MenuOverview {
   MenuItemDescriptionDirective,
   MenuItemShortcutDirective,
   MenuItemSubmenuIndicatorDirective,
-} from 'ngx-tw/menu';`;
+} from '@cdevhub/ngx-tw/menu';`;
 }

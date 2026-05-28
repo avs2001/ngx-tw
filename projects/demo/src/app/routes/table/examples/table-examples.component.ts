@@ -13,16 +13,16 @@ import {
   type TwTableResponsiveMode,
   type TwTableSticky,
   type TwTableVariant,
-} from 'ngx-tw/table';
-import { PaginatorComponent } from 'ngx-tw/paginator';
+} from '@cdevhub/ngx-tw/table';
+import { PaginatorComponent } from '@cdevhub/ngx-tw/paginator';
 import {
   SortDirective,
   SortHeaderComponent,
   type SortDirection,
-} from 'ngx-tw/sort';
-import { ButtonDirective } from 'ngx-tw/button';
-import { CodeBlockComponent } from 'ngx-tw/code-block';
-import type { TwSize } from 'ngx-tw/core';
+} from '@cdevhub/ngx-tw/sort';
+import { ButtonDirective } from '@cdevhub/ngx-tw/button';
+import { CodeBlockComponent } from '@cdevhub/ngx-tw/code-block';
+import type { TwSize } from '@cdevhub/ngx-tw/core';
 
 interface Order {
   readonly id: number;

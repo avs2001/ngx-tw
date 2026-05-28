@@ -1,7 +1,7 @@
 import { ChangeDetectionStrategy, Component, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
-import { TabNavComponent, TabLinkDirective } from 'ngx-tw/tab-nav';
-import { CodeBlockComponent } from 'ngx-tw/code-block';
+import { TabNavComponent, TabLinkDirective } from '@cdevhub/ngx-tw/tab-nav';
+import { CodeBlockComponent } from '@cdevhub/ngx-tw/code-block';
 
 @Component({
   selector: 'app-tab-nav-overview',
@@ -244,7 +244,7 @@ export class TabNavOverview {
   TabNavComponent,
   TabLinkDirective,
   TabNavPanel,
-} from 'ngx-tw/tab-nav';`;
+} from '@cdevhub/ngx-tw/tab-nav';`;
 
   protected readonly routerRecipeSnippet = `<nav twTabNav aria-label="Docs">
   <a

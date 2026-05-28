@@ -2,11 +2,11 @@ import { Component, input } from '@angular/core';
 import { type ComponentFixture, TestBed } from '@angular/core/testing';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { BadgeComponent } from './badge';
-import { AvatarComponent } from 'ngx-tw/avatar';
-import { IconComponent } from 'ngx-tw/icon';
-import { provideTwIcons } from 'ngx-tw/icon';
-import type { TwIconData } from 'ngx-tw/icon';
-import type { TwColor, TwSize } from 'ngx-tw/core';
+import { AvatarComponent } from '@cdevhub/ngx-tw/avatar';
+import { IconComponent } from '@cdevhub/ngx-tw/icon';
+import { provideTwIcons } from '@cdevhub/ngx-tw/icon';
+import type { TwIconData } from '@cdevhub/ngx-tw/icon';
+import type { TwColor, TwSize } from '@cdevhub/ngx-tw/core';
 import type { BadgeVariant } from './badge';
 
 // ── Test icon data ───────────────────────────────────────────────

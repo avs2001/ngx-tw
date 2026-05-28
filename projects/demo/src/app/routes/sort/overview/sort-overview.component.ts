@@ -5,8 +5,8 @@ import {
   SortHeaderComponent,
   type SortDirection,
   type TwSortEvent,
-} from 'ngx-tw/sort';
-import { CodeBlockComponent } from 'ngx-tw/code-block';
+} from '@cdevhub/ngx-tw/sort';
+import { CodeBlockComponent } from '@cdevhub/ngx-tw/code-block';
 
 interface Row {
   id: number;
@@ -193,5 +193,5 @@ export class SortOverview {
   SortHeaderComponent,
   type SortDirection,
   type TwSortEvent,
-} from 'ngx-tw/sort';`;
+} from '@cdevhub/ngx-tw/sort';`;
 }

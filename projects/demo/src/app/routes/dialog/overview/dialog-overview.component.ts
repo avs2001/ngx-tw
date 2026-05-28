@@ -7,9 +7,9 @@ import {
   DialogContentDirective,
   DialogSubtitleDirective,
   DialogTitleDirective,
-} from 'ngx-tw/dialog';
-import { ButtonDirective } from 'ngx-tw/button';
-import { CodeBlockComponent } from 'ngx-tw/code-block';
+} from '@cdevhub/ngx-tw/dialog';
+import { ButtonDirective } from '@cdevhub/ngx-tw/button';
+import { CodeBlockComponent } from '@cdevhub/ngx-tw/code-block';
 
 @Component({
   selector: 'app-dialog-overview',
@@ -232,7 +232,7 @@ protected open(): void {
   </div>
 </ng-template>`;
 
-  protected readonly provideSnippet = `import { provideTwDialog } from 'ngx-tw/dialog';
+  protected readonly provideSnippet = `import { provideTwDialog } from '@cdevhub/ngx-tw/dialog';
 
 export const appConfig: ApplicationConfig = {
   providers: [provideTwDialog({ size: 'md' })],
@@ -250,5 +250,5 @@ export const appConfig: ApplicationConfig = {
   DialogCloseDirective,
   DialogHeaderDirective,
   DialogIconDirective,
-} from 'ngx-tw/dialog';`;
+} from '@cdevhub/ngx-tw/dialog';`;
 }

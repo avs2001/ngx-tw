@@ -18,7 +18,7 @@ import type {
   TimelineScrollControls,
   TimelineState,
 } from './timeline';
-import type { TwColor, TwOrientation, TwSize } from 'ngx-tw/core';
+import type { TwColor, TwOrientation, TwSize } from '@cdevhub/ngx-tw/core';
 
 // ── Test host components ──────────────────────────────────────────
 

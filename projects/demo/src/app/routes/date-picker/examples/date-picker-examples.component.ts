@@ -11,17 +11,17 @@ import {
   DatePickerComponent,
   type DatePickerPreset,
   type DatePickerTimeConfig,
-} from 'ngx-tw/date-picker';
-import { ButtonDirective } from 'ngx-tw/button';
+} from '@cdevhub/ngx-tw/date-picker';
+import { ButtonDirective } from '@cdevhub/ngx-tw/button';
 import {
   FormFieldComponent,
   HintDirective,
   LabelDirective,
   ErrorDirective,
-} from 'ngx-tw/form-field';
-import { CodeBlockComponent } from 'ngx-tw/code-block';
-import type { TimePickerFormat } from 'ngx-tw/core';
-import type { TwColor, TwSize } from 'ngx-tw/core';
+} from '@cdevhub/ngx-tw/form-field';
+import { CodeBlockComponent } from '@cdevhub/ngx-tw/code-block';
+import type { TimePickerFormat } from '@cdevhub/ngx-tw/core';
+import type { TwColor, TwSize } from '@cdevhub/ngx-tw/core';
 
 const COLORS: TwColor[] = [
   'primary',

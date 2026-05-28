@@ -1,11 +1,11 @@
 import { ChangeDetectionStrategy, Component, signal } from '@angular/core';
 import { FormControl, FormsModule, ReactiveFormsModule } from '@angular/forms';
 import { form, FormField, required } from '@angular/forms/signals';
-import { RadioComponent, RadioGroupComponent } from 'ngx-tw/radio';
-import type { RadioOrientation, RadioVariant } from 'ngx-tw/radio';
-import { ButtonDirective } from 'ngx-tw/button';
-import { CodeBlockComponent } from 'ngx-tw/code-block';
-import type { TwColor, TwSize } from 'ngx-tw/core';
+import { RadioComponent, RadioGroupComponent } from '@cdevhub/ngx-tw/radio';
+import type { RadioOrientation, RadioVariant } from '@cdevhub/ngx-tw/radio';
+import { ButtonDirective } from '@cdevhub/ngx-tw/button';
+import { CodeBlockComponent } from '@cdevhub/ngx-tw/code-block';
+import type { TwColor, TwSize } from '@cdevhub/ngx-tw/core';
 
 const COLORS: TwColor[] = ['primary', 'secondary', 'accent', 'neutral', 'info', 'success', 'warning', 'error'];
 const SIZES: TwSize[] = ['xs', 'sm', 'md', 'lg', 'xl'];

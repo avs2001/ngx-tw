@@ -1,4 +1,4 @@
-import type { TwColor } from 'ngx-tw/core';
+import type { TwColor } from '@cdevhub/ngx-tw/core';
 
 /** A single SVG element: [tagName, attributes]. */
 export type TwIconNode = readonly [string, Readonly<Record<string, string | number>>];

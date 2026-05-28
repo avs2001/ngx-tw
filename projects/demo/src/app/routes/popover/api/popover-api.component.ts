@@ -1,5 +1,5 @@
 import { ChangeDetectionStrategy, Component } from '@angular/core';
-import { CodeBlockComponent } from 'ngx-tw/code-block';
+import { CodeBlockComponent } from '@cdevhub/ngx-tw/code-block';
 
 @Component({
   selector: 'app-popover-api',
@@ -275,7 +275,7 @@ interface PopoverRef {
   close(): void;
 }
 
-// Shared library types (re-exported from 'ngx-tw/core'):
+// Shared library types (re-exported from '@cdevhub/ngx-tw/core'):
 type TwColor = 'primary' | 'secondary' | 'accent' | 'neutral'
              | 'info' | 'success' | 'warning' | 'error';
 type TwSize  = 'xs' | 'sm' | 'md' | 'lg' | 'xl';`;

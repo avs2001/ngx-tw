@@ -10,17 +10,17 @@ import {
   Validators,
 } from '@angular/forms';
 import { form, FormField, minLength, required } from '@angular/forms/signals';
-import type { ErrorStateMatcher, TwSize } from 'ngx-tw/core';
+import type { ErrorStateMatcher, TwSize } from '@cdevhub/ngx-tw/core';
 import {
   ErrorDirective,
   FormFieldComponent,
   HintDirective,
   LabelDirective,
   SuffixDirective,
-} from 'ngx-tw/form-field';
-import { TextareaDirective, type TwTextareaResize } from 'ngx-tw/textarea';
-import { ButtonDirective } from 'ngx-tw/button';
-import { CodeBlockComponent } from 'ngx-tw/code-block';
+} from '@cdevhub/ngx-tw/form-field';
+import { TextareaDirective, type TwTextareaResize } from '@cdevhub/ngx-tw/textarea';
+import { ButtonDirective } from '@cdevhub/ngx-tw/button';
+import { CodeBlockComponent } from '@cdevhub/ngx-tw/code-block';
 
 const SUBMIT_ONLY_MATCHER: ErrorStateMatcher = {
   isErrorState(control, form) {
@@ -609,7 +609,7 @@ protected readonly signalForm = form(this.signalModel, (p) => {
   }
 </tw-form-field>`;
 
-  protected readonly matcherTsSnippet = `import type { ErrorStateMatcher } from 'ngx-tw/core';
+  protected readonly matcherTsSnippet = `import type { ErrorStateMatcher } from '@cdevhub/ngx-tw/core';
 
 const SUBMIT_ONLY_MATCHER: ErrorStateMatcher = {
   isErrorState(control, form) {

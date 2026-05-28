@@ -11,9 +11,9 @@ import {
 } from '@angular/core';
 import { CdkTextareaAutosize } from '@angular/cdk/text-field';
 import { tv } from 'tailwind-variants';
-import type { TwSize } from 'ngx-tw/core';
-import { TW_FORM_FIELD_CONTROL } from 'ngx-tw/form-field';
-import { InputDirective } from 'ngx-tw/input';
+import type { TwSize } from '@cdevhub/ngx-tw/core';
+import { TW_FORM_FIELD_CONTROL } from '@cdevhub/ngx-tw/form-field';
+import { InputDirective } from '@cdevhub/ngx-tw/input';
 
 /**
  * How the user-resize handle behaves on the textarea. `'vertical'` (the

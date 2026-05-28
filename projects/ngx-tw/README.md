@@ -18,7 +18,7 @@ instead of Material Design tokens.
 ## Installation
 
 ```bash
-npm install ngx-tw @angular/cdk tailwindcss tailwind-variants
+npm install @cdevhub/ngx-tw @angular/cdk tailwindcss tailwind-variants
 ```
 
 **Peer requirements**
@@ -38,7 +38,7 @@ ngx-tw default theme to your global stylesheet so semantic tokens resolve:
 ```css
 /* src/styles.css */
 @import 'tailwindcss';
-@import 'ngx-tw/theme/index.css';
+@import '@cdevhub/ngx-tw/theme/index.css';
 ```
 
 The default theme maps semantic roles (`info`, `success`, `warning`, `error`,
@@ -51,8 +51,8 @@ Import from the per-component entry points for best tree-shaking:
 
 ```ts
 import { Component } from '@angular/core';
-import { ButtonDirective } from 'ngx-tw/button';
-import { AlertComponent } from 'ngx-tw/alert';
+import { ButtonDirective } from '@cdevhub/ngx-tw/button';
+import { AlertComponent } from '@cdevhub/ngx-tw/alert';
 
 @Component({
   selector: 'app-root',
@@ -70,7 +70,7 @@ export class AppComponent {}
 Override any semantic token in your own CSS using Tailwind v4's `@theme` block:
 
 ```css
-@import 'ngx-tw/theme/index.css';
+@import '@cdevhub/ngx-tw/theme/index.css';
 
 @theme {
   /* Re-brand primary to a custom indigo */
@@ -93,25 +93,25 @@ automatically.
 All components are exposed as independent secondary entry points:
 
 ```
-ngx-tw/accordion          ngx-tw/input                ngx-tw/sort
-ngx-tw/alert              ngx-tw/item                 ngx-tw/spinner
-ngx-tw/avatar             ngx-tw/menu                 ngx-tw/stepper
-ngx-tw/badge              ngx-tw/paginator            ngx-tw/switch
-ngx-tw/button             ngx-tw/popover              ngx-tw/tab-nav
-ngx-tw/calendar           ngx-tw/progress-bar         ngx-tw/table
-ngx-tw/card               ngx-tw/radio                ngx-tw/tabs
-ngx-tw/checkbox           ngx-tw/segmented-control    ngx-tw/time-picker
-ngx-tw/code-block         ngx-tw/select               ngx-tw/toast
-ngx-tw/collapsible        ngx-tw/separator            ngx-tw/tooltip
-ngx-tw/command-palette    ngx-tw/skeleton
-ngx-tw/date-picker        ngx-tw/slider
-ngx-tw/dialog             ngx-tw/form-field
-ngx-tw/flip-card          ngx-tw/icon
+@cdevhub/ngx-tw/accordion          @cdevhub/ngx-tw/input                @cdevhub/ngx-tw/sort
+@cdevhub/ngx-tw/alert              @cdevhub/ngx-tw/item                 @cdevhub/ngx-tw/spinner
+@cdevhub/ngx-tw/avatar             @cdevhub/ngx-tw/menu                 @cdevhub/ngx-tw/stepper
+@cdevhub/ngx-tw/badge              @cdevhub/ngx-tw/paginator            @cdevhub/ngx-tw/switch
+@cdevhub/ngx-tw/button             @cdevhub/ngx-tw/popover              @cdevhub/ngx-tw/tab-nav
+@cdevhub/ngx-tw/calendar           @cdevhub/ngx-tw/progress-bar         @cdevhub/ngx-tw/table
+@cdevhub/ngx-tw/card               @cdevhub/ngx-tw/radio                @cdevhub/ngx-tw/tabs
+@cdevhub/ngx-tw/checkbox           @cdevhub/ngx-tw/segmented-control    @cdevhub/ngx-tw/time-picker
+@cdevhub/ngx-tw/code-block         @cdevhub/ngx-tw/select               @cdevhub/ngx-tw/toast
+@cdevhub/ngx-tw/collapsible        @cdevhub/ngx-tw/separator            @cdevhub/ngx-tw/tooltip
+@cdevhub/ngx-tw/command-palette    @cdevhub/ngx-tw/skeleton
+@cdevhub/ngx-tw/date-picker        @cdevhub/ngx-tw/slider
+@cdevhub/ngx-tw/dialog             @cdevhub/ngx-tw/form-field
+@cdevhub/ngx-tw/flip-card          @cdevhub/ngx-tw/icon
 ```
 
-Shared types (`TwColor`, `TwSize`) live in `ngx-tw/core`.
+Shared types (`TwColor`, `TwSize`) live in `@cdevhub/ngx-tw/core`.
 
-A catch-all entry (`ngx-tw`) re-exports every public API for convenience, but
+A catch-all entry (`@cdevhub/ngx-tw`) re-exports every public API for convenience, but
 per-component imports are preferred for tree-shaking.
 
 ## Form controls

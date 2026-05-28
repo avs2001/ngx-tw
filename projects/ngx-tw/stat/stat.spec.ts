@@ -1,7 +1,7 @@
 import { ChangeDetectionStrategy, Component, signal } from '@angular/core';
 import { type ComponentFixture, TestBed } from '@angular/core/testing';
 import { describe, it, expect, beforeEach } from 'vitest';
-import type { TwSize } from 'ngx-tw/core';
+import type { TwSize } from '@cdevhub/ngx-tw/core';
 import {
   StatComponent,
   StatDeltaComponent,

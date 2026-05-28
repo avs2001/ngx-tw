@@ -27,7 +27,7 @@ import { CdkPortalOutlet, ComponentPortal, TemplatePortal } from '@angular/cdk/p
 import { FocusTrapFactory } from '@angular/cdk/a11y';
 import { Subscription } from 'rxjs';
 import { tv } from 'tailwind-variants';
-import type { TwColor, TwSize } from 'ngx-tw/core';
+import type { TwColor, TwSize } from '@cdevhub/ngx-tw/core';
 import {
   POPOVER_DATA,
   POPOVER_REF,

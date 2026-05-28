@@ -46,12 +46,12 @@ import {
   type TwColor,
   type TwFormSubmitted,
   type TwSize,
-} from 'ngx-tw/core';
+} from '@cdevhub/ngx-tw/core';
 import {
   FormFieldComponent,
   type FormFieldControl,
   TW_FORM_FIELD_CONTROL,
-} from 'ngx-tw/form-field';
+} from '@cdevhub/ngx-tw/form-field';
 import { SelectOverlayComponent } from './select-overlay';
 
 // ── Public types ──────────────────────────────────────────────────

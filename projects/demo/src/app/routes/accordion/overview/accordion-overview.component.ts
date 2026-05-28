@@ -1,10 +1,10 @@
 import { ChangeDetectionStrategy, Component } from '@angular/core';
-import { AccordionComponent } from 'ngx-tw/accordion';
-import { CodeBlockComponent } from 'ngx-tw/code-block';
+import { AccordionComponent } from '@cdevhub/ngx-tw/accordion';
+import { CodeBlockComponent } from '@cdevhub/ngx-tw/code-block';
 import {
   CollapsibleComponent,
   CollapsibleTriggerDirective,
-} from 'ngx-tw/collapsible';
+} from '@cdevhub/ngx-tw/collapsible';
 
 @Component({
   selector: 'app-accordion-overview',
@@ -113,6 +113,6 @@ export class AccordionOverview {
   </tw-collapsible>
 </tw-accordion>`;
 
-  protected readonly importSnippet = `import { AccordionComponent } from 'ngx-tw/accordion';
-import { CollapsibleComponent, CollapsibleTriggerDirective } from 'ngx-tw/collapsible';`;
+  protected readonly importSnippet = `import { AccordionComponent } from '@cdevhub/ngx-tw/accordion';
+import { CollapsibleComponent, CollapsibleTriggerDirective } from '@cdevhub/ngx-tw/collapsible';`;
 }

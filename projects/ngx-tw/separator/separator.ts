@@ -5,7 +5,7 @@ import {
   input,
 } from '@angular/core';
 import { tv } from 'tailwind-variants';
-import type { TwColor } from 'ngx-tw/core';
+import type { TwColor } from '@cdevhub/ngx-tw/core';
 
 /** Line style of the separator. */
 export type SeparatorVariant = 'solid' | 'dashed' | 'dotted';

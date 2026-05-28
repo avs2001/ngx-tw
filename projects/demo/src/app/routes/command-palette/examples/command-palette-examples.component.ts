@@ -16,10 +16,10 @@ import {
   CommandPaletteItemDirective,
   type CommandPaletteFilterFn,
   type CommandPaletteItem,
-} from 'ngx-tw/command-palette';
-import { ButtonDirective } from 'ngx-tw/button';
-import { CodeBlockComponent } from 'ngx-tw/code-block';
-import type { TwSize } from 'ngx-tw/core';
+} from '@cdevhub/ngx-tw/command-palette';
+import { ButtonDirective } from '@cdevhub/ngx-tw/button';
+import { CodeBlockComponent } from '@cdevhub/ngx-tw/code-block';
+import type { TwSize } from '@cdevhub/ngx-tw/core';
 
 const SIZES: TwSize[] = ['xs', 'sm', 'md', 'lg', 'xl'];
 

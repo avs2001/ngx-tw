@@ -8,10 +8,10 @@
     "noPropertyAccessFromIndexSignature": true,
     "noImplicitReturns": true,
     "paths": {
-      "ngx-tw": [
+      "@cdevhub/ngx-tw": [
         "./dist/ngx-tw"
       ],
-      "ngx-tw/*": [
+      "@cdevhub/ngx-tw/*": [
         "./dist/ngx-tw/*"
       ]
     },

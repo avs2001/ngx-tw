@@ -3,7 +3,7 @@ import { type ComponentFixture, TestBed } from '@angular/core/testing';
 import { LiveAnnouncer } from '@angular/cdk/a11y';
 import { BehaviorSubject } from 'rxjs';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { SortDirective } from 'ngx-tw/sort';
+import { SortDirective } from '@cdevhub/ngx-tw/sort';
 import {
   ColumnComponent,
   DEFAULT_TABLE_LABELS,
@@ -20,7 +20,7 @@ import type {
   TwTableResponsiveMode,
   TwTableVariant,
 } from './table';
-import type { SortDirection } from 'ngx-tw/sort';
+import type { SortDirection } from '@cdevhub/ngx-tw/sort';
 
 interface Row {
   id: number;

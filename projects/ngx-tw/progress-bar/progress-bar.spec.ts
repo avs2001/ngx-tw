@@ -8,7 +8,7 @@ import type {
   ProgressBarValueFormatter,
   ProgressBarVariant,
 } from './progress-bar';
-import type { TwColor } from 'ngx-tw/core';
+import type { TwColor } from '@cdevhub/ngx-tw/core';
 
 // ── Test host components ──────────────────────────────────────────
 

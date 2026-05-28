@@ -1,9 +1,9 @@
 import { ChangeDetectionStrategy, Component, signal } from '@angular/core';
-import { TooltipDirective } from 'ngx-tw/tooltip';
-import { ButtonDirective } from 'ngx-tw/button';
-import { CodeBlockComponent } from 'ngx-tw/code-block';
-import type { TwColor, TwSize } from 'ngx-tw/core';
-import type { TooltipPosition } from 'ngx-tw/tooltip';
+import { TooltipDirective } from '@cdevhub/ngx-tw/tooltip';
+import { ButtonDirective } from '@cdevhub/ngx-tw/button';
+import { CodeBlockComponent } from '@cdevhub/ngx-tw/code-block';
+import type { TwColor, TwSize } from '@cdevhub/ngx-tw/core';
+import type { TooltipPosition } from '@cdevhub/ngx-tw/tooltip';
 
 const COLORS: TwColor[] = [
   'primary',

@@ -33,7 +33,7 @@ import {
   type TwColor,
   type TwFormSubmitted,
   type TwSize,
-} from 'ngx-tw/core';
+} from '@cdevhub/ngx-tw/core';
 
 /** Visual style of the selected radio indicator. */
 export type RadioVariant = 'solid' | 'outline';

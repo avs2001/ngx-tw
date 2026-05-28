@@ -11,11 +11,11 @@ import {
   SheetTitleDirective,
   type SheetSide,
   type SheetSize,
-} from 'ngx-tw/sheet';
-import { ButtonDirective } from 'ngx-tw/button';
-import { InputDirective } from 'ngx-tw/input';
-import { FormFieldComponent, LabelDirective } from 'ngx-tw/form-field';
-import { IconComponent } from 'ngx-tw/icon';
+} from '@cdevhub/ngx-tw/sheet';
+import { ButtonDirective } from '@cdevhub/ngx-tw/button';
+import { InputDirective } from '@cdevhub/ngx-tw/input';
+import { FormFieldComponent, LabelDirective } from '@cdevhub/ngx-tw/form-field';
+import { IconComponent } from '@cdevhub/ngx-tw/icon';
 
 const SIDES: SheetSide[] = ['top', 'right', 'bottom', 'left'];
 const SIZES: SheetSize[] = ['xs', 'sm', 'md', 'lg', 'xl', 'full'];

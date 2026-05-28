@@ -6,7 +6,7 @@ import { PopoverDirective, type PopoverPosition } from './popover';
 import { PopoverCloseDirective } from './popover-close';
 import { PopoverTitleDirective } from './popover-title';
 import { POPOVER_DATA, POPOVER_REF } from './popover-tokens';
-import type { TwColor, TwSize } from 'ngx-tw/core';
+import type { TwColor, TwSize } from '@cdevhub/ngx-tw/core';
 
 // ── Test host components ──
 

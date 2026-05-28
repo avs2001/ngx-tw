@@ -13,7 +13,7 @@ import {
 } from '@angular/forms';
 import { form, FormField, minLength, required } from '@angular/forms/signals';
 import { CdkTextareaAutosize } from '@angular/cdk/text-field';
-import type { ErrorStateMatcher, TwSize } from 'ngx-tw/core';
+import type { ErrorStateMatcher, TwSize } from '@cdevhub/ngx-tw/core';
 import {
   ErrorDirective,
   FormFieldComponent,
@@ -21,10 +21,10 @@ import {
   LabelDirective,
   PrefixDirective,
   SuffixDirective,
-} from 'ngx-tw/form-field';
-import { InputDirective, TW_INPUT_VALUE_ACCESSOR } from 'ngx-tw/input';
-import { ButtonDirective } from 'ngx-tw/button';
-import { CodeBlockComponent } from 'ngx-tw/code-block';
+} from '@cdevhub/ngx-tw/form-field';
+import { InputDirective, TW_INPUT_VALUE_ACCESSOR } from '@cdevhub/ngx-tw/input';
+import { ButtonDirective } from '@cdevhub/ngx-tw/button';
+import { CodeBlockComponent } from '@cdevhub/ngx-tw/code-block';
 
 // Shows errors only after the parent form is submitted — used below.
 const SUBMIT_ONLY_MATCHER: ErrorStateMatcher = {
@@ -841,7 +841,7 @@ protected readonly signalForm = form(this.signalModel, (p) => {
      explicit value if you want to clear the model too. -->
 <button (click)="signalForm.fullName().reset('')">Reset</button>`;
 
-  protected readonly matcherTsSnippet = `import type { ErrorStateMatcher } from 'ngx-tw/core';
+  protected readonly matcherTsSnippet = `import type { ErrorStateMatcher } from '@cdevhub/ngx-tw/core';
 
 const SUBMIT_ONLY_MATCHER: ErrorStateMatcher = {
   isErrorState(control, form) {

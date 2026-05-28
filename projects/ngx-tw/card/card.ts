@@ -7,7 +7,7 @@ import {
   input,
 } from '@angular/core';
 import { tv } from 'tailwind-variants';
-import type { TwColor, TwSize } from 'ngx-tw/core';
+import type { TwColor, TwSize } from '@cdevhub/ngx-tw/core';
 
 /** Visual style of the card container. */
 export type CardVariant = 'elevated' | 'outlined' | 'ghost';

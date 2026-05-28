@@ -9,15 +9,15 @@ import {
   SelectOptionTemplateDirective,
   SelectTriggerTemplateDirective,
   type SelectVariant,
-} from 'ngx-tw/select';
-import { ButtonDirective } from 'ngx-tw/button';
+} from '@cdevhub/ngx-tw/select';
+import { ButtonDirective } from '@cdevhub/ngx-tw/button';
 import {
   FormFieldComponent,
   HintDirective,
   LabelDirective,
-} from 'ngx-tw/form-field';
-import { CodeBlockComponent } from 'ngx-tw/code-block';
-import type { TwColor, TwSize } from 'ngx-tw/core';
+} from '@cdevhub/ngx-tw/form-field';
+import { CodeBlockComponent } from '@cdevhub/ngx-tw/code-block';
+import type { TwColor, TwSize } from '@cdevhub/ngx-tw/core';
 
 interface Country {
   readonly label: string;

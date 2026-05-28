@@ -3,7 +3,7 @@ import { type ComponentFixture, TestBed } from '@angular/core/testing';
 import { FormControl, ReactiveFormsModule, Validators } from '@angular/forms';
 import { LiveAnnouncer } from '@angular/cdk/a11y';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import type { TwColor, TwSize } from 'ngx-tw/core';
+import type { TwColor, TwSize } from '@cdevhub/ngx-tw/core';
 import {
   provideTwStepperOptions,
   StepComponent,

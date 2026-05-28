@@ -1,7 +1,7 @@
 import { ChangeDetectionStrategy, Component, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
-import { SwitchComponent } from 'ngx-tw/switch';
-import { CodeBlockComponent } from 'ngx-tw/code-block';
+import { SwitchComponent } from '@cdevhub/ngx-tw/switch';
+import { CodeBlockComponent } from '@cdevhub/ngx-tw/code-block';
 
 @Component({
   selector: 'app-switch-overview',
@@ -138,5 +138,5 @@ export class SwitchOverview {
 
   protected readonly basicUsageSnippet = `<tw-switch label="Enable notifications" [(checked)]="enabled" />`;
 
-  protected readonly importSnippet = `import { SwitchComponent } from 'ngx-tw/switch';`;
+  protected readonly importSnippet = `import { SwitchComponent } from '@cdevhub/ngx-tw/switch';`;
 }

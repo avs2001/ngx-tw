@@ -11,16 +11,16 @@ import {
   TimePickerComponent,
   type TimePickerFormat,
   type TimePickerVariant,
-} from 'ngx-tw/time-picker';
-import { ButtonDirective } from 'ngx-tw/button';
+} from '@cdevhub/ngx-tw/time-picker';
+import { ButtonDirective } from '@cdevhub/ngx-tw/button';
 import {
   FormFieldComponent,
   HintDirective,
   LabelDirective,
   ErrorDirective,
-} from 'ngx-tw/form-field';
-import { CodeBlockComponent } from 'ngx-tw/code-block';
-import type { TwColor, TwSize } from 'ngx-tw/core';
+} from '@cdevhub/ngx-tw/form-field';
+import { CodeBlockComponent } from '@cdevhub/ngx-tw/code-block';
+import type { TwColor, TwSize } from '@cdevhub/ngx-tw/core';
 
 const VARIANTS: TimePickerVariant[] = ['default', 'naked'];
 const COLORS: TwColor[] = [

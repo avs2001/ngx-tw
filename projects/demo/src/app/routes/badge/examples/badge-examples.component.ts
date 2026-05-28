@@ -1,11 +1,11 @@
 import { ChangeDetectionStrategy, Component, signal } from '@angular/core';
-import { BadgeComponent, BadgeDotDirective } from 'ngx-tw/badge';
-import { ButtonDirective } from 'ngx-tw/button';
-import { IconComponent } from 'ngx-tw/icon';
-import { AvatarComponent } from 'ngx-tw/avatar';
-import { CodeBlockComponent } from 'ngx-tw/code-block';
-import type { TwColor, TwSize } from 'ngx-tw/core';
-import type { BadgeVariant } from 'ngx-tw/badge';
+import { BadgeComponent, BadgeDotDirective } from '@cdevhub/ngx-tw/badge';
+import { ButtonDirective } from '@cdevhub/ngx-tw/button';
+import { IconComponent } from '@cdevhub/ngx-tw/icon';
+import { AvatarComponent } from '@cdevhub/ngx-tw/avatar';
+import { CodeBlockComponent } from '@cdevhub/ngx-tw/code-block';
+import type { TwColor, TwSize } from '@cdevhub/ngx-tw/core';
+import type { BadgeVariant } from '@cdevhub/ngx-tw/badge';
 
 const VARIANTS: BadgeVariant[] = ['solid', 'outline', 'soft'];
 const COLORS: TwColor[] = ['primary', 'secondary', 'accent', 'neutral', 'info', 'success', 'warning', 'error'];

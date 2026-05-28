@@ -8,12 +8,12 @@ import {
   StepperNextDirective,
   StepperPreviousDirective,
   type StepperVariant,
-} from 'ngx-tw/stepper';
-import { ButtonDirective } from 'ngx-tw/button';
-import { InputDirective } from 'ngx-tw/input';
-import { FormFieldComponent, LabelDirective } from 'ngx-tw/form-field';
-import { CodeBlockComponent } from 'ngx-tw/code-block';
-import type { TwColor, TwSize } from 'ngx-tw/core';
+} from '@cdevhub/ngx-tw/stepper';
+import { ButtonDirective } from '@cdevhub/ngx-tw/button';
+import { InputDirective } from '@cdevhub/ngx-tw/input';
+import { FormFieldComponent, LabelDirective } from '@cdevhub/ngx-tw/form-field';
+import { CodeBlockComponent } from '@cdevhub/ngx-tw/code-block';
+import type { TwColor, TwSize } from '@cdevhub/ngx-tw/core';
 
 const VARIANTS: StepperVariant[] = ['default', 'dot', 'simple'];
 const COLORS: TwColor[] = [

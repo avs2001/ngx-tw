@@ -5,9 +5,9 @@ import {
   ItemLeadingDirective,
   ItemTitleDirective,
   ItemDescriptionDirective,
-} from 'ngx-tw/item';
-import { IconComponent } from 'ngx-tw/icon';
-import { CodeBlockComponent } from 'ngx-tw/code-block';
+} from '@cdevhub/ngx-tw/item';
+import { IconComponent } from '@cdevhub/ngx-tw/icon';
+import { CodeBlockComponent } from '@cdevhub/ngx-tw/code-block';
 
 @Component({
   selector: 'app-item-overview',
@@ -179,5 +179,5 @@ export class ItemOverview {
   ItemTitleDirective,
   ItemDescriptionDirective,
   ItemTrailingDirective,
-} from 'ngx-tw/item';`;
+} from '@cdevhub/ngx-tw/item';`;
 }

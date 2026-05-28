@@ -6,7 +6,7 @@ import {
   CollapsibleComponent,
   CollapsibleGroupComponent,
   CollapsibleTriggerDirective,
-} from 'ngx-tw/collapsible';
+} from '@cdevhub/ngx-tw/collapsible';
 import { AccordionComponent } from './accordion';
 
 // ── Test host: single-mode accordion ──

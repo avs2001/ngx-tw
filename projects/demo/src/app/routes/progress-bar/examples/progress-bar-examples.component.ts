@@ -1,14 +1,14 @@
 import { ChangeDetectionStrategy, Component, DestroyRef, computed, inject, signal } from '@angular/core';
-import { ProgressBarComponent } from 'ngx-tw/progress-bar';
+import { ProgressBarComponent } from '@cdevhub/ngx-tw/progress-bar';
 import type {
   ProgressBarOptions,
   ProgressBarSize,
   ProgressBarValueFormatter,
   ProgressBarVariant,
-} from 'ngx-tw/progress-bar';
-import { ButtonDirective } from 'ngx-tw/button';
-import { CodeBlockComponent } from 'ngx-tw/code-block';
-import type { TwColor } from 'ngx-tw/core';
+} from '@cdevhub/ngx-tw/progress-bar';
+import { ButtonDirective } from '@cdevhub/ngx-tw/button';
+import { CodeBlockComponent } from '@cdevhub/ngx-tw/code-block';
+import type { TwColor } from '@cdevhub/ngx-tw/core';
 
 const VARIANTS: ProgressBarVariant[] = ['linear', 'segmented'];
 const COLORS: TwColor[] = [

@@ -11,7 +11,7 @@ import {
   CommandPaletteItemDirective,
 } from './command-palette';
 import type { CommandPaletteFilterFn, CommandPaletteItem } from './command-palette-tokens';
-import type { TwSize } from 'ngx-tw/core';
+import type { TwSize } from '@cdevhub/ngx-tw/core';
 
 // ── Constants ──
 

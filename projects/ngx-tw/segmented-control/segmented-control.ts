@@ -14,7 +14,7 @@ import {
 } from '@angular/core';
 import { type ControlValueAccessor, NG_VALUE_ACCESSOR } from '@angular/forms';
 import { tv } from 'tailwind-variants';
-import type { TwColor, TwOrientation, TwSize } from 'ngx-tw/core';
+import type { TwColor, TwOrientation, TwSize } from '@cdevhub/ngx-tw/core';
 
 /** Visual style of the active indicator. */
 export type SegmentedControlVariant = 'surface' | 'filled' | 'outline';

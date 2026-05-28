@@ -1,7 +1,7 @@
 import { ChangeDetectionStrategy, Component, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
-import { ColumnComponent, TableComponent, CellDefDirective } from 'ngx-tw/table';
-import { CodeBlockComponent } from 'ngx-tw/code-block';
+import { ColumnComponent, TableComponent, CellDefDirective } from '@cdevhub/ngx-tw/table';
+import { CodeBlockComponent } from '@cdevhub/ngx-tw/code-block';
 
 interface TeamMember {
   readonly id: number;
@@ -207,5 +207,5 @@ export class TableOverview {
   FooterCellDefDirective,
   NoDataRowDirective,
   RowExpansionDirective,
-} from 'ngx-tw/table';`;
+} from '@cdevhub/ngx-tw/table';`;
 }

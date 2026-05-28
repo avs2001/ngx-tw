@@ -27,7 +27,7 @@ import { ComponentPortal } from '@angular/cdk/portal';
 import { FocusTrapFactory, LiveAnnouncer } from '@angular/cdk/a11y';
 import { Subscription } from 'rxjs';
 import { tv } from 'tailwind-variants';
-import type { TwSize } from 'ngx-tw/core';
+import type { TwSize } from '@cdevhub/ngx-tw/core';
 import {
   COMMAND_PALETTE_REF,
   type CommandPaletteFilterFn,

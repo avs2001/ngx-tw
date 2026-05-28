@@ -7,10 +7,10 @@ import {
   CarouselSlideComponent,
   type TwCarouselIndicatorPosition,
   type TwCarouselIndicatorVariant,
-} from 'ngx-tw/carousel';
-import { CodeBlockComponent } from 'ngx-tw/code-block';
-import { ButtonDirective } from 'ngx-tw/button';
-import type { TwColor, TwSize } from 'ngx-tw/core';
+} from '@cdevhub/ngx-tw/carousel';
+import { CodeBlockComponent } from '@cdevhub/ngx-tw/code-block';
+import { ButtonDirective } from '@cdevhub/ngx-tw/button';
+import type { TwColor, TwSize } from '@cdevhub/ngx-tw/core';
 
 interface HeroSlide {
   readonly id: number;

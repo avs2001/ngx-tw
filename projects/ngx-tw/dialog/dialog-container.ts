@@ -15,7 +15,7 @@ import {
   OverlayContainerCoordinator,
   type OverlayContainerAnimationEvent,
   type OverlayContainerState,
-} from 'ngx-tw/core';
+} from '@cdevhub/ngx-tw/core';
 import { tv } from 'tailwind-variants';
 import { type TwDialogConfig } from './dialog-config';
 

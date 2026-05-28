@@ -1,7 +1,7 @@
 import { ChangeDetectionStrategy, Component } from '@angular/core';
 import { RouterLink } from '@angular/router';
-import { EmptyStateComponent } from 'ngx-tw/empty-state';
-import { CodeBlockComponent } from 'ngx-tw/code-block';
+import { EmptyStateComponent } from '@cdevhub/ngx-tw/empty-state';
+import { CodeBlockComponent } from '@cdevhub/ngx-tw/code-block';
 
 @Component({
   selector: 'app-empty-state-overview',
@@ -100,5 +100,5 @@ export class EmptyStateOverview {
   EmptyStateTitleDirective,
   EmptyStateDescriptionDirective,
   EmptyStateActionsDirective,
-} from 'ngx-tw/empty-state';`;
+} from '@cdevhub/ngx-tw/empty-state';`;
 }

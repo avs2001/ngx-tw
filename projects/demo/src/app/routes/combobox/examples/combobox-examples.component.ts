@@ -5,16 +5,16 @@ import {
   ComboboxComponent,
   ComboboxLoadingTemplateDirective,
   ComboboxOptionTemplateDirective,
-} from 'ngx-tw/combobox';
-import { ButtonDirective } from 'ngx-tw/button';
-import { CodeBlockComponent } from 'ngx-tw/code-block';
+} from '@cdevhub/ngx-tw/combobox';
+import { ButtonDirective } from '@cdevhub/ngx-tw/button';
+import { CodeBlockComponent } from '@cdevhub/ngx-tw/code-block';
 import {
   ErrorDirective,
   FormFieldComponent,
   HintDirective,
   LabelDirective,
-} from 'ngx-tw/form-field';
-import type { TwColor, TwSize } from 'ngx-tw/core';
+} from '@cdevhub/ngx-tw/form-field';
+import type { TwColor, TwSize } from '@cdevhub/ngx-tw/core';
 
 interface Fruit {
   readonly label: string;

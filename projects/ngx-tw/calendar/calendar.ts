@@ -63,7 +63,7 @@ import type {
   ViewChangeEvent,
 } from './calendar.types';
 import { emptyCalendarValue, YEARS_PER_PAGE } from './calendar.types';
-import type { RangeBehaviorConfig } from 'ngx-tw/core';
+import type { RangeBehaviorConfig } from '@cdevhub/ngx-tw/core';
 import {
   deriveSelectionStateFromValue,
   isEmptyCalendarValue,

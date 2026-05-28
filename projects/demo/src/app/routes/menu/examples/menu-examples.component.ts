@@ -1,6 +1,6 @@
 import { ChangeDetectionStrategy, Component, signal } from '@angular/core';
-import { ButtonDirective } from 'ngx-tw/button';
-import type { TwColor, TwSize } from 'ngx-tw/core';
+import { ButtonDirective } from '@cdevhub/ngx-tw/button';
+import type { TwColor, TwSize } from '@cdevhub/ngx-tw/core';
 import {
   MenuComponent,
   MenuTriggerDirective,
@@ -13,9 +13,9 @@ import {
   MenuItemDescriptionDirective,
   MenuItemShortcutDirective,
   MenuItemSubmenuIndicatorDirective,
-} from 'ngx-tw/menu';
-import { SeparatorComponent } from 'ngx-tw/separator';
-import { CodeBlockComponent } from 'ngx-tw/code-block';
+} from '@cdevhub/ngx-tw/menu';
+import { SeparatorComponent } from '@cdevhub/ngx-tw/separator';
+import { CodeBlockComponent } from '@cdevhub/ngx-tw/code-block';
 
 const COLORS: TwColor[] = ['primary', 'secondary', 'accent', 'neutral', 'info', 'success', 'warning', 'error'];
 const SIZES: TwSize[] = ['xs', 'sm', 'md', 'lg', 'xl'];

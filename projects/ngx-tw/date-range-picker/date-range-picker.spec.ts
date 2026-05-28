@@ -8,13 +8,13 @@ import {
   Validators,
 } from '@angular/forms';
 import { OverlayModule } from '@angular/cdk/overlay';
-import { provideNativeDateAdapter, TwDateRange } from 'ngx-tw/calendar';
+import { provideNativeDateAdapter, TwDateRange } from '@cdevhub/ngx-tw/calendar';
 import {
   FormFieldComponent,
   LabelDirective,
   HintDirective,
   ErrorDirective,
-} from 'ngx-tw/form-field';
+} from '@cdevhub/ngx-tw/form-field';
 import { DateRangePickerComponent } from './date-range-picker';
 import type {
   DateRangePickerChangeEvent,

@@ -4,7 +4,7 @@ import {
   ThemeDirective,
   TW_THEMES,
   TW_RESOLVED_THEMES,
-} from 'ngx-tw/theme';
+} from '@cdevhub/ngx-tw/theme';
 
 interface TokenSwatch {
   name: string;
@@ -224,14 +224,14 @@ const TOKEN_GROUPS: TokenGroup[] = [
         <h2 class="text-sm font-semibold mb-3">Consumer Integration</h2>
         <div class="bg-surface-sunken border border-border rounded-lg p-4">
           <pre class="text-sm font-mono whitespace-pre text-fg"><code>// app.config.ts
-import {{ '{' }} provideTheme {{ '}' }} from 'ngx-tw/theme';
+import {{ '{' }} provideTheme {{ '}' }} from '@cdevhub/ngx-tw/theme';
 
 export const appConfig = {{ '{' }}
   providers: [provideTheme()],
 {{ '}' }};
 
 // styles.css
-&#64;import 'ngx-tw/theme/index.css';</code></pre>
+&#64;import '@cdevhub/ngx-tw/theme/index.css';</code></pre>
         </div>
       </section>
   `,

@@ -1,11 +1,11 @@
 import { ChangeDetectionStrategy, Component, signal, type WritableSignal } from '@angular/core';
 import { FormControl, FormsModule, ReactiveFormsModule } from '@angular/forms';
 import { form, FormField, required } from '@angular/forms/signals';
-import { SegmentedControlComponent, SegmentedControlOptionComponent } from 'ngx-tw/segmented-control';
-import type { SegmentedControlRounded, SegmentedControlVariant } from 'ngx-tw/segmented-control';
-import { ButtonDirective } from 'ngx-tw/button';
-import { CodeBlockComponent } from 'ngx-tw/code-block';
-import type { TwColor, TwSize } from 'ngx-tw/core';
+import { SegmentedControlComponent, SegmentedControlOptionComponent } from '@cdevhub/ngx-tw/segmented-control';
+import type { SegmentedControlRounded, SegmentedControlVariant } from '@cdevhub/ngx-tw/segmented-control';
+import { ButtonDirective } from '@cdevhub/ngx-tw/button';
+import { CodeBlockComponent } from '@cdevhub/ngx-tw/code-block';
+import type { TwColor, TwSize } from '@cdevhub/ngx-tw/core';
 
 const VARIANTS: SegmentedControlVariant[] = ['surface', 'filled', 'outline'];
 const COLORS: TwColor[] = ['primary', 'secondary', 'accent', 'neutral', 'info', 'success', 'warning', 'error'];

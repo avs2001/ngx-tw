@@ -4,7 +4,7 @@ import {
   input,
 } from '@angular/core';
 import { tv } from 'tailwind-variants';
-import type { TwColor, TwSize } from 'ngx-tw/core';
+import type { TwColor, TwSize } from '@cdevhub/ngx-tw/core';
 
 /**
  * Dot indicator styling and color tokens for `[twBadgeDot]`. Mirrors the

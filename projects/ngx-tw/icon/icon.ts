@@ -12,7 +12,7 @@ import {
   ViewEncapsulation,
 } from '@angular/core';
 import { tv } from 'tailwind-variants';
-import type { TwSize } from 'ngx-tw/core';
+import type { TwSize } from '@cdevhub/ngx-tw/core';
 import { TW_ICON_REGISTRAR } from './icon.providers';
 import { IconRegistry } from './icon.registry';
 import type { TwIconColor, TwIconData, TwIconSvgConfig } from './icon.types';

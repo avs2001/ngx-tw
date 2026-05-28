@@ -1,7 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
-import { DatePickerComponent } from 'ngx-tw/date-picker';
-import { CodeBlockComponent } from 'ngx-tw/code-block';
+import { DatePickerComponent } from '@cdevhub/ngx-tw/date-picker';
+import { CodeBlockComponent } from '@cdevhub/ngx-tw/code-block';
 
 @Component({
   selector: 'app-date-picker-overview',
@@ -190,12 +190,12 @@ export class DatePickerOverview {
 />`;
 
   protected readonly importSnippet = `// 1. Provide the adapter once in your app config:
-import { provideNativeDateAdapter } from 'ngx-tw/calendar';
+import { provideNativeDateAdapter } from '@cdevhub/ngx-tw/calendar';
 
 export const appConfig: ApplicationConfig = {
   providers: [provideNativeDateAdapter()],
 };
 
 // 2. Import the component where you use it:
-import { DatePickerComponent } from 'ngx-tw/date-picker';`;
+import { DatePickerComponent } from '@cdevhub/ngx-tw/date-picker';`;
 }

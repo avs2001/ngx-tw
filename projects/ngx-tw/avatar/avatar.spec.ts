@@ -2,7 +2,7 @@ import { Component, input } from '@angular/core';
 import { type ComponentFixture, TestBed } from '@angular/core/testing';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { AvatarComponent, AvatarGroupComponent } from './avatar';
-import type { TwColor, TwSize } from 'ngx-tw/core';
+import type { TwColor, TwSize } from '@cdevhub/ngx-tw/core';
 import type { AvatarAppearance, AvatarStatus } from './avatar';
 
 // ── Test host components ──────────────────────────────────────────

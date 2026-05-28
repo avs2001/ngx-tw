@@ -15,7 +15,7 @@ import {
   MenuItemShortcutDirective,
   MenuItemSubmenuIndicatorDirective,
 } from './menu';
-import type { TwColor, TwSize } from 'ngx-tw/core';
+import type { TwColor, TwSize } from '@cdevhub/ngx-tw/core';
 
 // ── Test host components ──
 

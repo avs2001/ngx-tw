@@ -16,7 +16,7 @@ import type {
   TimePickerFormat,
   TwColor,
   TwSize,
-} from 'ngx-tw/core';
+} from '@cdevhub/ngx-tw/core';
 import {
   CalendarComponent,
   provideRangeSelectionStrategy,
@@ -28,12 +28,12 @@ import {
   type RangeClickBehavior,
   TwDateRange,
   type ViewChangeEvent,
-} from 'ngx-tw/calendar';
-import { ButtonDirective } from 'ngx-tw/button';
+} from '@cdevhub/ngx-tw/calendar';
+import { ButtonDirective } from '@cdevhub/ngx-tw/button';
 import {
   TimePickerComponent,
   type TimePickerChangeEvent,
-} from 'ngx-tw/time-picker';
+} from '@cdevhub/ngx-tw/time-picker';
 import type { DateRangePickerMonths, DateRangePreset } from './date-range-picker';
 
 /**

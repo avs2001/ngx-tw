@@ -1,6 +1,6 @@
 import { Injectable, inject } from '@angular/core';
 import { DateTime, Info, Settings } from 'luxon';
-import { DateAdapter, TZ_OVERRIDE, type TwDateNameStyle } from 'ngx-tw/calendar';
+import { DateAdapter, TZ_OVERRIDE, type TwDateNameStyle } from '@cdevhub/ngx-tw/calendar';
 
 /**
  * Display-format descriptor used by `LuxonDateAdapter.format()` and

@@ -6,8 +6,8 @@ import {
   StatLabelDirective,
   StatValueDirective,
   StatDescriptionDirective,
-} from 'ngx-tw/stat';
-import { CodeBlockComponent } from 'ngx-tw/code-block';
+} from '@cdevhub/ngx-tw/stat';
+import { CodeBlockComponent } from '@cdevhub/ngx-tw/code-block';
 
 @Component({
   selector: 'app-stat-overview',
@@ -171,5 +171,5 @@ export class StatOverview {
   StatDescriptionDirective,
   StatIconDirective,
   StatFooterDirective,
-} from 'ngx-tw/stat';`;
+} from '@cdevhub/ngx-tw/stat';`;
 }

@@ -20,7 +20,7 @@ import {
 import { NgTemplateOutlet } from '@angular/common';
 import { Directionality } from '@angular/cdk/bidi';
 import { tv } from 'tailwind-variants';
-import type { TwColor, TwOrientation, TwSize } from 'ngx-tw/core';
+import type { TwColor, TwOrientation, TwSize } from '@cdevhub/ngx-tw/core';
 
 // `ngDevMode` is a globalThis flag set by Angular's build tooling — true in dev,
 // `false` in production builds. The `typeof` guard keeps the warning path safe

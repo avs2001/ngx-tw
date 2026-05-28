@@ -1,7 +1,7 @@
 import type { Provider } from '@angular/core';
 import type { LucideIconData, LucideIcons } from 'lucide-angular';
-import { provideTwIcons } from 'ngx-tw/icon';
-import type { TwIconData } from 'ngx-tw/icon';
+import { provideTwIcons } from '@cdevhub/ngx-tw/icon';
+import type { TwIconData } from '@cdevhub/ngx-tw/icon';
 
 /**
  * Converts a single Lucide icon to the generic `TwIconData` format.
@@ -20,7 +20,7 @@ export function fromLucideIcon(icon: LucideIconData): TwIconData {
  *
  * @example
  * ```ts
- * import { provideTwLucideIcons } from 'ngx-tw/icon/lucide';
+ * import { provideTwLucideIcons } from '@cdevhub/ngx-tw/icon/lucide';
  * import { ChevronRight, Star, Check } from 'lucide-angular';
  *
  * export const appConfig = {

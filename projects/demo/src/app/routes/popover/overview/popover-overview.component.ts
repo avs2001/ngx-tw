@@ -1,8 +1,8 @@
 import { ChangeDetectionStrategy, Component } from '@angular/core';
 import { RouterLink } from '@angular/router';
-import { PopoverDirective, PopoverCloseDirective } from 'ngx-tw/popover';
-import { ButtonDirective } from 'ngx-tw/button';
-import { CodeBlockComponent } from 'ngx-tw/code-block';
+import { PopoverDirective, PopoverCloseDirective } from '@cdevhub/ngx-tw/popover';
+import { ButtonDirective } from '@cdevhub/ngx-tw/button';
+import { CodeBlockComponent } from '@cdevhub/ngx-tw/code-block';
 
 @Component({
   selector: 'app-popover-overview',
@@ -211,5 +211,5 @@ export class PopoverOverview {
   POPOVER_DATA,
   POPOVER_REF,
   type PopoverRef,
-} from 'ngx-tw/popover';`;
+} from '@cdevhub/ngx-tw/popover';`;
 }

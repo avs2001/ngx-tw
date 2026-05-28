@@ -11,13 +11,13 @@ import {
   input,
 } from '@angular/core';
 import { tv } from 'tailwind-variants';
-import type { TwSize } from 'ngx-tw/core';
-import { IconComponent } from 'ngx-tw/icon';
+import type { TwSize } from '@cdevhub/ngx-tw/core';
+import { IconComponent } from '@cdevhub/ngx-tw/icon';
 import {
   MenuComponent,
   MenuItemDirective,
   MenuTriggerDirective,
-} from 'ngx-tw/menu';
+} from '@cdevhub/ngx-tw/menu';
 
 // ── Public types ──
 

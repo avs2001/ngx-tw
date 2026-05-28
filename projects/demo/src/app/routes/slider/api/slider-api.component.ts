@@ -1,5 +1,5 @@
 import { ChangeDetectionStrategy, Component } from '@angular/core';
-import { CodeBlockComponent } from 'ngx-tw/code-block';
+import { CodeBlockComponent } from '@cdevhub/ngx-tw/code-block';
 
 @Component({
   selector: 'app-slider-api',
@@ -242,7 +242,7 @@ interface SliderMark {
 
 type SliderValueFormatter = (value: number) => string;
 
-// From 'ngx-tw/core':
+// From '@cdevhub/ngx-tw/core':
 type TwColor =
   | 'primary' | 'secondary' | 'accent' | 'neutral'
   | 'info' | 'success' | 'warning' | 'error';

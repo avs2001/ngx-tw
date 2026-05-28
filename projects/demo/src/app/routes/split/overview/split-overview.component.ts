@@ -1,7 +1,7 @@
 import { ChangeDetectionStrategy, Component } from '@angular/core';
 import { RouterLink } from '@angular/router';
-import { SplitComponent, SplitPaneComponent } from 'ngx-tw/split';
-import { CodeBlockComponent } from 'ngx-tw/code-block';
+import { SplitComponent, SplitPaneComponent } from '@cdevhub/ngx-tw/split';
+import { CodeBlockComponent } from '@cdevhub/ngx-tw/code-block';
 
 @Component({
   selector: 'app-split-overview',
@@ -131,5 +131,5 @@ export class SplitOverview {
   </tw-split-pane>
 </tw-split>`;
 
-  protected readonly importSnippet = `import { SplitComponent, SplitPaneComponent } from 'ngx-tw/split';`;
+  protected readonly importSnippet = `import { SplitComponent, SplitPaneComponent } from '@cdevhub/ngx-tw/split';`;
 }

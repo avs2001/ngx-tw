@@ -4,8 +4,8 @@ import {
   CodeBlockHeaderDirective,
   type CodeBlockLabels,
   type CodeBlockVariant,
-} from 'ngx-tw/code-block';
-import { ButtonDirective } from 'ngx-tw/button';
+} from '@cdevhub/ngx-tw/code-block';
+import { ButtonDirective } from '@cdevhub/ngx-tw/button';
 
 const VARIANTS: CodeBlockVariant[] = ['filled', 'outlined'];
 

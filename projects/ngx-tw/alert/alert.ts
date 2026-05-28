@@ -10,7 +10,7 @@ import {
   output,
 } from '@angular/core';
 import { tv } from 'tailwind-variants';
-import type { TwColor } from 'ngx-tw/core';
+import type { TwColor } from '@cdevhub/ngx-tw/core';
 
 /** Visual style of the alert container. */
 export type AlertVariant = 'solid' | 'outline' | 'soft';

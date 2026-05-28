@@ -1,7 +1,7 @@
 import { TestBed } from '@angular/core/testing';
 import { DateTime } from 'luxon';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { NativeDateAdapter, TZ_OVERRIDE } from 'ngx-tw/calendar';
+import { NativeDateAdapter, TZ_OVERRIDE } from '@cdevhub/ngx-tw/calendar';
 import { LuxonDateAdapter } from './luxon-date-adapter';
 
 /**

@@ -43,7 +43,7 @@ import {
   type TwColor,
   type TwSize,
   type TwFormSubmitted,
-} from 'ngx-tw/core';
+} from '@cdevhub/ngx-tw/core';
 
 /** Visual style of the slider fill. */
 export type SliderVariant = 'solid' | 'soft' | 'outline';

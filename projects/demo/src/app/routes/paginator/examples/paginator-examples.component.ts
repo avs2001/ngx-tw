@@ -7,9 +7,9 @@ import {
   type TwPaginatorLayout,
   type TwPaginatorType,
   type TwPaginatorPageChangeEvent,
-} from 'ngx-tw/paginator';
-import { CodeBlockComponent } from 'ngx-tw/code-block';
-import type { TwColor, TwSize } from 'ngx-tw/core';
+} from '@cdevhub/ngx-tw/paginator';
+import { CodeBlockComponent } from '@cdevhub/ngx-tw/code-block';
+import type { TwColor, TwSize } from '@cdevhub/ngx-tw/core';
 
 const COLORS: TwColor[] = [
   'primary',

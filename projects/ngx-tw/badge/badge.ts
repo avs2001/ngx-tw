@@ -7,9 +7,9 @@ import {
   output,
 } from '@angular/core';
 import { tv } from 'tailwind-variants';
-import type { TwColor, TwSize } from 'ngx-tw/core';
-import { AvatarComponent } from 'ngx-tw/avatar';
-import { IconComponent } from 'ngx-tw/icon';
+import type { TwColor, TwSize } from '@cdevhub/ngx-tw/core';
+import { AvatarComponent } from '@cdevhub/ngx-tw/avatar';
+import { IconComponent } from '@cdevhub/ngx-tw/icon';
 
 /** Visual style of the badge. */
 export type BadgeVariant = 'solid' | 'outline' | 'soft';

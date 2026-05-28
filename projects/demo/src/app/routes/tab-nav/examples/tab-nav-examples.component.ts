@@ -4,10 +4,10 @@ import {
   TabLinkDirective,
   TabNavPanel,
   type TabNavVariant,
-} from 'ngx-tw/tab-nav';
-import { ButtonDirective } from 'ngx-tw/button';
-import { CodeBlockComponent } from 'ngx-tw/code-block';
-import type { TwColor, TwSize } from 'ngx-tw/core';
+} from '@cdevhub/ngx-tw/tab-nav';
+import { ButtonDirective } from '@cdevhub/ngx-tw/button';
+import { CodeBlockComponent } from '@cdevhub/ngx-tw/code-block';
+import type { TwColor, TwSize } from '@cdevhub/ngx-tw/core';
 
 const VARIANTS: TabNavVariant[] = ['underline', 'enclosed', 'pill'];
 const COLORS: TwColor[] = [

@@ -1,11 +1,11 @@
 import { ChangeDetectionStrategy, Component, signal, type WritableSignal } from '@angular/core';
 import { FormControl, FormsModule, ReactiveFormsModule } from '@angular/forms';
 import { form, FormField } from '@angular/forms/signals';
-import { SwitchComponent } from 'ngx-tw/switch';
-import type { SwitchLabelPosition } from 'ngx-tw/switch';
-import { ButtonDirective } from 'ngx-tw/button';
-import { CodeBlockComponent } from 'ngx-tw/code-block';
-import type { TwColor, TwSize } from 'ngx-tw/core';
+import { SwitchComponent } from '@cdevhub/ngx-tw/switch';
+import type { SwitchLabelPosition } from '@cdevhub/ngx-tw/switch';
+import { ButtonDirective } from '@cdevhub/ngx-tw/button';
+import { CodeBlockComponent } from '@cdevhub/ngx-tw/code-block';
+import type { TwColor, TwSize } from '@cdevhub/ngx-tw/core';
 
 const COLORS: TwColor[] = ['primary', 'secondary', 'accent', 'neutral', 'info', 'success', 'warning', 'error'];
 const SIZES: TwSize[] = ['xs', 'sm', 'md', 'lg', 'xl'];

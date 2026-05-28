@@ -6,10 +6,10 @@ import {
   BreadcrumbsLinkDirective,
   BreadcrumbsSeparatorTemplateDirective,
   type TwBreadcrumbsItem,
-} from 'ngx-tw/breadcrumbs';
-import { CodeBlockComponent } from 'ngx-tw/code-block';
-import { IconComponent } from 'ngx-tw/icon';
-import type { TwSize } from 'ngx-tw/core';
+} from '@cdevhub/ngx-tw/breadcrumbs';
+import { CodeBlockComponent } from '@cdevhub/ngx-tw/code-block';
+import { IconComponent } from '@cdevhub/ngx-tw/icon';
+import type { TwSize } from '@cdevhub/ngx-tw/core';
 
 const SIZES: TwSize[] = ['xs', 'sm', 'md', 'lg', 'xl'];
 

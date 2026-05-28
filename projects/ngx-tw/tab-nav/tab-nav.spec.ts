@@ -8,7 +8,7 @@ import { type ComponentFixture, TestBed } from '@angular/core/testing';
 import { LiveAnnouncer } from '@angular/cdk/a11y';
 import { provideRouter, Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import type { TwColor, TwSize } from 'ngx-tw/core';
+import type { TwColor, TwSize } from '@cdevhub/ngx-tw/core';
 import {
   TabNavComponent,
   TabLinkDirective,

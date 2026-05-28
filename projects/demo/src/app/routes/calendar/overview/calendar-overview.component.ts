@@ -1,7 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
-import { CalendarComponent } from 'ngx-tw/calendar';
-import { CodeBlockComponent } from 'ngx-tw/code-block';
+import { CalendarComponent } from '@cdevhub/ngx-tw/calendar';
+import { CodeBlockComponent } from '@cdevhub/ngx-tw/code-block';
 
 @Component({
   selector: 'app-calendar-overview',
@@ -159,7 +159,7 @@ import { CodeBlockComponent } from 'ngx-tw/code-block';
           with 12h/24h format, configurable steps, and range-endpoint time carry-over
         </li>
         <li>CDK test harness at
-          <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">'ngx-tw/calendar/testing'</code>
+          <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">'@cdevhub/ngx-tw/calendar/testing'</code>
           for robust component tests
         </li>
         <li>Semantic color theming (8 colors) and 5 sizes for cell density</li>
@@ -205,7 +205,7 @@ export class CalendarOverview {
 
   protected readonly basicUsageSnippet = `<tw-calendar aria-label="Pick a date" [(value)]="value" />`;
 
-  protected readonly importSnippet = `import { CalendarComponent, provideNativeDateAdapter } from 'ngx-tw/calendar';
+  protected readonly importSnippet = `import { CalendarComponent, provideNativeDateAdapter } from '@cdevhub/ngx-tw/calendar';
 
 export const appConfig: ApplicationConfig = {
   providers: [provideNativeDateAdapter()],

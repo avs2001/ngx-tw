@@ -9,7 +9,7 @@ import {
 } from '@angular/core';
 import { FocusMonitor } from '@angular/cdk/a11y';
 import { tv } from 'tailwind-variants';
-import type { TwColor, TwSize } from 'ngx-tw/core';
+import type { TwColor, TwSize } from '@cdevhub/ngx-tw/core';
 
 /** Visual style of the button. */
 export type ButtonVariant = 'solid' | 'outline' | 'ghost' | 'soft' | 'link';

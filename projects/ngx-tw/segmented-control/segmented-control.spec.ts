@@ -5,7 +5,7 @@ import { FormControl, FormsModule, ReactiveFormsModule } from '@angular/forms';
 import { form, FormField } from '@angular/forms/signals';
 import { SegmentedControlComponent, SegmentedControlOptionComponent } from './segmented-control';
 import type { SegmentedControlVariant, SegmentedControlRounded } from './segmented-control';
-import type { TwColor, TwOrientation, TwSize } from 'ngx-tw/core';
+import type { TwColor, TwOrientation, TwSize } from '@cdevhub/ngx-tw/core';
 
 // ── Test hosts ──
 

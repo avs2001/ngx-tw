@@ -1,9 +1,9 @@
 import { ChangeDetectionStrategy, Component, signal } from '@angular/core';
-import { SeparatorComponent } from 'ngx-tw/separator';
-import type { SeparatorVariant, SeparatorWeight } from 'ngx-tw/separator';
-import { ButtonDirective } from 'ngx-tw/button';
-import { CodeBlockComponent } from 'ngx-tw/code-block';
-import type { TwColor } from 'ngx-tw/core';
+import { SeparatorComponent } from '@cdevhub/ngx-tw/separator';
+import type { SeparatorVariant, SeparatorWeight } from '@cdevhub/ngx-tw/separator';
+import { ButtonDirective } from '@cdevhub/ngx-tw/button';
+import { CodeBlockComponent } from '@cdevhub/ngx-tw/code-block';
+import type { TwColor } from '@cdevhub/ngx-tw/core';
 
 const VARIANTS: SeparatorVariant[] = ['solid', 'dashed', 'dotted'];
 const WEIGHTS: SeparatorWeight[] = ['thin', 'medium', 'thick'];

@@ -1,8 +1,8 @@
 import { ChangeDetectionStrategy, Component, computed, signal } from '@angular/core';
-import { SkeletonComponent } from 'ngx-tw/skeleton';
-import type { SkeletonAnimation, SkeletonShape } from 'ngx-tw/skeleton';
-import { ButtonDirective } from 'ngx-tw/button';
-import { CodeBlockComponent } from 'ngx-tw/code-block';
+import { SkeletonComponent } from '@cdevhub/ngx-tw/skeleton';
+import type { SkeletonAnimation, SkeletonShape } from '@cdevhub/ngx-tw/skeleton';
+import { ButtonDirective } from '@cdevhub/ngx-tw/button';
+import { CodeBlockComponent } from '@cdevhub/ngx-tw/code-block';
 
 const SHAPES: SkeletonShape[] = ['text', 'rectangle', 'circle'];
 const ANIMATIONS: SkeletonAnimation[] = ['pulse', 'wave', 'none'];

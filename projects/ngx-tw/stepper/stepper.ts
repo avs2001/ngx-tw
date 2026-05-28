@@ -30,7 +30,7 @@ import {
   type StepState,
 } from '@angular/cdk/stepper';
 import { tv } from 'tailwind-variants';
-import type { TwColor, TwSize } from 'ngx-tw/core';
+import type { TwColor, TwSize } from '@cdevhub/ngx-tw/core';
 
 /** Visual style of the step indicator strip. */
 export type StepperVariant = 'default' | 'dot' | 'simple';

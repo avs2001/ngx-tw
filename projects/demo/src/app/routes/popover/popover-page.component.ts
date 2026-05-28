@@ -1,12 +1,12 @@
 import { ChangeDetectionStrategy, Component } from '@angular/core';
 import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
-import { TabNavComponent, TabLinkDirective } from 'ngx-tw/tab-nav';
+import { TabNavComponent, TabLinkDirective } from '@cdevhub/ngx-tw/tab-nav';
 import {
   ItemComponent,
   ItemLeadingDirective,
   ItemTitleDirective,
   ItemDescriptionDirective,
-} from 'ngx-tw/item';
+} from '@cdevhub/ngx-tw/item';
 
 @Component({
   selector: 'app-popover-page',

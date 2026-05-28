@@ -8,7 +8,7 @@ import {
   type TemplateRef,
   viewChild,
 } from '@angular/core';
-import type { TimePickerFormat, TwColor, TwSize } from 'ngx-tw/core';
+import type { TimePickerFormat, TwColor, TwSize } from '@cdevhub/ngx-tw/core';
 import {
   CalendarComponent,
   provideSingleSelectionStrategy,
@@ -16,12 +16,12 @@ import {
   type CalendarViewState,
   type DateClassFn,
   type DateFilterFn,
-} from 'ngx-tw/calendar';
-import { ButtonDirective } from 'ngx-tw/button';
+} from '@cdevhub/ngx-tw/calendar';
+import { ButtonDirective } from '@cdevhub/ngx-tw/button';
 import {
   TimePickerComponent,
   type TimePickerChangeEvent,
-} from 'ngx-tw/time-picker';
+} from '@cdevhub/ngx-tw/time-picker';
 import type { DatePickerPreset } from './date-picker';
 
 /**

@@ -6,7 +6,7 @@ import { form, FormField } from '@angular/forms/signals';
 import { FocusMonitor } from '@angular/cdk/a11y';
 import { SwitchComponent } from './switch';
 import type { SwitchLabelPosition } from './switch';
-import type { TwColor, TwSize } from 'ngx-tw/core';
+import type { TwColor, TwSize } from '@cdevhub/ngx-tw/core';
 
 // ── Test hosts ────────────────────────────────────────────────────
 

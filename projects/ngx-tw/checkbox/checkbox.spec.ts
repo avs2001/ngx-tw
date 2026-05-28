@@ -18,8 +18,8 @@ import {
   LabelDirective,
   HintDirective,
   ErrorDirective,
-} from 'ngx-tw/form-field';
-import type { TwColor, TwSize } from 'ngx-tw/core';
+} from '@cdevhub/ngx-tw/form-field';
+import type { TwColor, TwSize } from '@cdevhub/ngx-tw/core';
 
 // ── Test hosts ────────────────────────────────────────────────────
 

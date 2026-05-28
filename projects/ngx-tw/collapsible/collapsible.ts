@@ -21,7 +21,7 @@ import {
 } from '@angular/core';
 import { FocusableOption, FocusKeyManager, LiveAnnouncer } from '@angular/cdk/a11y';
 import { tv } from 'tailwind-variants';
-import type { TwColor, TwSize } from 'ngx-tw/core';
+import type { TwColor, TwSize } from '@cdevhub/ngx-tw/core';
 
 /** Visual style of the collapsible container. */
 export type CollapsibleVariant = 'default' | 'bordered' | 'ghost' | 'filled';

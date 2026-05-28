@@ -7,10 +7,10 @@ import {
   type SliderValue,
   type SliderValueFormatter,
   type SliderVariant,
-} from 'ngx-tw/slider';
-import { ButtonDirective } from 'ngx-tw/button';
-import { CodeBlockComponent } from 'ngx-tw/code-block';
-import type { TwColor, TwSize } from 'ngx-tw/core';
+} from '@cdevhub/ngx-tw/slider';
+import { ButtonDirective } from '@cdevhub/ngx-tw/button';
+import { CodeBlockComponent } from '@cdevhub/ngx-tw/code-block';
+import type { TwColor, TwSize } from '@cdevhub/ngx-tw/core';
 
 const COLORS: TwColor[] = [
   'primary',
@@ -650,7 +650,7 @@ export class SliderExamples {
 />`.trim();
 
   protected readonly stepMarksTsSnippet = `
-import type { SliderMark, SliderValue } from 'ngx-tw/slider';
+import type { SliderMark, SliderValue } from '@cdevhub/ngx-tw/slider';
 
 const BRIGHTNESS_MARKS: SliderMark[] = [
   { value: 0, label: 'Off' },
@@ -695,7 +695,7 @@ protected readonly continuousValue = signal<SliderValue>(42.7);`.trim();
 />`.trim();
 
   protected readonly formatterTsSnippet = `
-import type { SliderValueFormatter } from 'ngx-tw/slider';
+import type { SliderValueFormatter } from '@cdevhub/ngx-tw/slider';
 
 const PERCENT_FORMATTER: SliderValueFormatter = (value) => \`\${Math.round(value)}%\`;
 const TEMP_FORMATTER: SliderValueFormatter = (value) => \`\${Math.round(value)}°C\`;
@@ -732,7 +732,7 @@ protected readonly tempFormatter = TEMP_FORMATTER;`.trim();
 
   protected readonly tdTsSnippet = `
 import { signal } from '@angular/core';
-import type { SliderValue } from 'ngx-tw/slider';
+import type { SliderValue } from '@cdevhub/ngx-tw/slider';
 
 protected readonly tdBrightnessValue = signal<SliderValue>(50);`.trim();
 

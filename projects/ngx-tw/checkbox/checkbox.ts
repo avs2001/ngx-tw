@@ -33,8 +33,8 @@ import {
   type TwColor,
   type TwFormSubmitted,
   type TwSize,
-} from 'ngx-tw/core';
-import { FormFieldControl, TW_FORM_FIELD_CONTROL } from 'ngx-tw/form-field';
+} from '@cdevhub/ngx-tw/core';
+import { FormFieldControl, TW_FORM_FIELD_CONTROL } from '@cdevhub/ngx-tw/form-field';
 
 /** Visual style of the checkbox when checked or indeterminate. */
 export type CheckboxVariant = 'solid' | 'outline';

@@ -39,7 +39,7 @@ import {
   type TwColor,
   type TwFormSubmitted,
   type TwSize,
-} from 'ngx-tw/core';
+} from '@cdevhub/ngx-tw/core';
 import { Overlay, type OverlayRef } from '@angular/cdk/overlay';
 import { ComponentPortal } from '@angular/cdk/portal';
 import { Platform } from '@angular/cdk/platform';
@@ -49,7 +49,7 @@ import {
   FormFieldComponent,
   type FormFieldControl,
   TW_FORM_FIELD_CONTROL,
-} from 'ngx-tw/form-field';
+} from '@cdevhub/ngx-tw/form-field';
 import { ComboboxOverlayComponent } from './combobox-overlay';
 import type {
   ComboboxRenderedRow,

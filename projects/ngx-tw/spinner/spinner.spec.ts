@@ -3,7 +3,7 @@ import { type ComponentFixture, TestBed } from '@angular/core/testing';
 import { describe, it, expect, beforeEach } from 'vitest';
 import { SpinnerComponent } from './spinner';
 import type { SpinnerColor, SpinnerSize, SpinnerVariant } from './spinner';
-import type { TwColor } from 'ngx-tw/core';
+import type { TwColor } from '@cdevhub/ngx-tw/core';
 
 // ── Test host components ──────────────────────────────────────────
 

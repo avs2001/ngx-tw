@@ -1,7 +1,7 @@
 import { ChangeDetectionStrategy, Component } from '@angular/core';
 import { RouterLink } from '@angular/router';
-import { IconComponent } from 'ngx-tw/icon';
-import { CodeBlockComponent } from 'ngx-tw/code-block';
+import { IconComponent } from '@cdevhub/ngx-tw/icon';
+import { CodeBlockComponent } from '@cdevhub/ngx-tw/code-block';
 
 @Component({
   selector: 'app-icon-overview',
@@ -106,10 +106,10 @@ export class IconOverview {
 <tw-icon name="alert-triangle" color="warning" size="xl" />`;
 
   protected readonly importSnippet = `// Component
-import { IconComponent } from 'ngx-tw/icon';
+import { IconComponent } from '@cdevhub/ngx-tw/icon';
 
 // Provider (app.config.ts)
-import { provideTwLucideIcons } from 'ngx-tw/icon/lucide';
+import { provideTwLucideIcons } from '@cdevhub/ngx-tw/icon/lucide';
 import { Star, Heart, CheckCircle } from 'lucide-angular';
 
 export const appConfig = {

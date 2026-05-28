@@ -1,7 +1,7 @@
 import { ChangeDetectionStrategy, Component, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
-import { ComboboxComponent } from 'ngx-tw/combobox';
-import { CodeBlockComponent } from 'ngx-tw/code-block';
+import { ComboboxComponent } from '@cdevhub/ngx-tw/combobox';
+import { CodeBlockComponent } from '@cdevhub/ngx-tw/code-block';
 
 interface Fruit {
   readonly label: string;
@@ -219,5 +219,5 @@ export class ComboboxOverview {
   aria-label="Fruit"
 />`;
 
-  protected readonly importSnippet = `import { ComboboxComponent } from 'ngx-tw/combobox';`;
+  protected readonly importSnippet = `import { ComboboxComponent } from '@cdevhub/ngx-tw/combobox';`;
 }

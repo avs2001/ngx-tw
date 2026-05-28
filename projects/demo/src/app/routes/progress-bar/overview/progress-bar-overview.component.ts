@@ -1,7 +1,7 @@
 import { ChangeDetectionStrategy, Component } from '@angular/core';
 import { RouterLink } from '@angular/router';
-import { ProgressBarComponent } from 'ngx-tw/progress-bar';
-import { CodeBlockComponent } from 'ngx-tw/code-block';
+import { ProgressBarComponent } from '@cdevhub/ngx-tw/progress-bar';
+import { CodeBlockComponent } from '@cdevhub/ngx-tw/code-block';
 
 @Component({
   selector: 'app-progress-bar-overview',
@@ -129,5 +129,5 @@ export class ProgressBarOverview {
   [options]="{ showValue: true }"
 />`;
 
-  protected readonly importSnippet = `import { ProgressBarComponent } from 'ngx-tw/progress-bar';`;
+  protected readonly importSnippet = `import { ProgressBarComponent } from '@cdevhub/ngx-tw/progress-bar';`;
 }

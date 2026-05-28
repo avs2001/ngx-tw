@@ -1,5 +1,5 @@
 import { ChangeDetectionStrategy, Component } from '@angular/core';
-import { CodeBlockComponent } from 'ngx-tw/code-block';
+import { CodeBlockComponent } from '@cdevhub/ngx-tw/code-block';
 
 @Component({
   selector: 'app-stepper-api',
@@ -317,7 +317,7 @@ import { CodeBlockComponent } from 'ngx-tw/code-block';
   `,
 })
 export class StepperApi {
-  protected readonly provideSnippet = `import { provideTwStepperOptions } from 'ngx-tw/stepper';
+  protected readonly provideSnippet = `import { provideTwStepperOptions } from '@cdevhub/ngx-tw/stepper';
 
 bootstrapApplication(App, {
   providers: [

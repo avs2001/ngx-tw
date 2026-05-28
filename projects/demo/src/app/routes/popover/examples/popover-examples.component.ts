@@ -13,10 +13,10 @@ import {
   type PopoverBackdrop,
   type PopoverRef,
   type PopoverTrigger,
-} from 'ngx-tw/popover';
-import { ButtonDirective } from 'ngx-tw/button';
-import { CodeBlockComponent } from 'ngx-tw/code-block';
-import type { TwColor, TwSize } from 'ngx-tw/core';
+} from '@cdevhub/ngx-tw/popover';
+import { ButtonDirective } from '@cdevhub/ngx-tw/button';
+import { CodeBlockComponent } from '@cdevhub/ngx-tw/code-block';
+import type { TwColor, TwSize } from '@cdevhub/ngx-tw/core';
 
 const POSITIONS: PopoverPosition[] = [
   'top', 'top-start', 'top-end',

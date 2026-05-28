@@ -1,4 +1,4 @@
-# ngx-tw
+# @cdevhub/ngx-tw
 
 ## 0.2.0
 

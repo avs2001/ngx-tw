@@ -4,14 +4,14 @@ import {
   EmptyStateIconDirective,
   EmptyStateTitleDirective,
   EmptyStateActionsDirective,
-} from 'ngx-tw/empty-state';
-import { ButtonDirective } from 'ngx-tw/button';
-import { IconComponent } from 'ngx-tw/icon';
-import { BadgeComponent } from 'ngx-tw/badge';
-import { CardComponent, CardBodyDirective } from 'ngx-tw/card';
-import { CodeBlockComponent } from 'ngx-tw/code-block';
-import type { TwSize } from 'ngx-tw/core';
-import type { EmptyStateTitleLevel, EmptyStateVariant } from 'ngx-tw/empty-state';
+} from '@cdevhub/ngx-tw/empty-state';
+import { ButtonDirective } from '@cdevhub/ngx-tw/button';
+import { IconComponent } from '@cdevhub/ngx-tw/icon';
+import { BadgeComponent } from '@cdevhub/ngx-tw/badge';
+import { CardComponent, CardBodyDirective } from '@cdevhub/ngx-tw/card';
+import { CodeBlockComponent } from '@cdevhub/ngx-tw/code-block';
+import type { TwSize } from '@cdevhub/ngx-tw/core';
+import type { EmptyStateTitleLevel, EmptyStateVariant } from '@cdevhub/ngx-tw/empty-state';
 
 const SIZES: TwSize[] = ['xs', 'sm', 'md', 'lg', 'xl'];
 const VARIANTS: EmptyStateVariant[] = ['centered', 'inline'];

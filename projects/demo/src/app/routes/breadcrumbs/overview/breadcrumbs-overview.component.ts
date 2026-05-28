@@ -3,8 +3,8 @@ import { RouterLink } from '@angular/router';
 import {
   BreadcrumbsComponent,
   type TwBreadcrumbsItem,
-} from 'ngx-tw/breadcrumbs';
-import { CodeBlockComponent } from 'ngx-tw/code-block';
+} from '@cdevhub/ngx-tw/breadcrumbs';
+import { CodeBlockComponent } from '@cdevhub/ngx-tw/code-block';
 
 @Component({
   selector: 'app-breadcrumbs-overview',
@@ -224,5 +224,5 @@ export class BreadcrumbsOverview {
   BreadcrumbsLinkDirective,
   BreadcrumbsSeparatorTemplateDirective,
   type TwBreadcrumbsItem,
-} from 'ngx-tw/breadcrumbs';`;
+} from '@cdevhub/ngx-tw/breadcrumbs';`;
 }

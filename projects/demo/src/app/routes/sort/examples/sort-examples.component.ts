@@ -5,10 +5,10 @@ import {
   type SortDirection,
   type TwSortArrowPosition,
   type TwSortEvent,
-} from 'ngx-tw/sort';
-import { CodeBlockComponent } from 'ngx-tw/code-block';
-import { ButtonDirective } from 'ngx-tw/button';
-import type { TwColor, TwSize } from 'ngx-tw/core';
+} from '@cdevhub/ngx-tw/sort';
+import { CodeBlockComponent } from '@cdevhub/ngx-tw/code-block';
+import { ButtonDirective } from '@cdevhub/ngx-tw/button';
+import type { TwColor, TwSize } from '@cdevhub/ngx-tw/core';
 
 interface Order {
   id: string;

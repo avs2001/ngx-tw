@@ -50,13 +50,13 @@ import {
   type TwColor,
   type TwFormSubmitted,
   type TwSize,
-} from 'ngx-tw/core';
+} from '@cdevhub/ngx-tw/core';
 import {
   FormFieldComponent,
   FormFieldControl,
   TW_FORM_FIELD_CONTROL,
-} from 'ngx-tw/form-field';
-import { DATE_ADAPTER, type DateAdapter } from 'ngx-tw/calendar';
+} from '@cdevhub/ngx-tw/form-field';
+import { DATE_ADAPTER, type DateAdapter } from '@cdevhub/ngx-tw/calendar';
 import { TimePickerIntl } from './time-picker-intl';
 
 // ── Public types ──────────────────────────────────────────────────
@@ -97,7 +97,7 @@ export interface TimePickerInputEvent<D> {
 
 // Re-export the shared format / meridiem aliases so consumers can import
 // them from `ngx-tw/time-picker` without reaching into core.
-export type { TimePickerFormat, TimePickerMeridiem } from 'ngx-tw/core';
+export type { TimePickerFormat, TimePickerMeridiem } from '@cdevhub/ngx-tw/core';
 
 // ── tv() config ───────────────────────────────────────────────────
 

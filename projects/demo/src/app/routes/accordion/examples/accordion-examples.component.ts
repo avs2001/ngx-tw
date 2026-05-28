@@ -1,11 +1,11 @@
 import { ChangeDetectionStrategy, Component, computed, signal } from '@angular/core';
 import { TitleCasePipe } from '@angular/common';
-import { AccordionComponent } from 'ngx-tw/accordion';
-import type { AccordionType, AccordionVariant } from 'ngx-tw/accordion';
+import { AccordionComponent } from '@cdevhub/ngx-tw/accordion';
+import type { AccordionType, AccordionVariant } from '@cdevhub/ngx-tw/accordion';
 import {
   CollapsibleComponent,
   CollapsibleTriggerDirective,
-} from 'ngx-tw/collapsible';
+} from '@cdevhub/ngx-tw/collapsible';
 
 const VARIANTS: AccordionVariant[] = ['default', 'bordered', 'ghost'];
 const TYPES: AccordionType[] = ['single', 'multiple'];

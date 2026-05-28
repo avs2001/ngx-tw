@@ -1,9 +1,9 @@
 import { ChangeDetectionStrategy, Component, computed, signal } from '@angular/core';
-import { IconComponent } from 'ngx-tw/icon';
-import { ButtonDirective } from 'ngx-tw/button';
-import { CodeBlockComponent } from 'ngx-tw/code-block';
-import type { TwIconColor, TwIconSvgConfig } from 'ngx-tw/icon';
-import type { TwSize } from 'ngx-tw/core';
+import { IconComponent } from '@cdevhub/ngx-tw/icon';
+import { ButtonDirective } from '@cdevhub/ngx-tw/button';
+import { CodeBlockComponent } from '@cdevhub/ngx-tw/code-block';
+import type { TwIconColor, TwIconSvgConfig } from '@cdevhub/ngx-tw/icon';
+import type { TwSize } from '@cdevhub/ngx-tw/core';
 
 const COLORS: TwIconColor[] = [
   'current', 'primary', 'secondary', 'accent', 'neutral', 'info', 'success', 'warning', 'error',

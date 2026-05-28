@@ -1,6 +1,6 @@
 import { ChangeDetectionStrategy, Component, signal } from '@angular/core';
-import { SliderComponent, type SliderValue } from 'ngx-tw/slider';
-import { CodeBlockComponent } from 'ngx-tw/code-block';
+import { SliderComponent, type SliderValue } from '@cdevhub/ngx-tw/slider';
+import { CodeBlockComponent } from '@cdevhub/ngx-tw/code-block';
 
 @Component({
   selector: 'app-slider-overview',
@@ -148,5 +148,5 @@ export class SliderOverview {
 
   protected readonly basicUsageSnippet = `<tw-slider label="Volume" [showValue]="true" [(value)]="volume" />`;
 
-  protected readonly importSnippet = `import { SliderComponent } from 'ngx-tw/slider';`;
+  protected readonly importSnippet = `import { SliderComponent } from '@cdevhub/ngx-tw/slider';`;
 }

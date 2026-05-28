@@ -1,8 +1,8 @@
 import { ChangeDetectionStrategy, Component, signal } from '@angular/core';
-import { ButtonDirective } from 'ngx-tw/button';
-import { IconComponent } from 'ngx-tw/icon';
-import { BadgeComponent } from 'ngx-tw/badge';
-import { CodeBlockComponent } from 'ngx-tw/code-block';
+import { ButtonDirective } from '@cdevhub/ngx-tw/button';
+import { IconComponent } from '@cdevhub/ngx-tw/icon';
+import { BadgeComponent } from '@cdevhub/ngx-tw/badge';
+import { CodeBlockComponent } from '@cdevhub/ngx-tw/code-block';
 import {
   StatComponent,
   StatDeltaComponent,
@@ -11,9 +11,9 @@ import {
   StatIconDirective,
   StatLabelDirective,
   StatValueDirective,
-} from 'ngx-tw/stat';
-import type { TwSize } from 'ngx-tw/core';
-import type { StatDeltaDirection, StatDeltaVariant, StatVariant } from 'ngx-tw/stat';
+} from '@cdevhub/ngx-tw/stat';
+import type { TwSize } from '@cdevhub/ngx-tw/core';
+import type { StatDeltaDirection, StatDeltaVariant, StatVariant } from '@cdevhub/ngx-tw/stat';
 
 const VARIANTS: StatVariant[] = ['outlined', 'elevated', 'filled', 'plain'];
 const SIZES: TwSize[] = ['xs', 'sm', 'md', 'lg', 'xl'];

@@ -2,7 +2,7 @@ import { Component, input } from '@angular/core';
 import { type ComponentFixture, TestBed } from '@angular/core/testing';
 import { describe, it, expect } from 'vitest';
 import { BadgeDotDirective } from './badge-dot';
-import type { TwColor, TwSize } from 'ngx-tw/core';
+import type { TwColor, TwSize } from '@cdevhub/ngx-tw/core';
 
 // ── Test host components ──────────────────────────────────────────
 

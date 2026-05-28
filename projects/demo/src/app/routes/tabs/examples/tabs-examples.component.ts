@@ -5,11 +5,11 @@ import {
   TabComponent,
   TabTriggerDirective,
   TabContentDirective,
-} from 'ngx-tw/tabs';
-import { ButtonDirective } from 'ngx-tw/button';
-import { CodeBlockComponent } from 'ngx-tw/code-block';
-import type { TwColor, TwSize } from 'ngx-tw/core';
-import type { TabsVariant } from 'ngx-tw/tabs';
+} from '@cdevhub/ngx-tw/tabs';
+import { ButtonDirective } from '@cdevhub/ngx-tw/button';
+import { CodeBlockComponent } from '@cdevhub/ngx-tw/code-block';
+import type { TwColor, TwSize } from '@cdevhub/ngx-tw/core';
+import type { TabsVariant } from '@cdevhub/ngx-tw/tabs';
 
 const VARIANTS: TabsVariant[] = ['underline', 'enclosed', 'pill'];
 const COLORS: TwColor[] = [

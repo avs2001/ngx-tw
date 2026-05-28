@@ -54,8 +54,8 @@ import {
   type CdkTableDataSourceInput,
 } from '@angular/cdk/table';
 import { tv } from 'tailwind-variants';
-import { CheckboxComponent } from 'ngx-tw/checkbox';
-import { TW_SORT_HANDLE, type TwBreakpoint, type TwSize } from 'ngx-tw/core';
+import { CheckboxComponent } from '@cdevhub/ngx-tw/checkbox';
+import { TW_SORT_HANDLE, type TwBreakpoint, type TwSize } from '@cdevhub/ngx-tw/core';
 
 /** Possible values for the `aria-sort` attribute on a sortable column header. */
 export type TwColumnAriaSort = 'ascending' | 'descending' | 'none' | null;

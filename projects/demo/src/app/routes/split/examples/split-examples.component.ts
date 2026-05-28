@@ -1,8 +1,8 @@
 import { ChangeDetectionStrategy, Component, signal } from '@angular/core';
-import { SplitComponent, SplitPaneComponent } from 'ngx-tw/split';
-import type { SplitCollapseEvent } from 'ngx-tw/split';
-import { CodeBlockComponent } from 'ngx-tw/code-block';
-import { ButtonDirective } from 'ngx-tw/button';
+import { SplitComponent, SplitPaneComponent } from '@cdevhub/ngx-tw/split';
+import type { SplitCollapseEvent } from '@cdevhub/ngx-tw/split';
+import { CodeBlockComponent } from '@cdevhub/ngx-tw/code-block';
+import { ButtonDirective } from '@cdevhub/ngx-tw/button';
 
 @Component({
   selector: 'app-split-examples',

@@ -1,7 +1,7 @@
 import { ChangeDetectionStrategy, Component } from '@angular/core';
 import { RouterLink } from '@angular/router';
-import { AvatarComponent } from 'ngx-tw/avatar';
-import { CodeBlockComponent } from 'ngx-tw/code-block';
+import { AvatarComponent } from '@cdevhub/ngx-tw/avatar';
+import { CodeBlockComponent } from '@cdevhub/ngx-tw/code-block';
 
 @Component({
   selector: 'app-avatar-overview',
@@ -94,5 +94,5 @@ export class AvatarOverview {
 <tw-avatar initials="MK" color="accent" alt="Mike Keller" />
 <tw-avatar alt="Anonymous user" />`;
 
-  protected readonly importSnippet = `import { AvatarComponent, AvatarGroupComponent } from 'ngx-tw/avatar';`;
+  protected readonly importSnippet = `import { AvatarComponent, AvatarGroupComponent } from '@cdevhub/ngx-tw/avatar';`;
 }

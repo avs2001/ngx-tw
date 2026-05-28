@@ -1,7 +1,7 @@
 import { ChangeDetectionStrategy, Component } from '@angular/core';
 import { RouterLink } from '@angular/router';
-import { SeparatorComponent } from 'ngx-tw/separator';
-import { CodeBlockComponent } from 'ngx-tw/code-block';
+import { SeparatorComponent } from '@cdevhub/ngx-tw/separator';
+import { CodeBlockComponent } from '@cdevhub/ngx-tw/code-block';
 
 @Component({
   selector: 'app-separator-overview',
@@ -88,5 +88,5 @@ export class SeparatorOverview {
 <tw-separator />
 <p>Account preferences, email notifications, and connected services.</p>`;
 
-  protected readonly importSnippet = `import { SeparatorComponent } from 'ngx-tw/separator';`;
+  protected readonly importSnippet = `import { SeparatorComponent } from '@cdevhub/ngx-tw/separator';`;
 }

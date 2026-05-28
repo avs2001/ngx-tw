@@ -7,17 +7,17 @@ import {
   Validators,
 } from '@angular/forms';
 import { form, FormField, required } from '@angular/forms/signals';
-import { CheckboxComponent } from 'ngx-tw/checkbox';
-import type { CheckboxLabelPosition, CheckboxVariant } from 'ngx-tw/checkbox';
-import { ButtonDirective } from 'ngx-tw/button';
-import { CodeBlockComponent } from 'ngx-tw/code-block';
-import type { TwColor, TwSize } from 'ngx-tw/core';
+import { CheckboxComponent } from '@cdevhub/ngx-tw/checkbox';
+import type { CheckboxLabelPosition, CheckboxVariant } from '@cdevhub/ngx-tw/checkbox';
+import { ButtonDirective } from '@cdevhub/ngx-tw/button';
+import { CodeBlockComponent } from '@cdevhub/ngx-tw/code-block';
+import type { TwColor, TwSize } from '@cdevhub/ngx-tw/core';
 import {
   ErrorDirective,
   FormFieldComponent,
   HintDirective,
   LabelDirective,
-} from 'ngx-tw/form-field';
+} from '@cdevhub/ngx-tw/form-field';
 
 const COLORS: TwColor[] = ['primary', 'secondary', 'accent', 'neutral', 'info', 'success', 'warning', 'error'];
 const SIZES: TwSize[] = ['xs', 'sm', 'md', 'lg', 'xl'];

@@ -1,7 +1,7 @@
 import { ChangeDetectionStrategy, Component } from '@angular/core';
 import { RouterLink } from '@angular/router';
-import { SpinnerComponent } from 'ngx-tw/spinner';
-import { CodeBlockComponent } from 'ngx-tw/code-block';
+import { SpinnerComponent } from '@cdevhub/ngx-tw/spinner';
+import { CodeBlockComponent } from '@cdevhub/ngx-tw/code-block';
 
 @Component({
   selector: 'app-spinner-overview',
@@ -106,5 +106,5 @@ export class SpinnerOverview {
 <tw-spinner variant="bars" color="success" />
 <tw-spinner size="lg" color="warning" />`;
 
-  protected readonly importSnippet = `import { SpinnerComponent } from 'ngx-tw/spinner';`;
+  protected readonly importSnippet = `import { SpinnerComponent } from '@cdevhub/ngx-tw/spinner';`;
 }

@@ -1,12 +1,12 @@
 import { ChangeDetectionStrategy, Component } from '@angular/core';
 import { RouterLink } from '@angular/router';
-import { TextareaDirective } from 'ngx-tw/textarea';
+import { TextareaDirective } from '@cdevhub/ngx-tw/textarea';
 import {
   FormFieldComponent,
   HintDirective,
   LabelDirective,
-} from 'ngx-tw/form-field';
-import { CodeBlockComponent } from 'ngx-tw/code-block';
+} from '@cdevhub/ngx-tw/form-field';
+import { CodeBlockComponent } from '@cdevhub/ngx-tw/code-block';
 
 @Component({
   selector: 'app-textarea-overview',
@@ -157,5 +157,5 @@ export class TextareaOverview {
 <!-- Standalone — no form-field wrapper -->
 <textarea twTextarea rows="4" placeholder="Standalone textarea — default chrome."></textarea>`;
 
-  protected readonly importSnippet = `import { TextareaDirective } from 'ngx-tw/textarea';`;
+  protected readonly importSnippet = `import { TextareaDirective } from '@cdevhub/ngx-tw/textarea';`;
 }

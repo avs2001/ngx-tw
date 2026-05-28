@@ -1,7 +1,7 @@
 import { ChangeDetectionStrategy, Component } from '@angular/core';
 import { RouterLink } from '@angular/router';
-import { BadgeComponent } from 'ngx-tw/badge';
-import { CodeBlockComponent } from 'ngx-tw/code-block';
+import { BadgeComponent } from '@cdevhub/ngx-tw/badge';
+import { CodeBlockComponent } from '@cdevhub/ngx-tw/code-block';
 
 @Component({
   selector: 'app-badge-overview',
@@ -110,5 +110,5 @@ export class BadgeOverview {
 <span twBadge variant="outline" color="info">Outline</span>
 <span twBadge variant="soft" color="success">Soft</span>`;
 
-  protected readonly importSnippet = `import { BadgeComponent } from 'ngx-tw/badge';`;
+  protected readonly importSnippet = `import { BadgeComponent } from '@cdevhub/ngx-tw/badge';`;
 }

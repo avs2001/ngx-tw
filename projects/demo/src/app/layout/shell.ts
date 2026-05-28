@@ -11,7 +11,7 @@ import {
 } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
 import { RouterOutlet, RouterLink, RouterLinkActive } from '@angular/router';
-import { ThemeService } from 'ngx-tw/theme';
+import { ThemeService } from '@cdevhub/ngx-tw/theme';
 
 interface NavItem {
   label: string;

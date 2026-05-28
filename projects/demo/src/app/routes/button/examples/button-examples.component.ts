@@ -1,9 +1,9 @@
 import { ChangeDetectionStrategy, Component, signal } from '@angular/core';
-import { ButtonDirective, ButtonIconDirective } from 'ngx-tw/button';
-import { CodeBlockComponent } from 'ngx-tw/code-block';
-import { SpinnerComponent } from 'ngx-tw/spinner';
-import type { TwColor, TwSize } from 'ngx-tw/core';
-import type { ButtonVariant } from 'ngx-tw/button';
+import { ButtonDirective, ButtonIconDirective } from '@cdevhub/ngx-tw/button';
+import { CodeBlockComponent } from '@cdevhub/ngx-tw/code-block';
+import { SpinnerComponent } from '@cdevhub/ngx-tw/spinner';
+import type { TwColor, TwSize } from '@cdevhub/ngx-tw/core';
+import type { ButtonVariant } from '@cdevhub/ngx-tw/button';
 
 const VARIANTS: ButtonVariant[] = ['solid', 'outline', 'ghost', 'soft', 'link'];
 const COLORS: TwColor[] = ['primary', 'secondary', 'accent', 'neutral', 'info', 'success', 'warning', 'error'];

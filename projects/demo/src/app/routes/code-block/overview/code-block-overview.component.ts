@@ -1,5 +1,5 @@
 import { ChangeDetectionStrategy, Component } from '@angular/core';
-import { CodeBlockComponent } from 'ngx-tw/code-block';
+import { CodeBlockComponent } from '@cdevhub/ngx-tw/code-block';
 
 @Component({
   selector: 'app-code-block-overview',
@@ -80,7 +80,7 @@ import { CodeBlockComponent } from 'ngx-tw/code-block';
   `,
 })
 export class CodeBlockOverview {
-  protected readonly basicSnippet = `import { CodeBlockComponent } from 'ngx-tw/code-block';
+  protected readonly basicSnippet = `import { CodeBlockComponent } from '@cdevhub/ngx-tw/code-block';
 
 @Component({
   imports: [CodeBlockComponent],
@@ -101,5 +101,5 @@ export class MyComponent {}`;
   protected readonly importSnippet = `import {
   CodeBlockComponent,
   CodeBlockHeaderDirective,
-} from 'ngx-tw/code-block';`;
+} from '@cdevhub/ngx-tw/code-block';`;
 }

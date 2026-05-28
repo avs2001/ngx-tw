@@ -1,6 +1,6 @@
 import { ChangeDetectionStrategy, Component } from '@angular/core';
-import { ButtonDirective } from 'ngx-tw/button';
-import { CodeBlockComponent } from 'ngx-tw/code-block';
+import { ButtonDirective } from '@cdevhub/ngx-tw/button';
+import { CodeBlockComponent } from '@cdevhub/ngx-tw/code-block';
 
 @Component({
   selector: 'app-button-overview',
@@ -119,5 +119,5 @@ import { CodeBlockComponent } from 'ngx-tw/code-block';
 export class ButtonOverview {
   protected readonly basicUsageSnippet = `<button twButton>Save changes</button>`;
 
-  protected readonly importSnippet = `import { ButtonDirective, ButtonIconDirective } from 'ngx-tw/button';`;
+  protected readonly importSnippet = `import { ButtonDirective, ButtonIconDirective } from '@cdevhub/ngx-tw/button';`;
 }

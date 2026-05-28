@@ -1,7 +1,7 @@
 import { ChangeDetectionStrategy, Component, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
-import { SelectComponent } from 'ngx-tw/select';
-import { CodeBlockComponent } from 'ngx-tw/code-block';
+import { SelectComponent } from '@cdevhub/ngx-tw/select';
+import { CodeBlockComponent } from '@cdevhub/ngx-tw/code-block';
 
 interface Country {
   readonly label: string;
@@ -184,5 +184,5 @@ export class SelectOverview {
   aria-label="Country"
 />`;
 
-  protected readonly importSnippet = `import { SelectComponent } from 'ngx-tw/select';`;
+  protected readonly importSnippet = `import { SelectComponent } from '@cdevhub/ngx-tw/select';`;
 }

@@ -1,5 +1,5 @@
 import { ChangeDetectionStrategy, Component } from '@angular/core';
-import { CodeBlockComponent } from 'ngx-tw/code-block';
+import { CodeBlockComponent } from '@cdevhub/ngx-tw/code-block';
 
 @Component({
   selector: 'app-time-picker-api',
@@ -283,7 +283,7 @@ interface TimePickerInputEvent<D> {
   parsed: D | null;
 }`;
 
-  protected readonly intlSnippet = `import { provideTimePickerIntl } from 'ngx-tw/time-picker';
+  protected readonly intlSnippet = `import { provideTimePickerIntl } from '@cdevhub/ngx-tw/time-picker';
 
 export const appConfig: ApplicationConfig = {
   providers: [

@@ -15,8 +15,8 @@ import {
 } from '@angular/core';
 import { NgTemplateOutlet } from '@angular/common';
 import { tv } from 'tailwind-variants';
-import type { TwSize } from 'ngx-tw/core';
-import { SkeletonComponent } from 'ngx-tw/skeleton';
+import type { TwSize } from '@cdevhub/ngx-tw/core';
+import { SkeletonComponent } from '@cdevhub/ngx-tw/skeleton';
 
 /** Surface treatment for the stat tile. */
 export type StatVariant = 'plain' | 'outlined' | 'elevated' | 'filled';

@@ -1,12 +1,12 @@
 import { ChangeDetectionStrategy, Component, signal } from '@angular/core';
 import { ReactiveFormsModule, FormControl } from '@angular/forms';
-import { SpinnerComponent } from 'ngx-tw/spinner';
-import type { SpinnerVariant, SpinnerSize } from 'ngx-tw/spinner';
-import { ButtonDirective } from 'ngx-tw/button';
-import { FormFieldComponent, LabelDirective } from 'ngx-tw/form-field';
-import { InputDirective } from 'ngx-tw/input';
-import { CodeBlockComponent } from 'ngx-tw/code-block';
-import type { TwColor, TwSize } from 'ngx-tw/core';
+import { SpinnerComponent } from '@cdevhub/ngx-tw/spinner';
+import type { SpinnerVariant, SpinnerSize } from '@cdevhub/ngx-tw/spinner';
+import { ButtonDirective } from '@cdevhub/ngx-tw/button';
+import { FormFieldComponent, LabelDirective } from '@cdevhub/ngx-tw/form-field';
+import { InputDirective } from '@cdevhub/ngx-tw/input';
+import { CodeBlockComponent } from '@cdevhub/ngx-tw/code-block';
+import type { TwColor, TwSize } from '@cdevhub/ngx-tw/core';
 
 const VARIANTS: SpinnerVariant[] = ['circular', 'dots', 'bars'];
 const COLORS: TwColor[] = ['primary', 'secondary', 'accent', 'neutral', 'info', 'success', 'warning', 'error'];

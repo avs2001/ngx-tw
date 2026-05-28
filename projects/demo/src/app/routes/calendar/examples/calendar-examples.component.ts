@@ -15,9 +15,9 @@ import {
   type CalendarRangeValue,
   type CalendarValue,
   type DateFilterFn,
-} from 'ngx-tw/calendar';
-import { ButtonDirective } from 'ngx-tw/button';
-import { CodeBlockComponent } from 'ngx-tw/code-block';
+} from '@cdevhub/ngx-tw/calendar';
+import { ButtonDirective } from '@cdevhub/ngx-tw/button';
+import { CodeBlockComponent } from '@cdevhub/ngx-tw/code-block';
 
 const MS_PER_DAY = 1000 * 60 * 60 * 24;
 

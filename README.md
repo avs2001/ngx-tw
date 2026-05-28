@@ -4,7 +4,7 @@ Angular component library for applications built with **Tailwind CSS v4** and
 **Angular CDK**. Quality bar: Angular Material — accessible, composable,
 well-tested — styled with Tailwind utilities instead of Material Design tokens.
 
-This repo is the monorepo that produces the `ngx-tw` npm package. Consumers
+This repo is the monorepo that produces the `@cdevhub/ngx-tw` npm package. Consumers
 only need the published package; this README documents the repo layout and the
 local development workflow.
 
@@ -15,7 +15,7 @@ local development workflow.
 
 | Path                           | Purpose                                                               |
 |--------------------------------|-----------------------------------------------------------------------|
-| `projects/ngx-tw/`             | The publishable library. Each component is its own secondary entry point (e.g. `ngx-tw/button`). |
+| `projects/ngx-tw/`             | The publishable library. Each component is its own secondary entry point (e.g. `@cdevhub/ngx-tw/button`). |
 | `projects/ngx-tw/theme/`       | Default semantic theme CSS — ships as an asset, not an entry point.  |
 | `projects/ngx-tw/core/`        | Shared types (`TwColor`, `TwSize`) and utilities.                     |
 | `projects/demo/`               | Demo application with an overview / examples / API page per component.|

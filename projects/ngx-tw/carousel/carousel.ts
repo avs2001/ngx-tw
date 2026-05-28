@@ -26,7 +26,7 @@ import {
   viewChild,
 } from '@angular/core';
 import { tv } from 'tailwind-variants';
-import type { TwColor, TwOrientation, TwSize } from 'ngx-tw/core';
+import type { TwColor, TwOrientation, TwSize } from '@cdevhub/ngx-tw/core';
 
 // ── Public types ──────────────────────────────────────────────────
 

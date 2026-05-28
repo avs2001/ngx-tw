@@ -5,11 +5,11 @@ import {
   CardBodyDirective,
   CardFooterDirective,
   CardMediaDirective,
-} from 'ngx-tw/card';
-import { ButtonDirective } from 'ngx-tw/button';
-import { CodeBlockComponent } from 'ngx-tw/code-block';
-import type { TwColor, TwSize } from 'ngx-tw/core';
-import type { CardVariant } from 'ngx-tw/card';
+} from '@cdevhub/ngx-tw/card';
+import { ButtonDirective } from '@cdevhub/ngx-tw/button';
+import { CodeBlockComponent } from '@cdevhub/ngx-tw/code-block';
+import type { TwColor, TwSize } from '@cdevhub/ngx-tw/core';
+import type { CardVariant } from '@cdevhub/ngx-tw/card';
 
 const VARIANTS: CardVariant[] = ['elevated', 'outlined', 'ghost'];
 const COLORS: TwColor[] = [

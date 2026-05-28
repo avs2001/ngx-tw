@@ -1,6 +1,6 @@
 import { ChangeDetectionStrategy, Component } from '@angular/core';
-import { SkeletonComponent } from 'ngx-tw/skeleton';
-import { CodeBlockComponent } from 'ngx-tw/code-block';
+import { SkeletonComponent } from '@cdevhub/ngx-tw/skeleton';
+import { CodeBlockComponent } from '@cdevhub/ngx-tw/code-block';
 
 @Component({
   selector: 'app-skeleton-overview',
@@ -68,5 +68,5 @@ export class SkeletonOverview {
 <tw-skeleton shape="circle" [width]="40" [height]="40" />
 <tw-skeleton [lines]="2" />`.trim();
 
-  protected readonly importSnippet = `import { SkeletonComponent } from 'ngx-tw/skeleton';`;
+  protected readonly importSnippet = `import { SkeletonComponent } from '@cdevhub/ngx-tw/skeleton';`;
 }

@@ -22,7 +22,7 @@ import {
   type TabTriggerVariant,
   type TwColor,
   type TwSize,
-} from 'ngx-tw/core';
+} from '@cdevhub/ngx-tw/core';
 
 /** Visual style of the tab navigation strip. */
 export type TabNavVariant = TabTriggerVariant;

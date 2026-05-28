@@ -1,7 +1,7 @@
 import { ChangeDetectionStrategy, Component, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
-import { CheckboxComponent } from 'ngx-tw/checkbox';
-import { CodeBlockComponent } from 'ngx-tw/code-block';
+import { CheckboxComponent } from '@cdevhub/ngx-tw/checkbox';
+import { CodeBlockComponent } from '@cdevhub/ngx-tw/code-block';
 
 @Component({
   selector: 'app-checkbox-overview',
@@ -165,5 +165,5 @@ export class CheckboxOverview {
 
   protected readonly basicUsageSnippet = `<tw-checkbox label="I agree to the terms and conditions" [(checked)]="accepted" />`;
 
-  protected readonly importSnippet = `import { CheckboxComponent } from 'ngx-tw/checkbox';`;
+  protected readonly importSnippet = `import { CheckboxComponent } from '@cdevhub/ngx-tw/checkbox';`;
 }

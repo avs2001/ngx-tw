@@ -18,8 +18,8 @@ import {
   FormFieldComponent,
   LabelDirective,
   TW_FORM_FIELD_CONTROL,
-} from 'ngx-tw/form-field';
-import type { ErrorStateMatcher, TwSize } from 'ngx-tw/core';
+} from '@cdevhub/ngx-tw/form-field';
+import type { ErrorStateMatcher, TwSize } from '@cdevhub/ngx-tw/core';
 import { TextareaDirective, type TwTextareaResize } from './textarea';
 
 // ── Host harnesses ──

@@ -1,7 +1,7 @@
 import { ChangeDetectionStrategy, Component, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
-import { RadioComponent, RadioGroupComponent } from 'ngx-tw/radio';
-import { CodeBlockComponent } from 'ngx-tw/code-block';
+import { RadioComponent, RadioGroupComponent } from '@cdevhub/ngx-tw/radio';
+import { CodeBlockComponent } from '@cdevhub/ngx-tw/code-block';
 
 @Component({
   selector: 'app-radio-overview',
@@ -155,5 +155,5 @@ export class RadioOverview {
   <tw-radio value="team" label="Team" />
 </tw-radio-group>`;
 
-  protected readonly importSnippet = `import { RadioComponent, RadioGroupComponent } from 'ngx-tw/radio';`;
+  protected readonly importSnippet = `import { RadioComponent, RadioGroupComponent } from '@cdevhub/ngx-tw/radio';`;
 }

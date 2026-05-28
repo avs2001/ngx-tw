@@ -3,7 +3,7 @@ import { type ComponentFixture, TestBed } from '@angular/core/testing';
 import { IconComponent } from './icon';
 import { provideTwIcons } from './icon.providers';
 import type { TwIconData, TwIconColor } from './icon.types';
-import type { TwSize } from 'ngx-tw/core';
+import type { TwSize } from '@cdevhub/ngx-tw/core';
 
 const STAR_ICON: TwIconData = [
   ['polygon', { points: '12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2' }],

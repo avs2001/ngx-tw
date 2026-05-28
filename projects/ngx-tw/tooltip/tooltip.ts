@@ -22,7 +22,7 @@ import { ComponentPortal } from '@angular/cdk/portal';
 import { AriaDescriber } from '@angular/cdk/a11y';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { tv } from 'tailwind-variants';
-import type { TwColor, TwSize } from 'ngx-tw/core';
+import type { TwColor, TwSize } from '@cdevhub/ngx-tw/core';
 
 /** Placement position of the tooltip relative to its trigger element. */
 export type TooltipPosition =

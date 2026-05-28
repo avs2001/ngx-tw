@@ -31,7 +31,7 @@ import {
   type TwColor,
   type TwFormSubmitted,
   type TwSize,
-} from 'ngx-tw/core';
+} from '@cdevhub/ngx-tw/core';
 
 /** Position of the label relative to the switch control. */
 export type SwitchLabelPosition = 'before' | 'after';

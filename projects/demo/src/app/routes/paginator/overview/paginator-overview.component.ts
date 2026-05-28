@@ -1,7 +1,7 @@
 import { ChangeDetectionStrategy, Component, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
-import { PaginatorComponent } from 'ngx-tw/paginator';
-import { CodeBlockComponent } from 'ngx-tw/code-block';
+import { PaginatorComponent } from '@cdevhub/ngx-tw/paginator';
+import { CodeBlockComponent } from '@cdevhub/ngx-tw/code-block';
 
 @Component({
   selector: 'app-paginator-overview',
@@ -147,5 +147,5 @@ export class PaginatorOverview {
   PaginatorLabelDirective,
   PaginatorEmptyDirective,
   PaginatorPageSizeSelectorDirective,
-} from 'ngx-tw/paginator';`;
+} from '@cdevhub/ngx-tw/paginator';`;
 }

@@ -4,9 +4,9 @@ import {
   type FlipCardDirection,
   type FlipCardTrigger,
   type FlipCardVariant,
-} from 'ngx-tw/flip-card';
-import { ButtonDirective } from 'ngx-tw/button';
-import { CodeBlockComponent } from 'ngx-tw/code-block';
+} from '@cdevhub/ngx-tw/flip-card';
+import { ButtonDirective } from '@cdevhub/ngx-tw/button';
+import { CodeBlockComponent } from '@cdevhub/ngx-tw/code-block';
 
 const VARIANTS: FlipCardVariant[] = ['outlined', 'elevated', 'ghost'];
 const DIRECTIONS: FlipCardDirection[] = ['horizontal', 'vertical'];

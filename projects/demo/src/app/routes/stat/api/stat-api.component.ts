@@ -1,5 +1,5 @@
 import { ChangeDetectionStrategy, Component } from '@angular/core';
-import { CodeBlockComponent } from 'ngx-tw/code-block';
+import { CodeBlockComponent } from '@cdevhub/ngx-tw/code-block';
 
 @Component({
   selector: 'app-stat-api',
@@ -209,6 +209,6 @@ export type StatDeltaDirection = 'up' | 'down' | 'neutral';
 
 export type StatDeltaVariant = 'badge' | 'inline' | 'icon-only';
 
-// Imported from 'ngx-tw/core' — included here for reference:
+// Imported from '@cdevhub/ngx-tw/core' — included here for reference:
 export type TwSize = 'xs' | 'sm' | 'md' | 'lg' | 'xl';`;
 }

@@ -5,8 +5,8 @@ import {
   AlertIconDirective,
   AlertTitleDirective,
   AlertContentDirective,
-} from 'ngx-tw/alert';
-import { CodeBlockComponent } from 'ngx-tw/code-block';
+} from '@cdevhub/ngx-tw/alert';
+import { CodeBlockComponent } from '@cdevhub/ngx-tw/code-block';
 
 @Component({
   selector: 'app-alert-overview',
@@ -184,5 +184,5 @@ export class AlertOverview {
   AlertTitleDirective,
   AlertContentDirective,
   AlertActionsDirective,
-} from 'ngx-tw/alert';`;
+} from '@cdevhub/ngx-tw/alert';`;
 }

@@ -32,7 +32,7 @@ import {
   type TabTriggerVariant,
   type TwColor,
   type TwSize,
-} from 'ngx-tw/core';
+} from '@cdevhub/ngx-tw/core';
 
 /** Visual style of the tab strip. */
 export type TabsVariant = TabTriggerVariant;

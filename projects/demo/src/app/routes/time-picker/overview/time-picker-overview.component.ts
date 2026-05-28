@@ -1,7 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
-import { TimePickerComponent } from 'ngx-tw/time-picker';
-import { CodeBlockComponent } from 'ngx-tw/code-block';
+import { TimePickerComponent } from '@cdevhub/ngx-tw/time-picker';
+import { CodeBlockComponent } from '@cdevhub/ngx-tw/code-block';
 
 function fmt(d: Date | null): string {
   if (!d) return 'null';
@@ -198,10 +198,10 @@ export class TimePickerOverview {
   aria-label="Basic time"
 />`;
 
-  protected readonly importSnippet = `import { TimePickerComponent } from 'ngx-tw/time-picker';
+  protected readonly importSnippet = `import { TimePickerComponent } from '@cdevhub/ngx-tw/time-picker';
 
 // Required once in your app config — shared with tw-calendar and tw-date-picker.
-import { provideNativeDateAdapter } from 'ngx-tw/calendar';
+import { provideNativeDateAdapter } from '@cdevhub/ngx-tw/calendar';
 
 export const appConfig: ApplicationConfig = {
   providers: [provideNativeDateAdapter()],

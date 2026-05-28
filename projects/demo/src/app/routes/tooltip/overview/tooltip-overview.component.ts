@@ -1,8 +1,8 @@
 import { ChangeDetectionStrategy, Component } from '@angular/core';
 import { RouterLink } from '@angular/router';
-import { TooltipDirective } from 'ngx-tw/tooltip';
-import { ButtonDirective } from 'ngx-tw/button';
-import { CodeBlockComponent } from 'ngx-tw/code-block';
+import { TooltipDirective } from '@cdevhub/ngx-tw/tooltip';
+import { ButtonDirective } from '@cdevhub/ngx-tw/button';
+import { CodeBlockComponent } from '@cdevhub/ngx-tw/code-block';
 
 @Component({
   selector: 'app-tooltip-overview',
@@ -140,5 +140,5 @@ export class TooltipOverview {
 <button twButton variant="outline" twTooltip="Delete this item" twTooltipColor="error">Delete</button>
 <button twButton variant="soft" twTooltip="View more information" twTooltipPosition="bottom">Bottom tip</button>`;
 
-  protected readonly importSnippet = `import { TooltipDirective } from 'ngx-tw/tooltip';`;
+  protected readonly importSnippet = `import { TooltipDirective } from '@cdevhub/ngx-tw/tooltip';`;
 }

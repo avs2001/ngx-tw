@@ -1,5 +1,5 @@
 import { ChangeDetectionStrategy, Component } from '@angular/core';
-import { CodeBlockComponent } from 'ngx-tw/code-block';
+import { CodeBlockComponent } from '@cdevhub/ngx-tw/code-block';
 
 @Component({
   selector: 'app-timeline-api',
@@ -164,7 +164,7 @@ import { CodeBlockComponent } from 'ngx-tw/code-block';
   `,
 })
 export class TimelineApi {
-  protected readonly typesSnippet = `import type { TwColor, TwOrientation, TwSize } from 'ngx-tw/core';
+  protected readonly typesSnippet = `import type { TwColor, TwOrientation, TwSize } from '@cdevhub/ngx-tw/core';
 
 type TimelineMarker = 'dot' | 'circle';
 type TimelineState = 'reached' | 'pending' | 'current' | 'error';

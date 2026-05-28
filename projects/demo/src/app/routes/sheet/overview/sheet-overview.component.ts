@@ -9,9 +9,9 @@ import {
   SheetHeaderDirective,
   SheetSubtitleDirective,
   SheetTitleDirective,
-} from 'ngx-tw/sheet';
-import { ButtonDirective } from 'ngx-tw/button';
-import { CodeBlockComponent } from 'ngx-tw/code-block';
+} from '@cdevhub/ngx-tw/sheet';
+import { ButtonDirective } from '@cdevhub/ngx-tw/button';
+import { CodeBlockComponent } from '@cdevhub/ngx-tw/code-block';
 
 /** Inline content used by the overview's quick-demo buttons. */
 @Component({
@@ -170,7 +170,7 @@ export class SheetOverview {
   private readonly sheet = inject(Sheet);
 
   protected readonly quickStartCode = `import { inject } from '@angular/core';
-import { Sheet } from 'ngx-tw/sheet';
+import { Sheet } from '@cdevhub/ngx-tw/sheet';
 
 const sheet = inject(Sheet);
 const ref = sheet.open(MyComponent, { side: 'right', size: 'md' });
@@ -178,7 +178,7 @@ ref.afterClosed().subscribe((result) => {
   // result is whatever you passed to close() or [twSheetClose]
 });`;
 
-  protected readonly provideSnippet = `import { provideSheet } from 'ngx-tw/sheet';
+  protected readonly provideSnippet = `import { provideSheet } from '@cdevhub/ngx-tw/sheet';
 
 bootstrapApplication(AppComponent, {
   providers: [
@@ -197,7 +197,7 @@ bootstrapApplication(AppComponent, {
   SheetContentDirective,
   SheetActionsDirective,
   SheetCloseDirective,
-} from 'ngx-tw/sheet';`;
+} from '@cdevhub/ngx-tw/sheet';`;
 
   protected openSide(side: 'top' | 'right' | 'bottom' | 'left'): void {
     this.sheet.open(QuickStartSheetContent, { side, size: 'md', data: { side } });

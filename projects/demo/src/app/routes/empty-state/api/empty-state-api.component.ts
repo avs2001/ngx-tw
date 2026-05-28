@@ -1,5 +1,5 @@
 import { ChangeDetectionStrategy, Component } from '@angular/core';
-import { CodeBlockComponent } from 'ngx-tw/code-block';
+import { CodeBlockComponent } from '@cdevhub/ngx-tw/code-block';
 
 @Component({
   selector: 'app-empty-state-api',
@@ -162,6 +162,6 @@ export class EmptyStateApi {
 
 type EmptyStateTitleLevel = 1 | 2 | 3 | 4 | 5 | 6;
 
-// Shared from 'ngx-tw/core':
+// Shared from '@cdevhub/ngx-tw/core':
 type TwSize = 'xs' | 'sm' | 'md' | 'lg' | 'xl';`;
 }

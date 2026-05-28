@@ -9,17 +9,17 @@ import {
   type TimelineLineStyle,
   type TimelineMarker,
   type TimelineState,
-} from 'ngx-tw/timeline';
+} from '@cdevhub/ngx-tw/timeline';
 import {
   ItemComponent,
   ItemTitleDirective,
   ItemDescriptionDirective,
-} from 'ngx-tw/item';
-import { AvatarComponent } from 'ngx-tw/avatar';
-import { IconComponent } from 'ngx-tw/icon';
-import { ButtonDirective } from 'ngx-tw/button';
-import { CodeBlockComponent } from 'ngx-tw/code-block';
-import type { TwColor, TwOrientation, TwSize } from 'ngx-tw/core';
+} from '@cdevhub/ngx-tw/item';
+import { AvatarComponent } from '@cdevhub/ngx-tw/avatar';
+import { IconComponent } from '@cdevhub/ngx-tw/icon';
+import { ButtonDirective } from '@cdevhub/ngx-tw/button';
+import { CodeBlockComponent } from '@cdevhub/ngx-tw/code-block';
+import type { TwColor, TwOrientation, TwSize } from '@cdevhub/ngx-tw/core';
 
 const COLORS: TwColor[] = [
   'primary',

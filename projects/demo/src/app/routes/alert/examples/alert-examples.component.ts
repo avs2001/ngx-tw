@@ -6,10 +6,10 @@ import {
   AlertContentDirective,
   AlertActionsDirective,
   type AlertVariant,
-} from 'ngx-tw/alert';
-import { ButtonDirective } from 'ngx-tw/button';
-import { CodeBlockComponent } from 'ngx-tw/code-block';
-import type { TwColor } from 'ngx-tw/core';
+} from '@cdevhub/ngx-tw/alert';
+import { ButtonDirective } from '@cdevhub/ngx-tw/button';
+import { CodeBlockComponent } from '@cdevhub/ngx-tw/code-block';
+import type { TwColor } from '@cdevhub/ngx-tw/core';
 
 const VARIANTS: AlertVariant[] = ['solid', 'outline', 'soft'];
 const COLORS: TwColor[] = [

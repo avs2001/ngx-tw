@@ -19,7 +19,7 @@ import {
   CdkMenuTrigger,
 } from '@angular/cdk/menu';
 import { tv } from 'tailwind-variants';
-import type { TwColor, TwSize } from 'ngx-tw/core';
+import type { TwColor, TwSize } from '@cdevhub/ngx-tw/core';
 
 // ── Variant configs ──
 

@@ -5,11 +5,11 @@ import {
   CollapsibleGroupComponent,
   CollapsibleTriggerDirective,
   CollapsibleIconDirective,
-} from 'ngx-tw/collapsible';
-import { ButtonDirective } from 'ngx-tw/button';
-import { CodeBlockComponent } from 'ngx-tw/code-block';
-import type { TwColor, TwSize } from 'ngx-tw/core';
-import type { CollapsibleDisplay, CollapsibleVariant } from 'ngx-tw/collapsible';
+} from '@cdevhub/ngx-tw/collapsible';
+import { ButtonDirective } from '@cdevhub/ngx-tw/button';
+import { CodeBlockComponent } from '@cdevhub/ngx-tw/code-block';
+import type { TwColor, TwSize } from '@cdevhub/ngx-tw/core';
+import type { CollapsibleDisplay, CollapsibleVariant } from '@cdevhub/ngx-tw/collapsible';
 
 const VARIANTS: CollapsibleVariant[] = ['default', 'bordered', 'ghost', 'filled'];
 const COLORS: TwColor[] = ['primary', 'secondary', 'accent', 'neutral', 'info', 'success', 'warning', 'error'];

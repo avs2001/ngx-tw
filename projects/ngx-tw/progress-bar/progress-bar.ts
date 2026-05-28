@@ -20,7 +20,7 @@ import {
   untracked,
 } from '@angular/core';
 import { tv } from 'tailwind-variants';
-import type { TwColor } from 'ngx-tw/core';
+import type { TwColor } from '@cdevhub/ngx-tw/core';
 
 // `ngDevMode` is a globalThis flag set by Angular's build tooling — true in dev,
 // `false` in production builds. The `typeof` guard keeps the warning path safe

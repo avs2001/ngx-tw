@@ -3,7 +3,7 @@ import { type ComponentFixture, TestBed } from '@angular/core/testing';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { FocusMonitor } from '@angular/cdk/a11y';
 import { ButtonDirective, ButtonIconDirective } from './button';
-import type { TwColor, TwSize } from 'ngx-tw/core';
+import type { TwColor, TwSize } from '@cdevhub/ngx-tw/core';
 import type { ButtonVariant } from './button';
 
 // ── Test host components ──────────────────────────────────────────

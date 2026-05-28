@@ -3,9 +3,9 @@ import { RouterLink } from '@angular/router';
 import {
   CommandPaletteComponent,
   CommandPaletteItemDirective,
-} from 'ngx-tw/command-palette';
-import { ButtonDirective } from 'ngx-tw/button';
-import { CodeBlockComponent } from 'ngx-tw/code-block';
+} from '@cdevhub/ngx-tw/command-palette';
+import { ButtonDirective } from '@cdevhub/ngx-tw/button';
+import { CodeBlockComponent } from '@cdevhub/ngx-tw/code-block';
 
 @Component({
   selector: 'app-command-palette-overview',
@@ -225,5 +225,5 @@ export class CommandPaletteOverview {
   CommandPaletteItemDescriptionDirective,
   CommandPaletteEmptyDirective,
   CommandPaletteFooterDirective,
-} from 'ngx-tw/command-palette';`;
+} from '@cdevhub/ngx-tw/command-palette';`;
 }

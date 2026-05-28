@@ -7,7 +7,7 @@ import {
   input,
 } from '@angular/core';
 import { tv } from 'tailwind-variants';
-import { CollapsibleGroupComponent } from 'ngx-tw/collapsible';
+import { CollapsibleGroupComponent } from '@cdevhub/ngx-tw/collapsible';
 
 /** Open mode of the accordion. */
 export type AccordionType = 'single' | 'multiple';

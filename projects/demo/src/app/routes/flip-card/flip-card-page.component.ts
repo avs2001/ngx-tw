@@ -1,13 +1,13 @@
 import { ChangeDetectionStrategy, Component } from '@angular/core';
 import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
-import { TabNavComponent, TabLinkDirective } from 'ngx-tw/tab-nav';
+import { TabNavComponent, TabLinkDirective } from '@cdevhub/ngx-tw/tab-nav';
 import {
   ItemComponent,
   ItemLeadingDirective,
   ItemTitleDirective,
   ItemDescriptionDirective,
-} from 'ngx-tw/item';
-import { IconComponent } from 'ngx-tw/icon';
+} from '@cdevhub/ngx-tw/item';
+import { IconComponent } from '@cdevhub/ngx-tw/icon';
 
 @Component({
   selector: 'app-flip-card-page',

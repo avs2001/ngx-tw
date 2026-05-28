@@ -1,5 +1,5 @@
 import { ChangeDetectionStrategy, Component } from '@angular/core';
-import { CodeBlockComponent } from 'ngx-tw/code-block';
+import { CodeBlockComponent } from '@cdevhub/ngx-tw/code-block';
 
 @Component({
   selector: 'app-alert-api',
@@ -181,7 +181,7 @@ export class AlertApi {
 
 type AlertPoliteness = 'polite' | 'assertive' | 'off';
 
-// Shared library types (re-exported from 'ngx-tw/core'):
+// Shared library types (re-exported from '@cdevhub/ngx-tw/core'):
 type TwColor = 'primary' | 'secondary' | 'accent' | 'neutral'
              | 'info' | 'success' | 'warning' | 'error';`;
 }

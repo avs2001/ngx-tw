@@ -1,5 +1,5 @@
 import { ChangeDetectionStrategy, Component } from '@angular/core';
-import { CodeBlockComponent } from 'ngx-tw/code-block';
+import { CodeBlockComponent } from '@cdevhub/ngx-tw/code-block';
 
 @Component({
   selector: 'app-date-range-picker-api',
@@ -482,8 +482,8 @@ export interface DateRangePreset<D = Date> {
   readonly id?: string;
 }
 
-// Re-exported from 'ngx-tw/calendar' — use directly:
-//   import { TwDateRange } from 'ngx-tw/calendar';
+// Re-exported from '@cdevhub/ngx-tw/calendar' — use directly:
+//   import { TwDateRange } from '@cdevhub/ngx-tw/calendar';
 export class TwDateRange<D> {
   constructor(
     public readonly start: D | null,

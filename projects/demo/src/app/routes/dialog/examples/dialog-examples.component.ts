@@ -21,9 +21,9 @@ import {
   type TwDialogRole,
   type TwDialogScrollStrategy,
   type TwDialogSize,
-} from 'ngx-tw/dialog';
-import { ButtonDirective } from 'ngx-tw/button';
-import { CodeBlockComponent } from 'ngx-tw/code-block';
+} from '@cdevhub/ngx-tw/dialog';
+import { ButtonDirective } from '@cdevhub/ngx-tw/button';
+import { CodeBlockComponent } from '@cdevhub/ngx-tw/code-block';
 
 const SIZES: TwDialogSize[] = ['xs', 'sm', 'md', 'lg', 'xl', 'fullscreen'];
 const ROLES: TwDialogRole[] = ['dialog', 'alertdialog'];

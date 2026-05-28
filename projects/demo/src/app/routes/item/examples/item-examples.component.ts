@@ -6,13 +6,13 @@ import {
   ItemTitleDirective,
   ItemDescriptionDirective,
   ItemTrailingDirective,
-} from 'ngx-tw/item';
-import type { ItemAlign, ItemSize } from 'ngx-tw/item';
-import { BadgeComponent } from 'ngx-tw/badge';
-import { AvatarComponent } from 'ngx-tw/avatar';
-import { ButtonDirective } from 'ngx-tw/button';
-import { IconComponent } from 'ngx-tw/icon';
-import { CodeBlockComponent } from 'ngx-tw/code-block';
+} from '@cdevhub/ngx-tw/item';
+import type { ItemAlign, ItemSize } from '@cdevhub/ngx-tw/item';
+import { BadgeComponent } from '@cdevhub/ngx-tw/badge';
+import { AvatarComponent } from '@cdevhub/ngx-tw/avatar';
+import { ButtonDirective } from '@cdevhub/ngx-tw/button';
+import { IconComponent } from '@cdevhub/ngx-tw/icon';
+import { CodeBlockComponent } from '@cdevhub/ngx-tw/code-block';
 
 interface Row {
   readonly id: string;

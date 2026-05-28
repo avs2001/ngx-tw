@@ -1,7 +1,7 @@
 import { ChangeDetectionStrategy, Component, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
-import { SegmentedControlComponent, SegmentedControlOptionComponent } from 'ngx-tw/segmented-control';
-import { CodeBlockComponent } from 'ngx-tw/code-block';
+import { SegmentedControlComponent, SegmentedControlOptionComponent } from '@cdevhub/ngx-tw/segmented-control';
+import { CodeBlockComponent } from '@cdevhub/ngx-tw/code-block';
 
 @Component({
   selector: 'app-segmented-control-overview',
@@ -160,5 +160,5 @@ export class SegmentedControlOverview {
   protected readonly importSnippet = `import {
   SegmentedControlComponent,
   SegmentedControlOptionComponent,
-} from 'ngx-tw/segmented-control';`;
+} from '@cdevhub/ngx-tw/segmented-control';`;
 }

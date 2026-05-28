@@ -1,9 +1,9 @@
 import { ChangeDetectionStrategy, Component, computed, signal } from '@angular/core';
-import { AvatarComponent, AvatarGroupComponent } from 'ngx-tw/avatar';
-import type { AvatarAppearance, AvatarRounded, AvatarStatus } from 'ngx-tw/avatar';
-import { ButtonDirective } from 'ngx-tw/button';
-import { CodeBlockComponent } from 'ngx-tw/code-block';
-import type { TwColor, TwSize } from 'ngx-tw/core';
+import { AvatarComponent, AvatarGroupComponent } from '@cdevhub/ngx-tw/avatar';
+import type { AvatarAppearance, AvatarRounded, AvatarStatus } from '@cdevhub/ngx-tw/avatar';
+import { ButtonDirective } from '@cdevhub/ngx-tw/button';
+import { CodeBlockComponent } from '@cdevhub/ngx-tw/code-block';
+import type { TwColor, TwSize } from '@cdevhub/ngx-tw/core';
 
 const COLORS: TwColor[] = ['primary', 'secondary', 'accent', 'neutral', 'info', 'success', 'warning', 'error'];
 const SIZES: TwSize[] = ['xs', 'sm', 'md', 'lg', 'xl'];

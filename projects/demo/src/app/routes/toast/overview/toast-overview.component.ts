@@ -1,8 +1,8 @@
 import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 import { RouterLink } from '@angular/router';
-import { ToastService } from 'ngx-tw/toast';
-import { ButtonDirective } from 'ngx-tw/button';
-import { CodeBlockComponent } from 'ngx-tw/code-block';
+import { ToastService } from '@cdevhub/ngx-tw/toast';
+import { ButtonDirective } from '@cdevhub/ngx-tw/button';
+import { CodeBlockComponent } from '@cdevhub/ngx-tw/code-block';
 
 @Component({
   selector: 'app-toast-overview',
@@ -184,7 +184,7 @@ import { CodeBlockComponent } from 'ngx-tw/code-block';
 export class ToastOverview {
   protected readonly toast = inject(ToastService);
 
-  protected readonly setupSnippet = `import { provideToast } from 'ngx-tw/toast';
+  protected readonly setupSnippet = `import { provideToast } from '@cdevhub/ngx-tw/toast';
 
 export const appConfig: ApplicationConfig = {
   providers: [
@@ -205,5 +205,5 @@ toast.error('Something went wrong.');`;
   TW_TOAST_DATA,
   TW_TOAST_REF,
   provideToast,
-} from 'ngx-tw/toast';`;
+} from '@cdevhub/ngx-tw/toast';`;
 }

@@ -5,7 +5,7 @@ import {
   model,
   output,
 } from '@angular/core';
-import { TW_SORT_HANDLE } from 'ngx-tw/core';
+import { TW_SORT_HANDLE } from '@cdevhub/ngx-tw/core';
 
 /** Sort direction. `null` represents the cleared (unsorted) state. */
 export type SortDirection = 'asc' | 'desc' | null;

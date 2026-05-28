@@ -13,7 +13,7 @@ import {
 } from '@angular/core';
 import { FocusMonitor } from '@angular/cdk/a11y';
 import { tv } from 'tailwind-variants';
-import type { TwSize } from 'ngx-tw/core';
+import type { TwSize } from '@cdevhub/ngx-tw/core';
 
 /** Density / typography scale for `tw-item`. A narrower subset of `TwSize` — the three sizes that match real use cases (table row, list item, section header). */
 export type ItemSize = Extract<TwSize, 'sm' | 'md' | 'lg'>;

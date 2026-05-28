@@ -1,7 +1,7 @@
 import { ChangeDetectionStrategy, Component } from '@angular/core';
 import { RouterLink } from '@angular/router';
-import { FlipCardComponent } from 'ngx-tw/flip-card';
-import { CodeBlockComponent } from 'ngx-tw/code-block';
+import { FlipCardComponent } from '@cdevhub/ngx-tw/flip-card';
+import { CodeBlockComponent } from '@cdevhub/ngx-tw/code-block';
 
 @Component({
   selector: 'app-flip-card-overview',
@@ -166,5 +166,5 @@ export class FlipCardOverview {
   </div>
 </tw-flip-card>`;
 
-  protected readonly importSnippet = `import { FlipCardComponent } from 'ngx-tw/flip-card';`;
+  protected readonly importSnippet = `import { FlipCardComponent } from '@cdevhub/ngx-tw/flip-card';`;
 }

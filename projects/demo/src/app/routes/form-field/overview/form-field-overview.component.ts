@@ -4,9 +4,9 @@ import {
   FormFieldComponent,
   HintDirective,
   LabelDirective,
-} from 'ngx-tw/form-field';
-import { InputDirective } from 'ngx-tw/input';
-import { CodeBlockComponent } from 'ngx-tw/code-block';
+} from '@cdevhub/ngx-tw/form-field';
+import { InputDirective } from '@cdevhub/ngx-tw/input';
+import { CodeBlockComponent } from '@cdevhub/ngx-tw/code-block';
 
 @Component({
   selector: 'app-form-field-overview',
@@ -184,6 +184,6 @@ export class FormFieldOverview {
   SuffixIconDirective,
   FormFieldControl,
   TW_FORM_FIELD_CONTROL,
-} from 'ngx-tw/form-field';
-import { InputDirective } from 'ngx-tw/input';`;
+} from '@cdevhub/ngx-tw/form-field';
+import { InputDirective } from '@cdevhub/ngx-tw/input';`;
 }

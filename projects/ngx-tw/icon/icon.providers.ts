@@ -20,7 +20,7 @@ export const TW_ICON_REGISTRAR = new InjectionToken<void[]>('TwIconRegistrar');
  *
  * @example
  * ```ts
- * import { provideTwIcons } from 'ngx-tw/icon';
+ * import { provideTwIcons } from '@cdevhub/ngx-tw/icon';
  *
  * const myIcons = {
  *   Star: [['polygon', { points: '12 2 15.09 8.26 ...' }]],

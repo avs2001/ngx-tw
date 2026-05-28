@@ -8,7 +8,7 @@ import {
 } from '@angular/core';
 import { _IdGenerator } from '@angular/cdk/a11y';
 import { CdkScrollable } from '@angular/cdk/scrolling';
-import type { TwColor } from 'ngx-tw/core';
+import type { TwColor } from '@cdevhub/ngx-tw/core';
 import { TwDialogRef } from './dialog-ref';
 import { DialogContainer } from './dialog-container';
 

@@ -3,8 +3,8 @@ import { RouterLink } from '@angular/router';
 import {
   TimelineComponent,
   TimelineItemComponent,
-} from 'ngx-tw/timeline';
-import { CodeBlockComponent } from 'ngx-tw/code-block';
+} from '@cdevhub/ngx-tw/timeline';
+import { CodeBlockComponent } from '@cdevhub/ngx-tw/code-block';
 
 @Component({
   selector: 'app-timeline-overview',
@@ -180,5 +180,5 @@ export class TimelineOverview {
   TimelineMarkerDirective,
   TimelineTimestampDirective,
   TimelineOppositeDirective,
-} from 'ngx-tw/timeline';`;
+} from '@cdevhub/ngx-tw/timeline';`;
 }

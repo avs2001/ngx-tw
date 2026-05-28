@@ -15,7 +15,7 @@ import {
 import { NgTemplateOutlet } from '@angular/common';
 import { AriaDescriber, FocusMonitor } from '@angular/cdk/a11y';
 import { tv } from 'tailwind-variants';
-import type { TwColor, TwSize } from 'ngx-tw/core';
+import type { TwColor, TwSize } from '@cdevhub/ngx-tw/core';
 import { SortDirective, type SortDirection, type TwSortable } from './sort';
 
 function snapshot(self: SortHeaderComponent): TwSortable {

@@ -1,8 +1,8 @@
 import { ChangeDetectionStrategy, Component, computed, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
-import { DateRangePickerComponent } from 'ngx-tw/date-range-picker';
-import { CodeBlockComponent } from 'ngx-tw/code-block';
-import { TwDateRange } from 'ngx-tw/calendar';
+import { DateRangePickerComponent } from '@cdevhub/ngx-tw/date-range-picker';
+import { CodeBlockComponent } from '@cdevhub/ngx-tw/code-block';
+import { TwDateRange } from '@cdevhub/ngx-tw/calendar';
 
 @Component({
   selector: 'app-date-range-picker-overview',
@@ -186,13 +186,13 @@ export class DateRangePickerOverview {
 />`;
 
   protected readonly importSnippet = `// 1. Provide the adapter once in your app config:
-import { provideNativeDateAdapter } from 'ngx-tw/calendar';
+import { provideNativeDateAdapter } from '@cdevhub/ngx-tw/calendar';
 
 export const appConfig: ApplicationConfig = {
   providers: [provideNativeDateAdapter()],
 };
 
 // 2. Import the component where you use it:
-import { DateRangePickerComponent } from 'ngx-tw/date-range-picker';
-import { TwDateRange } from 'ngx-tw/calendar';`;
+import { DateRangePickerComponent } from '@cdevhub/ngx-tw/date-range-picker';
+import { TwDateRange } from '@cdevhub/ngx-tw/calendar';`;
 }

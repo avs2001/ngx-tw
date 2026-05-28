@@ -1,5 +1,5 @@
 import { ChangeDetectionStrategy, Component } from '@angular/core';
-import { CodeBlockComponent } from 'ngx-tw/code-block';
+import { CodeBlockComponent } from '@cdevhub/ngx-tw/code-block';
 
 @Component({
   selector: 'app-table-api',
@@ -617,7 +617,7 @@ interface TwSelectionChangeEvent<T> {
   previous: readonly T[];
 }
 
-// Shared library types (re-exported from 'ngx-tw/core'):
+// Shared library types (re-exported from '@cdevhub/ngx-tw/core'):
 type TwSize = 'xs' | 'sm' | 'md' | 'lg' | 'xl';
 type TwBreakpoint = 'sm' | 'md' | 'lg' | 'xl' | '2xl';`;
 }

@@ -1,5 +1,5 @@
 import { type EnvironmentProviders, makeEnvironmentProviders } from '@angular/core';
-import { DATE_ADAPTER } from 'ngx-tw/calendar';
+import { DATE_ADAPTER } from '@cdevhub/ngx-tw/calendar';
 import { LuxonDateAdapter } from './luxon-date-adapter';
 
 /**
@@ -9,7 +9,7 @@ import { LuxonDateAdapter } from './luxon-date-adapter';
  * component's lifetime (§11.7 of the calendar spec):
  *
  * ```ts
- * import { provideLuxonDateAdapter } from 'ngx-tw/calendar/luxon';
+ * import { provideLuxonDateAdapter } from '@cdevhub/ngx-tw/calendar/luxon';
  *
  * bootstrapApplication(AppComponent, {
  *   providers: [provideLuxonDateAdapter()],

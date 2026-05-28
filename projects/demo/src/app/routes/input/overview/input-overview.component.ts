@@ -1,12 +1,12 @@
 import { ChangeDetectionStrategy, Component } from '@angular/core';
 import { RouterLink } from '@angular/router';
-import { InputDirective } from 'ngx-tw/input';
+import { InputDirective } from '@cdevhub/ngx-tw/input';
 import {
   FormFieldComponent,
   HintDirective,
   LabelDirective,
-} from 'ngx-tw/form-field';
-import { CodeBlockComponent } from 'ngx-tw/code-block';
+} from '@cdevhub/ngx-tw/form-field';
+import { CodeBlockComponent } from '@cdevhub/ngx-tw/code-block';
 
 @Component({
   selector: 'app-input-overview',
@@ -181,5 +181,5 @@ export class InputOverview {
   protected readonly importSnippet = `import {
   InputDirective,
   TW_INPUT_VALUE_ACCESSOR,
-} from 'ngx-tw/input';`;
+} from '@cdevhub/ngx-tw/input';`;
 }

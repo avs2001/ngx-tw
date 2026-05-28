@@ -10,8 +10,8 @@ import {
   TemplateRef,
 } from '@angular/core';
 import { tv } from 'tailwind-variants';
-import type { TwSize } from 'ngx-tw/core';
-import { IconComponent } from 'ngx-tw/icon';
+import type { TwSize } from '@cdevhub/ngx-tw/core';
+import { IconComponent } from '@cdevhub/ngx-tw/icon';
 
 /** Layout style of the empty state. */
 export type EmptyStateVariant = 'centered' | 'inline';

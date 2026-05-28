@@ -33,12 +33,12 @@ import {
   TW_ERROR_STATE_MATCHER,
   type TwFormSubmitted,
   type TwSize,
-} from 'ngx-tw/core';
+} from '@cdevhub/ngx-tw/core';
 import {
   FormFieldComponent,
   FormFieldControl,
   TW_FORM_FIELD_CONTROL,
-} from 'ngx-tw/form-field';
+} from '@cdevhub/ngx-tw/form-field';
 
 /**
  * Extension point for directives that wrap an `<input twInput>` and need to

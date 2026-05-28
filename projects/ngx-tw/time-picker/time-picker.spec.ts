@@ -3,8 +3,8 @@ import { ChangeDetectionStrategy, Component, signal, type Type } from '@angular/
 import { type ComponentFixture, TestBed } from '@angular/core/testing';
 import { FormControl, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
 import { form, FormField, required } from '@angular/forms/signals';
-import { provideNativeDateAdapter } from 'ngx-tw/calendar';
-import type { TwColor } from 'ngx-tw/core';
+import { provideNativeDateAdapter } from '@cdevhub/ngx-tw/calendar';
+import type { TwColor } from '@cdevhub/ngx-tw/core';
 import { TimePickerComponent } from './time-picker';
 import { provideTimePickerIntl, TimePickerIntl } from './time-picker-intl';
 import type {

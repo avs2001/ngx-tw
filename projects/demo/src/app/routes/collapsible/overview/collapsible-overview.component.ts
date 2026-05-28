@@ -1,7 +1,7 @@
 import { ChangeDetectionStrategy, Component } from '@angular/core';
 import { RouterLink } from '@angular/router';
-import { CollapsibleComponent, CollapsibleTriggerDirective } from 'ngx-tw/collapsible';
-import { CodeBlockComponent } from 'ngx-tw/code-block';
+import { CollapsibleComponent, CollapsibleTriggerDirective } from '@cdevhub/ngx-tw/collapsible';
+import { CodeBlockComponent } from '@cdevhub/ngx-tw/code-block';
 
 @Component({
   selector: 'app-collapsible-overview',
@@ -160,5 +160,5 @@ export class CollapsibleOverview {
   CollapsibleGroupComponent,
   CollapsibleTriggerDirective,
   CollapsibleIconDirective,
-} from 'ngx-tw/collapsible';`;
+} from '@cdevhub/ngx-tw/collapsible';`;
 }

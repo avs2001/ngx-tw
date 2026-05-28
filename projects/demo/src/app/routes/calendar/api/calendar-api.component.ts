@@ -1,5 +1,5 @@
 import { ChangeDetectionStrategy, Component } from '@angular/core';
-import { CodeBlockComponent } from 'ngx-tw/code-block';
+import { CodeBlockComponent } from '@cdevhub/ngx-tw/code-block';
 
 @Component({
   selector: 'app-calendar-api',
@@ -311,5 +311,5 @@ export class CalendarApi {
   CalendarErrorCode,    // validation codes per §10.2
   DateFilterFn,
   DateClassFn,
-} from 'ngx-tw/calendar';`;
+} from '@cdevhub/ngx-tw/calendar';`;
 }

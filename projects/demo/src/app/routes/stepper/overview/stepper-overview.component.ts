@@ -1,7 +1,7 @@
 import { ChangeDetectionStrategy, Component, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
-import { StepperComponent, StepComponent } from 'ngx-tw/stepper';
-import { CodeBlockComponent } from 'ngx-tw/code-block';
+import { StepperComponent, StepComponent } from '@cdevhub/ngx-tw/stepper';
+import { CodeBlockComponent } from '@cdevhub/ngx-tw/code-block';
 
 @Component({
   selector: 'app-stepper-overview',
@@ -175,5 +175,5 @@ export class StepperOverview {
   StepperNextDirective,
   StepperPreviousDirective,
   provideTwStepperOptions,
-} from 'ngx-tw/stepper';`;
+} from '@cdevhub/ngx-tw/stepper';`;
 }

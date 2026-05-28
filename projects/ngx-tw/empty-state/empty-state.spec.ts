@@ -1,9 +1,9 @@
 import { ChangeDetectionStrategy, Component, signal } from '@angular/core';
 import { type ComponentFixture, TestBed } from '@angular/core/testing';
 import { describe, it, expect, beforeEach } from 'vitest';
-import type { TwSize } from 'ngx-tw/core';
-import { provideTwIcons } from 'ngx-tw/icon';
-import type { TwIconData } from 'ngx-tw/icon';
+import type { TwSize } from '@cdevhub/ngx-tw/core';
+import { provideTwIcons } from '@cdevhub/ngx-tw/icon';
+import type { TwIconData } from '@cdevhub/ngx-tw/icon';
 import {
   EmptyStateComponent,
   EmptyStateIconDirective,

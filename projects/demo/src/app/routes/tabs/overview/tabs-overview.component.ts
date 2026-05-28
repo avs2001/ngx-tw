@@ -1,7 +1,7 @@
 import { ChangeDetectionStrategy, Component, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
-import { TabsComponent, TabComponent } from 'ngx-tw/tabs';
-import { CodeBlockComponent } from 'ngx-tw/code-block';
+import { TabsComponent, TabComponent } from '@cdevhub/ngx-tw/tabs';
+import { CodeBlockComponent } from '@cdevhub/ngx-tw/code-block';
 
 @Component({
   selector: 'app-tabs-overview',
@@ -187,5 +187,5 @@ export class TabsOverview {
   TabComponent,
   TabTriggerDirective,
   TabContentDirective,
-} from 'ngx-tw/tabs';`;
+} from '@cdevhub/ngx-tw/tabs';`;
 }

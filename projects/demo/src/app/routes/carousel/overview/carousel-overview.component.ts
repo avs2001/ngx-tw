@@ -6,8 +6,8 @@ import {
   CarouselNextDirective,
   CarouselPrevDirective,
   CarouselSlideComponent,
-} from 'ngx-tw/carousel';
-import { CodeBlockComponent } from 'ngx-tw/code-block';
+} from '@cdevhub/ngx-tw/carousel';
+import { CodeBlockComponent } from '@cdevhub/ngx-tw/code-block';
 
 @Component({
   selector: 'app-carousel-overview',
@@ -205,5 +205,5 @@ export class CarouselOverview {
   CarouselIndicatorsComponent,
   CarouselPrevDirective,
   CarouselNextDirective,
-} from 'ngx-tw/carousel';`;
+} from '@cdevhub/ngx-tw/carousel';`;
 }

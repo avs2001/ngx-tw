@@ -9,13 +9,13 @@ import {
 } from '@angular/forms';
 import { form, FormField, required } from '@angular/forms/signals';
 import { OverlayModule } from '@angular/cdk/overlay';
-import { provideNativeDateAdapter } from 'ngx-tw/calendar';
+import { provideNativeDateAdapter } from '@cdevhub/ngx-tw/calendar';
 import {
   FormFieldComponent,
   LabelDirective,
   HintDirective,
   ErrorDirective,
-} from 'ngx-tw/form-field';
+} from '@cdevhub/ngx-tw/form-field';
 import { DatePickerComponent } from './date-picker';
 import type {
   DatePickerChangeEvent,
