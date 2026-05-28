@@ -213,7 +213,8 @@ for (const component of COMPONENTS) {
     ).toHaveCount(1);
   });
 
-  (skipAriaControls ? test.fixme : test)(`@a11y ${url} — every aria-controls resolves`, async ({ page }) => {
+  test(`@a11y ${url} — every aria-controls resolves`, async ({ page }) => {
+    test.fixme(skipAriaControls, 'aria-controls backlog — see ARIA_CONTROLS_BACKLOG');
     await page.goto(url);
     await expect(page.getByRole('heading', { level: 1 })).toBeVisible({
       timeout: OUTLET_READY_TIMEOUT_MS,
@@ -239,7 +240,8 @@ for (const component of COMPONENTS) {
     ).toEqual([]);
   });
 
-  (skipAccessibleName ? test.fixme : test)(`@a11y ${url} — every form control has an accessible name`, async ({ page }) => {
+  test(`@a11y ${url} — every form control has an accessible name`, async ({ page }) => {
+    test.fixme(skipAccessibleName, 'accessible-name backlog — see ACCESSIBLE_NAME_BACKLOG');
     await page.goto(url);
     await expect(page.getByRole('heading', { level: 1 })).toBeVisible({
       timeout: OUTLET_READY_TIMEOUT_MS,
