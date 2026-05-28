@@ -432,6 +432,17 @@ New boolean inputs that default to `true` MUST land with the same inline-comment
 
 Tests use **Vitest** (default in Angular v21 via `@angular/build:unit-test`). No additional setup packages are needed for new projects. Test files live next to source: `button.spec.ts` beside `button.ts`.
 
+### Running tests locally
+
+Tests resolve `@cdevhub/ngx-tw/*` via the `tsconfig.json` path alias, which points at `./dist/ngx-tw/*` — **not** raw source. This is the configuration Angular's own docs recommend for libraries. Components in the library use `templateUrl`/`styleUrls`, which ng-packagr inlines during the library build; the Vitest runner does NOT resolve those side files on its own (upstream bug [angular-cli #32055](https://github.com/angular/angular-cli/issues/32055), closed not-planned).
+
+Practical consequences:
+
+- A missing `dist/ngx-tw/` produces cryptic TestBed `templateUrl` failures, not a clean "build first" error. If you see that, run `npm run build:lib`.
+- A stale `dist/ngx-tw/` runs tests against old compiled output. Edits to `.ts` source are NOT picked up until you rebuild.
+- Local workflow: run `npm run watch:lib` in one terminal alongside `npm test` in another. The watch task rebuilds `dist/` on every source change so Vitest sees the latest output.
+- CI handles this via `unit-test` depending on `build-lib` and downloading the `ngx-tw-dist` artifact before running `npm run test:ci` (see `.github/workflows/ci.yml`).
+
 ### What every spec must cover
 
 - **Rendering.** Default mount with no inputs; every value of each `variant`/`color`/`size` renders without errors; conditional DOM elements appear/disappear based on inputs.
