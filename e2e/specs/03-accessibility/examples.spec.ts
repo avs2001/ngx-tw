@@ -41,36 +41,30 @@ const OUTLET_READY_TIMEOUT_MS = 20_000;
  * this set and let the sweep re-enable.
  */
 const A11Y_BACKLOG: ReadonlySet<string> = new Set([
-  'badge',
-  'breadcrumbs',
-  'button',
-  'card',
-  'carousel',
-  'checkbox',
-  'code-block',
-  'command-palette',
-  'dialog',
-  'empty-state',
-  'flip-card',
-  'form-field',
-  'icon',
-  'input',
-  'menu',
-  'paginator',
-  'popover',
-  'progress-bar',
-  'segmented-control',
-  'select',
-  'sheet',
-  'sort',
-  'spinner',
-  'stepper',
-  'table',
+  // Pattern: nested-interactive (close button inside <div role="tab">,
+  // or a checkbox inside an item-level button). Needs each component's
+  // close/inner control hoisted out of the host's role=interactive.
   'tabs',
-  'textarea',
-  'time-picker',
+  'sort',
+  'table',
+  'stepper',
+  // Pattern: aria-allowed-attr (aria-sort on a child of <th> instead of
+  // the <th role="columnheader"> parent). Sort-header refactor.
+  // Pattern: aria-prohibited-attr / button-name on demo wrapper +
+  // missing labels on sub-controls. Per-component demo audit.
+  'select',
+  'paginator',
   'timeline',
   'toast',
+  'time-picker',
+  // form-field hint surface uses `text-fg-muted` which is gray-600 in
+  // light mode. Tailwind v4's gray-600 (oklch ~44%) hits the *body* AA
+  // floor on `bg-surface-raised` but axe still flags it on the
+  // hint-specific computed style. Needs a hint-only token bump or a
+  // shade darker (`text-fg`/`gray-700`) in light mode.
+  'form-field',
+  'input',
+  'textarea',
 ]);
 
 /**

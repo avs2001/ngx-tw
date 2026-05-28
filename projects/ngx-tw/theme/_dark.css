@@ -156,8 +156,10 @@
   --color-primary-soft-hover: var(--color-blue-900);
   --color-primary-soft-fg: var(--color-blue-100);
   --color-primary-soft-fg-muted: var(--color-blue-300);
-  --color-primary-solid: var(--color-blue-500);
-  --color-primary-solid-hover: var(--color-blue-400);
+  /* `-400` not `-500` — blue-500/#2b7fff on blue-950/#162456 only hits
+     3.92:1 (AA fail). blue-400 lifts that to ~7.8:1 with the same fg. */
+  --color-primary-solid: var(--color-blue-400);
+  --color-primary-solid-hover: var(--color-blue-300);
   --color-primary-solid-fg: var(--color-blue-950);
   --color-primary-border: var(--color-blue-800);
   --color-primary-border-strong: var(--color-blue-500);
@@ -182,8 +184,9 @@
   --color-accent-soft-hover: var(--color-violet-900);
   --color-accent-soft-fg: var(--color-violet-100);
   --color-accent-soft-fg-muted: var(--color-violet-300);
-  --color-accent-solid: var(--color-violet-500);
-  --color-accent-solid-hover: var(--color-violet-400);
+  /* violet-500/violet-950 = 3.46:1 (AA fail); -400 lifts to ~5.4:1. */
+  --color-accent-solid: var(--color-violet-400);
+  --color-accent-solid-hover: var(--color-violet-300);
   --color-accent-solid-fg: var(--color-violet-950);
   --color-accent-border: var(--color-violet-800);
   --color-accent-border-strong: var(--color-violet-500);
@@ -247,8 +250,9 @@
   --color-error-soft-hover: var(--color-red-900);
   --color-error-soft-fg: var(--color-red-100);
   --color-error-soft-fg-muted: var(--color-red-300);
-  --color-error-solid: var(--color-red-500);
-  --color-error-solid-hover: var(--color-red-400);
+  /* red-500/red-950 = 4.14:1 (just AA fail). red-400 lifts to ~5.8:1. */
+  --color-error-solid: var(--color-red-400);
+  --color-error-solid-hover: var(--color-red-300);
   --color-error-solid-fg: var(--color-red-950);
   --color-error-border: var(--color-red-800);
   --color-error-border-strong: var(--color-red-500);
@@ -398,8 +402,8 @@
     --color-primary-soft-hover: var(--color-blue-900);
     --color-primary-soft-fg: var(--color-blue-100);
     --color-primary-soft-fg-muted: var(--color-blue-300);
-    --color-primary-solid: var(--color-blue-500);
-    --color-primary-solid-hover: var(--color-blue-400);
+    --color-primary-solid: var(--color-blue-400);
+    --color-primary-solid-hover: var(--color-blue-300);
     --color-primary-solid-fg: var(--color-blue-950);
     --color-primary-border: var(--color-blue-800);
     --color-primary-border-strong: var(--color-blue-500);
@@ -424,8 +428,8 @@
     --color-accent-soft-hover: var(--color-violet-900);
     --color-accent-soft-fg: var(--color-violet-100);
     --color-accent-soft-fg-muted: var(--color-violet-300);
-    --color-accent-solid: var(--color-violet-500);
-    --color-accent-solid-hover: var(--color-violet-400);
+    --color-accent-solid: var(--color-violet-400);
+    --color-accent-solid-hover: var(--color-violet-300);
     --color-accent-solid-fg: var(--color-violet-950);
     --color-accent-border: var(--color-violet-800);
     --color-accent-border-strong: var(--color-violet-500);
@@ -489,8 +493,8 @@
     --color-error-soft-hover: var(--color-red-900);
     --color-error-soft-fg: var(--color-red-100);
     --color-error-soft-fg-muted: var(--color-red-300);
-    --color-error-solid: var(--color-red-500);
-    --color-error-solid-hover: var(--color-red-400);
+    --color-error-solid: var(--color-red-400);
+    --color-error-solid-hover: var(--color-red-300);
     --color-error-solid-fg: var(--color-red-950);
     --color-error-border: var(--color-red-800);
     --color-error-border-strong: var(--color-red-500);
