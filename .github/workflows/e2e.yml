@@ -48,7 +48,7 @@ jobs:
       - name: Build ngx-tw (production)
         run: npm run build:lib
       - name: Upload dist artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: ngx-tw-dist-e2e
           path: dist/ngx-tw
@@ -95,7 +95,7 @@ jobs:
       - name: Smoke
         run: npm run e2e:smoke
       - if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: smoke-report
           path: |
@@ -136,7 +136,7 @@ jobs:
       - name: A11y sweep (light + dark)
         run: npm run e2e:a11y
       - if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: a11y-report
           path: |
@@ -190,7 +190,7 @@ jobs:
         # its own job below with chromium-only baselines.
         run: npm run e2e -- --shard=${{ matrix.shard }}/${{ matrix.total }} --grep-invert @visual
       - if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: full-report-shard-${{ matrix.shard }}
           path: |
@@ -245,7 +245,7 @@ jobs:
         # `@visual` grep is the source of truth for which tests run.
         run: npm run e2e -- --grep @visual --project=chromium-light --project=chromium-dark
       - if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: visual-report
           path: |
