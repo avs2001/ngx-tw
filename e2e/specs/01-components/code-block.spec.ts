@@ -14,19 +14,20 @@ test.describe.configure({ mode: 'parallel' });
  *     `whitespace-pre-wrap`.
  */
 test.describe('Code Block', () => {
-  test('@a11y pre region exposes role="region" with a language-named aria-label', async ({
-    page,
-  }) => {
+  test('@a11y pre carries a language-named aria-label', async ({ page }) => {
     const cb = new CodeBlockPage(page);
     await cb.goto();
 
-    // Language Labels section has a TypeScript snippet — first.
+    // Post-S* the `<pre>` is no longer a `role="region"` (mount many code
+    // blocks on a docs page and the duplicate region names trip axe's
+    // `landmark-unique`). It still owns an accessible name via `aria-label`
+    // so SR users can identify the language; that's what we assert here.
     const typescriptBlock = cb.main
       .locator('tw-code-block')
       .filter({ has: page.locator('pre[aria-label*="TypeScript" i]') })
       .first();
-    const region = typescriptBlock.getByRole('region');
-    await expect(region.first()).toHaveAttribute('aria-label', /typescript/i);
+    const pre = typescriptBlock.locator('pre');
+    await expect(pre.first()).toHaveAttribute('aria-label', /typescript/i);
   });
 
   test('@interaction copy button toggles label to "Copied" and emits (copied)', async ({
