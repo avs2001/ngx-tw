@@ -115,7 +115,7 @@ jobs:
         # SHA-pinned for supply-chain safety — this is the highest-trust job
         # (contents:write, id-token:write, npm token in scope). Pin == v2.6.2.
         # Bump via dependabot (github-actions ecosystem).
-        uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2.6.2
+        uses: softprops/action-gh-release@b4309332981a82ec1c5618f44dd2e27cc8bfbfda # v3.0.0
         with:
           tag_name: ${{ github.ref_name }}
           name: ${{ github.ref_name }}
