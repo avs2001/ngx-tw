@@ -65,8 +65,10 @@ test.describe('Tooltip', () => {
     await expect(t.topTooltip).toHaveAttribute('role', 'tooltip');
     // AriaDescriber wires the trigger's `aria-describedby` to a CDK-managed
     // describer message id while the tooltip is visible.
-    const describedBy = await trigger.getAttribute('aria-describedby');
-    expect(describedBy, 'aria-describedby should be set while tooltip is visible').toBeTruthy();
+    await expect(
+      trigger,
+      'aria-describedby should be set while tooltip is visible',
+    ).toHaveAttribute('aria-describedby', /\S/);
   });
 
   test('@interaction @overlay [twTooltipDisabled] suppresses showing entirely', async ({

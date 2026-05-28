@@ -34,8 +34,11 @@ test.describe('Collapsible', () => {
 
     // aria-controls on trigger → id on panel — the contract that screen
     // readers use to pair them.
+    await expect(
+      trigger,
+      'aria-controls must be set when the panel is open',
+    ).toHaveAttribute('aria-controls', /\S/);
     const controls = await trigger.getAttribute('aria-controls');
-    expect(controls, 'aria-controls must be set when the panel is open').toBeTruthy();
     await expect(panel).toHaveAttribute('id', controls ?? '');
 
     await trigger.click();

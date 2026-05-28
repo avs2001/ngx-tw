@@ -3,8 +3,8 @@ import {
   ElementRef,
   inject,
   input,
-  OnDestroy,
-  OnInit,
+  type OnDestroy,
+  type OnInit,
 } from '@angular/core';
 import { _IdGenerator } from '@angular/cdk/a11y';
 import { POPOVER_REF } from './popover-tokens';

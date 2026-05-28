@@ -15,7 +15,6 @@ import {
 import {
   CdkPortalOutlet,
   type CdkPortalOutletAttachedRef,
-  ComponentPortal,
 } from '@angular/cdk/portal';
 import { LiveAnnouncer } from '@angular/cdk/a11y';
 import { ToastActionDirective, ToastComponent } from './toast-component';
@@ -86,6 +85,10 @@ const SWIPE_MAX_OPACITY_FADE = 0.6;
   },
   template: `
     @for (entry of orderedEntries(); track entry.ref.id) {
+      <!-- Toast entry wrapper; the projected <tw-toast> is the focusable affordance.
+           This element only forwards pointer/focus events so the container can
+           pause auto-dismiss while the user is interacting. -->
+      <!-- eslint-disable-next-line @angular-eslint/template/interactive-supports-focus -->
       <div
         class="pointer-events-auto w-full max-w-sm"
         [attr.data-toast-id]="entry.ref.id"

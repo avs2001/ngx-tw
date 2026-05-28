@@ -35,6 +35,10 @@
             <div [class]="groupHeaderClasses()" role="presentation">{{ group.label }}</div>
           }
           @for (item of group.items; track item.data.id) {
+            <!-- ARIA activedescendant listbox: navigation lives on the search
+                 input above; option elements never receive DOM focus and have
+                 no keyboard handlers of their own. -->
+            <!-- eslint-disable-next-line @angular-eslint/template/click-events-have-key-events, @angular-eslint/template/interactive-supports-focus -->
             <div
               [id]="item.data.id"
               role="option"

@@ -558,7 +558,7 @@ describe('TimePickerComponent', () => {
 
     it('active meridiem button routes through the color input across every semantic color', () => {
       const fixture = setup(ColorHost);
-      const colors: ReadonlyArray<{ color: TwColor; bg: string; text: string }> = [
+      const colors: readonly { color: TwColor; bg: string; text: string }[] = [
         { color: 'primary', bg: 'bg-primary-500', text: 'text-on-primary' },
         { color: 'secondary', bg: 'bg-secondary-500', text: 'text-on-secondary' },
         { color: 'accent', bg: 'bg-accent-500', text: 'text-on-accent' },

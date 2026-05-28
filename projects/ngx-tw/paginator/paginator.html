@@ -63,7 +63,10 @@
         </div>
       }
 
-      <!-- Nav buttons region -->
+      <!-- Nav buttons region. Roving focus is owned by FocusKeyManager on the
+           child buttons; this wrapper only relays keydown to the manager, so
+           it does not need its own tabindex. -->
+      <!-- eslint-disable-next-line @angular-eslint/template/interactive-supports-focus -->
       <div
         [class]="navGroupClasses()"
         (keydown)="onKeydown($event)"

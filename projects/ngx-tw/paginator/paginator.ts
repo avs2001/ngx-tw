@@ -18,7 +18,7 @@ import {
   viewChildren,
 } from '@angular/core';
 import { NgTemplateOutlet } from '@angular/common';
-import { FocusableOption, FocusKeyManager, LiveAnnouncer } from '@angular/cdk/a11y';
+import { type FocusableOption, FocusKeyManager, LiveAnnouncer } from '@angular/cdk/a11y';
 import { tv } from 'tailwind-variants';
 import type { TwColor, TwSize } from '@cdevhub/ngx-tw/core';
 
@@ -420,7 +420,11 @@ export class PaginatorPageSizeSelectorDirective {
  * Applied via attribute selector on the existing `data-tw-paginator-focusable`
  * marker so the spec's button queries continue to match.
  */
+// Selector deliberately matches the existing `data-tw-paginator-focusable`
+// data-attribute marker emitted in the template; camelCasing would break the
+// spec's button queries. See the JSDoc above this declaration.
 @Directive({
+  // eslint-disable-next-line @angular-eslint/directive-selector
   selector: '[data-tw-paginator-focusable]',
 })
 export class PaginatorFocusableDirective implements FocusableOption {

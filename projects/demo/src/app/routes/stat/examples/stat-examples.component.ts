@@ -697,13 +697,13 @@ export class StatExamples {
 
   // Loading-demo state
   protected readonly loadingDemo = signal(true);
-  protected readonly dashboardTiles: ReadonlyArray<{
+  protected readonly dashboardTiles: readonly {
     label: string;
     value: string;
     delta: string;
     direction: StatDeltaDirection;
     inverted?: boolean;
-  }> = [
+  }[] = [
     { label: 'Revenue', value: '$24,580', delta: '+12.5%', direction: 'up' },
     { label: 'Orders', value: '1,284', delta: '+8.1%', direction: 'up' },
     { label: 'Bounce rate', value: '38.2%', delta: '−4.1pp', direction: 'down', inverted: true },

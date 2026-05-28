@@ -132,8 +132,11 @@ test.describe('Dialog', () => {
     // The DialogTitleDirective generates a unique id and pushes it onto
     // the container's aria-labelledby queue. The exact id is generated, but
     // it must resolve to the title element with the expected text.
+    await expect(
+      dialog.topDialog,
+      'aria-labelledby should be set when [twDialogTitle] is projected',
+    ).toHaveAttribute('aria-labelledby', /\S/);
     const labelledBy = await dialog.topDialog.getAttribute('aria-labelledby');
-    expect(labelledBy, 'aria-labelledby should be set when [twDialogTitle] is projected').toBeTruthy();
     const titleEl = page.locator(`#${labelledBy}`);
     await expect(titleEl).toHaveText('Create a new project');
   });
@@ -376,8 +379,11 @@ test.describe('Dialog', () => {
 
     // [twDialogTitle] — semibold heading-level title text, registered with
     // the container's aria-labelledby queue.
+    await expect(
+      container,
+      '[twDialogTitle] should populate aria-labelledby',
+    ).toHaveAttribute('aria-labelledby', /\S/);
     const titleId = await container.getAttribute('aria-labelledby');
-    expect(titleId, '[twDialogTitle] should populate aria-labelledby').toBeTruthy();
     await expect(page.locator(`#${titleId}`)).toHaveText('Permanently delete acme-ledger?');
 
     // [twDialogSubtitle] — supporting muted-fg line below the title.

@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { ChangeDetectionStrategy, Component, signal } from '@angular/core';
 import { TestBed, type ComponentFixture } from '@angular/core/testing';
 import { TestbedHarnessEnvironment } from '@angular/cdk/testing/testbed';
-import { HarnessLoader } from '@angular/cdk/testing';
+import { type HarnessLoader } from '@angular/cdk/testing';
 import { CalendarComponent } from '../calendar';
 import { provideNativeDateAdapter } from '../native-date-adapter';
 import type { CalendarMode } from '../calendar.types';

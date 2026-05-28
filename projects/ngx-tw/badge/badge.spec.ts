@@ -248,7 +248,7 @@ describe('BadgeComponent', () => {
       expect(classes).toContain('focus-visible:outline-primary-500');
     });
 
-    const hitTargetMatrix: ReadonlyArray<{ size: TwSize; expected: string }> = [
+    const hitTargetMatrix: readonly { size: TwSize; expected: string }[] = [
       { size: 'xs', expected: 'size-6' },
       { size: 'sm', expected: 'size-6' },
       { size: 'md', expected: 'size-7' },

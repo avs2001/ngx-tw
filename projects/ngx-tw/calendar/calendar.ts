@@ -71,21 +71,19 @@ import {
   matchesModeShape,
 } from './calendar-cva-utils';
 import { calendarValidator } from './calendar-validators';
-import { DateAdapter, DATE_ADAPTER } from './date-adapter';
+import { type DateAdapter, DATE_ADAPTER } from './date-adapter';
 import { MonthViewComponent } from './month-view';
 import { YearViewComponent } from './year-view';
 import { YearsViewComponent } from './multi-year-view';
 import {
   getMultiYearStartingYear,
-  isDateInRange,
   isMonthDisabled,
   isYearDisabled,
   rangeCrossesDisabled,
   rangeLengthDays,
-  resolveDateDisabled,
 } from './calendar.utils';
 import {
-  CalendarSelectionStrategy,
+  type CalendarSelectionStrategy,
   CALENDAR_SELECTION_STRATEGY,
   MultiSelectionStrategy,
   RangeSelectionStrategy,

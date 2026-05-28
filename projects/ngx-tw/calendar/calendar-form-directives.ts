@@ -65,7 +65,11 @@ function wireSignalFormsInputs(
  * template. When the mode attribute is omitted, consumers bind the component
  * directly — the CVA path handles reactive / template-driven forms.
  */
+// Selector matches the existing CalendarComponent input `mode="single"`;
+// renaming to `twMode` would break the public API. The directive is scoped
+// to the `tw-calendar` element so the unprefixed attribute is safe.
 @Directive({
+  // eslint-disable-next-line @angular-eslint/directive-selector
   selector: 'tw-calendar[mode="single"]',
   exportAs: 'twCalendarSingle',
 })
@@ -114,7 +118,9 @@ export class CalendarSingleDirective<D = Date, TOut = D | null>
  * Signal Forms strict binding for `CalendarComponent` in `multiple` mode.
  * Implements `FormValueControl<D[]>`.
  */
+// See note above on the single-mode directive — same rationale.
 @Directive({
+  // eslint-disable-next-line @angular-eslint/directive-selector
   selector: 'tw-calendar[mode="multiple"]',
   exportAs: 'twCalendarMultiple',
 })
@@ -163,7 +169,9 @@ export class CalendarMultipleDirective<D = Date, TOut = D[]>
  * Signal Forms strict binding for `CalendarComponent` in `range` mode.
  * Implements `FormValueControl<{ start: D | null; end: D | null }>`.
  */
+// See note above on the single-mode directive — same rationale.
 @Directive({
+  // eslint-disable-next-line @angular-eslint/directive-selector
   selector: 'tw-calendar[mode="range"]',
   exportAs: 'twCalendarRange',
 })

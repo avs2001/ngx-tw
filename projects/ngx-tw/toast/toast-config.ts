@@ -53,7 +53,10 @@ export interface ToastAction {
  * Per-call configuration for {@link ToastService} methods. Also used as the
  * payload of {@link TW_TOAST_DEFAULT_OPTIONS} for app-wide defaults.
  */
-export class ToastConfig<D = unknown, R = unknown> {
+// `R` is a phantom result-type kept for parity with `ToastRef<D, R>` / service
+// generics — consumers pass it through `ToastConfig<D, R>` so the resulting
+// `ToastRef.afterClosed()` is correctly typed.
+export class ToastConfig<D = unknown, _R = unknown> {
   /** Severity of the toast. Defaults to `'info'`. */
   severity?: ToastSeverity = 'info';
 

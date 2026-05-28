@@ -111,7 +111,11 @@ export class TextareaDirective extends InputDirective {
   // flag as unused. `@ts-ignore` suppresses whichever error fires and is
   // a no-op when neither does.
   /** Density of a standalone textarea. Maps to the inline-padding + font scale (`xs` … `xl`). Ignored inside a `<tw-form-field>` — the wrapper's `size` carries density. Defaults to `'md'`. */
-  // @ts-ignore — TS4113 (CI) vs TS4114 (local); see comment above.
+  // TS4113 (CI) vs TS4114 (local) divergence means neither directive matches
+  // both, so we intentionally pick `@ts-ignore` over `@ts-expect-error`; see
+  // the longer comment above for the full reasoning.
+  /* eslint-disable-next-line @typescript-eslint/ban-ts-comment */
+  // @ts-ignore — see comment above.
   override readonly size = input<TwSize>('md');
 
   /** Grows the textarea with its content (composed from CDK's `CdkTextareaAutosize`). When `true` the user-resize handle is forced off — autosize owns the height. Defaults to `false`. */

@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { TestBed } from '@angular/core/testing';
-import { DATE_ADAPTER, DateAdapter } from '../date-adapter';
+import { DATE_ADAPTER, type DateAdapter } from '../date-adapter';
 import { NativeDateAdapter } from '../native-date-adapter';
 import { WeekSelectionStrategy } from './week-selection-strategy';
 

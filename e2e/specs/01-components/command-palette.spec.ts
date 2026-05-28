@@ -83,8 +83,10 @@ test.describe('Command Palette', () => {
     await expect(searchInput).toHaveAttribute('aria-expanded', 'true');
     await expect(searchInput).toHaveAttribute('aria-controls', /^tw-command-palette-list-/);
 
-    const activeDescendant = await searchInput.getAttribute('aria-activedescendant');
-    expect(activeDescendant, 'first item should seed aria-activedescendant').toBeTruthy();
+    await expect(
+      searchInput,
+      'first item should seed aria-activedescendant',
+    ).toHaveAttribute('aria-activedescendant', /\S/);
   });
 
   test('@a11y @overlay groups render as role="group" with their label', async ({ page }) => {

@@ -19,7 +19,7 @@ const warnedLocales = new Set<string>();
 function warnUnresolvableLocaleOnce(locale: string): void {
   if (!isDevMode() || warnedLocales.has(locale)) return;
   warnedLocales.add(locale);
-  // eslint-disable-next-line no-console
+   
   console.warn(
     `[ngx-tw/calendar] Locale "${locale}" is unknown to Intl.Locale.getWeekInfo(); falling back to Monday (1) as the first day of week (§19.2).`,
   );

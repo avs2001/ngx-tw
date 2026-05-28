@@ -12,7 +12,7 @@ import {
   signal,
   untracked,
 } from '@angular/core';
-import { FocusableOption, FocusKeyManager, LiveAnnouncer } from '@angular/cdk/a11y';
+import { type FocusableOption, FocusKeyManager, LiveAnnouncer } from '@angular/cdk/a11y';
 import { tv } from 'tailwind-variants';
 import { twMerge } from 'tailwind-merge';
 import {

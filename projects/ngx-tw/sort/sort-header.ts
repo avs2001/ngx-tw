@@ -121,7 +121,11 @@ const sortHeaderVariants = tv(
  * `SortDirective`. Renders the projected label plus an arrow that reflects the current direction.
  * Triggers a sort cycle on click or Enter/Space.
  */
+// Selector is deliberately kebab-case to read naturally as an HTML attribute on
+// host elements (e.g. `<th tw-sort-header>`). Camelcasing it to `twSortHeader`
+// would break the public API and ~20 demo usages.
 @Component({
+  // eslint-disable-next-line @angular-eslint/component-selector
   selector: '[tw-sort-header]',
   exportAs: 'twSortHeader',
   changeDetection: ChangeDetectionStrategy.OnPush,

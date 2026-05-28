@@ -127,7 +127,7 @@ class SubmittedFormHost {
 // Accessor-extension directive — stores value in a WritableSignal so the
 // InputDirective reads it from us instead of the native element.
 @Directive({
-  selector: 'input[testAccessor]',
+  selector: 'input[twTestAccessor]',
   providers: [
     { provide: TW_INPUT_VALUE_ACCESSOR, useExisting: TestAccessorDirective },
   ],
@@ -139,7 +139,7 @@ class TestAccessorDirective {
 @Component({
   imports: [InputDirective, TestAccessorDirective],
   changeDetection: ChangeDetectionStrategy.OnPush,
-  template: `<input twInput testAccessor />`,
+  template: `<input twInput twTestAccessor />`,
 })
 class AccessorHost {
   readonly accessor = viewChild.required(TestAccessorDirective);

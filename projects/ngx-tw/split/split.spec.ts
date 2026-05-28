@@ -731,7 +731,7 @@ describe('SplitComponent (Phase 1 scaffold)', () => {
       const split = fixture.debugElement.query(e => e.componentInstance instanceof SplitComponent)
         ?.componentInstance as SplitComponent;
 
-      const events: Array<{ paneIndex: number; collapsed: boolean; cause: string }> = [];
+      const events: { paneIndex: number; collapsed: boolean; cause: string }[] = [];
       split.collapseChange.subscribe(e => events.push(e));
 
       split.collapse(0);
@@ -755,7 +755,7 @@ describe('SplitComponent (Phase 1 scaffold)', () => {
       split.collapse(0);
       fixture.detectChanges();
 
-      const events: Array<{ paneIndex: number; collapsed: boolean }> = [];
+      const events: { paneIndex: number; collapsed: boolean }[] = [];
       split.collapseChange.subscribe(e => events.push(e));
 
       split.expand(0);
@@ -1077,7 +1077,7 @@ describe('SplitComponent (Phase 1 scaffold)', () => {
       fixture.detectChanges();
       const split = fixture.debugElement.query(e => e.componentInstance instanceof SplitComponent)
         ?.componentInstance as SplitComponent;
-      const events: Array<{ collapsed: boolean; cause: string }> = [];
+      const events: { collapsed: boolean; cause: string }[] = [];
       split.collapseChange.subscribe(e => events.push(e));
 
       const sep = fixture.nativeElement.querySelector('[role="separator"]') as HTMLElement;

@@ -133,8 +133,11 @@ test.describe('Checkbox', () => {
     const newsletter = checkbox.descriptionSection.getByRole('checkbox', {
       name: /subscribe to the product newsletter/i,
     });
+    await expect(
+      newsletter,
+      'aria-describedby should be set when description input is provided',
+    ).toHaveAttribute('aria-describedby', /\S/);
     const describedBy = await newsletter.getAttribute('aria-describedby');
-    expect(describedBy, 'aria-describedby should be set when description input is provided').toBeTruthy();
     const ids = (describedBy ?? '').split(/\s+/).filter(Boolean);
     expect(ids.length).toBeGreaterThan(0);
     for (const id of ids) {

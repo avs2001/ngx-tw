@@ -51,7 +51,7 @@ class BasicTimelineHost {
   readonly size = input<TwSize>('md');
   readonly lineStyle = input<TimelineLineStyle>('solid');
   readonly items = signal<
-    Array<{
+    {
       id: number;
       color: TwColor;
       marker: TimelineMarker;
@@ -59,7 +59,7 @@ class BasicTimelineHost {
       timestamp?: string | Date | null;
       dateTime?: string | null;
       label: string;
-    }>
+    }[]
   >([
     { id: 1, color: 'primary', marker: 'dot', state: 'reached', label: 'A' },
     { id: 2, color: 'primary', marker: 'dot', state: 'current', label: 'B' },
@@ -361,7 +361,7 @@ describe('TimelineComponent', () => {
 
     it('emits visually-hidden state labels for non-reached states', () => {
       const fixture = TestBed.createComponent(SingleItemHost);
-      const cases: Array<[TimelineState, string | null]> = [
+      const cases: [TimelineState, string | null][] = [
         ['reached', null],
         ['pending', 'Pending: '],
         ['current', 'Current: '],

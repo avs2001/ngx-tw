@@ -24,11 +24,6 @@ jobs:
     name: lint
     runs-on: ubuntu-latest
     timeout-minutes: 10
-    # TEMPORARY: lint currently reports a backlog of pre-existing errors
-    # (mostly @typescript-eslint/no-unused-vars). The job runs and surfaces
-    # the report in PR checks, but is non-blocking. Flip to `false` (or
-    # remove this flag entirely) once the backlog is cleared.
-    continue-on-error: true
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4

@@ -1,6 +1,6 @@
 import { type Provider, type Type } from '@angular/core';
 import {
-  CalendarSelectionStrategy,
+  type CalendarSelectionStrategy,
   CALENDAR_SELECTION_STRATEGY,
 } from './selection-strategy';
 import { SingleSelectionStrategy } from './single-selection-strategy';

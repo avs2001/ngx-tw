@@ -493,6 +493,10 @@ const PRESETS: ColorPreset[] = [
             </button>
 
             @if (presetMenuOpen()) {
+              <!-- Click-trap backdrop. The trigger button still owns the
+                   keyboard close (Escape) via blur/focus; the backdrop only
+                   exists for mouse outside-click dismissal. -->
+              <!-- eslint-disable-next-line @angular-eslint/template/click-events-have-key-events, @angular-eslint/template/interactive-supports-focus -->
               <div class="fixed inset-0 z-10" (click)="presetMenuOpen.set(false)"></div>
               <div
                 role="listbox"

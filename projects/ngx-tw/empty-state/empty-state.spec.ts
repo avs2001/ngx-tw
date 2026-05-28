@@ -206,7 +206,7 @@ describe('EmptyStateComponent', () => {
 
     it('should change root padding per size', () => {
       const host: HTMLElement = fixture.nativeElement.querySelector('tw-empty-state');
-      const cases: Array<{ size: TwSize; padding: string }> = [
+      const cases: { size: TwSize; padding: string }[] = [
         { size: 'xs', padding: 'p-2' },
         { size: 'sm', padding: 'p-3' },
         { size: 'md', padding: 'p-4' },

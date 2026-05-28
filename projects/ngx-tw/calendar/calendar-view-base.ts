@@ -21,7 +21,7 @@ import type {
   DateRange,
   DisabledDates,
 } from './calendar.types';
-import { DateAdapter, DATE_ADAPTER } from './date-adapter';
+import { type DateAdapter, DATE_ADAPTER } from './date-adapter';
 import { isDateInRange } from './calendar.utils';
 
 /**

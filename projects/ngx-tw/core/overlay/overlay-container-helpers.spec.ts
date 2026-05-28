@@ -20,7 +20,7 @@ describe('coerceOverlayDuration', () => {
 
   it('falls back when the value is undefined or null', () => {
     expect(coerceOverlayDuration(undefined, 200)).toBe(200);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     expect(coerceOverlayDuration(null as any, 200)).toBe(200);
   });
 

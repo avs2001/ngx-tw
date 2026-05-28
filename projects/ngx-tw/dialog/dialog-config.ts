@@ -5,7 +5,6 @@ import {
   type DialogRole,
   type RestoreFocusValue,
 } from '@angular/cdk/dialog';
-import type { ScrollStrategy } from '@angular/cdk/overlay';
 
 /** Preset sizes mapped to width constraints for the dialog panel. */
 export type TwDialogSize = 'xs' | 'sm' | 'md' | 'lg' | 'xl' | 'fullscreen';

@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
+import type { Overlay } from '@angular/cdk/overlay';
 
 import { resolveSelectScrollStrategy } from './scroll-strategy';
 
@@ -13,7 +14,7 @@ function makeFakeOverlay() {
         close: vi.fn(() => close),
         block: vi.fn(() => block),
       },
-    } as unknown as import('@angular/cdk/overlay').Overlay,
+    } as unknown as Overlay,
     reposition,
     close,
     block,

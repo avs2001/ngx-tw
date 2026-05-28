@@ -64,8 +64,6 @@ test.describe('Progress Bar', () => {
     // The formatter section uses `formatBytes` — the visible string contains
     // " / " (e.g. "12 MB / 24 MB"). Confirm aria-valuetext carries that text.
     const role = bar.formatterSection.locator('tw-progress-bar').first().getByRole('progressbar');
-    const valuetext = await role.getAttribute('aria-valuetext');
-    expect(valuetext, 'aria-valuetext should be present').toBeTruthy();
-    expect(valuetext).toMatch(/\//);
+    await expect(role, 'aria-valuetext should be present').toHaveAttribute('aria-valuetext', /\//);
   });
 });

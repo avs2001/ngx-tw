@@ -86,8 +86,11 @@ test.describe('Switch', () => {
     await sw.goto();
 
     const sync = sw.descriptionSection.getByRole('switch', { name: /auto-sync/i });
+    await expect(
+      sync,
+      'aria-describedby should be set when description input is provided',
+    ).toHaveAttribute('aria-describedby', /\S/);
     const describedBy = await sync.getAttribute('aria-describedby');
-    expect(describedBy, 'aria-describedby should be set when description input is provided').toBeTruthy();
     const ids = (describedBy ?? '').split(/\s+/).filter(Boolean);
     for (const id of ids) {
       await expect(page.locator(`#${id}`)).toContainText(/sync changes every minute/i);

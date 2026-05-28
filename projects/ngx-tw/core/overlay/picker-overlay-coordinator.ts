@@ -1,13 +1,13 @@
 import {
   type ComponentRef,
   DestroyRef,
-  ElementRef,
+  type ElementRef,
   inject,
   Injectable,
-  Injector,
+  type Injector,
   signal,
   type Signal,
-  ViewContainerRef,
+  type ViewContainerRef,
 } from '@angular/core';
 import {
   _IdGenerator,

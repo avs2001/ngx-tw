@@ -1,4 +1,4 @@
-import { Component, ElementRef, viewChild, ViewContainerRef } from '@angular/core';
+import { Component, type ElementRef, viewChild, ViewContainerRef } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { describe, expect, it, vi } from 'vitest';
 import { firstValueFrom } from 'rxjs';

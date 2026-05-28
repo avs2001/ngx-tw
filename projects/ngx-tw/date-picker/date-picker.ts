@@ -4,7 +4,6 @@ import {
   ChangeDetectionStrategy,
   Component,
   computed,
-  contentChild,
   DestroyRef,
   effect,
   ElementRef,
@@ -273,6 +272,7 @@ const DEFAULT_DISPLAY_FORMAT = {
   ],
   template: `
     <!-- Optional rich-label trigger. When projected (a child carries [slot=trigger]), the default input/clear/trigger chrome is hidden. Clicks anywhere in the projected content open the overlay. -->
+    <!-- eslint-disable-next-line @angular-eslint/template/interactive-supports-focus -->
     <div
       class="contents"
       (click)="onCustomTriggerClick($event)"

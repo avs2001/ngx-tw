@@ -70,8 +70,7 @@ test.describe('Time Picker', () => {
     const hours = picker.hoursField(target);
     await hours.focus();
     // Format demo seeds the value at 14:30:45. ArrowUp on hours rolls 14→15.
-    const initialAriaValueNow = await hours.getAttribute('aria-valuenow');
-    expect(initialAriaValueNow).toBe('14');
+    await expect(hours).toHaveAttribute('aria-valuenow', '14');
     await page.keyboard.press('ArrowUp');
     await expect(hours).toHaveAttribute('aria-valuenow', '15');
     await page.keyboard.press('ArrowDown');

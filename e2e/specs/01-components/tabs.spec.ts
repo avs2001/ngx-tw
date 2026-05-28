@@ -12,8 +12,8 @@ test.describe('Tabs', () => {
     await security.click();
     await expect(security).toHaveAttribute('aria-selected', 'true');
 
+    await expect(security).toHaveAttribute('aria-controls', /\S/);
     const panelId = await security.getAttribute('aria-controls');
-    expect(panelId).toBeTruthy();
     const panel = page.locator(`#${panelId}`);
     await expect(panel).toHaveAttribute('aria-labelledby', (await security.getAttribute('id')) ?? '');
     await expect(panel).toBeVisible();
@@ -140,8 +140,8 @@ test.describe('Tabs', () => {
     // `shouldRenderPanel` returns false for lazy tabs that have never been
     // activated — the panel `<div>` is absent from the DOM entirely.
     const analytics = t.tab(t.lazySection, /^Analytics$/);
+    await expect(analytics).toHaveAttribute('aria-controls', /\S/);
     const analyticsPanelId = await analytics.getAttribute('aria-controls');
-    expect(analyticsPanelId).toBeTruthy();
     const analyticsPanel = page.locator(`#${analyticsPanelId}`);
 
     await expect(analyticsPanel).toHaveCount(0);

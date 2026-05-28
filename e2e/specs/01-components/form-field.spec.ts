@@ -19,8 +19,11 @@ test.describe('Form Field', () => {
 
     const outline = field.appearanceSection.locator('tw-form-field').first();
     const input = outline.getByRole('textbox');
+    await expect(input, 'aria-describedby should resolve to the hint id').toHaveAttribute(
+      'aria-describedby',
+      /\S/,
+    );
     const describedBy = await input.getAttribute('aria-describedby');
-    expect(describedBy, 'aria-describedby should resolve to the hint id').toBeTruthy();
     const ids = (describedBy ?? '').split(/\s+/).filter(Boolean);
     expect(ids.length).toBeGreaterThan(0);
     // The text inside the hint span is the Appearance section's "Full legal

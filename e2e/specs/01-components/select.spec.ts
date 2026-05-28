@@ -79,8 +79,11 @@ test.describe('Select', () => {
     const trigger = select.triggerIn(select.groupedSection, 'Country');
     await select.openVia(trigger);
 
+    await expect(
+      trigger,
+      'aria-activedescendant should be set on first open',
+    ).toHaveAttribute('aria-activedescendant', /\S/);
     const activeId = await trigger.getAttribute('aria-activedescendant');
-    expect(activeId, 'aria-activedescendant should be set on first open').toBeTruthy();
 
     const active = page.locator(`#${activeId}`);
     // Source picks the first enabled option in DOM order. The overlay
@@ -307,8 +310,8 @@ test.describe('Select', () => {
 
     await select.openVia(trigger);
     await expect(trigger).toHaveAttribute('aria-expanded', 'true');
+    await expect(trigger).toHaveAttribute('aria-controls', /\S/);
     const controls = await trigger.getAttribute('aria-controls');
-    expect(controls).toBeTruthy();
     await expect(page.locator(`#${controls!}`)).toHaveAttribute('role', 'listbox');
   });
 });

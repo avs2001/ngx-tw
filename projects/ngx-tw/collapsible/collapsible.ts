@@ -15,11 +15,10 @@ import {
   linkedSignal,
   model,
   output,
-  signal,
   untracked,
   ViewEncapsulation,
 } from '@angular/core';
-import { FocusableOption, FocusKeyManager, LiveAnnouncer } from '@angular/cdk/a11y';
+import { type FocusableOption, FocusKeyManager, LiveAnnouncer } from '@angular/cdk/a11y';
 import { tv } from 'tailwind-variants';
 import type { TwColor, TwSize } from '@cdevhub/ngx-tw/core';
 

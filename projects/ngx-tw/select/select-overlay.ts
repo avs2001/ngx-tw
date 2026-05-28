@@ -81,6 +81,11 @@ import type {
               </div>
             </div>
           } @else {
+            <!-- ARIA activedescendant listbox: keyboard navigation runs on the
+                 select trigger via aria-activedescendant. Options are click-only
+                 affordances and never DOM-focus, so they need no keydown handler
+                 or tabindex of their own. -->
+            <!-- eslint-disable-next-line @angular-eslint/template/click-events-have-key-events, @angular-eslint/template/interactive-supports-focus -->
             <div
               role="option"
               [id]="optionIdFn()(row.index)"

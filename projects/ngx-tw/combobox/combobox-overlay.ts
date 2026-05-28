@@ -86,6 +86,11 @@ import type {
               </div>
             </li>
           } @else {
+            <!-- ARIA activedescendant listbox: keyboard navigation lives on the
+                 parent combobox input (via aria-activedescendant). Options are
+                 click-targets only and never receive DOM focus, so neither a
+                 keydown nor a tabindex applies here. -->
+            <!-- eslint-disable-next-line @angular-eslint/template/click-events-have-key-events, @angular-eslint/template/interactive-supports-focus -->
             <li
               role="option"
               [id]="optionIdFn()(row.index)"

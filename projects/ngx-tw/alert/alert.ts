@@ -27,13 +27,13 @@ export type AlertPoliteness = 'polite' | 'assertive' | 'off';
  * picks, no `dark:` overrides. Dark / high-contrast contrast is owned by the
  * theme tokens; components only consume slots.
  */
-type AlertSlotClasses = {
+interface AlertSlotClasses {
   root: string;
   icon: string;
   title: string;
   content: string;
   dismiss: string;
-};
+}
 
 function softSlots(role: TwColor): AlertSlotClasses {
   return {
@@ -88,7 +88,7 @@ const alertVariants = tv({
       outline: { root: 'border' },
       soft: { root: '' },
     },
-    color: Object.fromEntries(ROLES.map((r) => [r, {}])) as Record<TwColor, {}>,
+    color: Object.fromEntries(ROLES.map((r) => [r, {}])) as Record<TwColor, Record<string, never>>,
   },
   compoundVariants: ROLES.flatMap((role) => [
     { variant: 'soft' as const, color: role, class: softSlots(role) },

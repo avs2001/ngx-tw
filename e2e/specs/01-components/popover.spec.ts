@@ -43,8 +43,11 @@ test.describe('Popover', () => {
     await expect(p.topPopover).toHaveAttribute('role', 'dialog');
     await expect(trigger).toHaveAttribute('aria-expanded', 'true');
 
+    await expect(
+      trigger,
+      'aria-controls should reference the overlay id',
+    ).toHaveAttribute('aria-controls', /^tw-popover-/);
     const controls = await trigger.getAttribute('aria-controls');
-    expect(controls, 'aria-controls should reference the overlay id').toBeTruthy();
     expect(controls).toMatch(/^tw-popover-/);
   });
 

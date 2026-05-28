@@ -2,7 +2,7 @@ import { ChangeDetectionStrategy, Component, computed, signal } from '@angular/c
 import { RouterLink } from '@angular/router';
 import { DateRangePickerComponent } from '@cdevhub/ngx-tw/date-range-picker';
 import { CodeBlockComponent } from '@cdevhub/ngx-tw/code-block';
-import { TwDateRange } from '@cdevhub/ngx-tw/calendar';
+import { type TwDateRange } from '@cdevhub/ngx-tw/calendar';
 
 @Component({
   selector: 'app-date-range-picker-overview',

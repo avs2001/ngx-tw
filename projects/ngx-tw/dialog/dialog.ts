@@ -7,7 +7,6 @@ import {
   type Provider,
   type StaticProvider,
   type TemplateRef,
-  type Type,
   signal,
   type Signal,
   makeEnvironmentProviders,

@@ -29,7 +29,7 @@ import type {
 // ── Fake control directive implementing FormFieldControl ──
 
 @Directive({
-  selector: '[fakeControl]',
+  selector: '[twFakeControl]',
   providers: [
     { provide: TW_FORM_FIELD_CONTROL, useExisting: FakeControlDirective },
   ],
@@ -98,7 +98,7 @@ class FakeControlDirective extends FormFieldControl<string> {
       @if (showPrefixIcon()) {
         <svg twPrefixIcon viewBox="0 0 20 20"><path d="M0 0"/></svg>
       }
-      <input fakeControl />
+      <input twFakeControl />
       @if (showSuffix()) {
         <span twSuffix>USD</span>
       }
@@ -165,7 +165,7 @@ class NoControlHost {}
   template: `
     <tw-form-field>
       <label twLabel>Label</label>
-      <input fakeControl />
+      <input twFakeControl />
       <span twHint>Hint one</span>
       <span twHint>Hint two</span>
     </tw-form-field>
@@ -211,7 +211,7 @@ describe('FormFieldComponent', () => {
     });
 
     it('renders the projected control', () => {
-      expect(fixture.nativeElement.querySelector('input[fakeControl]')).toBeTruthy();
+      expect(fixture.nativeElement.querySelector('input[twFakeControl]')).toBeTruthy();
     });
 
     it('applies a controlType class hook to the host', () => {
@@ -832,7 +832,7 @@ describe('FormFieldComponent', () => {
       fixture.detectChanges();
     });
 
-    const outlinePaddings: Array<[TwSize, string, string]> = [
+    const outlinePaddings: [TwSize, string, string][] = [
       ['xs', 'px-2', 'py-1'],
       ['sm', 'px-3', 'py-1.5'],
       ['md', 'px-3', 'py-2'],
@@ -850,7 +850,7 @@ describe('FormFieldComponent', () => {
       });
     }
 
-    const filledPaddings: Array<[TwSize, string, string, string]> = [
+    const filledPaddings: [TwSize, string, string, string][] = [
       ['xs', 'px-2', 'pt-5', 'pb-1'],
       ['sm', 'px-3', 'pt-5', 'pb-1.5'],
       ['md', 'px-3', 'pt-6', 'pb-2'],
@@ -870,7 +870,7 @@ describe('FormFieldComponent', () => {
       });
     }
 
-    const labelFontResting: Array<[TwSize, string]> = [
+    const labelFontResting: [TwSize, string][] = [
       ['xs', 'text-xs'],
       ['sm', 'text-sm'],
       ['md', 'text-sm'],
@@ -887,7 +887,7 @@ describe('FormFieldComponent', () => {
       });
     }
 
-    const labelFontFloated: Array<[TwSize, string]> = [
+    const labelFontFloated: [TwSize, string][] = [
       ['xs', 'text-2xs'],
       ['sm', 'text-xs'],
       ['md', 'text-xs'],
@@ -1024,7 +1024,7 @@ describe('FormFieldComponent', () => {
         template: `
           <tw-form-field>
             <span twLabel>Label</span>
-            <input fakeControl />
+            <input twFakeControl />
             <span twHint>Hint</span>
           </tw-form-field>
         `,

@@ -1,4 +1,6 @@
-<!-- Tablist container -->
+<!-- Tablist container. WAI-ARIA tablist owns roving focus on the tab elements
+     inside; the container itself relays keydown but isn't tabbable. -->
+<!-- eslint-disable-next-line @angular-eslint/template/interactive-supports-focus -->
 <div
   [class]="tablistClasses()"
   role="tablist"
@@ -28,6 +30,7 @@
            affordance can be a native <button> child without nesting interactive
            content (invalid HTML). Activation is wired explicitly via (click)
            and the parent tablist (keydown.enter / keydown.space). -->
+      <!-- eslint-disable-next-line @angular-eslint/template/click-events-have-key-events, @angular-eslint/template/interactive-supports-focus -->
       <div
         role="tab"
         twTabTriggerElement

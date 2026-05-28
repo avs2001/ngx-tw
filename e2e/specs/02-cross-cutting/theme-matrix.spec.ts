@@ -1,4 +1,5 @@
 import AxeBuilder from '@axe-core/playwright';
+import type { BrowserContext } from '@playwright/test';
 
 import { expect, test } from '../../fixtures/base';
 
@@ -12,11 +13,7 @@ type Preset = 'default' | 'candy' | 'ocean' | 'forest' | 'sunset';
  * this out explicitly: Playwright's `colorScheme` only applies if the
  * persisted theme is `'system'`, so we drive the resolved theme directly.
  */
-async function seedTheme(
-  context: import('@playwright/test').BrowserContext,
-  theme: Theme,
-  preset: Preset = 'default',
-) {
+async function seedTheme(context: BrowserContext, theme: Theme, preset: Preset = 'default') {
   await context.addInitScript(
     ([t, p]) => {
       window.localStorage.setItem('ngx-tw-theme', t);

@@ -50,7 +50,7 @@ describe('BadgeDotDirective', () => {
   });
 
   describe('color', () => {
-    const colorMatrix: ReadonlyArray<{ color: TwColor; expected: string }> = [
+    const colorMatrix: readonly { color: TwColor; expected: string }[] = [
       { color: 'primary', expected: 'bg-primary-500' },
       { color: 'secondary', expected: 'bg-secondary-500' },
       { color: 'accent', expected: 'bg-accent-500' },
@@ -72,7 +72,7 @@ describe('BadgeDotDirective', () => {
   });
 
   describe('size', () => {
-    const sizeMatrix: ReadonlyArray<{ size: TwSize; expected: string }> = [
+    const sizeMatrix: readonly { size: TwSize; expected: string }[] = [
       { size: 'xs', expected: 'size-1.5' },
       { size: 'sm', expected: 'size-1.5' },
       { size: 'md', expected: 'size-2' },

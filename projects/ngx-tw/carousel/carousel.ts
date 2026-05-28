@@ -1336,14 +1336,16 @@ export class CarouselComponent {
       case 'ArrowLeft':
         if (horizontal) {
           this._lastInteractionSource.set('keyboard');
-          rtl ? this.next() : this.prev();
+          if (rtl) this.next();
+          else this.prev();
           handled = true;
         }
         break;
       case 'ArrowRight':
         if (horizontal) {
           this._lastInteractionSource.set('keyboard');
-          rtl ? this.prev() : this.next();
+          if (rtl) this.prev();
+          else this.next();
           handled = true;
         }
         break;

@@ -135,7 +135,9 @@ export interface TwSelectTriggerContext<T, O = TwSelectOption<T>> {
 }
 
 /** Rendered row in the panel — either a group-label header or an option. */
-export type SelectRenderedRow<T, O = unknown> =
+// `T` is a phantom type kept for API parity with the other Select generics
+// (`SelectVisibleOption<T, O>`, `SelectComponent<T, O>`).
+export type SelectRenderedRow<_T, O = unknown> =
   | { readonly kind: 'group-label'; readonly group: string }
   | { readonly kind: 'option'; readonly option: O; readonly index: number; readonly group?: string };
 

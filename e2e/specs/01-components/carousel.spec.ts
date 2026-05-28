@@ -45,7 +45,7 @@ test.describe('Carousel — slide sizing', () => {
     const slideWidths = await slides.evaluateAll((els) =>
       (els as HTMLElement[]).map((el) => el.getBoundingClientRect().width),
     );
-    expect(slideWidths.length).toBe(4);
+    expect(slideWidths).toHaveLength(4);
     for (const width of slideWidths) {
       expect(Math.abs(width - viewportWidth)).toBeLessThanOrEqual(1);
     }

@@ -30,7 +30,7 @@ module.exports = tseslint.config(
     languageOptions: {
       parserOptions: {
         projectService: {
-          allowDefaultProject: ['*.js', '*.mjs', '*.cjs'],
+          allowDefaultProject: ['*.js', '*.mjs', '*.cjs', 'playwright.config.ts'],
           defaultProject: 'tsconfig.json',
         },
         tsconfigRootDir: __dirname,
@@ -113,6 +113,16 @@ module.exports = tseslint.config(
     // not as a form-control label. Keep accessibility checks on for the
     // library itself, where controls are wired properly.
     files: ['projects/demo/src/app/routes/**/*.html'],
+    rules: {
+      '@angular-eslint/template/label-has-associated-control': 'off',
+    },
+  },
+  {
+    // Inline templates extracted from `*.spec.ts` via `processInlineTemplates`
+    // (virtual path: `<spec>.ts/N_inline-template-…component.html`). Test host
+    // templates project `<label twLabel>` into `<tw-form-field>`, which wires
+    // aria-labelledby programmatically — the rule only sees DOM `for`/`id`.
+    files: ['**/*.spec.ts/**/*.component.html'],
     rules: {
       '@angular-eslint/template/label-has-associated-control': 'off',
     },

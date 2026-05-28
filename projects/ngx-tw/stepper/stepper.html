@@ -1,4 +1,7 @@
 <!-- Header strip + inline panels (vertical) / header-only (horizontal) -->
+<!-- WAI-ARIA tablist pattern: the tablist relays keydown to the FocusKeyManager
+     but does not itself receive focus — each step header is the focus target. -->
+<!-- eslint-disable-next-line @angular-eslint/template/interactive-supports-focus -->
 <div
   [class]="headerClasses()"
   role="tablist"
