@@ -998,14 +998,17 @@ describe('CheckboxComponent hidden native input', () => {
     });
   });
 
-  it('should render a visually hidden input[type=checkbox] inside the host', () => {
+  it('should render a hidden (display:none) input[type=checkbox] inside the host', () => {
     const fixture = TestBed.createComponent(NativeFormHost);
     fixture.detectChanges();
     const input = fixture.nativeElement.querySelector('tw-checkbox input[type=checkbox]') as HTMLInputElement;
     expect(input).toBeTruthy();
-    expect(input.className).toContain('sr-only');
+    // `hidden` (display:none), not `sr-only`: a non-rendered control is excluded
+    // from the focus order, so axe's `nested-interactive` rule does not flag it
+    // inside the `role="checkbox"` host — while it still submits in a native
+    // <form> (the entry-list algorithm excludes only `disabled`, not hidden).
+    expect(input.hidden).toBe(true);
     expect(input.getAttribute('aria-hidden')).toBe('true');
-    expect(input.tabIndex).toBe(-1);
   });
 
   it('should mirror name, checked, and disabled onto the hidden input', () => {

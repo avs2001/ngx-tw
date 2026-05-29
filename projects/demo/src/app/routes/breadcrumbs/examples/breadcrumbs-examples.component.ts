@@ -42,7 +42,7 @@ interface RouterCmd {
         <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">aria-current="page"</code>.
       </p>
       <div class="rounded-lg border border-border p-6 bg-surface-raised mb-4">
-        <tw-breadcrumbs [items]="basicItems" ariaLabel="Basic example" />
+        <tw-breadcrumbs [items]="basicItems" aria-label="Basic example" />
       </div>
       <tw-code-block [code]="basicSnippet" language="html" />
     </section>
@@ -57,7 +57,7 @@ interface RouterCmd {
         <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">"slash"</code>.
       </p>
       <div class="rounded-lg border border-border p-6 bg-surface-raised mb-4">
-        <tw-breadcrumbs [items]="basicItems" separator="slash" ariaLabel="Custom icon separator example" />
+        <tw-breadcrumbs [items]="basicItems" separator="slash" aria-label="Custom icon separator example" />
       </div>
       <tw-code-block [code]="separatorIconSnippet" language="html" />
     </section>
@@ -71,7 +71,7 @@ interface RouterCmd {
         template.
       </p>
       <div class="rounded-lg border border-border p-6 bg-surface-raised mb-4">
-        <tw-breadcrumbs [items]="basicItems" ariaLabel="Custom template separator example">
+        <tw-breadcrumbs [items]="basicItems" aria-label="Custom template separator example">
           <ng-template twBreadcrumbsSeparator>
             <span class="text-fg-subtle">/</span>
           </ng-template>
@@ -93,11 +93,11 @@ interface RouterCmd {
       <div class="rounded-lg border border-border p-6 bg-surface-raised mb-4 space-y-4">
         <div>
           <p class="text-xs font-medium text-fg-muted mb-2 uppercase tracking-wide">maxItems = 3</p>
-          <tw-breadcrumbs [items]="longTrail" [maxItems]="3" ariaLabel="Truncated (maxItems=3) example" />
+          <tw-breadcrumbs [items]="longTrail" [maxItems]="3" aria-label="Truncated (maxItems=3) example" />
         </div>
         <div>
           <p class="text-xs font-medium text-fg-muted mb-2 uppercase tracking-wide">maxItems = 1 (clamps to 2)</p>
-          <tw-breadcrumbs [items]="longTrail" [maxItems]="1" ariaLabel="Truncated (maxItems=1) example" />
+          <tw-breadcrumbs [items]="longTrail" [maxItems]="1" aria-label="Truncated (maxItems=1) example" />
         </div>
       </div>
       <tw-code-block [code]="overflowSnippet" language="html" />
@@ -115,7 +115,7 @@ interface RouterCmd {
         render.
       </p>
       <div class="rounded-lg border border-border p-6 bg-surface-raised mb-4">
-        <tw-breadcrumbs [items]="routerItems" ariaLabel="Router integration example">
+        <tw-breadcrumbs [items]="routerItems" aria-label="Router integration example">
           <ng-template twBreadcrumbsItem let-item let-isCurrent="isCurrent">
             @if (isCurrent) {
               <span twBreadcrumbsLink [current]="true">{{ item.label }}</span>
@@ -142,7 +142,7 @@ interface RouterCmd {
         reads naturally from right to left.
       </p>
       <div class="rounded-lg border border-border p-6 bg-surface-raised mb-4" dir="rtl">
-        <tw-breadcrumbs [items]="basicItems" ariaLabel="مسار التنقل" />
+        <tw-breadcrumbs [items]="basicItems" aria-label="مسار التنقل" />
       </div>
       <tw-code-block [code]="rtlSnippet" language="html" />
     </section>
@@ -155,7 +155,7 @@ interface RouterCmd {
         template.
       </p>
       <div class="rounded-lg border border-border p-6 bg-surface-raised mb-4">
-        <tw-breadcrumbs [items]="iconItems" ariaLabel="Leading-icon example">
+        <tw-breadcrumbs [items]="iconItems" aria-label="Leading-icon example">
           <ng-template twBreadcrumbsItem let-item let-isCurrent="isCurrent" let-index="index">
             @if (isCurrent) {
               <span twBreadcrumbsLink [current]="true">{{ item.label }}</span>
@@ -186,7 +186,7 @@ interface RouterCmd {
           @for (size of sizes; track size) {
             <div>
               <p class="text-xs font-medium text-fg-muted mb-2 uppercase tracking-wide">{{ size }}</p>
-              <tw-breadcrumbs [items]="basicItems" [size]="size" [ariaLabel]="'Size ' + size + ' example'" />
+              <tw-breadcrumbs [items]="basicItems" [size]="size" [aria-label]="'Size ' + size + ' example'" />
             </div>
           }
         </div>
@@ -204,7 +204,7 @@ interface RouterCmd {
         — useful when a section in the trail is gated or temporarily unavailable.
       </p>
       <div class="rounded-lg border border-border p-6 bg-surface-raised mb-4">
-        <tw-breadcrumbs [items]="disabledItems" />
+        <tw-breadcrumbs [items]="disabledItems" aria-label="Disabled hop example" />
       </div>
       <tw-code-block [code]="disabledSnippet" language="html" />
     </section>
@@ -271,7 +271,7 @@ interface RouterCmd {
             [size]="playSize()"
             [separator]="playSeparator()"
             [maxItems]="playMaxItems()"
-            ariaLabel="Playground breadcrumbs"
+            aria-label="Playground breadcrumbs"
           />
         </div>
       </div>
@@ -350,7 +350,7 @@ export class BreadcrumbsExamples {
 </tw-breadcrumbs>`;
 
   protected readonly rtlSnippet = `<div dir="rtl">
-  <tw-breadcrumbs [items]="items" ariaLabel="مسار التنقل" />
+  <tw-breadcrumbs [items]="items" aria-label="مسار التنقل" />
 </div>`;
 
   protected readonly iconSnippet = `<tw-breadcrumbs [items]="items">

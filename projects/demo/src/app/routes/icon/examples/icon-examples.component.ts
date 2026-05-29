@@ -198,10 +198,10 @@ const PLAYGROUND_ICONS: readonly string[] = [
       </p>
       <div class="rounded-lg border border-border p-6 bg-surface-raised mb-4">
         <div class="flex flex-wrap items-center gap-4">
-          <span class="text-primary-500 flex items-center gap-1.5"><tw-icon name="star" /> primary</span>
-          <span class="text-success-500 flex items-center gap-1.5"><tw-icon name="check-circle" /> success</span>
-          <span class="text-error-500 flex items-center gap-1.5"><tw-icon name="x-circle" /> error</span>
-          <span class="text-warning-500 flex items-center gap-1.5"><tw-icon name="alert-triangle" /> warning</span>
+          <span class="text-primary-fg flex items-center gap-1.5"><tw-icon name="star" /> primary</span>
+          <span class="text-success-fg flex items-center gap-1.5"><tw-icon name="check-circle" /> success</span>
+          <span class="text-error-fg flex items-center gap-1.5"><tw-icon name="x-circle" /> error</span>
+          <span class="text-warning-fg flex items-center gap-1.5"><tw-icon name="alert-triangle" /> warning</span>
         </div>
       </div>
       <tw-code-block [code]="inheritanceSnippet" language="html" />
@@ -396,13 +396,13 @@ export class IconExamples {
   <tw-icon name="x-circle" color="error" size="sm" /> Something went wrong
 </p>`;
 
-  protected readonly inheritanceSnippet = `<span class="text-primary-500 flex items-center gap-1.5">
+  protected readonly inheritanceSnippet = `<span class="text-primary-fg flex items-center gap-1.5">
   <tw-icon name="star" /> primary
 </span>
-<span class="text-success-500 flex items-center gap-1.5">
+<span class="text-success-fg flex items-center gap-1.5">
   <tw-icon name="check-circle" /> success
 </span>
-<span class="text-error-500 flex items-center gap-1.5">
+<span class="text-error-fg flex items-center gap-1.5">
   <tw-icon name="x-circle" /> error
 </span>`;
 

@@ -185,10 +185,16 @@ let nextId = 0;
     },
   ],
   template: `
+    <!--
+      Hidden form-submission proxy. Uses \`hidden\` (display:none), not \`sr-only\`:
+      a display:none control is excluded from focus order so axe's
+      \`nested-interactive\` rule doesn't flag it inside the \`role="checkbox"\`
+      host, yet it still participates in native (non-Angular) form submission —
+      the entry-list algorithm excludes only \`disabled\` controls, not hidden ones.
+    -->
     <input
       type="checkbox"
-      class="sr-only"
-      tabindex="-1"
+      hidden
       aria-hidden="true"
       [name]="name() || null"
       [checked]="internalChecked()"

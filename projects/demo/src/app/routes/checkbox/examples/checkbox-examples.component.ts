@@ -474,7 +474,7 @@ const PERMISSIONS: readonly Permission[] = [
         <form [formGroup]="termsGroup" (ngSubmit)="submitTerms()" class="max-w-md space-y-4">
           <tw-form-field>
             <label twLabel>I accept the privacy policy</label>
-            <tw-checkbox formControlName="accepted" color="primary" />
+            <tw-checkbox formControlName="accepted" color="primary" aria-label="I accept the privacy policy" />
             <span twHint>Required to create the account.</span>
             <span twError>You must accept the policy before continuing.</span>
           </tw-form-field>

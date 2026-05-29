@@ -62,7 +62,7 @@ const FRENCH_LABELS: CodeBlockLabels = {
         <tw-code-block [code]="cssSnippet" language="CSS" variant="outlined">
           <span twCodeBlockHeader>
             <span class="font-mono text-xs text-fg">styles.css</span>
-            <span class="px-1.5 py-0.5 rounded text-2xs font-medium uppercase tracking-wide bg-warning-100 text-warning-800 dark:bg-warning-900/30 dark:text-warning-200">
+            <span class="px-1.5 py-0.5 rounded text-2xs font-medium uppercase tracking-wide bg-warning-soft text-warning-soft-fg-muted">
               modified
             </span>
           </span>

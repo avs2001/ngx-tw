@@ -240,7 +240,7 @@ const COLOR_SAMPLES: readonly ColorSample[] = [
             <div twCardBody>
               <p class="text-2xl font-semibold text-fg mb-1">28,401</p>
               <p class="text-fg-muted">
-                Up <strong class="text-success-600">12.4%</strong> from last quarter.
+                Up <strong class="text-success-fg">12.4%</strong> from last quarter.
               </p>
             </div>
             <div
