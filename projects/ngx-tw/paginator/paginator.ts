@@ -781,6 +781,16 @@ export class PaginatorComponent {
 
     // Emit pageChange whenever page or pageSize changes (after initial render).
     // When an out-of-range page is detected, clamp and emit with source 'programmatic'.
+    //
+    // DOCUMENTED no-write-in-effect exception (see CLAUDE.md). This effect reads
+    // `page()` *and* writes `page.set(clamped)` — an intrinsic cycle, because the
+    // clamp must fire both when `totalPages` shrinks AND when the consumer assigns
+    // an out-of-range page (so `page` must stay a tracked dependency). The cycle is
+    // bounded by the `clamped !== newPage` guard: the write re-triggers the effect
+    // exactly once, the re-run sees an in-range value, and it settles. It never
+    // loops/freezes. The `untracked()` wrapper does NOT break this cycle (page is
+    // tracked above); its job is to keep the signal reads inside `_emitChange` /
+    // `_announce` from registering as effect dependencies.
     effect(() => {
       const newPage = this.page();
       const newSize = this.pageSize();

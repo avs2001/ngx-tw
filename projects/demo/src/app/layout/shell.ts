@@ -45,6 +45,11 @@ const NAV: NavGroup[] = [
         { label: 'Examples', path: '/components/alert/examples' },
         { label: 'API', path: '/components/alert/api' },
       ]},
+      { label: 'Aspect Ratio', children: [
+        { label: 'Overview', path: '/components/aspect-ratio/overview' },
+        { label: 'Examples', path: '/components/aspect-ratio/examples' },
+        { label: 'API', path: '/components/aspect-ratio/api' },
+      ]},
       { label: 'Avatar', children: [
         { label: 'Overview', path: '/components/avatar/overview' },
         { label: 'Examples', path: '/components/avatar/examples' },
@@ -125,6 +130,11 @@ const NAV: NavGroup[] = [
         { label: 'Examples', path: '/components/empty-state/examples' },
         { label: 'API', path: '/components/empty-state/api' },
       ]},
+      { label: 'File Upload', children: [
+        { label: 'Overview', path: '/components/file-upload/overview' },
+        { label: 'Examples', path: '/components/file-upload/examples' },
+        { label: 'API', path: '/components/file-upload/api' },
+      ]},
       { label: 'Flip Card', children: [
         { label: 'Overview', path: '/components/flip-card/overview' },
         { label: 'Examples', path: '/components/flip-card/examples' },
@@ -154,6 +164,11 @@ const NAV: NavGroup[] = [
         { label: 'Overview', path: '/components/menu/overview' },
         { label: 'Examples', path: '/components/menu/examples' },
         { label: 'API', path: '/components/menu/api' },
+      ]},
+      { label: 'Number Input', children: [
+        { label: 'Overview', path: '/components/number-input/overview' },
+        { label: 'Examples', path: '/components/number-input/examples' },
+        { label: 'API', path: '/components/number-input/api' },
       ]},
       { label: 'Paginator', children: [
         { label: 'Overview', path: '/components/paginator/overview' },
@@ -249,6 +264,11 @@ const NAV: NavGroup[] = [
         { label: 'Overview', path: '/components/tabs/overview' },
         { label: 'Examples', path: '/components/tabs/examples' },
         { label: 'API', path: '/components/tabs/api' },
+      ]},
+      { label: 'Tags Input', children: [
+        { label: 'Overview', path: '/components/tags-input/overview' },
+        { label: 'Examples', path: '/components/tags-input/examples' },
+        { label: 'API', path: '/components/tags-input/api' },
       ]},
       { label: 'Textarea', children: [
         { label: 'Overview', path: '/components/textarea/overview' },

@@ -1,0 +1,117 @@
+<input
+  #hiddenInput
+  type="file"
+  class="sr-only"
+  tabindex="-1"
+  [id]="hiddenInputId"
+  [attr.aria-label]="ariaLabel() ?? label() ?? triggerLabel()"
+  [attr.name]="name() || null"
+  [attr.accept]="accept() || null"
+  [multiple]="multiple()"
+  [disabled]="disabled()"
+  [required]="required()"
+  (change)="onNativeChange($event)"
+/>
+
+<!-- The dropzone is a mouse click/drop convenience target, intentionally NOT a
+     focusable control: the inner trigger <button> owns keyboard operability, so
+     adding tabindex/keydown here would create a nested-interactive structure.
+     No keyboard user is locked out, so the rules' concern does not apply. -->
+<!-- eslint-disable-next-line @angular-eslint/template/click-events-have-key-events, @angular-eslint/template/interactive-supports-focus -->
+<div
+  #dropzone
+  [class]="dropzoneClasses()"
+  (click)="open()"
+  (dragenter)="onDragEnter($event)"
+  (dragover)="onDragOver($event)"
+  (dragleave)="onDragLeave($event)"
+  (drop)="onDrop($event)"
+>
+  <div [class]="dropzoneInnerClasses()">
+    <div [class]="illustrationClasses()">
+      <ng-content select="[twFileUploadIcon]">
+        <tw-icon name="upload-cloud" [size]="iconSize()" aria-hidden="true" />
+      </ng-content>
+    </div>
+
+    <span [id]="headlineId" [class]="headlineClasses()">
+      <ng-content select="[twFileUploadHeadline]">
+        @if (label(); as l) {
+          {{ l }}
+        } @else {
+          Drag files here or click to browse
+        }
+      </ng-content>
+    </span>
+
+    <span [id]="descriptionId" [class]="descriptionClasses()">
+      <ng-content select="[twFileUploadDescription]">
+        @if (description(); as d) {
+          {{ d }}
+        }
+      </ng-content>
+    </span>
+
+    <button
+      #trigger
+      type="button"
+      twButton
+      variant="outline"
+      color="neutral"
+      [size]="size()"
+      [disabled]="disabled()"
+      [attr.aria-describedby]="effectiveAriaDescribedby() || null"
+      (click)="onTriggerClick($event)"
+    >
+      {{ triggerLabel() }}
+    </button>
+  </div>
+</div>
+
+<ul [class]="listClasses()" role="list">
+  @for (item of items(); track item.id) {
+    <li>
+      @if (itemSlot(); as slot) {
+        <ng-container
+          [ngTemplateOutlet]="slot.templateRef"
+          [ngTemplateOutletContext]="{ $implicit: item, item: item }"
+        />
+      } @else {
+        <div [class]="itemClasses()">
+          <tw-icon
+            [name]="iconNameFor(item)"
+            size="md"
+            [class]="itemIconClasses()"
+            aria-hidden="true"
+          />
+          <div [class]="itemBodyClasses()">
+            <span [class]="itemNameClasses()">{{ item.file.name }}</span>
+            <span [class]="itemMetaClasses()">{{ metaTextFor(item) }}</span>
+            @if (shouldShowProgress(item)) {
+              <tw-progress-bar
+                [class]="itemProgressClasses()"
+                [value]="item.progress"
+                size="sm"
+                [color]="progressColorFor(item)"
+              />
+            }
+          </div>
+          <div [class]="itemActionsClasses()">
+            <button
+              type="button"
+              twButton
+              variant="ghost"
+              color="neutral"
+              size="sm"
+              data-tw-file-upload-remove
+              [attr.aria-label]="'Remove ' + item.file.name"
+              (click)="remove(item.id)"
+            >
+              <tw-icon twButtonIcon name="x" />
+            </button>
+          </div>
+        </div>
+      }
+    </li>
+  }
+</ul>

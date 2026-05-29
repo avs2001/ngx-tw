@@ -23,6 +23,7 @@ import {
   output,
   signal,
   type Signal,
+  untracked,
   viewChild,
 } from '@angular/core';
 import { tv } from 'tailwind-variants';
@@ -749,13 +750,18 @@ export class CarouselComponent {
     });
 
     // Slide-set changes: re-observe with IntersectionObserver, clamp activeIndex.
+    // Only `slides()` is a reactive trigger. The activeIndex read+write is wrapped
+    // in `untracked` so the clamp does not register `activeIndex` as a dependency —
+    // otherwise the `.set` would re-trigger this effect (read→write signal cycle).
     effect(() => {
       const slides = this.slides();
       this._reobserveSlides(slides);
       const count = slides.length;
-      if (count > 0 && this.activeIndex() > count - 1) {
-        this.activeIndex.set(count - 1);
-      }
+      untracked(() => {
+        if (count > 0 && this.activeIndex() > count - 1) {
+          this.activeIndex.set(count - 1);
+        }
+      });
     });
 
     this._destroyRef.onDestroy(() => {

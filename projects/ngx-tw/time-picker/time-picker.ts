@@ -109,9 +109,22 @@ const timePickerVariants = tv(
       field:
         'bg-transparent text-center outline-none border-0 p-0 m-0 text-fg placeholder:text-fg-subtle rounded-md caret-transparent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500',
       separator: 'text-fg-subtle select-none px-0.5',
-      stepperGroup: 'flex flex-col ml-0.5',
+      // Column stretches to the field height; the two buttons split it via
+      // `flex-1`. Codified departure from CLAUDE.md "Square interactive targets"
+      // (size-6/7/8): stacking two square buttons made the column 2× a button
+      // tall — far taller than the digit row — which bloated the field height.
+      // So the buttons carry a fixed WIDTH only (per-size below); the chevron
+      // glyph's min-content (size-3 = 12px) is the natural floor.
+      //
+      // WCAG 2.5.8 (target-size, 24px — which slider.ts / badge.ts codify):
+      // two stacked buttons cannot each be ≥24px tall inside a compact field
+      // without re-bloating it, so each spinner ends up < 24px tall. Accepted
+      // as the equivalent-control exception applies — the time is fully editable
+      // by typing into the spinbutton fields (and via ↑/↓), so the spinner is a
+      // pointer enhancement, never the only path.
+      stepperGroup: 'flex flex-col self-stretch ml-0.5',
       stepper:
-        'inline-flex items-center justify-center text-fg-muted hover:text-fg hover:bg-surface-muted rounded-md transition-colors duration-normal motion-reduce:transition-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500 disabled:opacity-40 disabled:pointer-events-none',
+        'flex-1 inline-flex items-center justify-center text-fg-muted hover:text-fg hover:bg-surface-muted rounded-md transition-colors duration-normal motion-reduce:transition-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500 disabled:opacity-40 disabled:pointer-events-none',
       stepperIcon: '',
       meridiem:
         'inline-flex items-center rounded-md border border-border overflow-hidden ml-2 shrink-0',
@@ -128,7 +141,7 @@ const timePickerVariants = tv(
           // the standard width scale because the field is content-driven, not a layout primitive
           // — see CLAUDE.md spacing scale rationale.
           field: 'w-5 text-xs',
-          stepper: 'size-6',
+          stepper: 'w-6',
           stepperIcon: 'size-3',
           meridiemButton: 'px-1.5 py-1 text-2xs',
         },
@@ -136,7 +149,7 @@ const timePickerVariants = tv(
           root: 'gap-1 text-sm',
           // sm-density numeric field — sized to fit a 2-digit value at text-sm; see CLAUDE.md spacing scale rationale.
           field: 'w-6 text-sm',
-          stepper: 'size-7',
+          stepper: 'w-7',
           stepperIcon: 'size-3',
           meridiemButton: 'px-2 py-1 text-xs',
         },
@@ -144,7 +157,7 @@ const timePickerVariants = tv(
           root: 'gap-1.5 text-sm',
           // md-density numeric field — sized to fit a 2-digit value at text-sm; see CLAUDE.md spacing scale rationale.
           field: 'w-7 text-sm',
-          stepper: 'size-7',
+          stepper: 'w-7',
           stepperIcon: 'size-3',
           meridiemButton: 'px-2 py-1 text-xs',
         },
@@ -152,7 +165,7 @@ const timePickerVariants = tv(
           root: 'gap-1.5 text-base',
           // lg-density numeric field — sized to fit a 2-digit value at text-base; see CLAUDE.md spacing scale rationale.
           field: 'w-8 text-base',
-          stepper: 'size-8',
+          stepper: 'w-8',
           stepperIcon: 'size-4',
           meridiemButton: 'px-2.5 py-1.5 text-sm',
         },
@@ -160,7 +173,7 @@ const timePickerVariants = tv(
           root: 'gap-2 text-base',
           // xl-density numeric field — sized to fit a 2-digit value at text-base; see CLAUDE.md spacing scale rationale.
           field: 'w-9 text-base',
-          stepper: 'size-8',
+          stepper: 'w-8',
           stepperIcon: 'size-4',
           meridiemButton: 'px-3 py-1.5 text-sm',
         },

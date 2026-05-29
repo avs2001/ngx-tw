@@ -31,6 +31,21 @@ For non-trivial code changes — new components, animation work, `ControlValueAc
 - **`linkedSignal()`** — writable derived state that defaults to a source signal but can be overridden by user interaction. Canonical case: a controlled internal value initialized from an `input()` and updated on user action (e.g., a tab component's `activeTab` that defaults to `defaultTab` input but updates locally on click).
 - Never use `linkedSignal()` for purely derived/calculated values — that's `computed()`'s job.
 
+### No signal cycles in `effect()`
+
+**Never mutate a signal inside an `effect()` that the same effect track-reads** (directly, transitively, or through a method it calls). That read → write → re-trigger loop is a signal cycle — the canonical symptom is a UI freeze (e.g. an effect that read `items()` and `thumbnails()` then called `thumbnails.set(...)`). It is the single most common way to hang a component.
+
+Reach for the right primitive instead of an effect:
+
+- **Derived, read-only** → `computed()`.
+- **Writable-derived-from-a-source** (reconcile against the previous value, mint/release resources, mirror an `input()` into controllable internal state) → `linkedSignal()` with the two-arg computation `(source, previous) => ...`. The computation does **not** track its own reads, so reconciliation that needs the prior value belongs here, not in an effect.
+
+`effect()` is for side effects that leave the signal graph (DOM, focus, `LiveAnnouncer`, overlay lifecycle, `output.emit`, storage, plain-field bookkeeping) — not for computing state.
+
+**The only permitted signal write inside an `effect()`** is a one-way sync to a **different** signal the effect does **not** track-read — mirroring an `input()` to a child-instance signal, or clamping a `model()` against a sibling source. Such a write **must** be wrapped in `untracked()`, and `untracked()` only breaks the cycle when the written signal is not track-read elsewhere in the same effect (canonical safe example: `carousel.ts` clamps `activeIndex` against `slides()` entirely inside `untracked`). Note `untracked()` around a write is **not** a fix when the written signal is still track-read in the effect body — see the trap below.
+
+**Codified exception.** `paginator.ts` has an intrinsic, documented cycle: its effect must track `page()` (to clamp when the consumer assigns an out-of-range page) *and* write `page.set(clamped)` (to clamp when `totalPages` shrinks). It is bounded by a `clamped !== newPage` guard that settles in exactly one extra tick and never loops; the inline comment on that effect is mandatory reading before touching it. Do not introduce new effects of this shape — if a new one seems unavoidable, it needs the same guard + inline justification, or a `linkedSignal()` refactor.
+
 ## TypeScript
 
 - Strict type checking. Avoid `any`; use `unknown` when uncertain. Prefer type inference when obvious.

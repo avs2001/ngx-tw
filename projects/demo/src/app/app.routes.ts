@@ -15,6 +15,10 @@ export const routes: Routes = [
         loadChildren: () => import('./routes/alert/alert.routes').then(m => m.ALERT_ROUTES),
       },
       {
+        path: 'components/aspect-ratio',
+        loadChildren: () => import('./routes/aspect-ratio/aspect-ratio.routes').then(m => m.ASPECT_RATIO_ROUTES),
+      },
+      {
         path: 'components/badge',
         loadChildren: () => import('./routes/badge/badge.routes').then(m => m.BADGE_ROUTES),
       },
@@ -95,12 +99,20 @@ export const routes: Routes = [
         loadChildren: () => import('./routes/flip-card/flip-card.routes').then(m => m.FLIP_CARD_ROUTES),
       },
       {
+        path: 'components/file-upload',
+        loadChildren: () => import('./routes/file-upload/file-upload.routes').then(m => m.FILE_UPLOAD_ROUTES),
+      },
+      {
         path: 'components/form-field',
         loadChildren: () => import('./routes/form-field/form-field.routes').then(m => m.FORM_FIELD_ROUTES),
       },
       {
         path: 'components/input',
         loadChildren: () => import('./routes/input/input.routes').then(m => m.INPUT_ROUTES),
+      },
+      {
+        path: 'components/number-input',
+        loadChildren: () => import('./routes/number-input/number-input.routes').then(m => m.NUMBER_INPUT_ROUTES),
       },
       {
         path: 'components/switch',
@@ -117,6 +129,10 @@ export const routes: Routes = [
       {
         path: 'components/select',
         loadChildren: () => import('./routes/select/select.routes').then(m => m.SELECT_ROUTES),
+      },
+      {
+        path: 'components/tags-input',
+        loadChildren: () => import('./routes/tags-input/tags-input.routes').then(m => m.TAGS_INPUT_ROUTES),
       },
       {
         path: 'components/spinner',

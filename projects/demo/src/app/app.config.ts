@@ -14,6 +14,7 @@ import {
   ArrowDownWideNarrow, Calendar, ChevronRight, FileText,
   Package, PlayCircle, MessageSquare, LayoutTemplate,
   Layers, FlipHorizontal2, Inbox, Slash,
+  UploadCloud, Image, File, X,
 } from 'lucide-angular';
 
 import { routes } from './app.routes';
@@ -35,6 +36,7 @@ export const appConfig: ApplicationConfig = {
       ArrowDownWideNarrow, Calendar, ChevronRight, FileText,
       Package, PlayCircle, MessageSquare, LayoutTemplate,
       Layers, FlipHorizontal2, Inbox, Slash,
+      UploadCloud, Image, File, X,
     }),
   ]
 };
