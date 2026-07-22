@@ -1155,24 +1155,64 @@ export class CalendarComponent<
     this._activeDate.set(this.startAt() ?? this.dateAdapter.today());
   }
 
-  /** Revalidates constraints + cell filters (Phase 4 wires it). */
+  /**
+   * Re-runs validation against the current constraints and cell filters.
+   *
+   * Call this after mutating a constraint imperatively (rather than through an
+   * input binding), so the bound control's errors reflect the new rules.
+   */
   revalidate(): void {
-    // No-op until Phase 4 introduces the validator.
+    // The comment this replaced claimed the validator did not exist yet. It
+    // does — `validate()` emits the constraint codes — so the method was a
+    // documented no-op sitting next to a working validator.
+    this.validatorOnChange();
   }
 
-  /** Opens the overlay. Phase 10 wires the CDK overlay; inline mode is a no-op. */
+  /**
+   * Opens the overlay.
+   *
+   * @deprecated Not implemented. `tw-calendar` is inline-only today; the overlay
+   * is part of the phased v1 cutover. Use `tw-date-picker` or
+   * `tw-date-range-picker` for an overlay-mounted calendar. Throws in dev mode.
+   */
   open(): void {
-    // Phase 10.
+    this.warnOverlayUnsupported('open');
   }
 
-  /** Closes the overlay. */
+  /**
+   * Closes the overlay.
+   *
+   * @deprecated Not implemented — see {@link open}. Throws in dev mode.
+   */
   close(): void {
-    // Phase 10.
+    this.warnOverlayUnsupported('close');
   }
 
-  /** Toggles the overlay. */
+  /**
+   * Toggles the overlay.
+   *
+   * @deprecated Not implemented — see {@link open}. Throws in dev mode.
+   */
   toggle(): void {
-    // Phase 10.
+    this.warnOverlayUnsupported('toggle');
+  }
+
+  /**
+   * Fails loudly in development for the unimplemented overlay API.
+   *
+   * These three shipped as silent no-ops with JSDoc that described them as
+   * working ("Closes the overlay."), which Compodoc rendered straight into the
+   * published API table. A consumer calling `calendar.open()` got no overlay, no
+   * error, and no clue. Dev-mode throw turns that into an immediate, explainable
+   * failure while leaving production builds untouched.
+   */
+  private warnOverlayUnsupported(method: 'open' | 'close' | 'toggle'): void {
+    if (typeof ngDevMode !== 'undefined' && ngDevMode) {
+      throw new Error(
+        `[ngx-tw] CalendarComponent.${method}() is not implemented — tw-calendar is inline-only. ` +
+          `Use tw-date-picker or tw-date-range-picker for an overlay-mounted calendar.`,
+      );
+    }
   }
 
   /** Imperatively focuses the currently active cell. */

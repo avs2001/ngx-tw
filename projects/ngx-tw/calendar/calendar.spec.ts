@@ -2291,4 +2291,32 @@ describe('CalendarComponent', () => {
       expect(fixture.componentInstance.ctrl.errors).toBeNull();
     });
   });
+
+  describe('unimplemented overlay API', () => {
+    it('throws in dev mode for open/close/toggle instead of silently doing nothing', () => {
+      const fixture = TestBed.createComponent(BasicHost);
+      fixture.detectChanges();
+      const calendar = getCalendarComponent(fixture);
+
+      // These shipped as no-ops whose JSDoc claimed they worked, so a consumer
+      // wiring a custom trigger to calendar.open() got no overlay and no error.
+      expect(() => calendar.open()).toThrow(/not implemented/i);
+      expect(() => calendar.close()).toThrow(/not implemented/i);
+      expect(() => calendar.toggle()).toThrow(/not implemented/i);
+    });
+
+    it('revalidate() re-runs the validator instead of doing nothing', () => {
+      const fixture = TestBed.createComponent(BasicHost);
+      fixture.detectChanges();
+      const calendar = getCalendarComponent(fixture);
+
+      const onChange = vi.fn();
+      calendar.registerOnValidatorChange(onChange);
+      calendar.revalidate();
+
+      expect(onChange).toHaveBeenCalled();
+    });
+  });
+
+
 });
