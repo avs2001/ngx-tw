@@ -110,7 +110,7 @@ import { IconComponent } from '@cdevhub/ngx-tw/icon';
 
 // Provider (app.config.ts)
 import { provideTwLucideIcons } from '@cdevhub/ngx-tw/icon/lucide';
-import { Star, Heart, CheckCircle } from 'lucide-angular';
+import { Star, Heart, CheckCircle } from 'lucide';
 
 export const appConfig = {
   providers: [

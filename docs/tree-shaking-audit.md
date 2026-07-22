@@ -115,7 +115,7 @@ Every item below was checked against source **and** the freshly-built dist; noth
 - ~36 **type-only** core importers create **zero** runtime edge (e.g. `button.mjs` contains no `ngx-tw/core` string at all). The value-vs-type split is meticulous across all 57 importers — no value-imported-but-type-only symbol found.
 
 **Heavy third-party deps are quarantined.**
-- `luxon` is imported **only** in `calendar/luxon`; `lucide-angular` **only** in `icon/lucide`. Both are leaf adapter sub-entries imported by **nothing** else in the library — confirmed at the *bundle* level. They enter a consumer bundle only on an explicit `@cdevhub/ngx-tw/calendar/luxon` / `…/icon/lucide` import. The default calendar (native `Intl`) and default icon path carry no heavy dep.
+- `luxon` is imported **only** in `calendar/luxon`; `lucide` **only** in `icon/lucide`. Both are leaf adapter sub-entries imported by **nothing** else in the library — confirmed at the *bundle* level. They enter a consumer bundle only on an explicit `@cdevhub/ngx-tw/calendar/luxon` / `…/icon/lucide` import. The default calendar (native `Intl`) and default icon path carry no heavy dep.
 
 **Dependency closure (authoritative, computed from shipped FESM).**
 - Max transitive value-closure is **5 siblings**, only for the legitimate composites `date-picker` / `date-range-picker` / `file-upload`. **31 of 59 bundles are fully standalone leaves** (zero sibling deps). `@angular/cdk/overlay` reaches exactly the 12 overlay-bearing components + `core`. No light/decorative component (tooltip, popover, carousel, segmented-control, stepper, paginator, timeline, card, …) secretly drags overlay/calendar/luxon/lucide/form-field.

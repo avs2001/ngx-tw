@@ -16,7 +16,7 @@ import {
   Layers, FlipHorizontal2, Inbox, Slash,
   UploadCloud, Image, File, X,
   ListTree, Folder,
-} from 'lucide-angular';
+} from 'lucide';
 
 import { routes } from './app.routes';
 
