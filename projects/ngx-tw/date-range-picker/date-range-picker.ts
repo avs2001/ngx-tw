@@ -28,6 +28,7 @@ import {
   type ControlValueAccessor,
   FormGroupDirective,
   NG_VALIDATORS,
+  NG_VALUE_ACCESSOR,
   NgControl,
   NgForm,
   type ValidationErrors,
@@ -267,6 +268,17 @@ let nextDateRangePickerId = 0;
     },
     {
       provide: NG_VALIDATORS,
+      useExisting: forwardRef(() => DateRangePickerComponent),
+      multi: true,
+    },
+    // Angular v22 routes a CVA component's own NG_VALIDATORS through the
+    // value-accessor channel. The runtime `ngControl.valueAccessor = this`
+    // assignment below happens too late for that wiring, so `validate()` is
+    // never invoked and every calendar error code silently disappears. The
+    // static provider is what registers this component on the channel in time.
+    // Mirrors `calendar.ts`, which has always provided both tokens.
+    {
+      provide: NG_VALUE_ACCESSOR,
       useExisting: forwardRef(() => DateRangePickerComponent),
       multi: true,
     },
