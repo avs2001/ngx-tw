@@ -832,7 +832,16 @@ export class TableComponent<T = unknown> {
   /** The table's rows. Accepts a plain array, an `Observable<readonly T[]>`, or a CDK `DataSource<T>`. Wired directly to `CdkTable.dataSource`. Defaults to an empty array. */
   readonly data = input<TwTableDataSourceInput<T>>([] as readonly T[]);
 
-  /** Tracking function used by CDK to identify rows across data changes. When unset, CDK uses identity. */
+  /**
+   * Tracking function used to identify rows across data changes. When unset, rows are identified by
+   * object reference.
+   *
+   * This drives **selection and expansion membership** as well as CDK's DOM diffing. Supply it when
+   * the data source re-emits equal-but-new objects — an HTTP refetch, an immutable store — or the
+   * user's selection empties on every refresh with no event and no error. It is called with `-1` as
+   * the index for membership lookups, so return a value derived from the row alone (`row.id`), not
+   * from the index.
+   */
   readonly trackBy = input<TrackByFunction<T> | undefined>(undefined);
 
   /** When true, renders the loading slot as an overlay and applies `opacity-60 pointer-events-none` to the body. Defaults to `false`. */
@@ -1247,7 +1256,20 @@ export class TableComponent<T = unknown> {
 
   /** @internal Whether a row is currently expanded. */
   isRowExpanded(row: T): boolean {
-    return this.expandedRows().has(row);
+    const expanded = this.expandedRows();
+    if (expanded.has(row)) return true;
+    // `expandedRows` is a public `model<ReadonlySet<T>>`, and a JS Set cannot
+    // take custom equality — so unlike selection this cannot be a keyed Set
+    // without a breaking API change. A scan is acceptable here: expansion
+    // holds a handful of rows, not the whole page. Skipped entirely when no
+    // `trackBy` is supplied, since the reference check above is then complete.
+    const track = this.trackBy();
+    if (!track) return false;
+    const key = this.rowKey(row);
+    for (const candidate of expanded) {
+      if (this.rowKey(candidate) === key) return true;
+    }
+    return false;
   }
 
   /** @internal CDK `when` predicate used for the auto-generated expansion row. */
@@ -1282,7 +1304,17 @@ export class TableComponent<T = unknown> {
   collapse(row: T): void {
     if (!this.isRowExpanded(row)) return;
     const next = new Set(this.expandedRows());
-    next.delete(row);
+    if (!next.delete(row)) {
+      // Row was matched by key rather than by reference — find and drop the
+      // instance actually held in the set.
+      const key = this.rowKey(row);
+      for (const candidate of next) {
+        if (this.rowKey(candidate) === key) {
+          next.delete(candidate);
+          break;
+        }
+      }
+    }
     this.expandedRows.set(next);
     this.expansionChange.emit({ row, expanded: false, expandedRows: next });
   }
@@ -1293,17 +1325,47 @@ export class TableComponent<T = unknown> {
     else this.expand(row);
   }
 
+  /**
+   * @internal Identity key for a row.
+   *
+   * Selection and expansion are membership questions, and answering them by
+   * object reference breaks the moment a data source re-emits equal-but-new
+   * objects — an HTTP refetch, an immutable store, `signal.set([...mapped])`.
+   * The user's selection empties with no event and no error.
+   *
+   * `trackBy` is already the consumer's declaration of row identity, so it is
+   * reused here rather than adding a second, redundant input. With no `trackBy`
+   * the key IS the row, i.e. reference identity — the same default CDK uses.
+   *
+   * Note this must be a *key* function, not a comparator: a comparator would fix
+   * identity but leave membership as an O(rows x selected) scan, and a
+   * reference-keyed Set would fix the scan but ignore custom identity. Only a
+   * key fixes both.
+   */
+  private rowKey(row: T): unknown {
+    const track = this.trackBy();
+    return track ? track(-1, row) : row;
+  }
+
+  /** @internal O(1) membership lookup for the current selection, keyed by `rowKey`. */
+  private readonly selectedKeys = computed<ReadonlySet<unknown>>(
+    () => new Set(this.selected().map((row) => this.rowKey(row))),
+  );
+
   /** Whether a given row is currently in the `selected` list. */
   isSelected(row: T): boolean {
-    return this.selected().includes(row);
+    return this.selectedKeys().has(this.rowKey(row));
   }
 
   /** Selects or deselects a row and emits `selectionChange`. */
   setSelected(row: T, nextSelected: boolean): void {
     const previous = this.selected();
-    const isAlreadySelected = previous.includes(row);
+    const key = this.rowKey(row);
+    const isAlreadySelected = this.selectedKeys().has(key);
     if (isAlreadySelected === nextSelected) return;
-    const next = nextSelected ? [...previous, row] : previous.filter((r) => r !== row);
+    const next = nextSelected
+      ? [...previous, row]
+      : previous.filter((r) => this.rowKey(r) !== key);
     this.selected.set(next);
     this.selectionChange.emit({
       selected: next,
@@ -1322,10 +1384,10 @@ export class TableComponent<T = unknown> {
     const rows = this.resolvedRows();
     if (rows.length === 0) return;
     const previous = this.selected();
-    const previousSet = new Set(previous);
+    const previousKeys = this.selectedKeys();
     const added: T[] = [];
     for (const row of rows) {
-      if (!previousSet.has(row)) added.push(row);
+      if (!previousKeys.has(this.rowKey(row))) added.push(row);
     }
     if (added.length === 0) return;
     const next: T[] = [...previous, ...added];
@@ -1356,9 +1418,9 @@ export class TableComponent<T = unknown> {
     if (rows.length === 0) return 'none';
     const selected = this.selected();
     if (selected.length === 0) return 'none';
-    const selectedSet = new Set(selected);
+    const selectedKeys = this.selectedKeys();
     for (const row of rows) {
-      if (!selectedSet.has(row)) return 'some';
+      if (!selectedKeys.has(this.rowKey(row))) return 'some';
     }
     return 'all';
   });

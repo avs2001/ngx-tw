@@ -91,13 +91,19 @@
             [class]="selectionHeaderClasses()"
             scope="col"
           >
-            <tw-checkbox
-              size="sm"
-              [checked]="masterChecked()"
-              [indeterminate]="masterIndeterminate()"
-              (change)="toggleMasterSelection($event)"
-              [aria-label]="resolvedLabels().selectAllLabel"
-            />
+            <!-- Select-all needs a full row snapshot, which only the array
+                 data-source path can produce. Rendering it for an Observable /
+                 DataSource input gave a checkbox that looked functional, never
+                 reflected state, and did nothing on click. -->
+            @if (dataIsArray()) {
+              <tw-checkbox
+                size="sm"
+                [checked]="masterChecked()"
+                [indeterminate]="masterIndeterminate()"
+                (change)="toggleMasterSelection($event)"
+                [aria-label]="resolvedLabels().selectAllLabel"
+              />
+            }
           </th>
           <td
             cdk-cell

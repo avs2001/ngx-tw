@@ -1,5 +1,6 @@
 import { ChangeDetectionStrategy, Component, signal } from '@angular/core';
 import { type ComponentFixture, TestBed } from '@angular/core/testing';
+import { By } from '@angular/platform-browser';
 import { LiveAnnouncer } from '@angular/cdk/a11y';
 import { BehaviorSubject } from 'rxjs';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -79,6 +80,44 @@ class StateHost {
   variant = signal<TwTableVariant>('default');
   loading = signal(false);
   error = signal<unknown | null>(null);
+}
+
+@Component({
+  imports: [TableComponent, ColumnComponent, CellDefDirective],
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  template: `
+    <tw-table
+      [data]="data()"
+      [selection]="{ enabled: true }"
+      [(selected)]="selected"
+      [trackBy]="trackById"
+      aria-label="Selection host"
+    >
+      <tw-column name="id" headerLabel="ID">
+        <ng-template twCellDef let-row>{{ $any(row).id }}</ng-template>
+      </tw-column>
+    </tw-table>
+  `,
+})
+class SelectionIdentityHost {
+  data = signal<Row[]>(SAMPLE_ROWS.map((r) => ({ ...r })));
+  selected = signal<readonly Row[]>([]);
+  trackById = (_: number, row: Row) => row.id;
+}
+
+@Component({
+  imports: [TableComponent, ColumnComponent, CellDefDirective],
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  template: `
+    <tw-table [data]="source" [selection]="{ enabled: true }" aria-label="Async selection host">
+      <tw-column name="id" headerLabel="ID">
+        <ng-template twCellDef let-row>{{ $any(row).id }}</ng-template>
+      </tw-column>
+    </tw-table>
+  `,
+})
+class AsyncSelectionHost {
+  source = new BehaviorSubject<Row[]>([...SAMPLE_ROWS]);
 }
 
 @Component({
@@ -1088,4 +1127,123 @@ describe('TableComponent — dev-mode guards', () => {
 
     warnSpy.mockRestore();
   });
+
+  describe('selection identity', () => {
+    it('keeps the selection when the data source re-emits equal-but-new row objects', async () => {
+      // The realistic failure: an HTTP refetch, an immutable store, or any
+      // `signal.set([...mapped])` produces structurally-equal rows with new
+      // references. Keying selection by reference silently empties it — no
+      // event, no error, the user just loses their checkboxes.
+      const fixture = TestBed.createComponent(SelectionIdentityHost);
+      fixture.detectChanges();
+      await fixture.whenStable();
+
+      const first = fixture.componentInstance.data()[0];
+      fixture.componentInstance.selected.set([first]);
+      fixture.detectChanges();
+      await fixture.whenStable();
+
+      const table = fixture.debugElement.query(By.directive(TableComponent))
+        .componentInstance as TableComponent<Row>;
+      expect(table.isSelected(first)).toBe(true);
+
+      // Refetch: same data, new object identities.
+      const refetched = fixture.componentInstance.data().map((r) => ({ ...r }));
+      fixture.componentInstance.data.set(refetched);
+      fixture.detectChanges();
+      await fixture.whenStable();
+
+      expect(table.isSelected(refetched[0])).toBe(true);
+      expect(table.isSelected(refetched[1])).toBe(false);
+    });
+
+    it('keeps expansion across a re-emit, and collapses by key', async () => {
+      const fixture = TestBed.createComponent(SelectionIdentityHost);
+      fixture.detectChanges();
+      await fixture.whenStable();
+
+      const table = fixture.debugElement.query(By.directive(TableComponent))
+        .componentInstance as TableComponent<Row>;
+      const original = fixture.componentInstance.data()[0];
+      table.expand(original);
+      fixture.detectChanges();
+      expect(table.isRowExpanded(original)).toBe(true);
+
+      const refetched = { ...original };
+      expect(table.isRowExpanded(refetched)).toBe(true);
+
+      table.collapse(refetched);
+      fixture.detectChanges();
+      expect(table.isRowExpanded(original)).toBe(false);
+      expect(table.expandedRows().size).toBe(0);
+    });
+
+    it('falls back to reference identity when no trackBy is supplied', async () => {
+      // Same default as CDK — documented contract, not an accident.
+      const fixture = TestBed.createComponent(SelectionHost);
+      fixture.detectChanges();
+      await fixture.whenStable();
+
+      const table = fixture.debugElement.query(By.directive(TableComponent))
+        .componentInstance as TableComponent<Row>;
+      const row = fixture.componentInstance.data()[0];
+      table.setSelected(row, true);
+      fixture.detectChanges();
+
+      expect(table.isSelected(row)).toBe(true);
+      expect(table.isSelected({ ...row })).toBe(false);
+    });
+
+    it('deselects a row supplied as a fresh object with the same key', async () => {
+      const fixture = TestBed.createComponent(SelectionIdentityHost);
+      fixture.detectChanges();
+      await fixture.whenStable();
+
+      const table = fixture.debugElement.query(By.directive(TableComponent))
+        .componentInstance as TableComponent<Row>;
+      const original = fixture.componentInstance.data()[0];
+      table.setSelected(original, true);
+      fixture.detectChanges();
+      expect(table.isSelected(original)).toBe(true);
+
+      table.setSelected({ ...original }, false);
+      fixture.detectChanges();
+
+      expect(table.isSelected(original)).toBe(false);
+      expect(fixture.componentInstance.selected().length).toBe(0);
+    });
+  });
+
+
+
+  describe('select-all availability', () => {
+    it('renders the master checkbox for an array data source', async () => {
+      const fixture = TestBed.createComponent(SelectionHost);
+      fixture.detectChanges();
+      await fixture.whenStable();
+
+      const header = fixture.nativeElement.querySelector('th tw-checkbox');
+      expect(header).not.toBeNull();
+    });
+
+    it('omits the master checkbox for an Observable data source', async () => {
+      // It cannot work there: select-all needs a row snapshot, and only the
+      // array path can produce one. Rendering it anyway gave consumers a
+      // control that looked functional, never reflected state, and did nothing
+      // when clicked — worse than not offering it.
+      const fixture = TestBed.createComponent(AsyncSelectionHost);
+      fixture.detectChanges();
+      await fixture.whenStable();
+
+      const rows = fixture.nativeElement.querySelectorAll('tbody tr');
+      expect(rows.length).toBeGreaterThan(0);
+
+      const header = fixture.nativeElement.querySelector('th tw-checkbox');
+      expect(header).toBeNull();
+      // Per-row selection is unaffected.
+      expect(fixture.nativeElement.querySelector('tbody tw-checkbox')).not.toBeNull();
+    });
+  });
+
+
 });
