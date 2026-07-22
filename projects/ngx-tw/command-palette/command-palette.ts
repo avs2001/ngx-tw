@@ -576,6 +576,13 @@ export class CommandPaletteComponent {
     // React to model changes from the consumer
     effect(() => {
       const shouldOpen = this.open();
+      if (shouldOpen && this.closing && this.overlayInstance) {
+        // Reopened before the leave animation finished — cancel the pending
+        // close rather than letting its deferred callback write `false` back
+        // over the consumer's `true`. Same shape as `popover.ts`.
+        this.cancelPendingClose();
+        return;
+      }
       if (shouldOpen && !this.overlayInstance && !this.closing) {
         this.openPalette();
       } else if (!shouldOpen && this.overlayInstance && !this.closing) {
@@ -835,6 +842,18 @@ export class CommandPaletteComponent {
     this.overlayRef?.dispose();
     this.overlayRef = null;
     this.overlayInstance = null;
+  }
+
+  /**
+   * Aborts an in-flight close, leaving the palette open.
+   *
+   * The overlay is still attached (only the detach is deferred), so this
+   * restores the focus trap that `closePalette` tore down up front.
+   */
+  private cancelPendingClose(): void {
+    this.clearCloseTimer();
+    this.closing = false;
+    this.setupFocusTrap();
   }
 
   private clearCloseTimer(): void {

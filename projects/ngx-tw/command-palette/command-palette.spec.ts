@@ -1188,4 +1188,47 @@ describe('CommandPaletteComponent', () => {
       expect(getOverlay()).toBeNull();
     });
   });
+
+  describe('reopen during the close animation', () => {
+    it('stays open and keeps the bound model true', () => {
+      // A global Cmd+K launcher makes this easy to hit: fire the shortcut twice
+      // in quick succession and the palette used to end up shut while the app's
+      // `open` signal still read true.
+      const fixture = TestBed.createComponent(BasicPaletteHost);
+      fixture.detectChanges();
+
+      fixture.componentInstance.isOpen.set(true);
+      fixture.detectChanges();
+      expect(getOverlay()).toBeTruthy();
+
+      fixture.componentInstance.isOpen.set(false);
+      fixture.detectChanges();
+      vi.advanceTimersByTime(CLOSE_ANIMATION_MS / 2);
+      fixture.componentInstance.isOpen.set(true);
+      fixture.detectChanges();
+
+      flushClose(fixture);
+      vi.advanceTimersByTime(CLOSE_ANIMATION_MS);
+      fixture.detectChanges();
+
+      expect(fixture.componentInstance.isOpen()).toBe(true);
+      expect(getOverlay()).toBeTruthy();
+    });
+
+    it('still closes normally when not interrupted', () => {
+      const fixture = TestBed.createComponent(BasicPaletteHost);
+      fixture.detectChanges();
+
+      fixture.componentInstance.isOpen.set(true);
+      fixture.detectChanges();
+      fixture.componentInstance.isOpen.set(false);
+      fixture.detectChanges();
+      flushClose(fixture);
+
+      expect(fixture.componentInstance.isOpen()).toBe(false);
+      expect(getOverlay()).toBeNull();
+    });
+  });
+
+
 });

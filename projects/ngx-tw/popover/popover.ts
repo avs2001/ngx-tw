@@ -418,6 +418,15 @@ export class PopoverDirective {
         this.closePopover();
         return;
       }
+      if (isOpen && this.closing && this.popoverInstance && !disabled) {
+        // Reopened before the leave animation finished. Cancelling the pending
+        // close is preferable to queueing a reopen: the overlay is still
+        // attached, so the surface simply stays up instead of visibly closing
+        // and springing back. Without this the deferred callback below would
+        // also write `false` over the consumer's `true`.
+        this.cancelPendingClose();
+        return;
+      }
       if (isOpen && !this.popoverInstance && !disabled && !this.closing) {
         this.openPopover();
       } else if (!isOpen && this.popoverInstance) {
@@ -727,6 +736,19 @@ export class PopoverDirective {
     this.overlayRef?.dispose();
     this.overlayRef = null;
     this.popoverInstance = null;
+  }
+
+  /**
+   * Aborts an in-flight close, leaving the popover open.
+   *
+   * `closePopover` tears the focus trap down immediately and defers only the
+   * detach, so cancelling has to rebuild the trap — the overlay itself is still
+   * attached and the instance still live.
+   */
+  private cancelPendingClose(): void {
+    this.clearCloseTimer();
+    this.closing = false;
+    this.setupFocusTrap();
   }
 
   private clearCloseTimer(): void {

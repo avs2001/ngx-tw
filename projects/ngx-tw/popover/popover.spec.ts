@@ -958,4 +958,56 @@ describe('PopoverDirective', () => {
       expect(getOverlayPopover()).toBeNull();
     });
   });
+
+  describe('reopen during the close animation', () => {
+    it('stays open and keeps the bound model true', () => {
+      // Reachable by double-tapping the trigger or a doubled keyboard shortcut.
+      // The close is deferred by the leave animation, and the deferred callback
+      // used to write `false` back over the consumer's `true` — leaving the
+      // surface shut while the parent's state signal said it was open. State
+      // desync between library and consumer is the kind of thing that forces a
+      // fork, so this asserts the observable end state, not just the model.
+      const fixture = TestBed.configureTestingModule({
+        imports: [ModelPopoverHost, OverlayModule],
+      }).createComponent(ModelPopoverHost);
+      fixture.detectChanges();
+
+      fixture.componentInstance.isOpen.set(true);
+      fixture.detectChanges();
+      expect(getOverlayPopover()).not.toBeNull();
+
+      // Close, then reopen before the leave animation completes.
+      fixture.componentInstance.isOpen.set(false);
+      fixture.detectChanges();
+      vi.advanceTimersByTime(CLOSE_ANIMATION_MS / 2);
+      fixture.componentInstance.isOpen.set(true);
+      fixture.detectChanges();
+
+      // Let the original close timer's deadline pass.
+      flushClose(fixture);
+      vi.advanceTimersByTime(CLOSE_ANIMATION_MS);
+      fixture.detectChanges();
+
+      expect(fixture.componentInstance.isOpen()).toBe(true);
+      expect(getOverlayPopover()).not.toBeNull();
+    });
+
+    it('still closes normally when not interrupted', () => {
+      const fixture = TestBed.configureTestingModule({
+        imports: [ModelPopoverHost, OverlayModule],
+      }).createComponent(ModelPopoverHost);
+      fixture.detectChanges();
+
+      fixture.componentInstance.isOpen.set(true);
+      fixture.detectChanges();
+      fixture.componentInstance.isOpen.set(false);
+      fixture.detectChanges();
+      flushClose(fixture);
+
+      expect(fixture.componentInstance.isOpen()).toBe(false);
+      expect(getOverlayPopover()).toBeNull();
+    });
+  });
+
+
 });
