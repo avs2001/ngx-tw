@@ -150,7 +150,21 @@ export class ToastRef<C = unknown, R = unknown> {
     this.data = this.dataSignal.asReadonly();
 
     this.autoDismissRemaining = config.duration ?? 0;
+  }
 
+  /**
+   * @internal Start the enter animation clock. Called by the service once the
+   * toast has actually been attached to its container.
+   *
+   * This deliberately does NOT run from the constructor. The renderer is loaded
+   * through a dynamic `import()`, so a ref can exist for an arbitrary stretch
+   * before anything is on screen — starting the clock at construction would let
+   * a toast burn part (or all) of its auto-dismiss duration while still
+   * invisible on a slow connection. Idempotent and safe to call after dismissal.
+   */
+  _startEnterSequence(): void {
+    if (this.enterTimer !== null) return;
+    if (this.stateSignal() !== 'entering') return;
     this.enterTimer = setTimeout(
       () => this._markVisible(),
       TOAST_ANIMATION_DURATION + TOAST_ANIMATION_FALLBACK_PADDING,

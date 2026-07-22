@@ -1,23 +1,14 @@
 import {
-  type ComponentRef,
   type EnvironmentProviders,
   Injectable,
   Injector,
   type OnDestroy,
   type Provider,
   type Signal,
-  TemplateRef,
-  type Type,
   inject,
   makeEnvironmentProviders,
   signal,
 } from '@angular/core';
-import {
-  createGlobalPositionStrategy,
-  Overlay,
-  type OverlayRef,
-} from '@angular/cdk/overlay';
-import { ComponentPortal } from '@angular/cdk/portal';
 import { type Observable, Subject, defer, startWith } from 'rxjs';
 import {
   TW_TOAST_DATA,
@@ -29,15 +20,10 @@ import {
   type ToastSeverity,
   type ToastTemplateContext,
 } from './toast-config';
-import { ToastContainerComponent } from './toast-container';
 import { ToastRef } from './toast-ref';
-
-const OVERLAY_EDGE_OFFSET = '1rem';
-
-interface PositionOverlay {
-  overlayRef: OverlayRef;
-  containerRef: ComponentRef<ToastContainerComponent>;
-}
+// Type-only: importing `ToastRenderer` as a value here would drag CDK overlay
+// and the toast components back into the eager chunk. See `toast-renderer.ts`.
+import type { ToastRenderer } from './toast-renderer';
 
 interface PromiseMessages<T> {
   loading: string;
@@ -56,17 +42,26 @@ function generateId(): string {
  * created per `ToastPosition` on first use and reused for the lifetime of the
  * service; toasts stack vertically inside their position container.
  *
+ * The rendering layer (CDK overlay + the toast components) is loaded through a
+ * dynamic `import()` on the first `show()` call, so merely registering this
+ * service costs nothing in the initial bundle. Every open method still returns
+ * its {@link ToastRef} synchronously — the toast is attached once the chunk
+ * lands, and `update()` / `dismiss()` called in the meantime are honoured.
+ *
  * Not `providedIn: 'root'` — register via {@link provideToast}.
  */
 @Injectable()
 export class ToastService implements OnDestroy {
-  private readonly overlay = inject(Overlay);
   private readonly injector = inject(Injector);
   private readonly defaultOptions =
     inject(TW_TOAST_DEFAULT_OPTIONS, { optional: true }) ?? {};
   private readonly parent = inject(ToastService, { optional: true, skipSelf: true });
 
-  private readonly positionOverlays = new Map<ToastPosition, PositionOverlay>();
+  /** Cached renderer chunk. Non-null once the first `show()` has kicked off the import. */
+  private rendererPromise: Promise<ToastRenderer | null> | null = null;
+  private renderer: ToastRenderer | null = null;
+  private destroyed = false;
+
   private readonly activeRefsAtThisLevel = signal<readonly ToastRef[]>([]);
   private readonly afterOpenedSubject = new Subject<ToastRef>();
   private readonly afterAllDismissedSubject = new Subject<void>();
@@ -189,12 +184,13 @@ export class ToastService implements OnDestroy {
   }
 
   ngOnDestroy(): void {
+    // Set first: an in-flight renderer import resolves after this and must not
+    // instantiate overlays for a service that is already gone.
+    this.destroyed = true;
     const refs = [...this.activeRefsAtThisLevel()];
     for (let i = refs.length - 1; i >= 0; i--) refs[i]._finishDismiss();
-    for (const { overlayRef } of this.positionOverlays.values()) {
-      overlayRef.dispose();
-    }
-    this.positionOverlays.clear();
+    this.renderer?.dispose();
+    this.renderer = null;
     this.afterOpenedSubject.complete();
     this.afterAllDismissedSubject.complete();
   }
@@ -222,18 +218,59 @@ export class ToastService implements OnDestroy {
       this.handleDismissed(dismissed),
     );
 
-    if (isComponentConstructor(content)) {
-      const injector = this.getContainerForPosition(
-        config.position!,
-      ).containerRef.instance._createContentInjector(ref as ToastRef<unknown, unknown>);
-      ref._portal = new ComponentPortal(content, null, injector);
-    }
-
     this.enforceMaxVisible(config.position!, config.maxVisible ?? 5);
     this.registerOpen(ref);
-    this.attachToContainer(ref, config.position!);
-    this.announceOpen(ref);
+    void this.attachWhenRendererReady(ref as ToastRef<unknown, unknown>, config.position!);
     return ref;
+  }
+
+  /**
+   * Attach a toast once the renderer chunk has loaded. The ref was already
+   * returned to the caller, so it may have been dismissed (or the service
+   * destroyed) while the import was in flight — both are checked before
+   * anything is put on screen.
+   */
+  private async attachWhenRendererReady(
+    ref: ToastRef<unknown, unknown>,
+    position: ToastPosition,
+  ): Promise<void> {
+    const renderer = await this.loadRenderer();
+    if (!renderer || this.destroyed) return;
+
+    const state = ref.state();
+    if (state === 'dismissing' || state === 'dismissed') return;
+
+    if (!renderer.attach(ref, position)) return;
+    // Only now does the enter animation — and with it the auto-dismiss
+    // countdown — begin. See `ToastRef._startEnterSequence`.
+    ref._startEnterSequence();
+    renderer.announceOpen(ref);
+  }
+
+  /**
+   * @internal Resolves once the renderer chunk has loaded and pending toasts
+   * have been attached. Exposed for tests, which must await the dynamic import
+   * before asserting on rendered DOM.
+   */
+  async _whenRendered(): Promise<void> {
+    await this.loadRenderer();
+    // Let the per-toast `attachWhenRendererReady` continuations run.
+    await Promise.resolve();
+  }
+
+  /** Load (once) and instantiate the rendering layer. Resolves to `null` if the service was destroyed mid-import. */
+  private loadRenderer(): Promise<ToastRenderer | null> {
+    if (!this.rendererPromise) {
+      this.rendererPromise = import('./toast-renderer').then(({ ToastRenderer }) => {
+        if (this.destroyed) return null;
+        this.renderer = new ToastRenderer(
+          this.injector,
+          this.defaultOptions.regionAriaLabel ?? 'Notifications',
+        );
+        return this.renderer;
+      });
+    }
+    return this.rendererPromise;
   }
 
   private enforceMaxVisible(position: ToastPosition, max: number): void {
@@ -262,82 +299,20 @@ export class ToastService implements OnDestroy {
     const scope = this.parent ?? this;
     scope.activeRefsAtThisLevel.update((list) => list.filter((r) => r !== ref));
 
-    const position = ref.config.position ?? 'bottom-right';
-    const entry = this.positionOverlays.get(position);
-    if (entry) {
-      const instance = entry.containerRef.instance;
-      instance.visibleRefs.update((list) => list.filter((r) => r !== ref));
-    }
+    this.renderer?.detach(ref);
 
     if (scope.activeRefsAtThisLevel().length === 0) {
       scope.afterAllDismissedSubject.next();
     }
   }
 
-  private attachToContainer<R>(ref: ToastRef<unknown, R>, position: ToastPosition): void {
-    const entry = this.getContainerForPosition(position);
-    const instance = entry.containerRef.instance;
-    const anyRef = ref as ToastRef<unknown, unknown>;
-    instance.visibleRefs.update((list) => [...list, anyRef]);
-    ref._overlayPanelElement = entry.overlayRef.overlayElement;
-  }
-
-  private announceOpen<R>(ref: ToastRef<unknown, R>): void {
-    const entry = this.positionOverlays.get(ref.config.position ?? 'bottom-right');
-    entry?.containerRef.instance._announceOpen(ref as ToastRef<unknown, unknown>);
-  }
-
+  /**
+   * Re-announce an updated toast. If the renderer has not landed yet there is
+   * nothing on screen to announce — the announcement that fires on attach
+   * reads the ref's current (already updated) content, so nothing is lost.
+   */
   private announceUpdate<R>(ref: ToastRef<unknown, R>): void {
-    const entry = this.positionOverlays.get(ref.config.position ?? 'bottom-right');
-    entry?.containerRef.instance._announceUpdate(ref as ToastRef<unknown, unknown>);
-  }
-
-  private getContainerForPosition(position: ToastPosition): PositionOverlay {
-    const existing = this.positionOverlays.get(position);
-    if (existing) return existing;
-
-    const overlayRef = this.overlay.create({
-      positionStrategy: this.buildPositionStrategy(position),
-      scrollStrategy: this.overlay.scrollStrategies.noop(),
-      hasBackdrop: false,
-      panelClass: ['tw-toast-overlay', `tw-toast-overlay-${position}`],
-    });
-
-    const containerPortal = new ComponentPortal(ToastContainerComponent, null, this.injector);
-    const containerRef = overlayRef.attach(containerPortal);
-    containerRef.instance.position.set(position);
-    containerRef.instance.regionLabel.set(
-      this.defaultOptions.regionAriaLabel ?? 'Notifications',
-    );
-
-    const entry: PositionOverlay = { overlayRef, containerRef };
-    this.positionOverlays.set(position, entry);
-    return entry;
-  }
-
-  private buildPositionStrategy(position: ToastPosition) {
-    const strategy = createGlobalPositionStrategy(this.injector);
-    switch (position) {
-      case 'top-right':
-        strategy.top(OVERLAY_EDGE_OFFSET).right(OVERLAY_EDGE_OFFSET);
-        break;
-      case 'top-left':
-        strategy.top(OVERLAY_EDGE_OFFSET).left(OVERLAY_EDGE_OFFSET);
-        break;
-      case 'top-center':
-        strategy.top(OVERLAY_EDGE_OFFSET).centerHorizontally();
-        break;
-      case 'bottom-right':
-        strategy.bottom(OVERLAY_EDGE_OFFSET).right(OVERLAY_EDGE_OFFSET);
-        break;
-      case 'bottom-left':
-        strategy.bottom(OVERLAY_EDGE_OFFSET).left(OVERLAY_EDGE_OFFSET);
-        break;
-      case 'bottom-center':
-        strategy.bottom(OVERLAY_EDGE_OFFSET).centerHorizontally();
-        break;
-    }
-    return strategy;
+    this.renderer?.announceUpdate(ref as ToastRef<unknown, unknown>);
   }
 
   private resolveConfig<D, R>(config: ToastConfig<D, R> | undefined): ToastConfig<D, R> {
@@ -349,10 +324,6 @@ export class ToastService implements OnDestroy {
   private getAfterAllDismissedSource(): Subject<void> {
     return this.parent ? this.parent.getAfterAllDismissedSource() : this.afterAllDismissedSubject;
   }
-}
-
-function isComponentConstructor(value: unknown): value is Type<unknown> {
-  return typeof value === 'function' && !(value instanceof TemplateRef);
 }
 
 /**

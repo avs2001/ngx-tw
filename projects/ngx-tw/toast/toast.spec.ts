@@ -1,4 +1,4 @@
-import { Component, type TemplateRef, inject, viewChild, ChangeDetectionStrategy } from '@angular/core';
+import { ApplicationRef, Component, type TemplateRef, inject, viewChild, ChangeDetectionStrategy } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { OverlayModule } from '@angular/cdk/overlay';
 import { LiveAnnouncer } from '@angular/cdk/a11y';
@@ -43,10 +43,6 @@ function advance(ms: number): void {
   vi.advanceTimersByTime(ms);
 }
 
-function flushEnter(): void {
-  advance(ANIM_MS);
-}
-
 function flushLeave(): void {
   advance(ANIM_MS);
 }
@@ -63,6 +59,21 @@ function getOverlayFor(position: string): HTMLElement | null {
 
 describe('ToastService', () => {
   let toast: ToastService;
+
+  /**
+   * Await the lazily-imported renderer, then run the enter animation.
+   *
+   * The renderer arrives via a real dynamic `import()`, which settles on the
+   * microtask queue — unaffected by `vi.useFakeTimers()`, so plain `await`
+   * works. Change detection is ticked explicitly rather than via
+   * `whenStable()`, which can hang under fake timers.
+   */
+  async function flushEnter(): Promise<void> {
+    await toast._whenRendered();
+    TestBed.inject(ApplicationRef).tick();
+    advance(ANIM_MS);
+    TestBed.inject(ApplicationRef).tick();
+  }
 
   beforeEach(() => {
     vi.useFakeTimers();
@@ -85,33 +96,33 @@ describe('ToastService', () => {
   });
 
   describe('basic open', () => {
-    it('should mount a tw-toast when show() is called with a string', () => {
+    it('should mount a tw-toast when show() is called with a string', async () => {
       toast.show('hello world');
-      flushEnter();
+      await flushEnter();
       const panels = getAllToasts();
       expect(panels.length).toBe(1);
       expect(panels[0].textContent).toContain('hello world');
     });
 
-    it('should create a region container with aria-label Notifications by default', () => {
+    it('should create a region container with aria-label Notifications by default', async () => {
       toast.show('hi');
-      flushEnter();
+      await flushEnter();
       const container = document.querySelector<HTMLElement>('tw-toast-container');
       expect(container?.getAttribute('role')).toBe('region');
       expect(container?.getAttribute('aria-label')).toBe('Notifications');
     });
 
-    it('should apply severity-specific classes', () => {
+    it('should apply severity-specific classes', async () => {
       toast.success('done');
-      flushEnter();
+      await flushEnter();
       const panel = getAllToasts()[0];
       expect(panel.className).toContain('bg-success-soft');
       expect(panel.getAttribute('role')).toBe('status');
     });
 
-    it('error() should use role=alert and aria-live=assertive', () => {
+    it('error() should use role=alert and aria-live=assertive', async () => {
       toast.error('boom');
-      flushEnter();
+      await flushEnter();
       const panel = getAllToasts()[0];
       expect(panel.getAttribute('role')).toBe('alert');
       expect(panel.getAttribute('aria-live')).toBe('assertive');
@@ -127,7 +138,7 @@ describe('ToastService', () => {
 
     it('programmatic dismiss() should emit afterDismissed with reason=programmatic', async () => {
       const ref = toast.show('x');
-      flushEnter();
+      await flushEnter();
       const spy = vi.fn();
       ref.afterDismissed().subscribe(spy);
       ref.dismiss();
@@ -136,9 +147,9 @@ describe('ToastService', () => {
       expect(spy.mock.calls[0][0].reason).toBe('programmatic');
     });
 
-    it('should auto-dismiss after the configured duration', () => {
+    it('should auto-dismiss after the configured duration', async () => {
       const ref = toast.show('auto', { duration: 1000 });
-      flushEnter();
+      await flushEnter();
       expect(ref.state()).toBe('visible');
       advance(1000);
       expect(ref.state()).toBe('dismissing');
@@ -146,23 +157,23 @@ describe('ToastService', () => {
       expect(ref.state()).toBe('dismissed');
     });
 
-    it('should never auto-dismiss when duration is 0', () => {
+    it('should never auto-dismiss when duration is 0', async () => {
       const ref = toast.show('sticky', { duration: 0 });
-      flushEnter();
+      await flushEnter();
       advance(60_000);
       expect(ref.state()).toBe('visible');
     });
 
-    it('should not fire the close button when dismissible=false', () => {
+    it('should not fire the close button when dismissible=false', async () => {
       toast.show('nodismiss', { dismissible: false });
-      flushEnter();
+      await flushEnter();
       const closeBtn = document.querySelector('button[aria-label="Dismiss"]');
       expect(closeBtn).toBeNull();
     });
 
     it('click on close button should dismiss with reason=manual', async () => {
       const ref = toast.show('click', { duration: 0 });
-      flushEnter();
+      await flushEnter();
       const spy = vi.fn();
       ref.afterDismissed().subscribe(spy);
       const closeBtn = document.querySelector('button[aria-label="Dismiss"]') as HTMLElement;
@@ -171,9 +182,9 @@ describe('ToastService', () => {
       expect(spy.mock.calls[0][0].reason).toBe('manual');
     });
 
-    it('dismiss button uses the xs square-interactive target (size-6) with an inner glyph (size-4)', () => {
+    it('dismiss button uses the xs square-interactive target (size-6) with an inner glyph (size-4)', async () => {
       toast.show('sizing', { duration: 0 });
-      flushEnter();
+      await flushEnter();
       const closeBtn = document.querySelector('button[aria-label="Dismiss"]') as HTMLElement;
       expect(closeBtn).not.toBeNull();
       expect(closeBtn.className).toContain('size-6');
@@ -184,9 +195,9 @@ describe('ToastService', () => {
   });
 
   describe('pause on interaction', () => {
-    it('pause/resume from pointer enter/leave gates the auto-dismiss timer', () => {
+    it('pause/resume from pointer enter/leave gates the auto-dismiss timer', async () => {
       const ref = toast.show('hover', { duration: 1000 });
-      flushEnter();
+      await flushEnter();
       advance(500);
       ref._setHovered(true);
       advance(2000);
@@ -196,12 +207,12 @@ describe('ToastService', () => {
       expect(ref.state()).toBe('dismissing');
     });
 
-    it('pauseOnInteraction=false disables pause', () => {
+    it('pauseOnInteraction=false disables pause', async () => {
       const ref = toast.show('no-pause', {
         duration: 1000,
         pauseOnInteraction: false,
       });
-      flushEnter();
+      await flushEnter();
       ref._setHovered(true);
       advance(1000);
       expect(ref.state()).toBe('dismissing');
@@ -209,13 +220,13 @@ describe('ToastService', () => {
   });
 
   describe('actions', () => {
-    it('renders action button and fires handler(ref) without auto-dismissing', () => {
+    it('renders action button and fires handler(ref) without auto-dismissing', async () => {
       const handler = vi.fn();
       const ref = toast.show('act', {
         duration: 0,
         action: { label: 'Undo', handler },
       });
-      flushEnter();
+      await flushEnter();
       const btn = Array.from(document.querySelectorAll<HTMLElement>('button')).find(
         (el) => el.textContent?.trim() === 'Undo',
       );
@@ -230,7 +241,7 @@ describe('ToastService', () => {
         duration: 0,
         action: { label: 'Go' },
       });
-      flushEnter();
+      await flushEnter();
       const spy = vi.fn();
       ref.afterDismissed().subscribe(spy);
       const btn = Array.from(document.querySelectorAll<HTMLElement>('button')).find(
@@ -243,23 +254,23 @@ describe('ToastService', () => {
   });
 
   describe('TemplateRef content', () => {
-    it('renders a template and provides $implicit + ref', () => {
+    it('renders a template and provides $implicit + ref', async () => {
       const host = TestBed.createComponent(TemplateHost);
       host.detectChanges();
       toast.show(host.componentInstance.tmpl(), {
         data: { value: 42 },
         duration: 0,
       });
-      flushEnter();
+      await flushEnter();
       const body = document.querySelector<HTMLElement>('[data-testid="tmpl-body"]');
       expect(body?.textContent).toContain('Template says 42');
     });
 
-    it('ref.dismiss() from the template closes the toast', () => {
+    it('ref.dismiss() from the template closes the toast', async () => {
       const host = TestBed.createComponent(TemplateHost);
       host.detectChanges();
       const ref = toast.show(host.componentInstance.tmpl(), { duration: 0 });
-      flushEnter();
+      await flushEnter();
       const close = document.querySelector<HTMLElement>('[data-testid="tmpl-close"]');
       close!.click();
       flushLeave();
@@ -268,17 +279,17 @@ describe('ToastService', () => {
   });
 
   describe('Component content', () => {
-    it('injects TW_TOAST_DATA and TW_TOAST_REF', () => {
+    it('injects TW_TOAST_DATA and TW_TOAST_REF', async () => {
       const ref = toast.show(ComponentHost, { data: { value: 'hi' }, duration: 0 });
-      flushEnter();
+      await flushEnter();
       const body = document.querySelector<HTMLElement>('[data-testid="component-body"]');
       expect(body?.textContent).toContain('Component from DI — hi');
       expect(ref.componentInstance).toBeTruthy();
     });
 
-    it('calling ref.dismiss() from the component content works', () => {
+    it('calling ref.dismiss() from the component content works', async () => {
       const ref = toast.show(ComponentHost, { data: { value: 'x' }, duration: 0 });
-      flushEnter();
+      await flushEnter();
       (document.querySelector<HTMLElement>('[data-testid="component-dismiss"]'))!.click();
       flushLeave();
       expect(ref.state()).toBe('dismissed');
@@ -286,18 +297,18 @@ describe('ToastService', () => {
   });
 
   describe('stacking + maxVisible', () => {
-    it('stacks multiple toasts at the same position', () => {
+    it('stacks multiple toasts at the same position', async () => {
       toast.show('a', { duration: 0 });
       toast.show('b', { duration: 0 });
       toast.show('c', { duration: 0 });
-      flushEnter();
+      await flushEnter();
       expect(getAllToasts().length).toBe(3);
     });
 
-    it('dismisses the oldest when maxVisible is exceeded', () => {
+    it('dismisses the oldest when maxVisible is exceeded', async () => {
       const a = toast.show('a', { duration: 0, maxVisible: 2 });
       const b = toast.show('b', { duration: 0, maxVisible: 2 });
-      flushEnter();
+      await flushEnter();
       const dismissalSpy = vi.fn();
       a.afterDismissed().subscribe(dismissalSpy);
       toast.show('c', { duration: 0, maxVisible: 2 });
@@ -319,11 +330,11 @@ describe('ToastService', () => {
       'bottom-right',
     ] as const;
 
-    it('creates a dedicated overlay per position and reuses it', () => {
+    it('creates a dedicated overlay per position and reuses it', async () => {
       for (const p of positions) {
         toast.show(`at-${p}`, { position: p, duration: 0 });
       }
-      flushEnter();
+      await flushEnter();
       for (const p of positions) {
         expect(getOverlayFor(p)).toBeTruthy();
       }
@@ -332,19 +343,19 @@ describe('ToastService', () => {
   });
 
   describe('dismissAll + afterAllDismissed', () => {
-    it('dismissAll closes every active toast', () => {
+    it('dismissAll closes every active toast', async () => {
       toast.show('a', { duration: 0 });
       toast.show('b', { duration: 0, position: 'top-left' });
-      flushEnter();
+      await flushEnter();
       expect(toast.activeToasts().length).toBe(2);
       toast.dismissAll();
       flushLeave();
       expect(toast.activeToasts().length).toBe(0);
     });
 
-    it('afterAllDismissed emits when last toast dismisses', () => {
+    it('afterAllDismissed emits when last toast dismisses', async () => {
       const ref = toast.show('only', { duration: 0 });
-      flushEnter();
+      await flushEnter();
       const spy = vi.fn();
       toast.afterAllDismissed.subscribe(spy);
       ref.dismiss();
@@ -362,7 +373,7 @@ describe('ToastService', () => {
         success: (v) => `Saved ${v}`,
         error: 'Oops',
       });
-      flushEnter();
+      await flushEnter();
       expect(ref.severity()).toBe('neutral');
 
       resolveFn('foo');
@@ -379,7 +390,7 @@ describe('ToastService', () => {
         success: 'OK',
         error: (e) => `Boom: ${(e as Error).message}`,
       });
-      flushEnter();
+      await flushEnter();
       rejectFn(new Error('nope'));
       await vi.advanceTimersByTimeAsync(0);
       expect(ref.severity()).toBe('error');
@@ -388,37 +399,85 @@ describe('ToastService', () => {
   });
 
   describe('accessibility', () => {
-    it('LiveAnnouncer.announce is called with the message text', () => {
+    it('LiveAnnouncer.announce is called with the message text', async () => {
       const announcer = TestBed.inject(LiveAnnouncer);
       const spy = vi.spyOn(announcer, 'announce');
       toast.show('accessible hi');
-      flushEnter();
+      await flushEnter();
       expect(spy).toHaveBeenCalled();
       const call = spy.mock.calls[0];
       expect(call[0]).toContain('accessible hi');
       expect(call[1]).toBe('polite');
     });
 
-    it('LiveAnnouncer is skipped when politeness=off', () => {
+    it('LiveAnnouncer is skipped when politeness=off', async () => {
       const announcer = TestBed.inject(LiveAnnouncer);
       const spy = vi.spyOn(announcer, 'announce');
       toast.show('silent', { politeness: 'off' });
-      flushEnter();
+      await flushEnter();
       expect(spy).not.toHaveBeenCalled();
     });
 
-    it('error() toasts have aria-atomic=true', () => {
+    it('error() toasts have aria-atomic=true', async () => {
       toast.error('alert!');
-      flushEnter();
+      await flushEnter();
       expect(getAllToasts()[0].getAttribute('aria-atomic')).toBe('true');
     });
   });
 
   describe('panelClass', () => {
-    it('merges extra classes onto the tw-toast root', () => {
+    it('merges extra classes onto the tw-toast root', async () => {
       toast.show('styled', { panelClass: ['my-custom-class'], duration: 0 });
-      flushEnter();
+      await flushEnter();
       expect(getAllToasts()[0].className).toContain('my-custom-class');
+    });
+  });
+
+  // The rendering layer arrives through a dynamic import(), so a ref exists —
+  // and is fully usable — before anything is on screen. These cover that gap.
+  describe('deferred renderer', () => {
+    it('does not start the auto-dismiss clock until the toast is attached', async () => {
+      const ref = toast.show('slow-chunk', { duration: 1000 });
+
+      // Stand in for a slow renderer chunk: burn far more than the toast's own
+      // duration before it is ever attached. Regression guard — when the enter
+      // timer was started from the ToastRef constructor this toast had already
+      // expired by now, and would have flashed or never appeared at all.
+      advance(5000);
+      expect(ref.state()).toBe('entering');
+
+      await flushEnter();
+      expect(ref.state()).toBe('visible');
+      expect(getAllToasts().length).toBe(1);
+
+      // Full duration still ahead of it.
+      advance(999);
+      expect(ref.state()).toBe('visible');
+      advance(2);
+      expect(ref.state()).toBe('dismissing');
+    });
+
+    it('a toast dismissed before the renderer lands never reaches the DOM', async () => {
+      const ref = toast.show('cancelled', { duration: 0 });
+      ref.dismiss();
+
+      await flushEnter();
+
+      expect(getAllToasts().length).toBe(0);
+      expect(ref.state()).toBe('dismissed');
+      expect(toast.activeToasts().length).toBe(0);
+    });
+
+    it('update() before attach renders the updated content, not the original', async () => {
+      const ref = toast.show('loading…', { duration: 0 });
+      ref.update({ content: 'done!', severity: 'success' });
+
+      await flushEnter();
+
+      const panel = getAllToasts()[0];
+      expect(panel.textContent).toContain('done!');
+      expect(panel.textContent).not.toContain('loading…');
+      expect(panel.className).toContain('bg-success-soft');
     });
   });
 });

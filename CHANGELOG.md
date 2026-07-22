@@ -7,7 +7,37 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-_Nothing yet._
+### Performance
+
+- **toast:** load the rendering layer through a dynamic `import()`, so
+  `provideToast()` no longer pulls CDK Overlay and the toast components into a
+  consumer's initial bundle. Measured on a production `ng build` of a minimal
+  app: initial bundle **82.9 kB → 60.9 kB gzipped**, with 14.8 kB moved to a
+  lazy chunk fetched on the first `show()`.
+
+  The saving is largest for apps that use toast but no other overlay component.
+  An app already loading `select`, `menu`, `tooltip`, `popover`, `dialog`, or
+  `date-picker` shares CDK Overlay with them, so its marginal saving is smaller.
+
+  **Behaviour change — no API change.** Every open method (`show`, `success`,
+  `error`, `warning`, `info`, `promise`) still returns its `ToastRef`
+  synchronously, and `update()` / `dismiss()` called before the chunk lands are
+  honoured. But the toast now reaches the DOM one microtask later than before,
+  so `afterOpened()` and DOM presence lag `show()` by the import tick. Code that
+  asserts on rendered toast DOM *synchronously* after `show()` — most likely a
+  test — must now await that tick. Runtime application code is unaffected.
+
+### Fixed
+
+- **toast:** the auto-dismiss countdown started when the `ToastRef` was
+  constructed rather than when the toast was attached. Harmless while attach was
+  synchronous, but with the deferred renderer a toast on a slow connection could
+  spend part (or all) of its duration invisible. The clock now starts on attach.
+
+- **mcp:** `{@link Foo}` references were deleted rather than unwrapped when
+  building `index.json`, mangling the surrounding prose in 26 API descriptions
+  across `toast`, `dialog`, `core`, and others ("Reference to a dialog opened
+  via ." / "register via ."). Links now render as their target symbol.
 
 ## 0.4.0 — 2026-07-22
 

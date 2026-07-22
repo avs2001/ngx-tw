@@ -35,20 +35,40 @@ function resolveModule(fromFile, spec) {
 }
 
 // ─── JSDoc ────────────────────────────────────────────────────────────────
+/**
+ * Flatten TypeScript's JSDoc comment parts to plain text.
+ *
+ * `{@link Foo}` arrives as a `JSDocLink` part whose `.text` is empty — the
+ * target lives in `.name`. Mapping on `.text` alone therefore *deletes* the
+ * symbol and mangles the sentence around it ("register via ." instead of
+ * "register via provideToast"). Link parts are unwrapped to their target so
+ * the prose reads correctly; MCP responses are read as text, not rendered.
+ */
+function flattenComment(comment) {
+  if (typeof comment === 'string') return comment;
+  return (comment ?? [])
+    .map((c) => {
+      const text = c.text ?? '';
+      // JSDocLink / JSDocLinkCode / JSDocLinkPlain
+      if (c.name) {
+        const target = c.name.getText?.() ?? String(c.name);
+        // `{@link Foo|label}` and `{@link Foo label}` keep their label.
+        return text.trim() ? `${target}${text}` : target;
+      }
+      return text;
+    })
+    .join('');
+}
+
 function jsDocOf(node) {
   const docs = node.jsDoc;
   if (!docs?.length) return { description: '', tags: [] };
   const last = docs[docs.length - 1];
-  const comment = typeof last.comment === 'string'
-    ? last.comment
-    : (last.comment ?? []).map((c) => c.text ?? '').join('');
   const tags = (last.tags ?? []).map((t) => ({
     name: t.tagName.getText(),
-    text: typeof t.comment === 'string'
-      ? t.comment
-      : (t.comment ?? []).map((c) => c.text ?? '').join(''),
+    text: flattenComment(t.comment),
   }));
-  return { description: normalizeDoc(comment), tags };
+  return { description: normalizeDoc(flattenComment(last.comment)), tags };
 }
 
 /** Collapse a JSDoc body to single-spaced prose; MCP responses are read, not rendered. */
