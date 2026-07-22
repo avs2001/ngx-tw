@@ -452,12 +452,36 @@ green.
 Full suite after the change: **2910 passed** (was 2898), 4 skipped, `eslint .`
 exit 0, `build:lib` clean, `e2e:fast` 818 passed.
 
-**Scope of the guards:** they bind a reactive `FormControl`, which is what
-CLAUDE.md mandates and what the trap actually breaks. Validator surfacing through
-signal forms is *not* covered — the same LOW-severity gap this document already
-records for `date-range-picker`. Both pickers mirror the canonical
-calendar/DRP shape exactly, so they are no worse off, but do not read these
-specs as proof that the signal-forms path surfaces errors.
+**Signal-forms coverage — an earlier caveat in this document was wrong.**
+
+This audit first recorded that validator surfacing through signal forms was
+unproven, and the H1/H2 writeup repeated it. Investigated directly, and the
+opposite is true: **Angular v22 maps a classic `NG_VALIDATORS` error key onto a
+signal-forms `ValidationError` whose `kind` is that key.** Measured on a
+`form()` model with no schema validators declared at all:
+
+| Component | Binding | Result |
+|---|---|---|
+| `tw-date-picker` | `[formField]` | `valid() === false`, `kind: 'calendarMinDate'` |
+| `tw-time-picker` | `[formField]` | `valid() === false`, `kind: 'timePickerMin'` |
+| `tw-date-range-picker` | `[formField]` | `valid() === false`, kinds `calendarMinDate`, `calendarDisabledDate` |
+
+The consequence matters more than the correction. **The static
+`NG_VALUE_ACCESSOR` provider is load-bearing for the signal-forms path too.**
+Removing it from `tw-date-picker` and re-running the same probe gives
+`fieldValid=true`, `errorCount=0` — while the input still renders
+`aria-invalid="true"`. That is H1 and H2 exactly, reproduced in a second binding
+style that no spec was watching.
+
+All three components now carry a signal-forms guard alongside the reactive one.
+With the static provider removed, date-picker goes from 6 to **8** failures and
+time-picker from 4 to **5** — the extra failures are the signal-forms specs
+doing their job.
+
+This closes the LOW-severity "signal-forms path untested" finding for
+`date-range-picker`. `tw-calendar` still has no signal-forms spec; its reactive
+guard is in place and it shares the same provider shape, so the path is expected
+to work, but that remains unverified.
 
 ### Not addressed
 

@@ -43,6 +43,12 @@ fine, so a `form.invalid` submit guard let the bad value through.
 - **`tw-time-picker` `minTime`/`maxTime` are no longer decorative.** They now
   emit `timePickerMin` / `timePickerMax` on the bound control. New exported type
   `TimePickerValidationErrors`.
+- **Signal-forms bindings are covered too.** Angular v22 maps a classic
+  `NG_VALIDATORS` error key onto a signal-forms `ValidationError` whose `kind` is
+  that key, so `[formField]` consumers get the same codes as `[formControl]` —
+  and the same static `NG_VALUE_ACCESSOR` provider is what keeps both alive.
+  `tw-date-picker`, `tw-time-picker` and `tw-date-range-picker` now each ship a
+  signal-forms guard spec.
 - Both components moved to the static `NG_VALUE_ACCESSOR` + deferred `NgControl`
   registration shape required by Angular v22 for a self-provided
   `NG_VALIDATORS`, and both ship the guard spec CLAUDE.md mandates. Each guard

@@ -7,6 +7,7 @@ import {
   ReactiveFormsModule,
   Validators,
 } from '@angular/forms';
+import { form, FormField } from '@angular/forms/signals';
 import { OverlayModule } from '@angular/cdk/overlay';
 import { provideNativeDateAdapter, TwDateRange } from '@cdevhub/ngx-tw/calendar';
 import {
@@ -883,6 +884,44 @@ describe('DateRangePickerComponent', () => {
       ctrl = new FormControl<TwDateRange<Date> | null>(null);
       minLen = MIN_RANGE_LEN;
     }
+
+    it('surfaces a constraint error onto a bound signal-forms field', async () => {
+      // Closes the "signal-forms path unproven" gap recorded in
+      // docs/production-audit.md. Angular v22's compat layer maps a classic
+      // NG_VALIDATORS error key onto a signal-forms ValidationError whose
+      // `kind` is that key, so the static NG_VALUE_ACCESSOR provider this
+      // component already carries is what keeps BOTH binding styles honest.
+      @Component({
+        imports: [DateRangePickerComponent, FormField],
+        changeDetection: ChangeDetectionStrategy.OnPush,
+        template: `
+          <tw-date-range-picker [formField]="f.range" [minDate]="minDate()" aria-label="Signal" />
+        `,
+      })
+      class SignalValidatorHost {
+        readonly minDate = signal<Date | null>(new Date(2026, 3, 1));
+        readonly model = signal<{ range: TwDateRange<Date> | null }>({ range: null });
+        readonly f = form(this.model);
+      }
+
+      const fixture = TestBed.createComponent(SignalValidatorHost);
+      fixture.detectChanges();
+      await fixture.whenStable();
+
+      fixture.componentInstance.model.set({
+        range: new TwDateRange<Date>(new Date(2025, 0, 1), new Date(2025, 0, 5)),
+      });
+      fixture.detectChanges();
+      await fixture.whenStable();
+      fixture.detectChanges();
+
+      const state = fixture.componentInstance.f.range();
+      const kinds = (state.errors() as unknown as readonly Record<string, unknown>[]).map((e) =>
+        String(e['kind']),
+      );
+      expect(kinds).toContain('calendarMinDate');
+      expect(state.valid()).toBe(false);
+    });
 
     it('surfaces calendarRangeTooShort when the committed range is below minRangeLength', async () => {
       const fixture = TestBed.createComponent(ValidatorHost);

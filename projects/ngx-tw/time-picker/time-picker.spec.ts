@@ -779,6 +779,37 @@ describe('TimePickerComponent', () => {
       expect(ctrl.valid).toBe(true);
     });
 
+    it('surfaces a constraint error onto a bound signal-forms field', async () => {
+      // The signal-forms binding is not a separate validation world: v22's
+      // compat layer maps `timePickerMin` onto a ValidationError whose `kind`
+      // is that key, and it relies on the same static NG_VALUE_ACCESSOR
+      // provider. Dropping that provider leaves this field `valid()` while the
+      // control still renders its error styling.
+      @Component({
+        imports: [TimePickerComponent, FormField],
+        changeDetection: ChangeDetectionStrategy.OnPush,
+        template: `<tw-time-picker [formField]="f.at" [minTime]="minTime()" aria-label="Signal" />`,
+      })
+      class ConstrainedSignalHost {
+        readonly minTime = signal<Date | null>(new Date(2026, 0, 1, 9, 0, 0));
+        readonly model = signal<{ at: Date | null }>({ at: null });
+        readonly f = form(this.model);
+      }
+
+      const fixture = setup(ConstrainedSignalHost);
+      fixture.componentInstance.model.set({ at: new Date(2026, 0, 1, 7, 30, 0) });
+      fixture.detectChanges();
+      await fixture.whenStable();
+      fixture.detectChanges();
+
+      const state = fixture.componentInstance.f.at();
+      const kinds = (state.errors() as unknown as readonly Record<string, unknown>[]).map((e) =>
+        String(e['kind']),
+      );
+      expect(kinds).toContain('timePickerMin');
+      expect(state.valid()).toBe(false);
+    });
+
     it('re-validates when minTime moves after the value was committed', async () => {
       // Without registerOnValidatorChange plumbing the verdict goes stale: right
       // on first commit, wrong as soon as the consumer changes the constraint.

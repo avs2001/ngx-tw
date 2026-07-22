@@ -1194,6 +1194,46 @@ describe('DatePickerComponent', () => {
       expect(getInput(fixture)).toBeTruthy();
     });
 
+    it('surfaces a constraint error onto the bound signal field', async () => {
+      // Signal forms do NOT ignore a self-provided NG_VALIDATORS: Angular v22's
+      // compat layer maps each classic error key onto a signal-forms
+      // ValidationError whose `kind` is that key. So the same static
+      // NG_VALUE_ACCESSOR provider that keeps `validate()` alive for reactive
+      // forms is load-bearing here too — without it this field reports
+      // `valid() === true` while the input still renders aria-invalid="true",
+      // which is the same silent "error border over a valid form" bug in a
+      // different binding.
+      @Component({
+        imports: [DatePickerComponent, FormField],
+        changeDetection: ChangeDetectionStrategy.OnPush,
+        template: `
+          <tw-date-picker [formField]="f.shipDate" [minDate]="minDate()" aria-label="Signal" />
+        `,
+      })
+      class ConstrainedSignalHost {
+        readonly minDate = signal<Date | null>(new Date(2026, 3, 1));
+        readonly model = signal<{ shipDate: Date | null }>({ shipDate: null });
+        readonly f = form(this.model);
+      }
+
+      const fixture = TestBed.createComponent(ConstrainedSignalHost);
+      fixture.detectChanges();
+      await fixture.whenStable();
+
+      const input = getInput(fixture);
+      typeInto(input, '2025-01-01');
+      input.dispatchEvent(new Event('blur'));
+      await advance(fixture);
+
+      const state = fixture.componentInstance.f.shipDate();
+      const kinds = (state.errors() as unknown as readonly Record<string, unknown>[]).map((e) =>
+        String(e['kind']),
+      );
+      expect(kinds).toContain('calendarMinDate');
+      expect(state.valid()).toBe(false);
+      expect(fixture.componentInstance.f().valid()).toBe(false);
+    });
+
     it('typed input flows back into the signal model', async () => {
       const fixture = TestBed.createComponent(SignalHost);
       fixture.detectChanges();
