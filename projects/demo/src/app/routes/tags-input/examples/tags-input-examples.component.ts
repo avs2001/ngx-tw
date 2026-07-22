@@ -153,7 +153,7 @@ const SIZES: TwSize[] = ['xs', 'sm', 'md', 'lg', 'xl'];
     <section class="mb-10">
       <h2 class="text-sm font-semibold mb-3">Limits &amp; duplicates</h2>
       <p class="text-sm text-fg-muted leading-relaxed max-w-2xl mb-4">
-        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">max</code>
+        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">maxTags</code>
         caps the number of tags — further commits are blocked and announced to screen readers. By
         default a tag equal to an existing one (per
         <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">compareWith</code>) is
@@ -165,7 +165,7 @@ const SIZES: TwSize[] = ['xs', 'sm', 'md', 'lg', 'xl'];
         <div class="space-y-4">
           <div>
             <p class="text-xs font-medium text-fg-muted mb-2 uppercase tracking-wide">Max 5 skills</p>
-            <tw-tags-input [max]="5" [(ngModel)]="skillValues" placeholder="Add up to 5 skills…" aria-label="Skills" />
+            <tw-tags-input [maxTags]="5" [(ngModel)]="skillValues" placeholder="Add up to 5 skills…" aria-label="Skills" />
           </div>
           <div>
             <p class="text-xs font-medium text-fg-muted mb-2 uppercase tracking-wide">Duplicates allowed</p>
@@ -363,7 +363,7 @@ const SIZES: TwSize[] = ['xs', 'sm', 'md', 'lg', 'xl'];
         Combine every user-facing input at once. Try a non-primary color with
         <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">addOnBlur</code>
         for a quick-entry field, or set a low
-        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">max</code>
+        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">maxTags</code>
         and watch commits get blocked once the limit is hit.
       </p>
       <div class="rounded-lg border border-border p-6 bg-surface-raised">
@@ -431,7 +431,7 @@ const SIZES: TwSize[] = ['xs', 'sm', 'md', 'lg', 'xl'];
             [allowDuplicates]="playAllowDuplicates()"
             [disabled]="playDisabled()"
             [required]="playRequired()"
-            [max]="playMax()"
+            [maxTags]="playMax()"
             [(ngModel)]="playValues"
             placeholder="Type and press Enter…"
             aria-label="Playground"
@@ -554,7 +554,7 @@ export class TagsInputExamples {
 />`;
 
   protected readonly limitsSnippet = `<!-- Cap at 5 tags -->
-<tw-tags-input [max]="5" [(ngModel)]="skills" placeholder="Add up to 5 skills…" aria-label="Skills" />
+<tw-tags-input [maxTags]="5" [(ngModel)]="skills" placeholder="Add up to 5 skills…" aria-label="Skills" />
 
 <!-- Keep duplicates -->
 <tw-tags-input [allowDuplicates]="true" [(ngModel)]="tags" aria-label="With duplicates" />`;

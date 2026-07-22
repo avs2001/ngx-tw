@@ -1,4 +1,4 @@
-import { Component, input, signal } from '@angular/core';
+import { Component, input, signal, ChangeDetectionStrategy } from '@angular/core';
 import { TestBed, type ComponentFixture } from '@angular/core/testing';
 import { By } from '@angular/platform-browser';
 import { Directionality } from '@angular/cdk/bidi';
@@ -24,6 +24,7 @@ import type { TwColor, TwOrientation, TwSize } from '@cdevhub/ngx-tw/core';
 
 @Component({
   imports: [TimelineComponent, TimelineItemComponent],
+  changeDetection: ChangeDetectionStrategy.Eager,
   template: `
     <tw-timeline
       [orientation]="orientation()"
@@ -69,6 +70,7 @@ class BasicTimelineHost {
 
 @Component({
   imports: [TimelineComponent, TimelineItemComponent],
+  changeDetection: ChangeDetectionStrategy.Eager,
   template: `
     <tw-timeline>
       <tw-timeline-item
@@ -99,6 +101,7 @@ class SingleItemHost {
     TimelineTimestampDirective,
     TimelineOppositeDirective,
   ],
+  changeDetection: ChangeDetectionStrategy.Eager,
   template: `
     <tw-timeline [align]="align()" [orientation]="orientation()">
       <tw-timeline-item
@@ -137,6 +140,7 @@ class SlotProjectionHost {
 
 @Component({
   imports: [TimelineComponent, TimelineItemComponent],
+  changeDetection: ChangeDetectionStrategy.Eager,
   template: `
     <tw-timeline>
       @for (id of ids(); track id) {
@@ -153,6 +157,7 @@ class DynamicItemsHost {
 
 @Component({
   imports: [TimelineComponent, TimelineItemComponent],
+  changeDetection: ChangeDetectionStrategy.Eager,
   template: `
     <tw-timeline>
       <tw-timeline-item color="primary" state="reached"><p>Solo</p></tw-timeline-item>
@@ -163,12 +168,14 @@ class SoloItemHost {}
 
 @Component({
   imports: [TimelineComponent],
+  changeDetection: ChangeDetectionStrategy.Eager,
   template: `<tw-timeline></tw-timeline>`,
 })
 class EmptyTimelineHost {}
 
 @Component({
   imports: [TimelineComponent, TimelineItemComponent],
+  changeDetection: ChangeDetectionStrategy.Eager,
   template: `
     <tw-timeline
       orientation="horizontal"

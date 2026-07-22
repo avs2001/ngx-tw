@@ -1,4 +1,4 @@
-import { Component, inject, signal, viewChild } from '@angular/core';
+import { Component, inject, signal, viewChild, ChangeDetectionStrategy } from '@angular/core';
 import { type ComponentFixture, TestBed } from '@angular/core/testing';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { OverlayModule } from '@angular/cdk/overlay';
@@ -12,6 +12,7 @@ import type { TwColor, TwSize } from '@cdevhub/ngx-tw/core';
 
 @Component({
   imports: [PopoverDirective],
+  changeDetection: ChangeDetectionStrategy.Eager,
   template: `
     <button [twPopover]="content">Open</button>
     <ng-template #content>
@@ -23,6 +24,7 @@ class BasicPopoverHost {}
 
 @Component({
   imports: [PopoverDirective],
+  changeDetection: ChangeDetectionStrategy.Eager,
   template: `
     <button
       [twPopover]="content"
@@ -43,6 +45,7 @@ class StyledPopoverHost {
 
 @Component({
   imports: [PopoverDirective],
+  changeDetection: ChangeDetectionStrategy.Eager,
   template: `
     <button
       [twPopover]="content"
@@ -59,6 +62,7 @@ class DisabledPopoverHost {
 
 @Component({
   imports: [PopoverDirective],
+  changeDetection: ChangeDetectionStrategy.Eager,
   template: `
     <button
       [twPopover]="content"
@@ -75,6 +79,7 @@ class ModelPopoverHost {
 
 @Component({
   imports: [PopoverDirective],
+  changeDetection: ChangeDetectionStrategy.Eager,
   template: `
     <button
       [twPopover]="content"
@@ -94,6 +99,7 @@ class DataPopoverHost {
 
 @Component({
   imports: [PopoverDirective, PopoverCloseDirective],
+  changeDetection: ChangeDetectionStrategy.Eager,
   template: `
     <button [twPopover]="content">Open</button>
     <ng-template #content>
@@ -106,6 +112,7 @@ class CloseDirectivePopoverHost {}
 
 @Component({
   imports: [PopoverDirective],
+  changeDetection: ChangeDetectionStrategy.Eager,
   template: `
     <button
       [twPopover]="content"
@@ -126,6 +133,7 @@ class EventPopoverHost {
 
 @Component({
   imports: [PopoverDirective],
+  changeDetection: ChangeDetectionStrategy.Eager,
   template: `
     <button
       [twPopover]="content"
@@ -142,6 +150,7 @@ class ArrowPopoverHost {
 
 @Component({
   imports: [PopoverDirective],
+  changeDetection: ChangeDetectionStrategy.Eager,
   template: `
     <button
       [twPopover]="content"
@@ -156,6 +165,7 @@ class FocusTriggerPopoverHost {}
 
 @Component({
   imports: [PopoverDirective],
+  changeDetection: ChangeDetectionStrategy.Eager,
   template: `
     <button [twPopover]="CompContent" [twPopoverData]="42">Component</button>
   `,
@@ -165,6 +175,7 @@ class ComponentContentPopoverHost {
 }
 
 @Component({
+  changeDetection: ChangeDetectionStrategy.Eager,
   template: `<p class="injected-data">{{ data }}</p>`,
 })
 class PopoverContentComponent {
@@ -174,6 +185,7 @@ class PopoverContentComponent {
 
 @Component({
   imports: [PopoverDirective],
+  changeDetection: ChangeDetectionStrategy.Eager,
   template: `
     <button
       [twPopover]="content"
@@ -189,6 +201,7 @@ class NoClosePopoverHost {}
 
 @Component({
   imports: [PopoverDirective, PopoverTitleDirective],
+  changeDetection: ChangeDetectionStrategy.Eager,
   template: `
     <button [twPopover]="content">Open</button>
     <ng-template #content>
@@ -201,6 +214,7 @@ class TitlePopoverHost {}
 
 @Component({
   imports: [PopoverDirective, PopoverTitleDirective],
+  changeDetection: ChangeDetectionStrategy.Eager,
   template: `
     <button
       [twPopover]="content"
@@ -215,6 +229,7 @@ class AriaLabelOverridePopoverHost {}
 
 @Component({
   imports: [PopoverDirective],
+  changeDetection: ChangeDetectionStrategy.Eager,
   template: `
     <button id="other-target">Other</button>
     <button id="trigger" [twPopover]="content" #pop="twPopover">Open</button>

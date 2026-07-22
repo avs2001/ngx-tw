@@ -1,4 +1,4 @@
-import { Component, signal } from '@angular/core';
+import { Component, signal, ChangeDetectionStrategy } from '@angular/core';
 import { type ComponentFixture, TestBed } from '@angular/core/testing';
 import { LiveAnnouncer } from '@angular/cdk/a11y';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
@@ -16,6 +16,7 @@ import {
 
 @Component({
   imports: [CollapsibleComponent, CollapsibleTriggerDirective],
+  changeDetection: ChangeDetectionStrategy.Eager,
   template: `
     <tw-collapsible
       [disabled]="disabled()"
@@ -41,6 +42,7 @@ class StandaloneHost {
 
 @Component({
   imports: [CollapsibleComponent, CollapsibleTriggerDirective, CollapsibleIconDirective],
+  changeDetection: ChangeDetectionStrategy.Eager,
   template: `
     <tw-collapsible>
       <button twCollapsibleTrigger>
@@ -57,6 +59,7 @@ class CustomIconHost {}
 
 @Component({
   imports: [CollapsibleComponent, CollapsibleGroupComponent, CollapsibleTriggerDirective],
+  changeDetection: ChangeDetectionStrategy.Eager,
   template: `
     <tw-collapsible-group [accordion]="true" [(value)]="activePanel">
       <tw-collapsible value="a">
@@ -82,6 +85,7 @@ class AccordionHost {
 
 @Component({
   imports: [CollapsibleComponent, CollapsibleGroupComponent, CollapsibleTriggerDirective],
+  changeDetection: ChangeDetectionStrategy.Eager,
   template: `
     <tw-collapsible-group [(value)]="openPanels">
       <tw-collapsible value="x">
@@ -103,6 +107,7 @@ class IndependentGroupHost {
 
 @Component({
   imports: [CollapsibleComponent, CollapsibleTriggerDirective],
+  changeDetection: ChangeDetectionStrategy.Eager,
   template: `
     <tw-collapsible [keepAlive]="true" [(open)]="open">
       <button twCollapsibleTrigger>Toggle</button>

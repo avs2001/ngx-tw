@@ -1,4 +1,4 @@
-import { Component, input } from '@angular/core';
+import { Component, input, ChangeDetectionStrategy } from '@angular/core';
 import { type ComponentFixture, TestBed } from '@angular/core/testing';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { FocusMonitor } from '@angular/cdk/a11y';
@@ -10,18 +10,21 @@ import type { ButtonVariant } from './button';
 
 @Component({
   imports: [ButtonDirective],
+  changeDetection: ChangeDetectionStrategy.Eager,
   template: `<button twButton>Click me</button>`,
 })
 class BasicButtonHost {}
 
 @Component({
   imports: [ButtonDirective],
+  changeDetection: ChangeDetectionStrategy.Eager,
   template: `<a twButton href="#">Link</a>`,
 })
 class AnchorButtonHost {}
 
 @Component({
   imports: [ButtonDirective],
+  changeDetection: ChangeDetectionStrategy.Eager,
   template: `<button twButton [variant]="variant()" [color]="color()" [size]="size()">Styled</button>`,
 })
 class StyledButtonHost {
@@ -32,6 +35,7 @@ class StyledButtonHost {
 
 @Component({
   imports: [ButtonDirective],
+  changeDetection: ChangeDetectionStrategy.Eager,
   template: `<button twButton [disabled]="isDisabled()">Disabled</button>`,
 })
 class DisabledButtonHost {
@@ -40,6 +44,7 @@ class DisabledButtonHost {
 
 @Component({
   imports: [ButtonDirective],
+  changeDetection: ChangeDetectionStrategy.Eager,
   template: `<a twButton [disabled]="isDisabled()" href="#">Disabled Link</a>`,
 })
 class DisabledAnchorHost {
@@ -48,6 +53,7 @@ class DisabledAnchorHost {
 
 @Component({
   imports: [ButtonDirective],
+  changeDetection: ChangeDetectionStrategy.Eager,
   template: `<button twButton [loading]="isLoading()">Loading</button>`,
 })
 class LoadingButtonHost {
@@ -56,6 +62,7 @@ class LoadingButtonHost {
 
 @Component({
   imports: [ButtonDirective, ButtonIconDirective],
+  changeDetection: ChangeDetectionStrategy.Eager,
   template: `
     <button twButton [size]="size()">
       <svg twButtonIcon data-testid="icon">icon</svg>
@@ -69,6 +76,7 @@ class IconButtonHost {
 
 @Component({
   imports: [ButtonDirective, ButtonIconDirective],
+  changeDetection: ChangeDetectionStrategy.Eager,
   template: `
     <button twButton>
       Label

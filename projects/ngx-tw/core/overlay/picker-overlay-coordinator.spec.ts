@@ -1,4 +1,4 @@
-import { Component, type ElementRef, viewChild, ViewContainerRef } from '@angular/core';
+import { Component, type ElementRef, viewChild, ViewContainerRef, ChangeDetectionStrategy } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { describe, expect, it, vi } from 'vitest';
 import { firstValueFrom } from 'rxjs';
@@ -14,6 +14,7 @@ import { resolveSelectScrollStrategy } from './scroll-strategy';
 
 @Component({
   selector: 'tw-test-overlay',
+  changeDetection: ChangeDetectionStrategy.Eager,
   template: `<span data-testid="overlay-content">overlay</span>`,
 })
 class TestOverlayComponent {}
@@ -21,6 +22,7 @@ class TestOverlayComponent {}
 @Component({
   selector: 'tw-test-host',
   template: `<button #trigger>open</button>`,
+  changeDetection: ChangeDetectionStrategy.Eager,
   providers: [PickerOverlayCoordinator],
 })
 class TestHostComponent {

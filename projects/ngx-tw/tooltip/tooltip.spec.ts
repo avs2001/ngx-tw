@@ -1,4 +1,4 @@
-import { Component, signal, type TemplateRef, viewChild } from '@angular/core';
+import { Component, signal, type TemplateRef, viewChild, ChangeDetectionStrategy } from '@angular/core';
 import { type ComponentFixture, TestBed } from '@angular/core/testing';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { OverlayModule } from '@angular/cdk/overlay';
@@ -10,12 +10,14 @@ import type { TooltipPosition } from './tooltip';
 
 @Component({
   imports: [TooltipDirective],
+  changeDetection: ChangeDetectionStrategy.Eager,
   template: `<button twTooltip="Hello tooltip">Hover me</button>`,
 })
 class BasicTooltipHost {}
 
 @Component({
   imports: [TooltipDirective],
+  changeDetection: ChangeDetectionStrategy.Eager,
   template: `
     <button
       twTooltip="Styled"
@@ -35,6 +37,7 @@ class StyledTooltipHost {
 
 @Component({
   imports: [TooltipDirective],
+  changeDetection: ChangeDetectionStrategy.Eager,
   template: `
     <button
       twTooltip="Disabled tip"
@@ -50,6 +53,7 @@ class DisabledTooltipHost {
 
 @Component({
   imports: [TooltipDirective],
+  changeDetection: ChangeDetectionStrategy.Eager,
   template: `
     <button
       twTooltip="Arrow test"
@@ -66,6 +70,7 @@ class ArrowTooltipHost {
 
 @Component({
   imports: [TooltipDirective],
+  changeDetection: ChangeDetectionStrategy.Eager,
   template: `
     <button [twTooltip]="tipTemplate" [twTooltipShowDelay]="0">Template</button>
     <ng-template #tipTemplate><strong>Rich</strong> content</ng-template>
@@ -77,6 +82,7 @@ class TemplateTooltipHost {
 
 @Component({
   imports: [TooltipDirective],
+  changeDetection: ChangeDetectionStrategy.Eager,
   template: `
     <button
       twTooltip="Programmatic"
@@ -94,6 +100,7 @@ class ProgrammaticTooltipHost {
 
 @Component({
   imports: [TooltipDirective],
+  changeDetection: ChangeDetectionStrategy.Eager,
   template: `
     <button
       twTooltip="Events"
@@ -113,6 +120,7 @@ class EventTooltipHost {
 
 @Component({
   imports: [TooltipDirective],
+  changeDetection: ChangeDetectionStrategy.Eager,
   template: `
     <button
       twTooltip="Delay test"
@@ -127,6 +135,7 @@ class DelayTooltipHost {}
 
 @Component({
   imports: [TooltipDirective],
+  changeDetection: ChangeDetectionStrategy.Eager,
   template: `
     <button
       twTooltip="With panel class"

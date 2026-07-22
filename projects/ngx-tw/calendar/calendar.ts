@@ -12,7 +12,6 @@ import {
   isDevMode,
   linkedSignal,
   LOCALE_ID,
-  model,
   type OnInit,
   output,
   runInInjectionContext,
@@ -24,7 +23,7 @@ import {
   type OutputEmitterRef,
   type Signal,
   type TemplateRef,
-  type WritableSignal,
+  type WritableSignal
 } from '@angular/core';
 import { LiveAnnouncer } from '@angular/cdk/a11y';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
@@ -321,15 +320,15 @@ export class CalendarComponent<
   // ---------------------------------------------------------------------------
 
   /** Selection mode (§5). Changing this at runtime clears the value and emits `modeChange`. */
-  readonly mode: ModelSignal<CalendarMode> = model<CalendarMode>('single');
+  readonly modeInput = input<CalendarMode>('single', {alias: 'mode'});
+  readonly mode = linkedSignal(this.modeInput);
 
   /**
    * Consumer-bound value. Shape narrows by `M`: `D | null` for single,
    * `D[]` for multiple, `{ start; end }` for range.
    */
-  readonly value: ModelSignal<CalendarValue<M, D>> = model<CalendarValue<M, D>>(
-    null as CalendarValue<M, D>,
-  );
+  readonly valueInput = input<CalendarValue<M, D>>(null as CalendarValue<M, D>, {alias: 'value'});
+  readonly value = linkedSignal(this.valueInput);
 
   /** Anchor date for the displayed view. Defaults to today on mount. */
   readonly startAt: InputSignal<D | null> = input<D | null>(null);

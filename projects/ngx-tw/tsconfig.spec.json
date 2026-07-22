@@ -68,5 +68,13 @@
     "aspect-ratio/**/*.spec.ts",
     "tree/**/*.spec.ts",
     "transfer/**/*.spec.ts"
-  ]
+  ],
+  "angularCompilerOptions": {
+    "extendedDiagnostics": {
+      "checks": {
+        "nullishCoalescingNotNullable": "suppress",
+        "optionalChainNotNullable": "suppress"
+      }
+    }
+  }
 }

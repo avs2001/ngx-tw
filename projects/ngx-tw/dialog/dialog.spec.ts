@@ -1,4 +1,4 @@
-import { ApplicationRef, Component, inject, type TemplateRef, viewChild } from '@angular/core';
+import { ApplicationRef, Component, inject, type TemplateRef, viewChild, ChangeDetectionStrategy } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { OverlayModule } from '@angular/cdk/overlay';
@@ -27,6 +27,7 @@ import {
       <button [twDialogClose]="'ok'" class="ok-btn">OK</button>
     </div>
   `,
+  changeDetection: ChangeDetectionStrategy.Eager,
   imports: [
     DialogTitleDirective,
     DialogContentDirective,
@@ -49,6 +50,7 @@ class DialogComponentContent {
       </div>
     </ng-template>
   `,
+  changeDetection: ChangeDetectionStrategy.Eager,
   imports: [
     DialogTitleDirective,
     DialogContentDirective,
@@ -62,6 +64,7 @@ class DialogTemplateHost {
 
 @Component({
   template: `<div twDialogIcon [color]="color">!</div>`,
+  changeDetection: ChangeDetectionStrategy.Eager,
   imports: [DialogIconDirective],
 })
 class DialogIconHost {
@@ -70,6 +73,7 @@ class DialogIconHost {
 
 @Component({
   template: `<span twDialogSubtitle>Description text</span>`,
+  changeDetection: ChangeDetectionStrategy.Eager,
   imports: [DialogSubtitleDirective],
 })
 class DialogSubtitleHost {}
@@ -80,6 +84,7 @@ class DialogSubtitleHost {}
     <p twDialogDescription>Long-form description of what this dialog is doing.</p>
     <div twDialogContent>body</div>
   `,
+  changeDetection: ChangeDetectionStrategy.Eager,
   imports: [DialogTitleDirective, DialogDescriptionDirective, DialogContentDirective],
 })
 class DialogWithDescription {}
@@ -92,6 +97,7 @@ class DialogWithDescription {}
       <button class="nest-btn" (click)="openInner()">Open inner</button>
     </div>
   `,
+  changeDetection: ChangeDetectionStrategy.Eager,
   imports: [
     DialogTitleDirective,
     DialogContentDirective,
@@ -107,11 +113,13 @@ class DialogNestedParent {
 
 @Component({
   template: `<h2 twDialogTitle>Inner</h2><p twDialogContent>inner body</p>`,
+  changeDetection: ChangeDetectionStrategy.Eager,
   imports: [DialogTitleDirective, DialogContentDirective],
 })
 class DialogNestedChild {}
 
 @Component({
+  changeDetection: ChangeDetectionStrategy.Eager,
   template: `<button>only</button>`,
 })
 class FocusSourceHost {}

@@ -1,4 +1,4 @@
-import { Component, signal } from '@angular/core';
+import { Component, signal, ChangeDetectionStrategy } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { ThemeDirective } from './theme.directive';
 import type { TwResolvedTheme } from './theme.types';
@@ -6,6 +6,7 @@ import { describe, it, expect } from 'vitest';
 
 @Component({
   imports: [ThemeDirective],
+  changeDetection: ChangeDetectionStrategy.Eager,
   template: `<div [twTheme]="theme()" id="target"></div>`,
 })
 class TestHost {

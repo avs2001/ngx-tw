@@ -1,4 +1,4 @@
-import { Component, input } from '@angular/core';
+import { Component, input, ChangeDetectionStrategy } from '@angular/core';
 import { type ComponentFixture, TestBed } from '@angular/core/testing';
 import { describe, it, expect, beforeEach } from 'vitest';
 import { SpinnerComponent } from './spinner';
@@ -9,12 +9,14 @@ import type { TwColor } from '@cdevhub/ngx-tw/core';
 
 @Component({
   imports: [SpinnerComponent],
+  changeDetection: ChangeDetectionStrategy.Eager,
   template: `<tw-spinner />`,
 })
 class DefaultSpinnerHost {}
 
 @Component({
   imports: [SpinnerComponent],
+  changeDetection: ChangeDetectionStrategy.Eager,
   template: `
     <tw-spinner
       [variant]="variant()"
@@ -35,6 +37,7 @@ class ConfiguredSpinnerHost {
 
 @Component({
   imports: [SpinnerComponent],
+  changeDetection: ChangeDetectionStrategy.Eager,
   template: `<div class="text-info-600"><tw-spinner /></div>`,
 })
 class InheritColorHost {}

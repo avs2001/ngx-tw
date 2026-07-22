@@ -1,4 +1,4 @@
-import { Component, input } from '@angular/core';
+import { Component, input, ChangeDetectionStrategy } from '@angular/core';
 import { type ComponentFixture, TestBed } from '@angular/core/testing';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { AvatarComponent, AvatarGroupComponent } from './avatar';
@@ -9,6 +9,7 @@ import type { AvatarAppearance, AvatarStatus } from './avatar';
 
 @Component({
   imports: [AvatarComponent],
+  changeDetection: ChangeDetectionStrategy.Eager,
   template: `<tw-avatar [alt]="alt()" />`,
 })
 class BasicAvatarHost {
@@ -17,6 +18,7 @@ class BasicAvatarHost {
 
 @Component({
   imports: [AvatarComponent],
+  changeDetection: ChangeDetectionStrategy.Eager,
   template: `<tw-avatar [src]="src()" [initials]="initials()" [alt]="alt()" (imageError)="onImageError($event)" />`,
 })
 class ImageAvatarHost {
@@ -31,6 +33,7 @@ class ImageAvatarHost {
 
 @Component({
   imports: [AvatarComponent],
+  changeDetection: ChangeDetectionStrategy.Eager,
   template: `<tw-avatar [initials]="initials()" [color]="color()" [size]="size()" [alt]="alt()" />`,
 })
 class InitialsAvatarHost {
@@ -42,6 +45,7 @@ class InitialsAvatarHost {
 
 @Component({
   imports: [AvatarComponent],
+  changeDetection: ChangeDetectionStrategy.Eager,
   template: `<tw-avatar [size]="size()" [appearance]="appearance()" alt="Test" />`,
 })
 class SizedAvatarHost {
@@ -51,6 +55,7 @@ class SizedAvatarHost {
 
 @Component({
   imports: [AvatarComponent],
+  changeDetection: ChangeDetectionStrategy.Eager,
   template: `<tw-avatar [appearance]="appearance()" alt="Test" />`,
 })
 class StatusAvatarHost {
@@ -59,6 +64,7 @@ class StatusAvatarHost {
 
 @Component({
   imports: [AvatarComponent],
+  changeDetection: ChangeDetectionStrategy.Eager,
   template: `
     <tw-avatar alt="Custom icon" color="accent">
       <svg data-testid="custom-icon" viewBox="0 0 24 24"></svg>
@@ -69,6 +75,7 @@ class ProjectedContentHost {}
 
 @Component({
   imports: [AvatarComponent, AvatarGroupComponent],
+  changeDetection: ChangeDetectionStrategy.Eager,
   template: `
     <tw-avatar-group [size]="size()" [max]="max()">
       <tw-avatar src="/a.jpg" alt="A" />

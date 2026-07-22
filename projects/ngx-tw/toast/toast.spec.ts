@@ -1,4 +1,4 @@
-import { Component, type TemplateRef, inject, viewChild } from '@angular/core';
+import { Component, type TemplateRef, inject, viewChild, ChangeDetectionStrategy } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { OverlayModule } from '@angular/cdk/overlay';
 import { LiveAnnouncer } from '@angular/cdk/a11y';
@@ -11,6 +11,7 @@ import type { ToastRef } from './toast-ref';
 // ── Test host components ──
 
 @Component({
+  changeDetection: ChangeDetectionStrategy.Eager,
   template: `
     <ng-template #tmpl let-data let-ref="ref">
       <span data-testid="tmpl-body">Template says {{ data?.value }}</span>
@@ -23,6 +24,7 @@ class TemplateHost {
 }
 
 @Component({
+  changeDetection: ChangeDetectionStrategy.Eager,
   template: `
     <div data-testid="component-body">Component from DI — {{ data?.value }}</div>
     <button data-testid="component-dismiss" (click)="ref.dismiss()">X</button>

@@ -1,4 +1,4 @@
-import { Component, signal } from '@angular/core';
+import { Component, signal, ChangeDetectionStrategy } from '@angular/core';
 import { type ComponentFixture, TestBed } from '@angular/core/testing';
 import { LiveAnnouncer } from '@angular/cdk/a11y';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
@@ -13,6 +13,7 @@ import { AccordionComponent } from './accordion';
 
 @Component({
   imports: [AccordionComponent, CollapsibleComponent, CollapsibleTriggerDirective],
+  changeDetection: ChangeDetectionStrategy.Eager,
   template: `
     <tw-accordion [(value)]="active" [collapsible]="collapsibleFlag()">
       <tw-collapsible value="a">
@@ -39,6 +40,7 @@ class SingleHost {
 
 @Component({
   imports: [AccordionComponent, CollapsibleComponent, CollapsibleTriggerDirective],
+  changeDetection: ChangeDetectionStrategy.Eager,
   template: `
     <tw-accordion type="multiple" [(value)]="open">
       <tw-collapsible value="x">
@@ -60,6 +62,7 @@ class MultipleHost {
 
 @Component({
   imports: [AccordionComponent, CollapsibleComponent, CollapsibleTriggerDirective],
+  changeDetection: ChangeDetectionStrategy.Eager,
   template: `
     <tw-accordion [variant]="variant()">
       <tw-collapsible value="a">
@@ -77,6 +80,7 @@ class VariantHost {
 
 @Component({
   imports: [AccordionComponent, CollapsibleComponent, CollapsibleTriggerDirective],
+  changeDetection: ChangeDetectionStrategy.Eager,
   template: `
     <h2 id="sections-heading">Sections</h2>
     <tw-accordion [attr.aria-label]="label()" [attr.aria-labelledby]="labelledby()">
@@ -101,6 +105,7 @@ class AriaHost {
     CollapsibleComponent,
     CollapsibleTriggerDirective,
   ],
+  changeDetection: ChangeDetectionStrategy.Eager,
   template: `
     <section data-role="acc">
       <tw-accordion type="single" [(value)]="accValue">

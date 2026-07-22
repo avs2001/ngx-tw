@@ -1,4 +1,4 @@
-import { Component, signal } from '@angular/core';
+import { Component, signal, ChangeDetectionStrategy } from '@angular/core';
 import { TestBed, type ComponentFixture } from '@angular/core/testing';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -78,6 +78,7 @@ beforeEach(() => {
     CarouselPrevDirective,
     CarouselNextDirective,
   ],
+  changeDetection: ChangeDetectionStrategy.Eager,
   template: `
     <tw-carousel
       [ariaLabel]="ariaLabel()"

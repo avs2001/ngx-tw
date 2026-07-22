@@ -1,4 +1,4 @@
-import { Component, input } from '@angular/core';
+import { Component, input, ChangeDetectionStrategy } from '@angular/core';
 import { type ComponentFixture, TestBed } from '@angular/core/testing';
 import { describe, it, expect } from 'vitest';
 import { BadgeDotDirective } from './badge-dot';
@@ -8,6 +8,7 @@ import type { TwColor, TwSize } from '@cdevhub/ngx-tw/core';
 
 @Component({
   imports: [BadgeDotDirective],
+  changeDetection: ChangeDetectionStrategy.Eager,
   template: `<span twBadgeDot [color]="color()" [size]="size()" [live]="live()"></span>`,
 })
 class DotHost {
@@ -18,6 +19,7 @@ class DotHost {
 
 @Component({
   imports: [BadgeDotDirective],
+  changeDetection: ChangeDetectionStrategy.Eager,
   template: `<span twBadgeDot></span>`,
 })
 class BasicDotHost {}

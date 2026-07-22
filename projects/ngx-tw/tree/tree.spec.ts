@@ -1,4 +1,4 @@
-import { Component, signal } from '@angular/core';
+import { Component, signal, ChangeDetectionStrategy } from '@angular/core';
 import { TestBed, type ComponentFixture } from '@angular/core/testing';
 import { By } from '@angular/platform-browser';
 import { describe, it, expect, beforeEach } from 'vitest';
@@ -42,6 +42,7 @@ function makeTree(): Node[] {
 
 @Component({
   imports: [TreeComponent, TreeNodeDefDirective, TreeNodeToggleDirective],
+  changeDetection: ChangeDetectionStrategy.Eager,
   template: `
     <tw-tree
       [data]="data()"

@@ -1,4 +1,4 @@
-import { Component, input } from '@angular/core';
+import { Component, input, ChangeDetectionStrategy } from '@angular/core';
 import { type ComponentFixture, TestBed } from '@angular/core/testing';
 import { describe, it, expect } from 'vitest';
 import { AspectRatioDirective } from './aspect-ratio';
@@ -7,6 +7,7 @@ import { AspectRatioDirective } from './aspect-ratio';
 
 @Component({
   imports: [AspectRatioDirective],
+  changeDetection: ChangeDetectionStrategy.Eager,
   template: `<div [twAspectRatio]="ratio()"></div>`,
 })
 class RatioHost {
@@ -15,12 +16,14 @@ class RatioHost {
 
 @Component({
   imports: [AspectRatioDirective],
+  changeDetection: ChangeDetectionStrategy.Eager,
   template: `<div twAspectRatio></div>`,
 })
 class BareHost {}
 
 @Component({
   imports: [AspectRatioDirective],
+  changeDetection: ChangeDetectionStrategy.Eager,
   template: `<img twAspectRatio="16/9" alt="Preview" />`,
 })
 class ImageHost {}

@@ -248,7 +248,7 @@ export class TagsInputComponent<T = string>
   readonly addOnBlur = input(false);
 
   /** Maximum number of tags. Once reached, further commits are blocked and announced. Does not truncate an oversized `writeValue`. Defaults to `undefined` (no limit). */
-  readonly max = input<number | undefined>(undefined);
+  readonly maxTags = input<number | undefined>(undefined);
 
   /** When false (default), a committed tag equal (per `compareWith`) to an existing tag is dropped silently. When true, duplicates are kept. Defaults to `false`. */
   readonly allowDuplicates = input(false);
@@ -480,7 +480,7 @@ export class TagsInputComponent<T = string>
 
   // ── Public instance API ──
 
-  /** Commits `text` as a tag (trim → `createTag` → dedup unless `allowDuplicates` → `max` check). Returns true if a tag was added, false if dropped (empty / duplicate / max). Emits `tagAdded` + `valueChange` on success. No-op when disabled. */
+  /** Commits `text` as a tag (trim → `createTag` → dedup unless `allowDuplicates` → `maxTags` check). Returns true if a tag was added, false if dropped (empty / duplicate / max). Emits `tagAdded` + `valueChange` on success. No-op when disabled. */
   addTag(text: string): boolean {
     if (this.disabled()) return false;
     const trimmed = text.trim();
@@ -526,7 +526,7 @@ export class TagsInputComponent<T = string>
       const cmp = this.compareWith();
       if (current.some((e) => cmp(e, tag))) return 'duplicate';
     }
-    const max = this.max();
+    const max = this.maxTags();
     if (max !== undefined && current.length >= max) {
       this.announceMax();
       return 'max';
@@ -794,7 +794,7 @@ export class TagsInputComponent<T = string>
     const now = Date.now();
     if (now - this.lastMaxAnnounce < 500) return;
     this.lastMaxAnnounce = now;
-    this.liveAnnouncer.announce(`Maximum ${this.max()} tags reached`, 'assertive');
+    this.liveAnnouncer.announce(`Maximum ${this.maxTags()} tags reached`, 'assertive');
   }
 
   private splitOnSeparators(text: string, separators: readonly string[]): string[] {

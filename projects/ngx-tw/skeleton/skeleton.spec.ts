@@ -1,4 +1,4 @@
-import { Component, input } from '@angular/core';
+import { Component, input, ChangeDetectionStrategy } from '@angular/core';
 import { type ComponentFixture, TestBed } from '@angular/core/testing';
 import { describe, it, expect, beforeEach } from 'vitest';
 import { SkeletonComponent } from './skeleton';
@@ -8,12 +8,14 @@ import type { SkeletonAnimation, SkeletonShape } from './skeleton';
 
 @Component({
   imports: [SkeletonComponent],
+  changeDetection: ChangeDetectionStrategy.Eager,
   template: `<tw-skeleton />`,
 })
 class DefaultSkeletonHost {}
 
 @Component({
   imports: [SkeletonComponent],
+  changeDetection: ChangeDetectionStrategy.Eager,
   template: `
     <tw-skeleton
       [shape]="shape()"

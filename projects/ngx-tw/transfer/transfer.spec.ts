@@ -1,4 +1,4 @@
-import { Component, signal, viewChild } from '@angular/core';
+import { Component, signal, viewChild, ChangeDetectionStrategy } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { FormControl, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -27,6 +27,7 @@ const labelFn = (p: Person): string => p.name;
 
 @Component({
   imports: [TransferComponent, FormsModule],
+  changeDetection: ChangeDetectionStrategy.Eager,
   template: `
     <tw-transfer
       aria-label="People"
@@ -67,6 +68,7 @@ class HostComponent {
 
 @Component({
   imports: [TransferComponent, ReactiveFormsModule],
+  changeDetection: ChangeDetectionStrategy.Eager,
   template: `
     <tw-transfer
       aria-label="People"
@@ -89,6 +91,7 @@ class ReactiveHostComponent {
 
 @Component({
   imports: [TransferComponent, TransferItemDefDirective, FormsModule],
+  changeDetection: ChangeDetectionStrategy.Eager,
   template: `
     <tw-transfer aria-label="People" [data]="data" [keyFn]="keyFn" [labelFn]="labelFn" [(ngModel)]="model">
       <ng-template twTransferItem let-item let-checked="checked" let-side="side">

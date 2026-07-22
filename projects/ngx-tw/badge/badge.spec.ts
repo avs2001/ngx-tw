@@ -1,4 +1,4 @@
-import { Component, input } from '@angular/core';
+import { Component, input, ChangeDetectionStrategy } from '@angular/core';
 import { type ComponentFixture, TestBed } from '@angular/core/testing';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { BadgeComponent } from './badge';
@@ -18,12 +18,14 @@ const TEST_ICONS = { Check: CHECK_ICON };
 
 @Component({
   imports: [BadgeComponent],
+  changeDetection: ChangeDetectionStrategy.Eager,
   template: `<span twBadge>Default</span>`,
 })
 class BasicBadgeHost {}
 
 @Component({
   imports: [BadgeComponent],
+  changeDetection: ChangeDetectionStrategy.Eager,
   template: `<span twBadge [variant]="variant()" [color]="color()" [size]="size()">Styled</span>`,
 })
 class StyledBadgeHost {
@@ -34,6 +36,7 @@ class StyledBadgeHost {
 
 @Component({
   imports: [BadgeComponent],
+  changeDetection: ChangeDetectionStrategy.Eager,
   template: `<span twBadge [pill]="isPill()">Pill</span>`,
 })
 class PillBadgeHost {
@@ -42,6 +45,7 @@ class PillBadgeHost {
 
 @Component({
   imports: [BadgeComponent],
+  changeDetection: ChangeDetectionStrategy.Eager,
   template: `<span twBadge [dismissible]="isDismissible()" [dismissLabel]="dismissLabel()" (dismissed)="onDismiss()">Dismiss me</span>`,
 })
 class DismissibleBadgeHost {
@@ -52,6 +56,7 @@ class DismissibleBadgeHost {
 
 @Component({
   imports: [BadgeComponent],
+  changeDetection: ChangeDetectionStrategy.Eager,
   template: `<span twBadge [size]="size()" [dismissible]="true" (dismissed)="onDismiss()">Sized</span>`,
 })
 class SizedDismissibleBadgeHost {
@@ -61,6 +66,7 @@ class SizedDismissibleBadgeHost {
 
 @Component({
   imports: [BadgeComponent],
+  changeDetection: ChangeDetectionStrategy.Eager,
   template: `<span twBadge [live]="live()">Live</span>`,
 })
 class LiveBadgeHost {
@@ -69,6 +75,7 @@ class LiveBadgeHost {
 
 @Component({
   imports: [BadgeComponent, IconComponent],
+  changeDetection: ChangeDetectionStrategy.Eager,
   template: `<span twBadge [size]="size()" [color]="color()"><tw-icon name="check" />With Icon</span>`,
 })
 class IconBadgeHost {
@@ -78,6 +85,7 @@ class IconBadgeHost {
 
 @Component({
   imports: [BadgeComponent, AvatarComponent],
+  changeDetection: ChangeDetectionStrategy.Eager,
   template: `<span twBadge [size]="size()" [color]="color()"><tw-avatar src="/test.jpg" alt="Test" />With Avatar</span>`,
 })
 class AvatarBadgeHost {
@@ -87,6 +95,7 @@ class AvatarBadgeHost {
 
 @Component({
   imports: [BadgeComponent, AvatarComponent],
+  changeDetection: ChangeDetectionStrategy.Eager,
   template: `<span twBadge [pill]="true" [dismissible]="true" (dismissed)="onDismiss()" color="info"><tw-avatar initials="JD" color="info" />John Doe</span>`,
 })
 class AvatarPillDismissHost {
@@ -95,6 +104,7 @@ class AvatarPillDismissHost {
 
 @Component({
   imports: [BadgeComponent, IconComponent],
+  changeDetection: ChangeDetectionStrategy.Eager,
   template: `<span twBadge [dismissible]="true" (dismissed)="onDismiss()" color="error"><tw-icon name="check" />Critical</span>`,
 })
 class IconDismissHost {

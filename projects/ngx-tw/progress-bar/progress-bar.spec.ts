@@ -1,4 +1,4 @@
-import { Component, computed, input } from '@angular/core';
+import { Component, computed, input, ChangeDetectionStrategy } from '@angular/core';
 import { type ComponentFixture, TestBed } from '@angular/core/testing';
 import { describe, it, expect, vi } from 'vitest';
 import { ProgressBarComponent } from './progress-bar';
@@ -14,12 +14,14 @@ import type { TwColor } from '@cdevhub/ngx-tw/core';
 
 @Component({
   imports: [ProgressBarComponent],
+  changeDetection: ChangeDetectionStrategy.Eager,
   template: `<tw-progress-bar [options]="{ ariaLabel: 'test' }" />`,
 })
 class DefaultHost {}
 
 @Component({
   imports: [ProgressBarComponent],
+  changeDetection: ChangeDetectionStrategy.Eager,
   template: `
     <tw-progress-bar
       [value]="value()"

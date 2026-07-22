@@ -242,7 +242,7 @@ describe('TagsInputComponent', () => {
 
     it('blocks commits past max and retains the input text', () => {
       const fixture = mountBare(['a', 'b']);
-      fixture.componentRef.setInput('max', 2);
+      fixture.componentRef.setInput('maxTags', 2);
       fixture.detectChanges();
       const added = vi.fn();
       fixture.componentInstance.tagAdded.subscribe(added);
@@ -423,7 +423,7 @@ describe('TagsInputComponent', () => {
 
     it('commits pieces up to max and blocks the rest', () => {
       const fixture = mountBare();
-      fixture.componentRef.setInput('max', 2);
+      fixture.componentRef.setInput('maxTags', 2);
       fixture.detectChanges();
       paste(fixture, 'a,b,c,d');
       expect(chipLabels(fixture)).toEqual(['a', 'b']);
@@ -484,7 +484,7 @@ describe('TagsInputComponent', () => {
 
     it('announces when max is reached (assertive)', () => {
       const fixture = mountBare(['a']);
-      fixture.componentRef.setInput('max', 1);
+      fixture.componentRef.setInput('maxTags', 1);
       fixture.detectChanges();
       const spy = vi.spyOn(TestBed.inject(LiveAnnouncer), 'announce');
       type(fixture, 'b');

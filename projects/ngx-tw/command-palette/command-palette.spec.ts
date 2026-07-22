@@ -1,4 +1,4 @@
-import { Component, signal, viewChild } from '@angular/core';
+import { Component, signal, viewChild, ChangeDetectionStrategy } from '@angular/core';
 import { type ComponentFixture, TestBed } from '@angular/core/testing';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { OverlayModule } from '@angular/cdk/overlay';
@@ -21,6 +21,7 @@ const CLOSE_ANIMATION_MS = 150;
 
 @Component({
   imports: [CommandPaletteComponent, CommandPaletteItemDirective],
+  changeDetection: ChangeDetectionStrategy.Eager,
   template: `
     <tw-command-palette
       [(open)]="isOpen"
@@ -50,6 +51,7 @@ class BasicPaletteHost {
 
 @Component({
   imports: [CommandPaletteComponent],
+  changeDetection: ChangeDetectionStrategy.Eager,
   template: `
     <tw-command-palette [(open)]="isOpen" [commands]="commands" (itemSelected)="onSelected($event)" />
   `,
@@ -67,6 +69,7 @@ class DataDrivenPaletteHost {
 
 @Component({
   imports: [CommandPaletteComponent],
+  changeDetection: ChangeDetectionStrategy.Eager,
   template: `
     <tw-command-palette [(open)]="isOpen" [commands]="commands()" />
   `,
@@ -84,6 +87,7 @@ class MutableCommandsHost {
 
 @Component({
   imports: [CommandPaletteComponent],
+  changeDetection: ChangeDetectionStrategy.Eager,
   template: `
     <tw-command-palette
       [(open)]="isOpen"
@@ -108,6 +112,7 @@ class CustomFilterHost {
 
 @Component({
   imports: [CommandPaletteComponent, CommandPaletteItemDirective],
+  changeDetection: ChangeDetectionStrategy.Eager,
   template: `
     <tw-command-palette [(open)]="isOpen" [closeOnSelect]="closeOnSelect">
       <tw-command-palette-item id="one" label="One">One</tw-command-palette-item>
@@ -123,6 +128,7 @@ class CloseOnSelectHost {
 
 @Component({
   imports: [CommandPaletteComponent, CommandPaletteItemDirective],
+  changeDetection: ChangeDetectionStrategy.Eager,
   template: `
     <tw-command-palette
       [(open)]="isOpen"
@@ -142,6 +148,7 @@ class CloseFlagsHost {
 
 @Component({
   imports: [CommandPaletteComponent, CommandPaletteEmptyDirective],
+  changeDetection: ChangeDetectionStrategy.Eager,
   template: `
     <tw-command-palette [(open)]="isOpen" [commands]="commands">
       <ng-template twCommandPaletteEmpty let-q>
@@ -158,6 +165,7 @@ class EmptyTemplateHost {
 
 @Component({
   imports: [CommandPaletteComponent, CommandPaletteFooterDirective],
+  changeDetection: ChangeDetectionStrategy.Eager,
   template: `
     <tw-command-palette [(open)]="isOpen" [commands]="commands">
       <ng-template twCommandPaletteFooter>
@@ -174,6 +182,7 @@ class FooterTemplateHost {
 
 @Component({
   imports: [CommandPaletteComponent, CommandPaletteItemDirective, CommandPaletteGroupDirective],
+  changeDetection: ChangeDetectionStrategy.Eager,
   template: `
     <tw-command-palette [(open)]="isOpen">
       <div twCommandPaletteGroup label="File">
@@ -192,6 +201,7 @@ class GroupedPaletteHost {
 
 @Component({
   imports: [CommandPaletteComponent],
+  changeDetection: ChangeDetectionStrategy.Eager,
   template: `
     <tw-command-palette
       [(open)]="isOpen"
@@ -207,6 +217,7 @@ class SearchAriaLabelHost {
 
 @Component({
   imports: [CommandPaletteComponent, CommandPaletteItemDirective],
+  changeDetection: ChangeDetectionStrategy.Eager,
   template: `
     <tw-command-palette [(open)]="isOpen">
       <tw-command-palette-item
@@ -226,6 +237,7 @@ class DeclarativeDescriptionHost {
 
 @Component({
   imports: [CommandPaletteComponent],
+  changeDetection: ChangeDetectionStrategy.Eager,
   template: `
     <tw-command-palette [(open)]="isOpen" [commands]="commands" />
   `,
@@ -240,6 +252,7 @@ class DataDescriptionHost {
 
 @Component({
   imports: [CommandPaletteComponent],
+  changeDetection: ChangeDetectionStrategy.Eager,
   template: `
     <tw-command-palette [(open)]="isOpen" [commands]="commands" />
   `,
@@ -254,6 +267,7 @@ class DualKeyShortcutHost {
 
 @Component({
   imports: [CommandPaletteComponent],
+  changeDetection: ChangeDetectionStrategy.Eager,
   template: `
     <tw-command-palette [(open)]="isOpen" [panelClass]="panelClass" />
   `,

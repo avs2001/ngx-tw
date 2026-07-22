@@ -115,7 +115,7 @@ import { CodeBlockComponent } from '@cdevhub/ngx-tw/code-block';
           <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">compareWith</code>
         </li>
         <li>Deduplication and a
-          <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">max</code>
+          <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">maxTags</code>
           tag limit
         </li>
         <li>Paste splits on separators while preserving interior whitespace</li>

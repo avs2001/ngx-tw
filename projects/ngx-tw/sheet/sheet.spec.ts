@@ -1,4 +1,4 @@
-import { ApplicationRef, Component, inject, type TemplateRef, viewChild } from '@angular/core';
+import { ApplicationRef, Component, inject, type TemplateRef, viewChild, ChangeDetectionStrategy } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { OverlayModule } from '@angular/cdk/overlay';
@@ -27,6 +27,7 @@ import {
       <button [twSheetClose]="'ok'" class="ok-btn">OK</button>
     </div>
   `,
+  changeDetection: ChangeDetectionStrategy.Eager,
   imports: [
     SheetTitleDirective,
     SheetContentDirective,
@@ -49,6 +50,7 @@ class SheetComponentContent {
       </div>
     </ng-template>
   `,
+  changeDetection: ChangeDetectionStrategy.Eager,
   imports: [
     SheetTitleDirective,
     SheetContentDirective,
@@ -62,6 +64,7 @@ class SheetTemplateHost {
 
 @Component({
   template: `<div twSheetIcon [color]="color">!</div>`,
+  changeDetection: ChangeDetectionStrategy.Eager,
   imports: [SheetIconDirective],
 })
 class SheetIconHost {
@@ -70,6 +73,7 @@ class SheetIconHost {
 
 @Component({
   template: `<span twSheetSubtitle>Description text</span>`,
+  changeDetection: ChangeDetectionStrategy.Eager,
   imports: [SheetSubtitleDirective],
 })
 class SheetSubtitleHost {}
@@ -80,6 +84,7 @@ class SheetSubtitleHost {}
     <p twSheetDescription>Long-form description of what this sheet is doing.</p>
     <div twSheetContent>body</div>
   `,
+  changeDetection: ChangeDetectionStrategy.Eager,
   imports: [SheetTitleDirective, SheetDescriptionDirective, SheetContentDirective],
 })
 class SheetWithDescription {}

@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+import { Component, ChangeDetectionStrategy } from '@angular/core';
 import { type ComponentFixture, TestBed } from '@angular/core/testing';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { SplitComponent } from './split';
@@ -17,12 +17,14 @@ import {
 
 @Component({
   imports: [SplitComponent, SplitPaneComponent],
+  changeDetection: ChangeDetectionStrategy.Eager,
   template: `<tw-split><tw-split-pane>A</tw-split-pane><tw-split-pane>B</tw-split-pane></tw-split>`,
 })
 class TwoPaneHost {}
 
 @Component({
   imports: [SplitComponent, SplitPaneComponent],
+  changeDetection: ChangeDetectionStrategy.Eager,
   template: `
     <tw-split>
       <tw-split-pane>A</tw-split-pane>
@@ -35,18 +37,21 @@ class ThreePaneHost {}
 
 @Component({
   imports: [SplitComponent],
+  changeDetection: ChangeDetectionStrategy.Eager,
   template: `<tw-split></tw-split>`,
 })
 class NoPanesHost {}
 
 @Component({
   imports: [SplitComponent, SplitPaneComponent],
+  changeDetection: ChangeDetectionStrategy.Eager,
   template: `<tw-split><tw-split-pane>Solo</tw-split-pane></tw-split>`,
 })
 class OnePaneHost {}
 
 @Component({
   imports: [SplitComponent, SplitPaneComponent],
+  changeDetection: ChangeDetectionStrategy.Eager,
   template: `
     <tw-split [unit]="unit">
       <tw-split-pane [defaultSize]="30">A</tw-split-pane>
@@ -60,6 +65,7 @@ class DefaultSizePercentHost {
 
 @Component({
   imports: [SplitComponent, SplitPaneComponent],
+  changeDetection: ChangeDetectionStrategy.Eager,
   template: `
     <tw-split>
       <tw-split-pane [minSize]="20" [defaultSize]="30">A</tw-split-pane>
@@ -71,6 +77,7 @@ class MinMaxHost {}
 
 @Component({
   imports: [SplitComponent, SplitPaneComponent],
+  changeDetection: ChangeDetectionStrategy.Eager,
   template: `
     <tw-split unit="pixel">
       <tw-split-pane [defaultSize]="300">A</tw-split-pane>
@@ -82,6 +89,7 @@ class PixelHost {}
 
 @Component({
   imports: [SplitComponent, SplitPaneComponent],
+  changeDetection: ChangeDetectionStrategy.Eager,
   template: `
     <tw-split>
       <tw-split-pane [defaultSize]="40" [minSize]="20" [collapsible]="true" [collapsedSize]="5" [snapSize]="3">A</tw-split-pane>
@@ -93,6 +101,7 @@ class CollapsibleHost {}
 
 @Component({
   imports: [SplitComponent, SplitPaneComponent],
+  changeDetection: ChangeDetectionStrategy.Eager,
   template: `
     <tw-split [disabled]="disabled">
       <tw-split-pane>A</tw-split-pane>
@@ -106,6 +115,7 @@ class DisabledHost {
 
 @Component({
   imports: [SplitComponent, SplitPaneComponent],
+  changeDetection: ChangeDetectionStrategy.Eager,
   template: `
     <tw-split [rtl]="true">
       <tw-split-pane [defaultSize]="40">A</tw-split-pane>
@@ -117,6 +127,7 @@ class RtlHost {}
 
 @Component({
   imports: [SplitComponent, SplitPaneComponent],
+  changeDetection: ChangeDetectionStrategy.Eager,
   template: `
     <tw-split [storageKey]="key">
       <tw-split-pane [defaultSize]="50">A</tw-split-pane>

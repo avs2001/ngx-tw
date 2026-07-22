@@ -1,4 +1,4 @@
-import { Component, signal, viewChild } from '@angular/core';
+import { Component, signal, viewChild, ChangeDetectionStrategy } from '@angular/core';
 import { type ComponentFixture, TestBed } from '@angular/core/testing';
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import { OverlayModule } from '@angular/cdk/overlay';
@@ -21,6 +21,7 @@ import type { TwColor, TwSize } from '@cdevhub/ngx-tw/core';
 
 @Component({
   imports: [MenuComponent, MenuTriggerDirective, MenuItemDirective],
+  changeDetection: ChangeDetectionStrategy.Eager,
   template: `
     <button [twMenuTrigger]="menu" type="button">Open</button>
     <ng-template #menu>
@@ -35,6 +36,7 @@ class BasicMenuHost {}
 
 @Component({
   imports: [MenuComponent, MenuTriggerDirective, MenuItemDirective],
+  changeDetection: ChangeDetectionStrategy.Eager,
   template: `
     <button [twMenuTrigger]="menu" type="button">Open</button>
     <ng-template #menu>
@@ -51,6 +53,7 @@ class StyledMenuHost {
 
 @Component({
   imports: [MenuComponent, MenuTriggerDirective, MenuItemDirective],
+  changeDetection: ChangeDetectionStrategy.Eager,
   template: `
     <button [twMenuTrigger]="menu" type="button">Open</button>
     <ng-template #menu>
@@ -77,6 +80,7 @@ class DisabledMenuHost {
     MenuItemShortcutDirective,
     MenuItemSubmenuIndicatorDirective,
   ],
+  changeDetection: ChangeDetectionStrategy.Eager,
   template: `
     <button [twMenuTrigger]="menu" type="button">Open</button>
     <ng-template #menu>
@@ -96,6 +100,7 @@ class ContentMenuHost {}
 
 @Component({
   imports: [MenuComponent, MenuTriggerDirective, MenuItemDirective, MenuItemSubmenuIndicatorDirective],
+  changeDetection: ChangeDetectionStrategy.Eager,
   template: `
     <button [twMenuTrigger]="menu" type="button">Open</button>
     <ng-template #menu>
@@ -114,6 +119,7 @@ class SubmenuIndicatorSizedHost {
 
 @Component({
   imports: [MenuComponent, MenuTriggerDirective, MenuItemCheckboxComponent],
+  changeDetection: ChangeDetectionStrategy.Eager,
   template: `
     <button [twMenuTrigger]="menu" type="button">Open</button>
     <ng-template #menu>
@@ -129,6 +135,7 @@ class CheckboxMenuHost {
 
 @Component({
   imports: [MenuComponent, MenuTriggerDirective, MenuItemRadioComponent, MenuGroupDirective],
+  changeDetection: ChangeDetectionStrategy.Eager,
   template: `
     <button [twMenuTrigger]="menu" type="button">Open</button>
     <ng-template #menu>
@@ -147,6 +154,7 @@ class RadioMenuHost {
 
 @Component({
   imports: [MenuComponent, MenuTriggerDirective, MenuItemDirective],
+  changeDetection: ChangeDetectionStrategy.Eager,
   template: `
     <button
       [twMenuTrigger]="menu"
@@ -170,6 +178,7 @@ class EventMenuHost {
 
 @Component({
   imports: [ContextMenuTriggerDirective, MenuComponent, MenuItemDirective],
+  changeDetection: ChangeDetectionStrategy.Eager,
   template: `
     <div [twContextMenuTrigger]="menu" [disabled]="disabled()" class="context-target">
       Right-click here
@@ -187,6 +196,7 @@ class ContextMenuHost {
 
 @Component({
   imports: [MenuComponent, MenuTriggerDirective, MenuItemDirective],
+  changeDetection: ChangeDetectionStrategy.Eager,
   template: `
     <button [twMenuTrigger]="menu" type="button">Open</button>
     <ng-template #menu>
@@ -203,6 +213,7 @@ class KeyboardMenuHost {}
 
 @Component({
   imports: [MenuComponent, MenuTriggerDirective],
+  changeDetection: ChangeDetectionStrategy.Eager,
   template: `
     <button [twMenuTrigger]="menu" type="button">Open</button>
     <ng-template #menu>
@@ -214,6 +225,7 @@ class LabelledMenuHost {}
 
 @Component({
   imports: [MenuComponent, MenuTriggerDirective],
+  changeDetection: ChangeDetectionStrategy.Eager,
   template: `
     <h3 id="menu-heading">File actions</h3>
     <button [twMenuTrigger]="menu" type="button">Open</button>
@@ -226,6 +238,7 @@ class LabelledByMenuHost {}
 
 @Component({
   imports: [MenuComponent, MenuTriggerDirective, MenuItemCheckboxComponent],
+  changeDetection: ChangeDetectionStrategy.Eager,
   template: `
     <button [twMenuTrigger]="menu" type="button">Open</button>
     <ng-template #menu>
@@ -247,6 +260,7 @@ class CheckedChangeCheckboxHost {
 
 @Component({
   imports: [MenuComponent, MenuTriggerDirective, MenuItemRadioComponent, MenuGroupDirective],
+  changeDetection: ChangeDetectionStrategy.Eager,
   template: `
     <button [twMenuTrigger]="menu" type="button">Open</button>
     <ng-template #menu>

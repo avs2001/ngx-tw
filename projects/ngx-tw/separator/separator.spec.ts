@@ -1,16 +1,18 @@
 import { type ComponentFixture, TestBed } from '@angular/core/testing';
-import { Component } from '@angular/core';
+import { Component, ChangeDetectionStrategy } from '@angular/core';
 import { describe, it, expect, beforeEach } from 'vitest';
 import { SeparatorComponent } from './separator';
 
 @Component({
   template: `<tw-separator>OR</tw-separator>`,
+  changeDetection: ChangeDetectionStrategy.Eager,
   imports: [SeparatorComponent],
 })
 class SeparatorWithLabelHost {}
 
 @Component({
   template: `<tw-separator orientation="vertical">HIDDEN</tw-separator>`,
+  changeDetection: ChangeDetectionStrategy.Eager,
   imports: [SeparatorComponent],
 })
 class SeparatorVerticalWithLabelHost {}
