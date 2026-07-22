@@ -25,8 +25,16 @@
   }
 }
 
-/* Scan library source for Tailwind class usage */
-@source "../src/**/*.ts";
+/* ===== Library class scanning =====
+   Paths here resolve relative to THIS file's location in the *published*
+   package (`node_modules/@cdevhub/ngx-tw/theme/`), because that is the only
+   copy a consumer ever imports. The published tarball ships compiled bundles
+   (`fesm2022/*.mjs`) and no `.ts` source, and Tailwind v4 never auto-scans
+   `node_modules` — so without this line a consumer's build emits the semantic
+   tokens and base layer but *zero* component utilities, silently. Tailwind
+   does not error on a glob that matches nothing, so a wrong path here fails
+   invisibly — `npm run verify:package` is what guards it. */
+@source "../fesm2022/**/*.mjs";
 
 /* ===== Slot-token utility safelist =====
    Components consume role slot utilities (`bg-info-soft`, `text-info-fg`, …)
