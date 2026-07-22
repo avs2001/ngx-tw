@@ -1,3 +1,4 @@
+import type { Page } from '@playwright/test';
 import { expect, test } from '../../fixtures/base';
 import { formatViolations } from '../../support/a11y';
 
@@ -17,7 +18,7 @@ test.describe.configure({ mode: 'parallel' });
 test.describe('Transfer', () => {
   const EXAMPLES = '/components/transfer/examples';
 
-  const section = (page: import('@playwright/test').Page, heading: string) =>
+  const section = (page: Page, heading: string) =>
     page.locator('section').filter({ has: page.getByRole('heading', { name: heading, level: 2 }) });
 
   test('@a11y the examples page has no axe violations', async ({ page, axe }) => {

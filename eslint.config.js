@@ -16,6 +16,10 @@ module.exports = tseslint.config(
       'playwright-report/**',
       'test-results/**',
       '**/*.min.js',
+      // Workflow scripts run inside an implicit async wrapper supplied by the
+      // Workflow tool, so top-level `return`/`await` are legal there but parse
+      // as errors under a standalone module parser.
+      '.claude/workflows/**',
     ],
   },
   {
