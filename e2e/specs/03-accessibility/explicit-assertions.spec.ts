@@ -170,6 +170,16 @@ async function findInvalidAriaExpanded(page: Page): Promise<string[]> {
  *     either the demo page mounts an unlabelled control, or the wrapper
  *     component drops the `for`/`aria-labelledby` wiring. Per-component
  *     audit needed.
+ *   - **Form controls without accessible name — `tw-checkbox` inner input**
+ *     (`checkbox`, `transfer`): `checkbox.ts` renders a `hidden`
+ *     `aria-hidden="true"` native input purely so the control participates
+ *     in native form submission; the accessible name lives on the
+ *     `role="checkbox"` host. `findUnlabeledFormControls` filters
+ *     `input[type=hidden]` but not the `hidden` attribute or `aria-hidden`,
+ *     so it reports these. Axe does not flag them. `transfer` inherits this
+ *     via its per-panel select-all checkbox. The real fix is to teach the
+ *     helper to skip a11y-tree-excluded nodes, which would likely retire
+ *     both entries.
  *
  * When fixing a component, remove it from the matching set and let
  * the assertion re-enable. Sets are per-rule so a component can be
@@ -195,6 +205,7 @@ const ACCESSIBLE_NAME_BACKLOG: ReadonlySet<string> = new Set([
   'table',
   'textarea',
   'toast',
+  'transfer',
 ]);
 
 for (const component of COMPONENTS) {
