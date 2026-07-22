@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 _Nothing yet._
 
+## 0.4.0 — 2026-07-22
+
+### Features
+
+- **mcp:** add @cdevhub/ngx-tw-mcp server and its build-time index ([4dac022](https://github.com/avs2001/ngx-tw/commit/4dac022c87ce212ce5e4e7ca5cee0be20bf9dee6))
+
 ## 0.3.0 — 2026-07-22
 
 ### Fixed — packaging (consumer-facing, previously silent)
