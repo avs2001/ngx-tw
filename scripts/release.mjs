@@ -3,8 +3,9 @@
 //
 // Flow:
 //   1. Guards: must be on `develop`, clean tree, in sync with origin/develop.
-//   2. Confirm the latest `ci.yml` run on develop is green for the local HEAD.
-//   3. Local pre-flight: lint, build:lib, test:ci, pack:check.
+//   2. Confirm the latest `ci.yml` AND `e2e.yml` runs on develop are green for
+//      the local HEAD (e2e.yml owns the axe accessibility sweep).
+//   3. Local pre-flight: lint, build:lib, test:ci, pack:check, verify:package.
 //   4. Compute next version from `projects/ngx-tw/package.json`.
 //   5. Generate a changelog section from conventional commits since the last
 //      release tag (`@cdevhub/ngx-tw@*`).
@@ -80,39 +81,66 @@ console.log(`  ✓ On develop, clean, at ${localSha.slice(0, 7)}`);
 if (skipCiCheck) {
   console.log('\n⚠  --skip-ci-check passed; not verifying remote CI.');
 } else {
-  step('Checking latest CI run on develop');
-  let ciJson;
-  try {
-    ciJson = sh(
-      'gh run list --workflow=ci.yml --branch=develop --limit=5 --json conclusion,headSha,status,databaseId,url',
-    );
-  } catch (err) {
-    fail('`gh run list` failed. Is the GitHub CLI installed and authenticated? (`gh auth status`)');
+  // Both workflows are gates. `ci.yml` owns lint/unit/build/pack; `e2e.yml`
+  // owns the Playwright suite AND the axe accessibility sweep. Checking only
+  // ci.yml would let a fully red a11y run publish — unacceptable for a library
+  // whose headline claim is "accessible by default".
+  for (const workflow of ['ci.yml', 'e2e.yml']) {
+    step(`Checking latest ${workflow} run on develop`);
+    let ciJson;
+    try {
+      // `--event=push` and a generous `--limit` are both load-bearing:
+      // e2e.yml also runs on two cron schedules, and those runs are attributed
+      // to develop. An unfiltered `--limit=5` window can therefore be consumed
+      // entirely by nightly runs and report "no run found" for a HEAD that was
+      // in fact tested — the eight most recent develop runs at the time of the
+      // v22 audit were all scheduled e2e runs. Restricting to `push` keeps the
+      // window aligned with commits, and e2e.yml runs on every develop push,
+      // so a push-triggered run always exists for a pushed HEAD.
+      //
+      // Caveat worth knowing: the visual canary job also runs on push, so a
+      // visual regression (or a baseline drift) fails the whole e2e run and
+      // will block a release here. That is deliberate — but if it ever blocks
+      // an otherwise-good release, inspect the individual job conclusions
+      // rather than reaching for --skip-ci-check.
+      ciJson = sh(
+        `gh run list --workflow=${workflow} --branch=develop --event=push --limit=30 --json conclusion,headSha,status,databaseId,url`,
+      );
+    } catch (err) {
+      fail(
+        '`gh run list` failed. Is the GitHub CLI installed and authenticated? (`gh auth status`)',
+      );
+    }
+    const runs = JSON.parse(ciJson);
+    const headRun = runs.find((r) => r.headSha === localSha);
+    if (!headRun) {
+      fail(
+        `No ${workflow} run found for HEAD ${localSha.slice(0, 7)}. ` +
+          `Wait for it to complete, or pass --skip-ci-check to override.`,
+      );
+    }
+    if (headRun.status !== 'completed') {
+      fail(
+        `${workflow} run for HEAD ${localSha.slice(0, 7)} is "${headRun.status}". Wait for it to finish.`,
+      );
+    }
+    if (headRun.conclusion !== 'success') {
+      console.error(`  Run: ${headRun.url}`);
+      fail(`${workflow} run for HEAD ${localSha.slice(0, 7)} is "${headRun.conclusion}".`);
+    }
+    console.log(`  ✓ ${workflow} green on ${localSha.slice(0, 7)}`);
   }
-  const runs = JSON.parse(ciJson);
-  const headRun = runs.find((r) => r.headSha === localSha);
-  if (!headRun) {
-    fail(
-      `No ci.yml run found for HEAD ${localSha.slice(0, 7)}. ` +
-        `Wait for CI to complete, or pass --skip-ci-check to override.`,
-    );
-  }
-  if (headRun.status !== 'completed') {
-    fail(`CI run for HEAD ${localSha.slice(0, 7)} is "${headRun.status}". Wait for it to finish.`);
-  }
-  if (headRun.conclusion !== 'success') {
-    console.error(`  Run: ${headRun.url}`);
-    fail(`CI run for HEAD ${localSha.slice(0, 7)} is "${headRun.conclusion}".`);
-  }
-  console.log(`  ✓ CI green on ${localSha.slice(0, 7)}`);
 }
 
 // ─── 3. local pre-flight ──────────────────────────────────────────────────
-step('Local pre-flight: lint, build:lib, test:ci, pack:check');
+step('Local pre-flight: lint, build:lib, test:ci, pack:check, verify:package');
 shInherit('npm run lint');
 shInherit('npm run build:lib');
 shInherit('npm run test:ci');
 shInherit('npm run pack:check');
+// Proves a consumer can install the tarball and get styles. Every other check
+// here passes even when the published package is unusable.
+shInherit('npm run verify:package');
 console.log('  ✓ All local checks passed');
 
 // ─── 4. compute next version ──────────────────────────────────────────────
@@ -169,25 +197,89 @@ const filledSections = Object.entries(groups)
   .filter(([, items]) => items.length)
   .map(([title, items]) => `### ${title}\n\n${items.join('\n')}\n`);
 
-if (filledSections.length === 0) {
+// ── Fold `## [Unreleased]` into this release ──────────────────────────────
+//
+// Hand-written notes accumulate under `## [Unreleased]` between releases —
+// the packaging fixes from the v22 audit are a good example: they are
+// consumer-critical but describe *why* something was broken, which no
+// conventional-commit subject line can carry.
+//
+// Previously this script inserted the generated section before the first
+// `## ` heading and never touched `[Unreleased]`, so that hand-written content
+// sank one section deeper on every release and was never published in any
+// release body. Now it is moved into the release being cut and the heading is
+// reset to empty, which is the Keep a Changelog workflow the file's own header
+// claims to follow.
+const existingChangelog = readFileSync(changelogPath, 'utf8');
+const lines = existingChangelog.split('\n');
+
+const UNRELEASED_RE = /^## \[Unreleased\]/;
+const UNRELEASED_PLACEHOLDER = '_Nothing yet._';
+const unrelIdx = lines.findIndex((l) => UNRELEASED_RE.test(l));
+let unreleasedBody = '';
+let preUnreleased = lines;
+let postUnreleased = [];
+
+if (unrelIdx !== -1) {
+  const nextIdx = lines.findIndex((l, i) => i > unrelIdx && /^## /.test(l));
+  const end = nextIdx === -1 ? lines.length : nextIdx;
+  unreleasedBody = lines.slice(unrelIdx + 1, end).join('\n').trim();
+  preUnreleased = lines.slice(0, unrelIdx);
+  postUnreleased = lines.slice(end);
+}
+
+// The placeholder this script itself writes back after a release is not
+// content. Without this, the *second* release would open its notes with a
+// literal "_Nothing yet._" line and — worse — the empty-release guard below
+// would be bypassed, because a truthy placeholder makes `unreleasedBody` look
+// like real hand-written notes.
+if (unreleasedBody === UNRELEASED_PLACEHOLDER) unreleasedBody = '';
+
+if (filledSections.length === 0 && !unreleasedBody) {
   fail(
-    'No conventional commits (feat / fix / perf / breaking) found since last tag.\n' +
-      '  Either add a qualifying commit or release manually with --skip-ci-check.',
+    'Nothing to release: no conventional commits (feat / fix / perf / breaking)\n' +
+      '  since the last tag, and `## [Unreleased]` is empty.\n' +
+      '  Add a qualifying commit or write the notes under `## [Unreleased]`.',
   );
 }
 
 const today = new Date().toISOString().slice(0, 10);
-const newSection = `## ${next} — ${today}\n\n${filledSections.join('\n')}`;
+// Hand-written notes lead; generated commit lists follow.
+const bodyParts = [unreleasedBody, filledSections.join('\n').trim()].filter(Boolean);
+const newSection = `## ${next} — ${today}\n\n${bodyParts.join('\n\n')}\n`;
 
-// Insert the new section just before the first existing `## ` heading; if
-// CHANGELOG has none yet, append to the end.
-const existingChangelog = readFileSync(changelogPath, 'utf8');
-const lines = existingChangelog.split('\n');
-const firstSectionIdx = lines.findIndex((l, i) => i > 0 && /^## /.test(l));
 const updatedChangelog =
-  firstSectionIdx === -1
-    ? `${existingChangelog.trimEnd()}\n\n${newSection}\n`
-    : [...lines.slice(0, firstSectionIdx), newSection, ...lines.slice(firstSectionIdx)].join('\n');
+  unrelIdx === -1
+    ? // No `[Unreleased]` heading: fall back to inserting before the first
+      // release section, or appending if the file has none at all.
+      (() => {
+        const firstSectionIdx = lines.findIndex((l, i) => i > 0 && /^## /.test(l));
+        return firstSectionIdx === -1
+          ? `${existingChangelog.trimEnd()}\n\n${newSection}`
+          : [...lines.slice(0, firstSectionIdx), newSection, ...lines.slice(firstSectionIdx)].join('\n');
+      })()
+    : [
+        ...trimTrailingBlank(preUnreleased),
+        '',
+        '## [Unreleased]',
+        '',
+        UNRELEASED_PLACEHOLDER,
+        '',
+        newSection.trimEnd(),
+        '',
+        ...trimLeadingBlank(postUnreleased),
+      ].join('\n');
+
+function trimTrailingBlank(arr) {
+  const out = [...arr];
+  while (out.length && out[out.length - 1].trim() === '') out.pop();
+  return out;
+}
+function trimLeadingBlank(arr) {
+  const out = [...arr];
+  while (out.length && out[0].trim() === '') out.shift();
+  return out;
+}
 
 console.log('\n  ─── Generated changelog section ───');
 console.log(newSection.replace(/^/gm, '  │ '));

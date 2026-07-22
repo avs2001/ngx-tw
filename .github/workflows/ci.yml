@@ -1,9 +1,24 @@
 name: ci
 
 # CI gate for the ngx-tw library. Runs on every PR targeting `develop` and on
-# every push to `develop`. Required status checks (lint, unit-test, build-lib,
-# pack-check) must be configured on `develop` in repo settings — that's what
-# makes this an enforceable quality gate.
+# every push to `develop`.
+#
+# ADVISORY, NOT ENFORCED. As of the last audit `develop` has no branch
+# protection and no rulesets (`GET /branches/develop/protection` → 404,
+# `GET /rulesets` → []), so a red run here does not block a merge or a push.
+# `scripts/release.mjs` is what actually gates a release on these results.
+#
+# The node version comes from `.nvmrc` (`node-version-file:` below) so local
+# development and CI cannot drift apart. It must satisfy the `engines` range
+# that Angular 22 declares — `^22.22.3 || ^24.15.0 || >=26.0.0`.
+#
+# To make these checks binding, add them as required status checks:
+#   gh api -X PUT repos/{owner}/{repo}/branches/develop/protection \
+#     -F required_status_checks[strict]=true \
+#     -F 'required_status_checks[contexts][]=lint' \
+#     ...
+# Note that doing so will break `release.mjs`'s direct
+# `git push origin develop --follow-tags` unless admins are allowed to bypass.
 
 on:
   pull_request:
@@ -22,9 +37,6 @@ concurrency:
 permissions:
   contents: read
 
-env:
-  NODE_VERSION: '22'
-
 jobs:
   lint:
     name: lint
@@ -34,7 +46,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: ${{ env.NODE_VERSION }}
+          node-version-file: .nvmrc
           cache: npm
       - run: npm ci
       - run: npm run lint
@@ -47,7 +59,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: ${{ env.NODE_VERSION }}
+          node-version-file: .nvmrc
           cache: npm
       - run: npm ci
       - name: Build ngx-tw (production)
@@ -73,7 +85,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: ${{ env.NODE_VERSION }}
+          node-version-file: .nvmrc
           cache: npm
       - run: npm ci
       - name: Download dist artifact
@@ -84,7 +96,7 @@ jobs:
       - run: npm run test:ci
 
   pack-check:
-    name: npm pack dry-run
+    name: npm pack dry-run + consumer install
     runs-on: ubuntu-latest
     timeout-minutes: 10
     needs: [build-lib]
@@ -92,8 +104,10 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: ${{ env.NODE_VERSION }}
+          node-version-file: .nvmrc
           cache: npm
+      - name: Install dependencies
+        run: npm ci
       - name: Download dist artifact
         uses: actions/download-artifact@v4
         with:
@@ -113,3 +127,12 @@ jobs:
             if (missing.length) { console.error('Missing files in tarball:', missing); process.exit(1); }
             console.log('Tarball OK —', m.files.length, 'files,', (m.size/1024).toFixed(1), 'KB');
           "
+      - name: Verify a consumer can actually install and style the library
+        # Installs the packed tarball into a scratch project OUTSIDE the repo and
+        # compiles the theme with Tailwind. Catches the two failure modes that
+        # every other gate misses, because the demo app imports the theme by
+        # relative path and Tailwind auto-detects the raw monorepo source:
+        #   1. the `exports` map blocking the documented theme subpath
+        #   2. a dead `@source` glob emitting zero component utilities (silent —
+        #      Tailwind does not warn about a glob that matches nothing)
+        run: npm run verify:package

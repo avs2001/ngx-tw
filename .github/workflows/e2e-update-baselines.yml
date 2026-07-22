@@ -19,9 +19,6 @@ on:
         description: 'Branch to regenerate baselines on (default: current)'
         required: false
 
-env:
-  NODE_VERSION: '22'
-
 jobs:
   update-baselines:
     name: Regenerate + commit visual baselines (chromium light + dark)
@@ -39,7 +36,7 @@ jobs:
           fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
-          node-version: ${{ env.NODE_VERSION }}
+          node-version-file: .nvmrc
           cache: npm
       - run: npm ci
       - name: Cache Playwright browsers

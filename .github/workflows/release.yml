@@ -22,9 +22,6 @@ concurrency:
   group: release-${{ github.ref }}
   cancel-in-progress: false
 
-env:
-  NODE_VERSION: '22'
-
 jobs:
   publish:
     name: publish to npm + create release
@@ -46,7 +43,7 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: ${{ env.NODE_VERSION }}
+          node-version-file: .nvmrc
           cache: npm
           registry-url: 'https://registry.npmjs.org'
 
@@ -73,6 +70,11 @@ jobs:
             console.log('Tarball OK —', m.files.length, 'files,', (m.size/1024).toFixed(1), 'KB');
           "
 
+      - name: Verify a consumer can actually install and style the library
+        # Mirrors ci.yml. This is the last gate before publish that exercises the
+        # package the way a consumer does rather than the way this repo does.
+        run: npm run verify:package
+
       - name: Verify tag matches dist version
         # A mismatch means someone pushed a tag that doesn't correspond to the
         # version on the tagged commit — refuse to publish that.
@@ -85,13 +87,16 @@ jobs:
           fi
           echo "✓ Tag matches dist version: $PKG_VERSION"
 
-      - name: Publish to npm
-        run: node scripts/publish.mjs
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-
       - name: Extract release notes from CHANGELOG
         id: notes
+        # MUST run BEFORE `npm publish`. This step exits 1 when the CHANGELOG
+        # has no section for the tag's version, and an npm publish cannot be
+        # undone (unpublish is restricted to a 72h window and burns the version
+        # number forever). Running it after the publish — as this workflow did
+        # until the v22 audit — turns a missing changelog heading into "package
+        # is public, workflow is red, no GitHub Release", which is the worst of
+        # both. Ordering it here makes that failure cost nothing.
+        #
         # `GITHUB_REF_NAME` is the tag (`@cdevhub/ngx-tw@0.2.1`); strip the tag
         # prefix inside node so we read the env var that GitHub Actions
         # actually exports, not a non-exported bash variable.
@@ -110,6 +115,12 @@ jobs:
             const body = lines.slice(start + 1, next === -1 ? lines.length : next).join('\n').trim();
             fs.appendFileSync(process.env.GITHUB_OUTPUT, 'notes<<__END__\n' + body + '\n__END__\n');
           "
+
+      - name: Publish to npm
+        # Everything above this line is a gate. Nothing below it can un-publish.
+        run: node scripts/publish.mjs
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
       - name: Create GitHub Release
         # SHA-pinned for supply-chain safety — this is the highest-trust job
