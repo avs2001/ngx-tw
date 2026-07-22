@@ -6,6 +6,8 @@ import {
 } from '@angular/core';
 import { type ComponentFixture, TestBed } from '@angular/core/testing';
 import { LiveAnnouncer } from '@angular/cdk/a11y';
+import { Directionality, type Direction } from '@angular/cdk/bidi';
+import { Subject } from 'rxjs';
 import { provideRouter, Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import type { TwColor, TwSize } from '@cdevhub/ngx-tw/core';
@@ -17,6 +19,20 @@ import {
 } from './tab-nav';
 
 // ── Test host components ──
+
+@Component({
+  imports: [TabNavComponent, TabLinkDirective, TabNavPanel],
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  template: `
+    <nav twTabNav>
+      <a twTabLink linkId="l-a" href="#a" [active]="true">A</a>
+      <a twTabLink linkId="l-b" href="#b">B</a>
+      <a twTabLink linkId="l-c" href="#c">C</a>
+      <tw-tab-nav-panel id="rtl-panel">Panel</tw-tab-nav-panel>
+    </nav>
+  `,
+})
+class AllEnabledHost {}
 
 @Component({
   imports: [TabNavComponent, TabLinkDirective],
@@ -884,4 +900,60 @@ describe('TabNavComponent', () => {
       expect(panel.textContent).toContain('Panel content');
     });
   });
+
+  describe('RTL keyboard navigation', () => {
+    // BasicHost's third link is disabled, which makes LTR and RTL land on the
+    // same element from index 0 — a test using it would pass either way. This
+    // host has three enabled links so the directions are distinguishable.
+    const arrow = (el: HTMLElement, key: string, keyCode: number) =>
+      el.dispatchEvent(new KeyboardEvent('keydown', { key, keyCode, bubbles: true }));
+
+    it('ArrowLeft moves to the NEXT link when the layout direction is rtl', async () => {
+      await TestBed.configureTestingModule({
+        imports: [AllEnabledHost],
+        providers: [
+          {
+            provide: Directionality,
+            useValue: { value: 'rtl', change: new Subject<Direction>() },
+          },
+        ],
+      }).compileComponents();
+      const fixture = TestBed.createComponent(AllEnabledHost);
+      fixture.detectChanges();
+      await fixture.whenStable();
+      fixture.detectChanges();
+
+      const links = fixture.nativeElement.querySelectorAll(
+        'a[twTabLink]',
+      ) as NodeListOf<HTMLElement>;
+      links[0].focus();
+      fixture.detectChanges();
+
+      arrow(links[0], 'ArrowLeft', 37);
+      fixture.detectChanges();
+
+      // LTR would wrap backwards to the last link; RTL advances instead.
+      expect(document.activeElement).toBe(links[1]);
+    });
+
+    it('ArrowLeft moves to the PREVIOUS link when the layout direction is ltr', async () => {
+      await TestBed.configureTestingModule({ imports: [AllEnabledHost] }).compileComponents();
+      const fixture = TestBed.createComponent(AllEnabledHost);
+      fixture.detectChanges();
+      await fixture.whenStable();
+      fixture.detectChanges();
+
+      const links = fixture.nativeElement.querySelectorAll(
+        'a[twTabLink]',
+      ) as NodeListOf<HTMLElement>;
+      links[0].focus();
+      fixture.detectChanges();
+
+      arrow(links[0], 'ArrowLeft', 37);
+      fixture.detectChanges();
+
+      expect(document.activeElement).toBe(links[2]);
+    });
+  });
+
 });

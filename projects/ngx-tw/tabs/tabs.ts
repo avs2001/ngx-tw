@@ -23,6 +23,8 @@ import {
 } from '@angular/core';
 import { NgTemplateOutlet } from '@angular/common';
 import { type FocusableOption, FocusKeyManager, LiveAnnouncer } from '@angular/cdk/a11y';
+import { Directionality } from '@angular/cdk/bidi';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { tv } from 'tailwind-variants';
 import { twMerge } from 'tailwind-merge';
 import {
@@ -261,6 +263,17 @@ export class TabsComponent implements AfterViewInit {
 
   private readonly destroyRef = inject(DestroyRef);
   private readonly liveAnnouncer = inject(LiveAnnouncer);
+  private readonly directionality = inject(Directionality, { optional: true });
+
+  /**
+   * Live layout direction, mirrored into a signal so the key manager rebuilds
+   * when it changes. Without this the tablist hardcodes 'ltr' and ArrowRight
+   * moves to the next tab in DOM order but the *previous* tab visually in an
+   * RTL locale. CdkStepper and `tw-split` already honour Directionality.
+   */
+  private readonly layoutDirection = signal<'ltr' | 'rtl'>(
+    this.directionality?.value ?? 'ltr',
+  );
 
   /** @internal */
   readonly tabs = contentChildren(TabComponent);
@@ -509,7 +522,13 @@ export class TabsComponent implements AfterViewInit {
       this.setupScrollDetection();
     });
 
-    // Rebuild FocusKeyManager whenever triggers or orientation change.
+    // Track CDK Directionality so an app that flips `dir` at runtime rebuilds
+    // the key manager with the new horizontal orientation.
+    this.directionality?.change
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((dir) => this.layoutDirection.set(dir));
+
+    // Rebuild FocusKeyManager whenever triggers, orientation or direction change.
     effect((onCleanup) => {
       const triggers = this.triggerElements();
       const orientation = this.orientation();
@@ -517,13 +536,14 @@ export class TabsComponent implements AfterViewInit {
         this.keyManager = null;
         return;
       }
+      const direction = this.layoutDirection();
       const manager = new FocusKeyManager(triggers)
         .withWrap()
         .withHomeAndEnd();
       if (orientation === 'vertical') {
         manager.withVerticalOrientation();
       } else {
-        manager.withHorizontalOrientation('ltr');
+        manager.withHorizontalOrientation(direction);
       }
       this.keyManager = manager;
 

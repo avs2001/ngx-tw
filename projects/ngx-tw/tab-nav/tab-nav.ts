@@ -7,12 +7,15 @@ import {
   contentChild,
   contentChildren,
   effect,
+  DestroyRef,
   inject,
   input,
   signal,
   untracked,
 } from '@angular/core';
 import { type FocusableOption, FocusKeyManager, LiveAnnouncer } from '@angular/cdk/a11y';
+import { Directionality } from '@angular/cdk/bidi';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { tv } from 'tailwind-variants';
 import { twMerge } from 'tailwind-merge';
 import {
@@ -135,6 +138,17 @@ export class TabNavComponent {
   readonly resolvedPanel = computed(() => this.tabPanel() ?? this.projectedPanel());
 
   private readonly liveAnnouncer = inject(LiveAnnouncer);
+  private readonly directionality = inject(Directionality, { optional: true });
+  private readonly destroyRef = inject(DestroyRef);
+
+  /**
+   * Live layout direction. Hardcoding 'ltr' inverts ArrowLeft/ArrowRight in RTL
+   * locales — the arrow moves to the next link in DOM order but the previous
+   * one visually. Mirrored into a signal so the key manager rebuilds on change.
+   */
+  private readonly layoutDirection = signal<'ltr' | 'rtl'>(
+    this.directionality?.value ?? 'ltr',
+  );
 
   /** Tracks the previously-announced active link id so we only announce on actual changes. `null` = before the first sync. */
   private readonly previousActiveLinkId = signal<string | null | undefined>(null);
@@ -183,6 +197,11 @@ export class TabNavComponent {
   private keyManager: FocusKeyManager<FocusableOption> | null = null;
 
   constructor() {
+    // Rebuild the key manager when the app flips `dir` at runtime.
+    this.directionality?.change
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((dir) => this.layoutDirection.set(dir));
+
     // Keep the associated panel's aria-labelledby in sync with the active link
     // and announce route changes to screen readers when in the ARIA tabs pattern.
     effect(() => {
@@ -228,7 +247,7 @@ export class TabNavComponent {
       const manager = (new FocusKeyManager(focusable)
         .withWrap()
         .withHomeAndEnd()
-        .withHorizontalOrientation('ltr')) as FocusKeyManager<FocusableOption>;
+        .withHorizontalOrientation(this.layoutDirection())) as FocusKeyManager<FocusableOption>;
       // The `disabled` field on TabLinkDirective is an InputSignal (always
       // truthy as a function), so we cannot rely on FocusKeyManager's default
       // disabled check. Resolve the signal explicitly here.

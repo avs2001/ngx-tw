@@ -1,5 +1,7 @@
 import { ChangeDetectionStrategy, Component, signal } from '@angular/core';
 import { type ComponentFixture, TestBed } from '@angular/core/testing';
+import { Directionality, type Direction } from '@angular/cdk/bidi';
+import { Subject } from 'rxjs';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import type { TwColor, TwSize } from '@cdevhub/ngx-tw/core';
 import {
@@ -718,4 +720,43 @@ describe('TabsComponent', () => {
       expect(fixture.componentInstance.activeTab()).toBe('two');
     });
   });
+
+  describe('RTL keyboard navigation', () => {
+    it('inverts ArrowRight/ArrowLeft when the layout direction is rtl', async () => {
+      // The tablist hardcoded `withHorizontalOrientation('ltr')`, so in an RTL
+      // locale ArrowRight moved to the next tab in DOM order but the *previous*
+      // tab visually — the standard RTL inversion bug. CdkStepper and tw-split
+      // both honour Directionality, so this was an internal inconsistency too.
+      TestBed.configureTestingModule({
+        providers: [
+          {
+            provide: Directionality,
+            useValue: { value: 'rtl', change: new Subject<Direction>() },
+          },
+        ],
+      });
+      const fixture = TestBed.createComponent(BasicHost);
+      fixture.detectChanges();
+      await fixture.whenStable();
+
+      const triggers = fixture.nativeElement.querySelectorAll('[role="tab"]');
+      triggers[1].focus();
+      fixture.detectChanges();
+      fixture.componentInstance.activeTab.set('two');
+      fixture.detectChanges();
+      await fixture.whenStable();
+
+      // In RTL, ArrowRight means "previous".
+      triggers[1].dispatchEvent(
+        new KeyboardEvent('keydown', { key: 'ArrowRight', keyCode: 39, bubbles: true }),
+      );
+      fixture.detectChanges();
+      await fixture.whenStable();
+      fixture.detectChanges();
+
+      expect(fixture.componentInstance.activeTab()).toBe('one');
+    });
+  });
+
+
 });
