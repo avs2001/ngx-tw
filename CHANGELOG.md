@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+_Nothing yet._
+
+## 0.3.0 — 2026-07-22
+
 ### Fixed — packaging (consumer-facing, previously silent)
 
 Both of these made the published `0.2.1` unusable from npm. Neither broke the
@@ -377,6 +381,22 @@ shape.
 - `tailwind-variants ^0.3.0`
 - For `ngx-tw/calendar/luxon`: `luxon ^3.0.0` (peer)
 
+### Features
+
+- **ngx-tw:** add aspect-ratio, file-upload, number-input, and tags-input components ([cf50211](https://github.com/avs2001/ngx-tw/commit/cf5021104d5197a790d339730cb4289fd0566ae2))
+
+### Bug Fixes
+
+- **calendar:** make the unimplemented overlay API fail loudly, wire revalidate() ([cc709e9](https://github.com/avs2001/ngx-tw/commit/cc709e9f9fd06e606b49a0c7ba3a667cac121dae))
+- **tabs,tab-nav:** honour layout direction for arrow-key navigation ([5dccfc1](https://github.com/avs2001/ngx-tw/commit/5dccfc11aa0e473b7c226169ee069f2b9a9b5d01))
+- **table:** key selection and expansion by trackBy; hide inert select-all ([9800c1f](https://github.com/avs2001/ngx-tw/commit/9800c1f4e61d280b43cab691291b5f6757f2bcae))
+- **popover,command-palette:** cancel a pending close when reopened mid-animation ([9b1d2bc](https://github.com/avs2001/ngx-tw/commit/9b1d2bcc277883570971e0380b59d14dc14ae607))
+- **stepper:** restore keyboard navigation and add a roving tabindex ([69fcd7e](https://github.com/avs2001/ngx-tw/commit/69fcd7ef8ecd67d6190ec8da7a0ccf299a1e40c8))
+- **date-picker,time-picker:** surface constraint and parse errors on the control ([605790d](https://github.com/avs2001/ngx-tw/commit/605790d134801a1b69e050ebf2c9519454a28462))
+- **icon:** target framework-agnostic lucide instead of lucide-angular ([b712981](https://github.com/avs2001/ngx-tw/commit/b712981df958ffe10521619becf6380c2f55e657))
+- **ngx-tw:** make the published package installable and styleable ([975e76c](https://github.com/avs2001/ngx-tw/commit/975e76c5eb8a1cd213c95769ccd7b555a5b7961c))
+- **date-range-picker:** restore validator wiring under Angular 22 ([33085e6](https://github.com/avs2001/ngx-tw/commit/33085e6e73d3b14ee73fdb204a09709aa405182e))
+- **a11y:** clear axe examples sweep — slot tokens, demo contrast, labels ([7238cce](https://github.com/avs2001/ngx-tw/commit/7238cceeb82ae7183cc2bfc35fc4d3e0ec089a30))
 
 ## 0.2.1 — 2026-05-28
 
