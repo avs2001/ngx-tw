@@ -27,6 +27,29 @@ build, the unit tests, the e2e suite, or the demo app; see
   `@angular/cdk`). The published `0.2.1` still declares `^21`, so Angular 22
   consumers hit `ERESOLVE`. READMEs updated to match.
 
+### Fixed — component-layer findings H3–H8
+
+- **`tw-stepper` had no working keyboard navigation at all.** CdkStepper queries
+  step headers with `@ContentChildren`, but `tw-stepper` renders them in its own
+  template, so the FocusKeyManager was built over zero items and every arrow /
+  Home / End press was a silent no-op. Re-declared as a view query (as Angular
+  Material does). With navigation working, the missing roving tabindex now
+  matters: headers are a single tab stop with arrow traversal inside, per APG.
+- **`tw-table` selection and expansion are keyed by `trackBy`**, not object
+  reference. An HTTP refetch or immutable store previously emptied the user's
+  selection silently. `isSelected` is now an O(1) keyed lookup instead of a
+  per-row linear scan on every change-detection cycle.
+- **`tw-table`'s master select-all is hidden for `Observable`/`DataSource`
+  inputs**, where it rendered but could never work.
+- **`tw-popover` / `tw-command-palette` cancel a pending close when reopened**
+  during the leave animation, instead of swallowing the reopen and writing
+  `false` back over the consumer's two-way-bound `true`.
+- **`tw-tabs` / `tw-tab-nav` honour layout direction.** Arrow keys were
+  hardcoded LTR, so they inverted in RTL locales.
+- **`tw-calendar`'s `open()`/`close()`/`toggle()` throw in dev mode** instead of
+  being silent no-ops documented as working; `revalidate()` now actually
+  re-runs the validator.
+
 ### Fixed — form validity (H1/H2 from the production audit)
 
 Both pickers rendered an error border while telling the form everything was

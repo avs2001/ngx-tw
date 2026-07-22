@@ -488,3 +488,68 @@ to work, but that remains unverified.
 The remaining component-layer findings (H3–H8: `table` identity/select-all/perf,
 `popover`/`command-palette` reopen race, `stepper` roving tabindex, `tabs` RTL)
 are untouched.
+
+---
+
+## H3–H8 resolved
+
+All six component-layer findings fixed on `chore/angular-22`, one commit each,
+every fix written red-first and negative-tested by reverting it.
+
+| # | Component | Outcome |
+|---|---|---|
+| H3 | `table` | Selection + expansion keyed by `trackBy`; survives a refetch |
+| H4 | `table` | Master select-all hidden where it cannot work |
+| H5 | `table` | `isSelected` now O(1) keyed lookup, was O(rows x selected) per CD cycle |
+| H6 | `popover`, `command-palette` | Reopen mid-close cancels the close instead of desyncing state |
+| H7 | `stepper` | **Keyboard navigation restored** (see below) + roving tabindex |
+| H8 | `tabs`, `tab-nav` | Arrow keys follow CDK `Directionality` |
+
+### The finding that was worse than reported
+
+H7 was recorded as "arrow keys work, but every header is in the tab order". They
+did not work. CdkStepper declares its `_stepHeader` query as `@ContentChildren`,
+which assumes the host projects its headers; `tw-stepper` renders them in its own
+template, so the query matched nothing, the FocusKeyManager was constructed over
+an empty list, and **every arrow, Home and End press was a silent no-op**. The
+static review inferred behaviour from the presence of the CDK wiring; only
+running it showed the wiring was inert.
+
+That is the second time in this audit that a "works, but" finding turned out to
+be "does not work" — the same shape as the signal-forms caveat, in the opposite
+direction.
+
+### Design note worth keeping (H3 + H5)
+
+These two look independent and are not. A comparator input (`compareWith`, the
+`select`/`combobox` precedent) fixes identity but leaves membership an
+O(rows x selected) scan. A `new Set(selected())` fixes the scan but is
+reference-keyed and would ignore the comparator. **Only a key function fixes
+both**, which is why `trackBy` is reused rather than a new input added.
+
+Expansion could not take the same mechanism: `expandedRows` is a public
+`model<ReadonlySet<T>>` and a JS `Set` cannot carry custom equality, so changing
+it would be a breaking API change. It gets a key scan instead — skipped entirely
+when no `trackBy` is supplied, and bounded because expansion holds a handful of
+rows rather than a page.
+
+### Test-design traps hit while writing these
+
+- **tab-nav**: `onKeydown` early-returns unless a panel is associated, so a host
+  without `<tw-tab-nav-panel>` never reaches the key manager — a test using one
+  passes regardless of direction. And with wrap enabled, a two-link or
+  disabled-tailed strip lands on the *same* element in both directions, so the
+  RTL host needs three enabled links.
+- **stepper**: a "focus did not move" assertion would have passed against the
+  completely broken state. The Home/End test asserts the destination.
+- **CDK key managers read `event.keyCode`**, which jsdom leaves at 0 when only
+  `key` is supplied — arrow-key specs must set both.
+
+### Still open
+
+- Async select-all for `Observable`/`DataSource` table inputs (feature work, not
+  a bug fix).
+- `tw-calendar`'s overlay API remains unimplemented — now failing loudly rather
+  than silently. Implementing it is the phase-10 cutover.
+- `tw-calendar` still has no signal-forms spec.
+
