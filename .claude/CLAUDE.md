@@ -388,6 +388,19 @@ constructor() {
 
 **Do not** provide `NG_VALUE_ACCESSOR` via the `providers` array. This pattern is incompatible with `inject(NgControl, { self: true })`, which every ngx-tw form control needs for `TW_ERROR_STATE_MATCHER` integration — the static provider creates a circular DI on the same instance.
 
+**The assignment MUST happen in the constructor.** Angular v22 decides at directive-creation time whether a host is a classic CVA or a signal-forms custom control: any component exposing a `value` / `checked` `model()` is compiled as a custom control, and `FormControlDirective` takes the classic path only if a value accessor is already visible then (a static `NG_VALUE_ACCESSOR` provider, or `valueAccessor` already assigned). The constructor runs before that hook; `ngOnInit` does not.
+
+Deferring the assignment to `ngOnInit` without a static provider silently routes the control down the custom-control branch, which skips `setUpValidators` entirely — a self-provided `NG_VALIDATORS` never composes onto the control and `validate()` is never called. The branch is otherwise behavior-preserving (value and disabled still round-trip through the model), so nothing else fails and **no test catches it** unless a spec asserts a validator error surfacing through a bound `FormControl`. This cost us every `tw-date-range-picker` error code during the v22 upgrade.
+
+Two supported shapes:
+
+| Case | Registration | Static `NG_VALUE_ACCESSOR` |
+|---|---|---|
+| Standard form control | `inject(NgControl, { self: true })` + assign in the **constructor** | No — circular DI |
+| Control that also self-provides `NG_VALIDATORS` (`calendar`, `date-range-picker`) | Lookup deferred to `ngOnInit` (eager `inject(NgControl, { self })` deadlocks against the self-provided validator) | **Yes — required**, or validators are silently dropped |
+
+Any control providing `NG_VALIDATORS` MUST ship a spec asserting one error code reaches a bound `FormControl`. That test is the only thing standing between this trap and a silent regression.
+
 Exception: pure-CVA controls that do *not* integrate `TW_ERROR_STATE_MATCHER` (`input`, `textarea`) may use static `NG_VALUE_ACCESSOR`. Any new form control that adds matcher integration MUST migrate to the runtime pattern at the same time.
 
 ## Component API Design

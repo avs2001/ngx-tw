@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ChangeDetectionStrategy, Component, signal } from '@angular/core';
 import { type ComponentFixture, TestBed } from '@angular/core/testing';
+import { FormControl, ReactiveFormsModule } from '@angular/forms';
 import { LiveAnnouncer } from '@angular/cdk/a11y';
 import { CalendarComponent } from './calendar';
 import { provideNativeDateAdapter } from './native-date-adapter';
@@ -2241,6 +2242,53 @@ describe('CalendarComponent', () => {
       const last = valueSpy.mock.calls.at(-1)?.[0] as { start: Date; end: Date };
       expect(last.start.getDate()).toBe(12);
       expect(last.end.getDate()).toBe(12);
+    });
+  });
+  // ── Validator ──
+  //
+  // Guards the Angular v22 CVA/validator trap documented in CLAUDE.md: this
+  // component self-provides NG_VALIDATORS and defers its NgControl lookup to
+  // ngOnInit, so it MUST also provide NG_VALUE_ACCESSOR statically. Without
+  // that provider Angular routes it down the signal-forms custom-control
+  // branch, `validate()` is never invoked, and every error code below silently
+  // vanishes while every other test still passes.
+
+  describe('validator', () => {
+    @Component({
+      imports: [CalendarComponent, ReactiveFormsModule],
+      changeDetection: ChangeDetectionStrategy.OnPush,
+      template: `<tw-calendar [formControl]="ctrl" [minDate]="floor" />`,
+    })
+    class ValidatorHost {
+      readonly ctrl = new FormControl<Date | null>(null);
+      readonly floor = new Date(2026, 3, 15);
+    }
+
+    it('surfaces calendarMinDate through a bound FormControl', async () => {
+      const fixture = TestBed.createComponent(ValidatorHost);
+      fixture.detectChanges();
+      await fixture.whenStable();
+
+      fixture.componentInstance.ctrl.setValue(new Date(2026, 3, 10));
+      fixture.detectChanges();
+      await fixture.whenStable();
+      fixture.detectChanges();
+
+      const errors = fixture.componentInstance.ctrl.errors ?? {};
+      expect('calendarMinDate' in errors).toBe(true);
+    });
+
+    it('produces no error for a value inside the constraints', async () => {
+      const fixture = TestBed.createComponent(ValidatorHost);
+      fixture.detectChanges();
+      await fixture.whenStable();
+
+      fixture.componentInstance.ctrl.setValue(new Date(2026, 3, 20));
+      fixture.detectChanges();
+      await fixture.whenStable();
+      fixture.detectChanges();
+
+      expect(fixture.componentInstance.ctrl.errors).toBeNull();
     });
   });
 });
