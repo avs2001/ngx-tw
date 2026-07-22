@@ -52,8 +52,8 @@ import {
   type TwSize,
 } from '@cdevhub/ngx-tw/core';
 import {
-  FormFieldComponent,
   FormFieldControl,
+  TW_FORM_FIELD,
   TW_FORM_FIELD_CONTROL,
 } from '@cdevhub/ngx-tw/form-field';
 import {
@@ -536,7 +536,7 @@ export class DateRangePickerComponent<D = Date>
   private readonly viewContainerRef = inject(ViewContainerRef);
   private readonly injector = inject(Injector);
   private readonly destroyRef = inject(DestroyRef);
-  private readonly formField = inject(FormFieldComponent, { optional: true });
+  private readonly formField = inject(TW_FORM_FIELD, { optional: true });
   // Lazy NgControl lookup avoids the construction-time cycle with NG_VALIDATORS
   // (the host registers itself as a validator via `useExisting`, and NgModel's
   // constructor pulls the validator set — eager `inject(NgControl, {self})`
@@ -885,7 +885,7 @@ export class DateRangePickerComponent<D = Date>
       const hasLabel =
         !!this.ariaLabel() ||
         !!this.ariaLabelledby() ||
-        !!this.formField?.labelChild();
+        !!this.formField?.hasLabel();
       if (!hasLabel) {
         console.warn(
           '[tw-date-range-picker] The date-range-picker has no accessible name. Set aria-label, aria-labelledby, or wrap the component in a <tw-form-field> with a <label twLabel>.',

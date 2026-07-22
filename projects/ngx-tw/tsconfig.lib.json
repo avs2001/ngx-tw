@@ -62,7 +62,9 @@
     "theme/**/*.ts",
     "time-picker/**/*.ts",
     "timeline/**/*.ts",
+    "tree/**/*.ts",
     "toast/**/*.ts",
+    "transfer/**/*.ts",
     "tooltip/**/*.ts"
   ],
   "exclude": [

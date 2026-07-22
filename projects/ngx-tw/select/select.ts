@@ -48,8 +48,8 @@ import {
   type TwSize,
 } from '@cdevhub/ngx-tw/core';
 import {
-  FormFieldComponent,
   type FormFieldControl,
+  TW_FORM_FIELD,
   TW_FORM_FIELD_CONTROL,
 } from '@cdevhub/ngx-tw/form-field';
 import { SelectOverlayComponent } from './select-overlay';
@@ -562,7 +562,7 @@ export class SelectComponent<T = unknown>
   private readonly focusMonitor = inject(FocusMonitor);
   private readonly liveAnnouncer = inject(LiveAnnouncer);
   private readonly platform = inject(Platform);
-  private readonly formField = inject(FormFieldComponent, { optional: true });
+  private readonly formField = inject(TW_FORM_FIELD, { optional: true });
   private readonly ngControl = inject(NgControl, { optional: true, self: true });
   private readonly parentForm = inject(NgForm, { optional: true });
   private readonly parentFormGroup = inject(FormGroupDirective, { optional: true });
@@ -914,7 +914,7 @@ export class SelectComponent<T = unknown>
       const hasLabel =
         !!this.ariaLabel() ||
         !!this.ariaLabelledby() ||
-        !!this.formField?.labelChild() ||
+        !!this.formField?.hasLabel() ||
         !!this.triggerTemplateChild();
       if (!hasLabel) {
         console.warn(

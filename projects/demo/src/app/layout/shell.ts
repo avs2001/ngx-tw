@@ -285,6 +285,16 @@ const NAV: NavGroup[] = [
         { label: 'Examples', path: '/components/timeline/examples' },
         { label: 'API', path: '/components/timeline/api' },
       ]},
+      { label: 'Transfer', children: [
+        { label: 'Overview', path: '/components/transfer/overview' },
+        { label: 'Examples', path: '/components/transfer/examples' },
+        { label: 'API', path: '/components/transfer/api' },
+      ]},
+      { label: 'Tree', children: [
+        { label: 'Overview', path: '/components/tree/overview' },
+        { label: 'Examples', path: '/components/tree/examples' },
+        { label: 'API', path: '/components/tree/api' },
+      ]},
       { label: 'Toast', children: [
         { label: 'Overview', path: '/components/toast/overview' },
         { label: 'Examples', path: '/components/toast/examples' },

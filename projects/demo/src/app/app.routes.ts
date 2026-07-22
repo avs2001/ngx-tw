@@ -203,6 +203,14 @@ export const routes: Routes = [
         loadChildren: () => import('./routes/timeline/timeline.routes').then(m => m.TIMELINE_ROUTES),
       },
       {
+        path: 'components/transfer',
+        loadChildren: () => import('./routes/transfer/transfer.routes').then(m => m.TRANSFER_ROUTES),
+      },
+      {
+        path: 'components/tree',
+        loadChildren: () => import('./routes/tree/tree.routes').then(m => m.TREE_ROUTES),
+      },
+      {
         path: 'components/combobox',
         loadChildren: () => import('./routes/combobox/combobox.routes').then(m => m.COMBOBOX_ROUTES),
       },

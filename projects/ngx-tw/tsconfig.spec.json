@@ -65,6 +65,8 @@
     "stat/**/*.spec.ts",
     "combobox/**/*.spec.ts",
     "empty-state/**/*.spec.ts",
-    "aspect-ratio/**/*.spec.ts"
+    "aspect-ratio/**/*.spec.ts",
+    "tree/**/*.spec.ts",
+    "transfer/**/*.spec.ts"
   ]
 }

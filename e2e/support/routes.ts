@@ -59,6 +59,7 @@ export const COMPONENTS = [
   'timeline',
   'toast',
   'tooltip',
+  'transfer',
 ] as const;
 
 export const SERVICES = ['theme'] as const;

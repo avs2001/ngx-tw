@@ -46,8 +46,8 @@ import { Platform } from '@angular/cdk/platform';
 import { FocusMonitor, LiveAnnouncer } from '@angular/cdk/a11y';
 import { tv } from 'tailwind-variants';
 import {
-  FormFieldComponent,
   type FormFieldControl,
+  TW_FORM_FIELD,
   TW_FORM_FIELD_CONTROL,
 } from '@cdevhub/ngx-tw/form-field';
 import { ComboboxOverlayComponent } from './combobox-overlay';
@@ -493,7 +493,7 @@ export class ComboboxComponent<T = unknown>
   private readonly focusMonitor = inject(FocusMonitor);
   private readonly liveAnnouncer = inject(LiveAnnouncer);
   private readonly platform = inject(Platform);
-  private readonly formField = inject(FormFieldComponent, { optional: true });
+  private readonly formField = inject(TW_FORM_FIELD, { optional: true });
   private readonly ngControl = inject(NgControl, { optional: true, self: true });
   private readonly parentForm = inject(NgForm, { optional: true });
   private readonly parentFormGroup = inject(FormGroupDirective, { optional: true });

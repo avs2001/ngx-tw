@@ -8,6 +8,7 @@ import {
   Directive,
   effect,
   ElementRef,
+  forwardRef,
   inject,
   InjectionToken,
   input,
@@ -79,6 +80,27 @@ export abstract class FormFieldControl<T = unknown> {
 export const TW_FORM_FIELD_CONTROL = new InjectionToken<FormFieldControl<unknown>>(
   'TW_FORM_FIELD_CONTROL',
 );
+
+/**
+ * Minimal surface a wrapped control reads from its surrounding form-field —
+ * presence (via optional injection) plus whether a label is projected — without
+ * depending on the concrete {@link FormFieldComponent}. Controls inject
+ * {@link TW_FORM_FIELD} typed as this interface so detecting a parent form-field
+ * never pins the heavier component class into the control's own bundle.
+ */
+export interface TwFormFieldParent {
+  /** Whether a `twLabel` element is projected into the form-field. */
+  readonly hasLabel: Signal<boolean>;
+}
+
+/**
+ * Injection token exposing the wrapping {@link TwFormFieldParent}. The
+ * {@link FormFieldComponent} provides itself under this token; controls inject
+ * it with `{ optional: true }` to detect (and read label state from) a parent
+ * `tw-form-field` without referencing the concrete component class — keeping the
+ * form-field component out of each control's bundle.
+ */
+export const TW_FORM_FIELD = new InjectionToken<TwFormFieldParent>('TW_FORM_FIELD');
 
 // ── Unique ID counters ──
 let nextLabelId = 0;
@@ -412,8 +434,11 @@ export class SuffixIconDirective extends SuffixDirective {
     '[class]': 'rootClasses()',
     '(click)': '_onContainerClick($event)',
   },
+  providers: [
+    { provide: TW_FORM_FIELD, useExisting: forwardRef(() => FormFieldComponent) },
+  ],
 })
-export class FormFieldComponent implements AfterContentInit {
+export class FormFieldComponent implements AfterContentInit, TwFormFieldParent {
   /** Visual appearance of the field container. `'outline'` draws a full border around the control; `'filled'` uses a filled surface with a bottom border. Defaults to `'outline'`. */
   readonly appearance = input<FormFieldAppearance>('outline');
 

@@ -3,7 +3,7 @@ import {
   Component,
   signal,
 } from '@angular/core';
-import { type ComponentFixture, TestBed } from '@angular/core/testing';
+import { type ComponentFixture, DeferBlockState, TestBed } from '@angular/core/testing';
 import { OverlayModule } from '@angular/cdk/overlay';
 import { provideRouter, Router, RouterLink } from '@angular/router';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -500,9 +500,32 @@ describe('BreadcrumbsComponent', () => {
       ).toBeTruthy();
     });
 
-    it('should open the overflow menu on trigger click and list hidden items', () => {
-      const fixture = setup(OverflowHost);
-      fixture.componentInstance.maxItems.set(3);
+    it('should open the overflow menu on trigger click and list hidden items', async () => {
+      // The overflow trigger + menu are wrapped in @defer (to keep tw-menu +
+      // @angular/cdk/menu out of the eager breadcrumbs bundle). getDeferBlocks()
+      // only sees blocks in the fixture's own component view, so mount
+      // BreadcrumbsComponent directly and render the deferred block to Complete.
+      TestBed.configureTestingModule({
+        imports: [BreadcrumbsComponent, OverlayModule],
+        providers: [provideTwIcons(TEST_ICONS)],
+      });
+      // @defer in the component's own view requires async compilation when it is
+      // the root component under test.
+      await TestBed.compileComponents();
+      const fixture = TestBed.createComponent(BreadcrumbsComponent);
+      fixture.componentRef.setInput('items', [
+        { label: 'One', href: '/1' },
+        { label: 'Two', href: '/2' },
+        { label: 'Three', href: '/3' },
+        { label: 'Four', href: '/4' },
+        { label: 'Five', href: '/5' },
+        { label: 'Current' },
+      ]);
+      fixture.componentRef.setInput('maxItems', 3);
+      fixture.detectChanges();
+
+      const [overflowDefer] = await fixture.getDeferBlocks();
+      await overflowDefer.render(DeferBlockState.Complete);
       fixture.detectChanges();
 
       const trigger = fixture.nativeElement.querySelector(

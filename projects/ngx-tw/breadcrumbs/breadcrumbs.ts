@@ -330,27 +330,45 @@ type RenderedEntry<T> = RenderedItem<T> | RenderedSeparator | RenderedOverflow;
             </li>
           } @else {
             <li [class]="itemClasses()">
-              <button
-                type="button"
-                [class]="overflowTriggerClasses()"
-                [twMenuTrigger]="overflowMenuTpl"
-                aria-label="Show more breadcrumbs"
-              >
-                <span aria-hidden="true">&hellip;</span>
-              </button>
-              <ng-template #overflowMenuTpl>
-                <tw-menu aria-label="Hidden breadcrumb items">
-                  @for (hidden of collapsedItems(); track hidden) {
-                    @if (hidden.disabled || !hidden.href) {
-                      <span twMenuItem [attr.aria-disabled]="hidden.disabled ? 'true' : null">
-                        {{ hidden.label }}
-                      </span>
-                    } @else {
-                      <a twMenuItem [attr.href]="hidden.href">{{ hidden.label }}</a>
+              <!--
+                The overflow menu pulls in tw-menu + @angular/cdk/menu (overlay,
+                focus-trap). @defer keeps that weight in a lazy chunk so a plain
+                breadcrumb trail (the common case, maxItems=0) never bundles it;
+                the chunk loads when the trigger scrolls into view and is
+                prefetched on idle to keep the first click responsive. The
+                @placeholder mirrors the trigger so layout and a11y are stable.
+              -->
+              @defer (on viewport; prefetch on idle) {
+                <button
+                  type="button"
+                  [class]="overflowTriggerClasses()"
+                  [twMenuTrigger]="overflowMenuTpl"
+                  aria-label="Show more breadcrumbs"
+                >
+                  <span aria-hidden="true">&hellip;</span>
+                </button>
+                <ng-template #overflowMenuTpl>
+                  <tw-menu aria-label="Hidden breadcrumb items">
+                    @for (hidden of collapsedItems(); track hidden) {
+                      @if (hidden.disabled || !hidden.href) {
+                        <span twMenuItem [attr.aria-disabled]="hidden.disabled ? 'true' : null">
+                          {{ hidden.label }}
+                        </span>
+                      } @else {
+                        <a twMenuItem [attr.href]="hidden.href">{{ hidden.label }}</a>
+                      }
                     }
-                  }
-                </tw-menu>
-              </ng-template>
+                  </tw-menu>
+                </ng-template>
+              } @placeholder {
+                <button
+                  type="button"
+                  [class]="overflowTriggerClasses()"
+                  aria-label="Show more breadcrumbs"
+                >
+                  <span aria-hidden="true">&hellip;</span>
+                </button>
+              }
             </li>
           }
         }

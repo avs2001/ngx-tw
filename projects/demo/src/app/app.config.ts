@@ -11,10 +11,11 @@ import {
   XCircle, Settings, Search, User, Mail,
   Bell, Home, ArrowRight, Download, Upload,
   Edit, Trash2, Eye, Lock, Unlock,
-  ArrowDownWideNarrow, Calendar, ChevronRight, FileText,
+  ArrowDownWideNarrow, Calendar, ChevronRight, ChevronDown, FileText,
   Package, PlayCircle, MessageSquare, LayoutTemplate,
   Layers, FlipHorizontal2, Inbox, Slash,
   UploadCloud, Image, File, X,
+  ListTree, Folder,
 } from 'lucide-angular';
 
 import { routes } from './app.routes';
@@ -33,10 +34,11 @@ export const appConfig: ApplicationConfig = {
       XCircle, Settings, Search, User, Mail,
       Bell, Home, ArrowRight, Download, Upload,
       Edit, Trash2, Eye, Lock, Unlock,
-      ArrowDownWideNarrow, Calendar, ChevronRight, FileText,
+      ArrowDownWideNarrow, Calendar, ChevronRight, ChevronDown, FileText,
       Package, PlayCircle, MessageSquare, LayoutTemplate,
       Layers, FlipHorizontal2, Inbox, Slash,
       UploadCloud, Image, File, X,
+      ListTree, Folder,
     }),
   ]
 };

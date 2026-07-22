@@ -35,8 +35,8 @@ import {
   type TwSize,
 } from '@cdevhub/ngx-tw/core';
 import {
-  FormFieldComponent,
   FormFieldControl,
+  TW_FORM_FIELD,
   TW_FORM_FIELD_CONTROL,
 } from '@cdevhub/ngx-tw/form-field';
 
@@ -167,7 +167,7 @@ export class InputDirective
   private readonly autofillMonitor = inject(AutofillMonitor);
   private readonly platform = inject(Platform);
   private readonly destroyRef = inject(DestroyRef);
-  private readonly formField = inject(FormFieldComponent, { optional: true });
+  private readonly formField = inject(TW_FORM_FIELD, { optional: true });
   private readonly ngControl = inject(NgControl, {
     optional: true,
     self: true,
