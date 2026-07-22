@@ -7,5 +7,6 @@ export type {
   TimePickerInputEvent,
   TimePickerFormat,
   TimePickerMeridiem,
+  TimePickerValidationErrors,
 } from './time-picker';
 export { TimePickerIntl, provideTimePickerIntl } from './time-picker-intl';

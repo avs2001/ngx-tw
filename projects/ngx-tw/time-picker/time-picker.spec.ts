@@ -65,6 +65,24 @@ class ReactiveHost {
 }
 
 @Component({
+  imports: [TimePickerComponent, ReactiveFormsModule],
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  template: `
+    <tw-time-picker
+      aria-label="Ranged"
+      [formControl]="control"
+      [minTime]="minTime()"
+      [maxTime]="maxTime()"
+    />
+  `,
+})
+class RangedReactiveHost {
+  readonly control = new FormControl<Date | null>(null);
+  readonly minTime = signal<Date | null>(new Date(2026, 0, 1, 9, 0, 0));
+  readonly maxTime = signal<Date | null>(new Date(2026, 0, 1, 17, 0, 0));
+}
+
+@Component({
   imports: [TimePickerComponent, FormsModule],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `<tw-time-picker aria-label="TD" [(ngModel)]="value" />`,
@@ -700,4 +718,86 @@ describe('TimePickerComponent', () => {
       expect(queryField(fixture, 'Minutes').value).toBe('45');
     });
   });
+
+  // ── Validator (NG_VALIDATORS) ──
+  //
+  // `minTime` / `maxTime` used to be decorative for form validity: the value
+  // committed correctly and the field rendered an error border, but
+  // `control.errors` stayed null and `form.valid` stayed true, so a submit guard
+  // on `form.invalid` let out-of-range times straight through.
+  //
+  // These assert `valid === false`, because reaching the control's error map is
+  // the whole point. They fail wholesale if the static NG_VALUE_ACCESSOR
+  // provider is dropped — under v22 that silently routes the component down the
+  // signal-forms custom-control branch, which never calls validate().
+
+  describe('validator', () => {
+    it('surfaces timePickerMin on a bound FormControl for a time before minTime', async () => {
+      const fixture = setup(RangedReactiveHost);
+      const ctrl = fixture.componentInstance.control;
+
+      ctrl.setValue(new Date(2026, 0, 1, 7, 30, 0));
+      fixture.detectChanges();
+      await fixture.whenStable();
+
+      expect('timePickerMin' in (ctrl.errors ?? {})).toBe(true);
+      expect(ctrl.valid).toBe(false);
+    });
+
+    it('surfaces timePickerMax for a time after maxTime', async () => {
+      const fixture = setup(RangedReactiveHost);
+      const ctrl = fixture.componentInstance.control;
+
+      ctrl.setValue(new Date(2026, 0, 1, 19, 0, 0));
+      fixture.detectChanges();
+      await fixture.whenStable();
+
+      expect('timePickerMax' in (ctrl.errors ?? {})).toBe(true);
+      expect(ctrl.valid).toBe(false);
+    });
+
+    it('is valid for a time inside the range', async () => {
+      const fixture = setup(RangedReactiveHost);
+      const ctrl = fixture.componentInstance.control;
+
+      ctrl.setValue(new Date(2026, 0, 1, 12, 0, 0));
+      fixture.detectChanges();
+      await fixture.whenStable();
+
+      expect(ctrl.errors).toBeNull();
+      expect(ctrl.valid).toBe(true);
+    });
+
+    it('treats an empty value as valid when the control is not required', async () => {
+      const fixture = setup(RangedReactiveHost);
+      const ctrl = fixture.componentInstance.control;
+
+      ctrl.setValue(null);
+      fixture.detectChanges();
+      await fixture.whenStable();
+
+      expect(ctrl.valid).toBe(true);
+    });
+
+    it('re-validates when minTime moves after the value was committed', async () => {
+      // Without registerOnValidatorChange plumbing the verdict goes stale: right
+      // on first commit, wrong as soon as the consumer changes the constraint.
+      const fixture = setup(RangedReactiveHost);
+      const ctrl = fixture.componentInstance.control;
+
+      ctrl.setValue(new Date(2026, 0, 1, 10, 0, 0));
+      fixture.detectChanges();
+      await fixture.whenStable();
+      expect(ctrl.valid).toBe(true);
+
+      fixture.componentInstance.minTime.set(new Date(2026, 0, 1, 11, 0, 0));
+      fixture.detectChanges();
+      await fixture.whenStable();
+
+      expect(ctrl.valid).toBe(false);
+      expect('timePickerMin' in (ctrl.errors ?? {})).toBe(true);
+    });
+  });
+
+
 });

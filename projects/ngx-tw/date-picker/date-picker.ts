@@ -24,10 +24,15 @@ import {
   ViewContainerRef,
 } from '@angular/core';
 import {
+  type AbstractControl,
   type ControlValueAccessor,
   FormGroupDirective,
+  NG_VALIDATORS,
+  NG_VALUE_ACCESSOR,
   NgControl,
   NgForm,
+  type ValidationErrors,
+  type Validator,
   Validators,
 } from '@angular/forms';
 import { Overlay } from '@angular/cdk/overlay';
@@ -52,8 +57,14 @@ import {
   TW_FORM_FIELD,
   TW_FORM_FIELD_CONTROL,
 } from '@cdevhub/ngx-tw/form-field';
-import { DATE_ADAPTER, type DateAdapter } from '@cdevhub/ngx-tw/calendar';
-import type { CalendarCell, CalendarViewState, DateClassFn, DateFilterFn } from '@cdevhub/ngx-tw/calendar';
+import { calendarValidator, DATE_ADAPTER, type DateAdapter } from '@cdevhub/ngx-tw/calendar';
+import type {
+  CalendarCell,
+  CalendarValidationErrors,
+  CalendarViewState,
+  DateClassFn,
+  DateFilterFn,
+} from '@cdevhub/ngx-tw/calendar';
 import { DatePickerOverlayComponent } from './date-picker-overlay';
 
 // ── Public types ──────────────────────────────────────────────────
@@ -268,6 +279,25 @@ const DEFAULT_DISPLAY_FORMAT = {
       provide: TW_FORM_FIELD_CONTROL,
       useExisting: forwardRef(() => DatePickerComponent),
     },
+    {
+      provide: NG_VALIDATORS,
+      useExisting: forwardRef(() => DatePickerComponent),
+      multi: true,
+    },
+    // Angular v22 compiles any component exposing a `value` model() as a
+    // signal-forms custom control, and `FormControlDirective` takes the classic
+    // CVA path — the one that runs `setUpValidators` and composes the
+    // NG_VALIDATORS above onto the control — only if a value accessor is
+    // already visible at directive-creation time. Assigning
+    // `ngControl.valueAccessor` later is too late, so without this static
+    // provider `validate()` is never called and every error code below
+    // disappears silently. See the CVA section of CLAUDE.md; `calendar.ts` and
+    // `date-range-picker.ts` carry the same pair for the same reason.
+    {
+      provide: NG_VALUE_ACCESSOR,
+      useExisting: forwardRef(() => DatePickerComponent),
+      multi: true,
+    },
     PickerOverlayCoordinator,
   ],
   template: `
@@ -368,20 +398,20 @@ const DEFAULT_DISPLAY_FORMAT = {
 })
 export class DatePickerComponent<D = Date>
   extends FormFieldControl<D>
-  implements ControlValueAccessor, OnInit
+  implements ControlValueAccessor, Validator, OnInit
 {
   // ── Inputs ──
 
   /** Id on the date-picker's input element. Auto-generated when not provided. Used by the form-field's `<label for>` attribute. */
   readonly idInput = input<string | undefined>(undefined, { alias: 'id' });
 
-  /** Minimum selectable date. Typed input earlier than this sets `errorState` and the calendar disables the cell. Defaults to `null`. */
+  /** Minimum selectable date. Typed input earlier than this commits the value and marks the bound control invalid with `calendarMinDate`; the calendar disables the cell. Defaults to `null`. */
   readonly minDate = input<D | null>(null);
 
-  /** Maximum selectable date. Typed input later than this sets `errorState` and the calendar disables the cell. Defaults to `null`. */
+  /** Maximum selectable date. Typed input later than this commits the value and marks the bound control invalid with `calendarMaxDate`; the calendar disables the cell. Defaults to `null`. */
   readonly maxDate = input<D | null>(null);
 
-  /** Per-date predicate — return `false` to disable. Applied in both the calendar and the text-parse path. */
+  /** Per-date predicate — return `false` to disable. Applied in the calendar, the text-parse path, and the `calendarDisabledDate` validation error. */
   readonly dateFilter = input<DateFilterFn<D> | null>(null);
 
   /** Which calendar view opens first — `'day'`, `'month'`, or `'year'`. Defaults to `'day'`. */
@@ -530,7 +560,12 @@ export class DatePickerComponent<D = Date>
   private readonly injector = inject(Injector);
   private readonly destroyRef = inject(DestroyRef);
   private readonly formField = inject(TW_FORM_FIELD, { optional: true });
-  private readonly ngControl = inject(NgControl, { optional: true, self: true });
+  // Resolved lazily in `ngOnInit`, not via eager `inject(NgControl, { self })`:
+  // this component provides NG_VALIDATORS with `useExisting`, so NgModel /
+  // FormControlName pulling the validator set during construction would resolve
+  // back into this instance while it is still being created. Mirrors
+  // `date-range-picker.ts` and `calendar.ts`.
+  private ngControl: NgControl | null = null;
   private readonly parentForm = inject(NgForm, { optional: true });
   private readonly parentFormGroup = inject(FormGroupDirective, { optional: true });
   private readonly defaultMatcher = inject(TW_ERROR_STATE_MATCHER);
@@ -557,10 +592,35 @@ export class DatePickerComponent<D = Date>
   readonly internalValue = linkedSignal<D | null>(() => this.value());
   /** @internal */
   readonly rawInputText = signal<string>('');
-  /** @internal */
-  readonly parseError = signal(false);
-  /** @internal */
-  readonly rangeError = signal(false);
+  /**
+   * @internal The text the user typed that could not be parsed into a date,
+   * or `null` when the current entry parsed cleanly.
+   *
+   * This is the single source of truth for "the typed text is bad". It drives
+   * both the visual error state (via `parseError` below) and the form error
+   * (via `validate()`, which feeds it to `calendarValidator` as
+   * `lastInvalidFormValue`). Keeping one field instead of a boolean flag plus a
+   * separate string is what stops the two from disagreeing.
+   */
+  private readonly unparseableText = signal<string | null>(null);
+
+  /** @internal Whether the current input text failed to parse. */
+  readonly parseError = computed(() => this.unparseableText() !== null);
+  /**
+   * @internal Whether the committed value violates `minDate` / `maxDate` /
+   * `dateFilter`.
+   *
+   * Derived, not a flag. An out-of-range entry is committed to the form (so the
+   * control holds what the user typed and is *invalid*, rather than silently
+   * keeping an older value), which means the value-sync effect below runs and
+   * would immediately clear any manually-set flag. Deriving it also keeps the
+   * error correct when the consumer moves a constraint after the fact, which a
+   * flag set once at commit time cannot do.
+   */
+  readonly rangeError = computed(() => {
+    const v = this.internalValue();
+    return v !== null && !this.isInRange(v);
+  });
   /** @internal */
   readonly focusedSignal = signal(false);
 
@@ -714,22 +774,36 @@ export class DatePickerComponent<D = Date>
   constructor() {
     super();
 
-    // Wire this component as the NgControl's value accessor without registering
-    // NG_VALUE_ACCESSOR in providers, which would create a circular DI with the
-    // `inject(NgControl, { self: true })` above.
-    if (this.ngControl) {
-      this.ngControl.valueAccessor = this;
-    }
+    // Re-run validation whenever a constraint input changes, so a consumer
+    // moving `minDate` after a value was committed updates `control.errors`
+    // instead of leaving a stale verdict. `validatorOnChange` is a plain
+    // callback into Angular's validator plumbing, not a signal write, so the
+    // effect cannot cycle; `untracked` keeps it that way regardless.
+    // Mirrors `date-range-picker.ts` and `calendar.ts`.
+    effect(() => {
+      this.minDate();
+      this.maxDate();
+      this.dateFilter();
+      untracked(() => this.validatorOnChange());
+    });
 
     // Sync rawInputText whenever the underlying value changes (programmatic or user).
     effect(() => {
       const v = this.internalValue();
       const fmt = this.effectiveFormat();
       untracked(() => {
+        // An unparseable entry commits `null` precisely *because* it failed to
+        // parse, and this effect runs asynchronously afterwards. Syncing here
+        // would undo both halves of that: it would clear the error state a
+        // moment after it was set, and — because the input is bound to
+        // `rawInputText` — blank the very text the user needs to correct,
+        // leaving an error border over an empty box. Bail out and let the
+        // parse-failure path own the display.
+        if (v === null && this.unparseableText() !== null) return;
+
         const display = v === null ? '' : this.adapter.format(v, fmt);
         this.rawInputText.set(display);
-        this.parseError.set(false);
-        this.rangeError.set(false);
+        this.unparseableText.set(null);
       });
     });
 
@@ -861,6 +935,15 @@ export class DatePickerComponent<D = Date>
   }
 
   ngOnInit(): void {
+    // Resolve the bound NgControl now that the host's FormControlName / NgModel
+    // is fully constructed (see the field declaration for why this is deferred).
+    // The value accessor itself is registered statically via NG_VALUE_ACCESSOR,
+    // which is what keeps `validate()` on the classic CVA path under v22.
+    this.ngControl = this.injector.get(NgControl, null, { self: true, optional: true });
+    // Anything read off `ngControl` before this point saw `null`; bump the
+    // revision so `isDisabled`, `required` and `errorState` recompute.
+    this._ngControlRev.update((n) => n + 1);
+
     const ctrl = this.ngControl?.control;
     if (ctrl) {
       const streams = [ctrl.statusChanges, ctrl.valueChanges].filter(
@@ -913,8 +996,7 @@ export class DatePickerComponent<D = Date>
     const target = event.target as HTMLInputElement;
     const rawText = target.value;
     this.rawInputText.set(rawText);
-    this.parseError.set(false);
-    this.rangeError.set(false);
+    this.unparseableText.set(null);
     // Non-committing parse so the payload's `parsed` field reflects success when achievable.
     let parsed: D | null = null;
     if (rawText.trim()) {
@@ -1041,34 +1123,63 @@ export class DatePickerComponent<D = Date>
   private commitFromInput(): void {
     const raw = this.rawInputText().trim();
     if (!raw) {
+      this.unparseableText.set(null);
       if (this.internalValue() !== null || this.parseError() || this.rangeError()) {
         this.commit(null, 'input');
       } else {
-        this.parseError.set(false);
-        this.rangeError.set(false);
+        this.unparseableText.set(null);
       }
+      this.validatorOnChange();
       return;
     }
     const parsed = this.adapter.parse(raw, this.parseFormat());
     if (!parsed || !this.adapter.isValid(parsed)) {
-      this.parseError.set(true);
-      this.rangeError.set(false);
+      // Unparseable. Both halves matter: the previously committed date must not
+      // survive in the form behind an error border (that stale value would be
+      // submitted), and the parse failure must be carried into `validate()`
+      // because the `null` we commit is otherwise indistinguishable from an
+      // empty optional field.
+      // Deliberately not routed through `commit()`: that formats the committed
+      // value into the input, which would erase the text the user just typed.
+      // Clear the *form* value so a stale date cannot be submitted behind an
+      // error border, while leaving the raw text on screen to be corrected.
+      //
+      // Keeping that text visible also depends on the bail-out in the
+      // value-sync effect above — without it, this `internalValue.set(null)`
+      // asynchronously blanks the input. Both halves are pinned by the
+      // "keeps unparseable text visible" specs; changing one without the other
+      // reintroduces an error border over an empty box.
+      const previous = this.internalValue();
+      this.internalValue.set(null);
+      this.value.set(null);
+      this.unparseableText.set(raw);
+      this.onChange(null);
+      this.onTouched();
+      this.validatorOnChange();
+      this.dateChange.emit({ value: null, previousValue: previous, source: 'input' });
       return;
     }
     if (!this.isInRange(parsed)) {
-      this.parseError.set(false);
-      this.rangeError.set(true);
+      // Out of range still commits: the form should hold what the user actually
+      // entered and be *invalid*, not silently keep an older value. The range
+      // codes come from `validate()` reading `control.value`, so no extra state
+      // needs carrying here.
+      this.unparseableText.set(null);
+      this.commit(parsed, 'input');
+      this.unparseableText.set(null);
+      this.validatorOnChange();
       return;
     }
+    this.unparseableText.set(null);
     this.commit(parsed, 'input');
+    this.validatorOnChange();
   }
 
   private commit(next: D | null, source: DatePickerChangeSource): void {
     const previous = this.internalValue();
     this.internalValue.set(next);
     this.value.set(next);
-    this.parseError.set(false);
-    this.rangeError.set(false);
+    this.unparseableText.set(null);
     const display = next === null ? '' : this.adapter.format(next, this.effectiveFormat());
     this.rawInputText.set(display);
     const el = this.inputRef().nativeElement;
@@ -1182,8 +1293,7 @@ export class DatePickerComponent<D = Date>
         this.value.set(previous);
         const display = previous === null ? '' : this.adapter.format(previous, this.effectiveFormat());
         this.rawInputText.set(display);
-        this.parseError.set(false);
-        this.rangeError.set(false);
+        this.unparseableText.set(null);
       }
     }
 
@@ -1308,8 +1418,7 @@ export class DatePickerComponent<D = Date>
     if (value === null || value === undefined || value === '') {
       this.internalValue.set(null);
       this.value.set(null);
-      this.parseError.set(false);
-      this.rangeError.set(false);
+      this.unparseableText.set(null);
       this.rawInputText.set('');
       this.dateChange.emit({
         value: null,
@@ -1323,20 +1432,18 @@ export class DatePickerComponent<D = Date>
       this.internalValue.set(null);
       this.value.set(null);
       this.rawInputText.set('');
-      this.parseError.set(false);
-      this.rangeError.set(false);
+      this.unparseableText.set(null);
       return;
     }
     if (!this.adapter.isValid(coerced)) {
-      this.parseError.set(true);
+      this.unparseableText.set(String(value));
       this.rawInputText.set(String(value));
       return;
     }
     const previous = this.internalValue();
     this.internalValue.set(coerced);
     this.value.set(coerced);
-    this.parseError.set(false);
-    this.rangeError.set(false);
+    this.unparseableText.set(null);
     this.rawInputText.set(this.adapter.format(coerced, this.effectiveFormat()));
     this.dateChange.emit({ value: coerced, previousValue: previous, source: 'programmatic' });
   }
@@ -1351,6 +1458,37 @@ export class DatePickerComponent<D = Date>
 
   setDisabledState(isDisabled: boolean): void {
     this.cvaDisabled.set(isDisabled);
+  }
+
+  // ── Validator ──
+
+  private validatorOnChange: () => void = () => {};
+
+  /** @internal */
+  validate(control: AbstractControl): ValidationErrors | null {
+    // Delegate to the shared calendar validator so a `tw-date-picker` reports
+    // the same CalendarErrorCode set as `tw-calendar` and `tw-date-range-picker`
+    // for the same constraint violation.
+    const validator = calendarValidator<'single', D>({
+      mode: 'single',
+      // Carried explicitly rather than inferred from `control.value`: an
+      // unparseable entry commits `null`, and `null` is perfectly valid for a
+      // non-required control, so reading the value alone would report the field
+      // valid while the UI shows an error — the exact bug this fixes.
+      lastInvalidFormValue: this.unparseableText(),
+      constraints: {
+        minDate: this.minDate(),
+        maxDate: this.maxDate(),
+        dateFilter: this.dateFilter(),
+      },
+      adapter: this.adapter,
+    });
+    return validator(control) as CalendarValidationErrors | null;
+  }
+
+  /** @internal */
+  registerOnValidatorChange(fn: () => void): void {
+    this.validatorOnChange = fn;
   }
 
   // ── FormFieldControl methods ──

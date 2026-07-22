@@ -92,6 +92,24 @@ class BasicHost {
 @Component({
   imports: [DatePickerComponent, ReactiveFormsModule],
   changeDetection: ChangeDetectionStrategy.OnPush,
+  template: `
+    <tw-date-picker
+      [formControl]="ctrl"
+      [minDate]="minDate()"
+      [maxDate]="maxDate()"
+      aria-label="Validated"
+    />
+  `,
+})
+class ValidatedReactiveHost {
+  readonly ctrl = new FormControl<Date | null>(null);
+  readonly minDate = signal<Date | null>(new Date(2026, 3, 1));
+  readonly maxDate = signal<Date | null>(new Date(2026, 3, 30));
+}
+
+@Component({
+  imports: [DatePickerComponent, ReactiveFormsModule],
+  changeDetection: ChangeDetectionStrategy.OnPush,
   template: `<tw-date-picker [formControl]="ctrl" aria-label="Reactive" />`,
 })
 class ReactiveHost {
@@ -671,6 +689,150 @@ describe('DatePickerComponent', () => {
       input.dispatchEvent(new Event('blur'));
       await advance(fixture);
       expect(fixture.componentInstance.value).toBeInstanceOf(Date);
+    });
+  });
+
+  // ── Validator (NG_VALIDATORS) ──
+  //
+  // These are the guard tests CLAUDE.md calls "the only thing standing between
+  // this trap and a silent regression". Under Angular v22 a component exposing
+  // a `value` model() is compiled as a signal-forms custom control, and the
+  // classic CVA path — the one that runs setUpValidators and composes a
+  // self-provided NG_VALIDATORS onto the control — is taken ONLY if a value
+  // accessor is visible at directive-creation time. Without the static
+  // NG_VALUE_ACCESSOR provider, validate() is never called, every assertion
+  // below fails, and nothing else in this file notices.
+  //
+  // They assert `form.valid`, not just the presence of an error key, because
+  // reaching the control's error map is the entire point of the fix.
+
+  describe('validator', () => {
+    it('surfaces calendarMinDate on a bound FormControl for a date before minDate', async () => {
+      const fixture = TestBed.createComponent(ValidatedReactiveHost);
+      fixture.detectChanges();
+      const ctrl = fixture.componentInstance.ctrl;
+
+      const input = getInput(fixture);
+      typeInto(input, '2025-01-01');
+      input.dispatchEvent(new Event('blur'));
+      await advance(fixture);
+
+      expect(ctrl.errors).not.toBeNull();
+      expect('calendarMinDate' in (ctrl.errors ?? {})).toBe(true);
+      expect(ctrl.valid).toBe(false);
+    });
+
+    it('surfaces calendarMaxDate for a date after maxDate', async () => {
+      const fixture = TestBed.createComponent(ValidatedReactiveHost);
+      fixture.detectChanges();
+      const ctrl = fixture.componentInstance.ctrl;
+
+      const input = getInput(fixture);
+      typeInto(input, '2026-12-31');
+      input.dispatchEvent(new Event('blur'));
+      await advance(fixture);
+
+      expect('calendarMaxDate' in (ctrl.errors ?? {})).toBe(true);
+      expect(ctrl.valid).toBe(false);
+    });
+
+    it('commits the out-of-range value to the form rather than dropping it', async () => {
+      // The stale-value half of the bug: the control must not silently keep a
+      // previous value while the UI shows an error.
+      const fixture = TestBed.createComponent(ValidatedReactiveHost);
+      fixture.detectChanges();
+      const ctrl = fixture.componentInstance.ctrl;
+      ctrl.setValue(new Date(2026, 3, 15));
+      await advance(fixture);
+
+      const input = getInput(fixture);
+      typeInto(input, '2025-01-01');
+      input.dispatchEvent(new Event('blur'));
+      await advance(fixture);
+
+      expect(ctrl.value?.getFullYear()).toBe(2025);
+      expect(ctrl.valid).toBe(false);
+    });
+
+    it('surfaces an error and clears the stale value on unparseable text', async () => {
+      // Unparseable input must not leave the previously committed date in the
+      // form while the field renders an error — and because `null` is valid for
+      // a non-required control, the parse failure has to be carried into
+      // validate() explicitly rather than inferred from the value.
+      const fixture = TestBed.createComponent(ValidatedReactiveHost);
+      fixture.detectChanges();
+      const ctrl = fixture.componentInstance.ctrl;
+      ctrl.setValue(new Date(2026, 3, 15));
+      await advance(fixture);
+
+      const input = getInput(fixture);
+      typeInto(input, 'not a date');
+      input.dispatchEvent(new Event('blur'));
+      await advance(fixture);
+
+      expect(ctrl.value).toBeNull();
+      expect(ctrl.errors).not.toBeNull();
+      expect(ctrl.valid).toBe(false);
+      // The text the user typed must stay on screen to be corrected. Clearing
+      // the *form value* must not also empty the *input* — an error border over
+      // a blank box tells the user nothing about what was rejected.
+      expect(getInput(fixture).value).toBe('not a date');
+    });
+
+    it('keeps unparseable text visible when there was no prior value', async () => {
+      // The null -> null case does not notify the value-sync effect, so it takes
+      // a different path than the stale-value case above. Both must behave the
+      // same from the user's point of view.
+      const fixture = TestBed.createComponent(ValidatedReactiveHost);
+      fixture.detectChanges();
+
+      const input = getInput(fixture);
+      typeInto(input, 'nonsense');
+      input.dispatchEvent(new Event('blur'));
+      await advance(fixture);
+
+      expect(getInput(fixture).value).toBe('nonsense');
+      expect(fixture.componentInstance.ctrl.valid).toBe(false);
+    });
+
+    it('clears the error once a valid in-range date is entered', async () => {
+      const fixture = TestBed.createComponent(ValidatedReactiveHost);
+      fixture.detectChanges();
+      const ctrl = fixture.componentInstance.ctrl;
+
+      const input = getInput(fixture);
+      typeInto(input, 'not a date');
+      input.dispatchEvent(new Event('blur'));
+      await advance(fixture);
+      expect(ctrl.valid).toBe(false);
+
+      typeInto(input, '2026-04-15');
+      input.dispatchEvent(new Event('blur'));
+      await advance(fixture);
+
+      expect(ctrl.errors).toBeNull();
+      expect(ctrl.valid).toBe(true);
+    });
+
+    it('re-validates when minDate changes after the value was committed', async () => {
+      // validate() is inert unless registerOnValidatorChange's callback fires.
+      // Without that plumbing the verdict goes stale: right on first blur,
+      // wrong the moment the consumer moves the constraint.
+      const fixture = TestBed.createComponent(ValidatedReactiveHost);
+      fixture.detectChanges();
+      const ctrl = fixture.componentInstance.ctrl;
+
+      const input = getInput(fixture);
+      typeInto(input, '2026-04-15');
+      input.dispatchEvent(new Event('blur'));
+      await advance(fixture);
+      expect(ctrl.valid).toBe(true);
+
+      fixture.componentInstance.minDate.set(new Date(2026, 5, 1));
+      await advance(fixture);
+
+      expect(ctrl.valid).toBe(false);
+      expect('calendarMinDate' in (ctrl.errors ?? {})).toBe(true);
     });
   });
 

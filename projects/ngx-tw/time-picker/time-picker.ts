@@ -9,6 +9,7 @@ import {
   ElementRef,
   forwardRef,
   inject,
+  Injector,
   input,
   isDevMode,
   linkedSignal,
@@ -21,10 +22,15 @@ import {
   viewChild,
 } from '@angular/core';
 import {
+  type AbstractControl,
   type ControlValueAccessor,
   FormGroupDirective,
+  NG_VALIDATORS,
+  NG_VALUE_ACCESSOR,
   NgControl,
   NgForm,
+  type ValidationErrors,
+  type Validator,
   Validators,
 } from '@angular/forms';
 import { FocusMonitor, LiveAnnouncer } from '@angular/cdk/a11y';
@@ -252,6 +258,18 @@ let nextTimePickerId = 0;
  * `DateAdapter<D>`, so the component works with the default native adapter
  * (`provideNativeDateAdapter()`) or any custom adapter a consumer ships.
  */
+/**
+ * Validation errors a `tw-time-picker` can place on its bound control.
+ *
+ * Mirrors the shape of `CalendarValidationErrors` so the two pickers report
+ * constraint violations the same way: a code keyed by what was violated, with
+ * the offending value and the bound it broke.
+ */
+export type TimePickerValidationErrors = Partial<{
+  timePickerMin: { min: unknown; actual: unknown };
+  timePickerMax: { max: unknown; actual: unknown };
+}>;
+
 @Component({
   selector: 'tw-time-picker',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -259,6 +277,25 @@ let nextTimePickerId = 0;
     {
       provide: TW_FORM_FIELD_CONTROL,
       useExisting: forwardRef(() => TimePickerComponent),
+    },
+    {
+      provide: NG_VALIDATORS,
+      useExisting: forwardRef(() => TimePickerComponent),
+      multi: true,
+    },
+    // Required, not optional. Angular v22 compiles any component exposing a
+    // `value` model() as a signal-forms custom control; `FormControlDirective`
+    // only takes the classic CVA path — the one that runs `setUpValidators` and
+    // composes the NG_VALIDATORS above — when a value accessor is already
+    // visible at directive-creation time. Assigning `ngControl.valueAccessor`
+    // in a lifecycle hook is too late, and the failure is silent: value and
+    // disabled still round-trip, so only a spec asserting an error code on a
+    // bound FormControl catches it. See CLAUDE.md's ControlValueAccessor
+    // section.
+    {
+      provide: NG_VALUE_ACCESSOR,
+      useExisting: forwardRef(() => TimePickerComponent),
+      multi: true,
     },
   ],
   template: `
@@ -436,7 +473,7 @@ let nextTimePickerId = 0;
 })
 export class TimePickerComponent<D = Date>
   extends FormFieldControl<D>
-  implements ControlValueAccessor, OnInit
+  implements ControlValueAccessor, Validator, OnInit
 {
   // ── Inputs ──
 
@@ -485,10 +522,10 @@ export class TimePickerComponent<D = Date>
   /** Amount to add/subtract when stepping seconds. Defaults to `1`. */
   readonly secondStep = input<number>(1);
 
-  /** Earliest accepted time-of-day. Values earlier than this set `errorState`. Defaults to `null`. Note: when `showSeconds` is `false`, the seconds component of any value still participates in the range comparison — supply `minTime` with zeroed seconds to match the 2-field display. */
+  /** Earliest accepted time-of-day. Values earlier than this set `errorState` and mark the bound control invalid with `timePickerMin`. Defaults to `null`. Note: when `showSeconds` is `false`, the seconds component of any value still participates in the range comparison — supply `minTime` with zeroed seconds to match the 2-field display. */
   readonly minTime = input<D | null>(null);
 
-  /** Latest accepted time-of-day. Values later than this set `errorState`. Defaults to `null`. Note: when `showSeconds` is `false`, the seconds component of any value still participates in the range comparison — supply `maxTime` with zeroed seconds to match the 2-field display. */
+  /** Latest accepted time-of-day. Values later than this set `errorState` and mark the bound control invalid with `timePickerMax`. Defaults to `null`. Note: when `showSeconds` is `false`, the seconds component of any value still participates in the range comparison — supply `maxTime` with zeroed seconds to match the 2-field display. */
   readonly maxTime = input<D | null>(null);
 
   /** Date portion used when the user types a time while `value` is `null`. Defaults to today. */
@@ -542,8 +579,13 @@ export class TimePickerComponent<D = Date>
   private readonly liveAnnouncer = inject(LiveAnnouncer);
   private readonly elementRef = inject(ElementRef<HTMLElement>);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly injector = inject(Injector);
   private readonly formField = inject(TW_FORM_FIELD, { optional: true });
-  private readonly ngControl = inject(NgControl, { optional: true, self: true });
+  // Resolved lazily in `ngOnInit`: this component self-provides NG_VALIDATORS
+  // via `useExisting`, so an eager `inject(NgControl, { self })` would deadlock
+  // against its own validator during construction. Mirrors `date-picker.ts`,
+  // `date-range-picker.ts` and `calendar.ts`.
+  private ngControl: NgControl | null = null;
   private readonly parentForm = inject(NgForm, { optional: true });
   private readonly parentFormGroup = inject(FormGroupDirective, { optional: true });
   private readonly defaultMatcher = inject(TW_ERROR_STATE_MATCHER);
@@ -736,9 +778,15 @@ export class TimePickerComponent<D = Date>
   constructor() {
     super();
 
-    if (this.ngControl) {
-      this.ngControl.valueAccessor = this;
-    }
+    // Re-run validation when a constraint moves, so `control.errors` reflects
+    // the new bound instead of the verdict from when the value was committed.
+    // `validatorOnChange` is a plain callback into Angular's validator
+    // plumbing, not a signal write, so this cannot cycle.
+    effect(() => {
+      this.minTime();
+      this.maxTime();
+      untracked(() => this.validatorOnChange());
+    });
 
     // Sync the field text whenever the underlying value changes (programmatic).
     effect(() => {
@@ -841,6 +889,13 @@ export class TimePickerComponent<D = Date>
   }
 
   ngOnInit(): void {
+    // Deferred NgControl resolution (see the field declaration). The value
+    // accessor itself is registered statically via NG_VALUE_ACCESSOR.
+    this.ngControl = this.injector.get(NgControl, null, { self: true, optional: true });
+    // `isDisabled` / `required` / `errorState` read `ngControl` and saw `null`
+    // until now; bump the revision so they recompute.
+    this._ngControlRev.update((n) => n + 1);
+
     const ctrl = this.ngControl?.control;
     if (ctrl) {
       const streams = [ctrl.statusChanges, ctrl.valueChanges].filter(
@@ -1253,6 +1308,45 @@ export class TimePickerComponent<D = Date>
   private fieldMaxFor(field: TimePickerField): number {
     if (field === 'hour') return fieldMax('hour', this.format());
     return 59;
+  }
+
+  // ── Validator ──
+
+  private validatorOnChange: () => void = () => {};
+
+  /** @internal */
+  validate(control: AbstractControl): ValidationErrors | null {
+    const value = control.value as D | null | undefined;
+    if (value === null || value === undefined) return null;
+    if (!this.adapter.isValid(value as D)) return null;
+
+    const errors: TimePickerValidationErrors = {};
+    const actualSecs = this.secondsOf(value as D);
+
+    const min = this.minTime();
+    if (min && this.adapter.isValid(min) && actualSecs < this.secondsOf(min)) {
+      errors.timePickerMin = { min, actual: value };
+    }
+    const max = this.maxTime();
+    if (max && this.adapter.isValid(max) && actualSecs > this.secondsOf(max)) {
+      errors.timePickerMax = { max, actual: value };
+    }
+
+    return Object.keys(errors).length ? errors : null;
+  }
+
+  /** @internal */
+  registerOnValidatorChange(fn: () => void): void {
+    this.validatorOnChange = fn;
+  }
+
+  /** Time-of-day in seconds, ignoring the date part — the same basis `isInRange` uses. */
+  private secondsOf(v: D): number {
+    return timeOfDaySeconds(
+      this.adapter.getHours(v),
+      this.adapter.getMinutes(v),
+      this.adapter.getSeconds(v),
+    );
   }
 
   // ── ControlValueAccessor ──
