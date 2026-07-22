@@ -3,6 +3,8 @@ import {
   Component,
   computed,
   contentChildren,
+  QueryList,
+  ViewChildren,
   DestroyRef,
   Directive,
   inject,
@@ -392,10 +394,12 @@ export class StepperComponent extends CdkStepper implements AfterViewInit {
     this._orientationSignal.set(this.orientation);
     this._selectedIndexSignal.set(this.selectedIndex);
     this._previousIndexSignal.set(this.selectedIndex);
+    this.syncFocusIndex();
 
     this.selectionChange
       .pipe(takeUntilDestroyed(this._destroyRef))
       .subscribe((event: StepperSelectionEvent) => {
+        this.syncFocusIndex();
         this._previousIndexSignal.set(event.previouslySelectedIndex);
         this._selectedIndexSignal.set(event.selectedIndex);
         this._orientationSignal.set(this.orientation);
@@ -469,10 +473,48 @@ export class StepperComponent extends CdkStepper implements AfterViewInit {
   }
 
   /** @internal Click handler for the step header button. */
+  /**
+   * @internal Re-declares CdkStepper's `_stepHeader` query as a **view** query.
+   *
+   * CdkStepper declares it as `@ContentChildren`, which assumes the host
+   * projects its own headers. `tw-stepper` renders the header strip inside its
+   * own template instead, so the base query matched nothing: `_sortedHeaders`
+   * stayed empty, the FocusKeyManager had zero items, and arrow-key navigation
+   * silently did nothing at all. Angular Material overrides the same query for
+   * the same reason.
+   *
+   * Decorator form, not `viewChildren()`, because CdkStepper subscribes to
+   * `_stepHeader.changes` — a QueryList API that signal queries do not expose.
+   */
+  @ViewChildren(CdkStepHeader) override _stepHeader = new QueryList<CdkStepHeader>();
+
+  /**
+   * @internal Which step header currently holds the single tab stop.
+   *
+   * Mirrors CdkStepper's `_getFocusIndex()` into a signal because that method
+   * reads `_keyManager.activeItemIndex`, a plain property — and CdkStepper's
+   * `_onKeydown` does not call `_stateChanged()` on the arrow-key path, so an
+   * OnPush template binding straight to `_getFocusIndex()` would render the
+   * roving tabindex once and then go stale the moment the user arrows.
+   */
+  readonly focusIndexValue = signal(0);
+
+  /** @internal Re-reads the CDK key manager's active item into `focusIndexValue`. */
+  private syncFocusIndex(): void {
+    this.focusIndexValue.set(this._getFocusIndex() ?? this.selectedIndex);
+  }
+
+  /** @internal Relays tablist keydown to CdkStepper, then republishes the tab stop. */
+  onTablistKeydown(event: KeyboardEvent): void {
+    this._onKeydown(event);
+    this.syncFocusIndex();
+  }
+
   onHeaderClick(step: StepComponent, index: number): void {
     if (!this.headerInteractive()) return;
     if (!step.isNavigable()) return;
     this.selectedIndex = index;
+    this.syncFocusIndex();
   }
 
   /** @internal Whether the stepper should render the error state for a step. */

@@ -497,4 +497,113 @@ describe('StepperComponent', () => {
       expect(spy).toHaveBeenCalledWith('Two, step 2 of 3');
     });
   });
+
+  describe('keyboard / roving tabindex', () => {
+    it('keeps exactly one step header in the tab order', async () => {
+      // `role="tab"` elements must form a single tab stop with arrow-key
+      // traversal inside (WAI-ARIA APG tabs pattern). Without a roving
+      // tabindex every header is individually tabbable, so crossing a 6-step
+      // wizard costs a keyboard user 6 Tab presses and conformance audits flag
+      // the tablist. CdkStepHeader supplies `role` only — the tabindex is the
+      // host's job.
+      const fixture = TestBed.createComponent(BasicHost);
+      fixture.detectChanges();
+      await fixture.whenStable();
+
+      const headers = Array.from(
+        fixture.nativeElement.querySelectorAll('button[role="tab"]'),
+      ) as HTMLElement[];
+      expect(headers.length).toBeGreaterThan(1);
+
+      const tabbable = headers.filter((h) => h.getAttribute('tabindex') === '0');
+      expect(tabbable.length).toBe(1);
+      expect(headers.every((h) => h.getAttribute('tabindex') !== null)).toBe(true);
+    });
+
+    it('moves the tab stop to the selected step', async () => {
+      const fixture = TestBed.createComponent(BasicHost);
+      fixture.detectChanges();
+      await fixture.whenStable();
+
+      const headers = () =>
+        Array.from(fixture.nativeElement.querySelectorAll('button[role="tab"]')) as HTMLElement[];
+      expect(headers()[0].getAttribute('tabindex')).toBe('0');
+
+      headers()[1].click();
+      fixture.detectChanges();
+      await fixture.whenStable();
+
+      expect(headers()[1].getAttribute('tabindex')).toBe('0');
+      expect(headers()[0].getAttribute('tabindex')).toBe('-1');
+    });
+
+    it('Home and End jump to the first and last header', async () => {
+      // Guards the view-query override specifically. CdkStepper declares
+      // `_stepHeader` as a CONTENT query, but tw-stepper renders its headers in
+      // its own template — so before the override the FocusKeyManager had zero
+      // items and every one of these keys was a no-op. A test that only checked
+      // "focus did not move" would have passed against that broken state, so
+      // these assert the destination.
+      const fixture = TestBed.createComponent(BasicHost);
+      fixture.detectChanges();
+      await fixture.whenStable();
+
+      const headers = Array.from(
+        fixture.nativeElement.querySelectorAll('button[role="tab"]'),
+      ) as HTMLElement[];
+      const tablist = fixture.nativeElement.querySelector('[role="tablist"]') as HTMLElement;
+      const press = (key: string, keyCode: number) => {
+        tablist.dispatchEvent(
+          new KeyboardEvent('keydown', { key, keyCode, bubbles: true, cancelable: true }),
+        );
+        fixture.detectChanges();
+      };
+
+      headers[0].focus();
+      press('End', 35);
+      expect(document.activeElement).toBe(headers[headers.length - 1]);
+      expect(headers[headers.length - 1].getAttribute('tabindex')).toBe('0');
+
+      press('Home', 36);
+      expect(document.activeElement).toBe(headers[0]);
+      expect(headers[0].getAttribute('tabindex')).toBe('0');
+    });
+
+    it('ArrowRight moves focus to the next header without changing selection', async () => {
+      // Delegated to CdkStepper's FocusKeyManager. The wiring (the tablist
+      // keydown binding + cdkStepHeader on each button) is otherwise untested —
+      // removing the binding would fail no spec.
+      const fixture = TestBed.createComponent(BasicHost);
+      fixture.detectChanges();
+      await fixture.whenStable();
+
+      const headers = Array.from(
+        fixture.nativeElement.querySelectorAll('button[role="tab"]'),
+      ) as HTMLElement[];
+      headers[0].focus();
+
+      const tablist = fixture.nativeElement.querySelector('[role="tablist"]') as HTMLElement;
+      // `keyCode` is required: CDK's ListKeyManager reads it, and jsdom leaves
+      // it at 0 when only `key` is supplied.
+      tablist.dispatchEvent(
+        new KeyboardEvent('keydown', {
+          key: 'ArrowRight',
+          keyCode: 39,
+          bubbles: true,
+          cancelable: true,
+        }),
+      );
+      fixture.detectChanges();
+      await fixture.whenStable();
+
+      expect(document.activeElement).toBe(headers[1]);
+      // Focus moves; selection does not (APG: arrow keys traverse, Enter/Space
+      // activates). The tab stop follows focus.
+      expect(headers[1].getAttribute('aria-selected')).toBe('false');
+      expect(headers[1].getAttribute('tabindex')).toBe('0');
+      expect(headers[0].getAttribute('tabindex')).toBe('-1');
+    });
+  });
+
+
 });

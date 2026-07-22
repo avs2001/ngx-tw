@@ -6,7 +6,7 @@
   [class]="headerClasses()"
   role="tablist"
   [attr.aria-orientation]="orientationValue()"
-  (keydown)="_onKeydown($event)"
+  (keydown)="onTablistKeydown($event)"
 >
   @for (step of twSteps; track $index; let i = $index; let last = $last) {
     <div [class]="stepItemClasses()">
@@ -15,6 +15,7 @@
         type="button"
         cdkStepHeader
         role="tab"
+        [attr.tabindex]="focusIndexValue() === i ? 0 : -1"
         [class]="stepHeaderClasses()"
         [class.pointer-events-none]="!headerInteractive() || !step.isNavigable()"
         [class.opacity-60]="!step.isNavigable()"
