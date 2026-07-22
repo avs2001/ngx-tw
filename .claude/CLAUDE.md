@@ -13,9 +13,9 @@
 
 For non-trivial code changes — new components, animation work, `ControlValueAccessor` wiring, `public-api.ts` updates, multi-file refactors — treat your own conclusions as suspicious until verified. Call the `advisor` tool before committing to an approach and again before declaring done. Surface unresolved risks explicitly in the closing summary; never declare "done" with hidden uncertainty.
 
-## Angular Conventions (v21)
+## Angular Conventions (v22)
 
-- Standalone components only. Do NOT set `standalone: true` — it's the default in v21.
+- Standalone components only. Do NOT set `standalone: true` — it's the default in v22.
 - Signal-based APIs: `input()`, `output()`, `model()` for two-way binding.
 - `computed()` and `linkedSignal()` for derived state (see below).
 - Do NOT use `mutate` on signals. Use `update` or `set`.
@@ -71,7 +71,7 @@ Describe *purpose and behavior* in one line. Do not describe TypeScript types �
 
 - Library lives at `projects/ngx-tw/`. Each component is its own directory under `projects/ngx-tw/src/lib/` (e.g., `button/`, `badge/`).
 - **Selectors.** Prefix `tw`. Element selectors for components (`tw-button`, `tw-card`); attribute selectors for directives (`twBadge`, `twTooltip`).
-- **Naming.** Angular v21 style guide: bare names, no type suffixes — `button.ts`, `badge.ts`, `button.spec.ts`.
+- **Naming.** Angular v22 style guide: bare names, no type suffixes — `button.ts`, `badge.ts`, `button.spec.ts`.
 - **Secondary entry points.** Every component directory is its own entry point. Consumers import per-component: `import { ButtonComponent } from '@cdevhub/ngx-tw/button'`. Each directory needs its own `ng-package.json` with `{ "lib": { "entryFile": "index.ts" } }` and an `index.ts` re-exporting the public API.
 - **Class naming.** Angular CLI conventions — `ButtonComponent`, `BadgeDirective`, `TooltipDirective`. **Never** apply a `Tw*` prefix to component or directive class identifiers — the package scope (`@cdevhub/ngx-tw/button`) provides namespacing, and Angular CLI reserves bare names for component classes. Selectors are unaffected: element selectors keep the `tw-` prefix (`tw-button`); attribute selectors keep the `tw` camelCase prefix (`twBadge`). Shared **types** are the only identifiers that carry a `Tw` prefix (`TwColor`, `TwSize`) because they are hand-authored and appear in consumer code with no other namespace cue. Codified exception: the `TwSplit*` family (`TwSplit`, `TwSplitPane`, `TwSplitGutter`, `TwSplitPaneHeader`) is scheduled for rename in a future PR — do not introduce new violators.
 - Shared code (e.g., `types.ts`) lives in a `core/` secondary entry point (`@cdevhub/ngx-tw/core`).
@@ -445,7 +445,7 @@ New boolean inputs that default to `true` MUST land with the same inline-comment
 
 ## Testing
 
-Tests use **Vitest** (default in Angular v21 via `@angular/build:unit-test`). No additional setup packages are needed for new projects. Test files live next to source: `button.spec.ts` beside `button.ts`.
+Tests use **Vitest** (default in Angular v22 via `@angular/build:unit-test`). No additional setup packages are needed for new projects. Test files live next to source: `button.spec.ts` beside `button.ts`.
 
 ### Running tests locally
 
