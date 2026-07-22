@@ -25,9 +25,9 @@
     "url": "https://github.com/avs2001/ngx-tw/issues"
   },
   "peerDependencies": {
-    "@angular/common": "^21.2.0",
-    "@angular/core": "^21.2.0",
-    "@angular/cdk": "^21.0.0",
+    "@angular/common": "^22.0.0",
+    "@angular/core": "^22.0.0",
+    "@angular/cdk": "^22.0.0",
     "tailwindcss": "^4.0.0",
     "tailwind-variants": "^0.3.0"
   },
@@ -35,7 +35,7 @@
     "tslib": "^2.3.0"
   },
   "engines": {
-    "node": ">=20.19.0 || >=22.12.0"
+    "node": "^22.22.3 || ^24.15.0 || >=26.0.0"
   },
   "sideEffects": false,
   "publishConfig": {
