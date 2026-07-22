@@ -24,8 +24,8 @@ local development workflow.
 
 ## Tech stack
 
-- **Angular `^21.2.0`** — standalone, signal-based APIs, `OnPush` everywhere.
-- **`@angular/cdk ^21.0.0`** — focus management, overlays, a11y, collections.
+- **Angular `^22.0.0`** — standalone, signal-based APIs, `OnPush` everywhere.
+- **`@angular/cdk ^22.0.0`** — focus management, overlays, a11y, collections.
 - **Tailwind CSS `^4.0.0`** — utility-first styling; no component CSS files.
 - **tailwind-variants** — variant-driven class composition with `twMerge`.
 - **Vitest** — unit test runner (Angular v21 default).

@@ -5,21 +5,86 @@ All notable changes to **ngx-tw** will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## 0.2.1 — 2026-05-28
-
-### Features
-
-- **release:** tag-driven release flow with `npm run release:*` ([85e6924](https://github.com/avs2001/ngx-tw/commit/85e692473ebe3dbd5ef8ff1c5842c491e66efff5))
-
-### Bug Fixes
-
-- **a11y:** clear dark-mode solid contrast + breadcrumbs duplicate landmarks ([09ab024](https://github.com/avs2001/ngx-tw/commit/09ab0241ee935a59cf8ffc8a79126dfb62a8f4d3))
-- **a11y:** WCAG-AA color-contrast + drop duplicate code-block landmarks ([4fe265f](https://github.com/avs2001/ngx-tw/commit/4fe265f4a914f3a3add4c01baf1527ce6c3f5e54))
-- **ci, e2e:** unstick the e2e workflow ([94fa08e](https://github.com/avs2001/ngx-tw/commit/94fa08e62b6b3ebe201631bfc2f80098822b0e45))
-- **ci:** unit tests need the built lib before running ([5c10bee](https://github.com/avs2001/ngx-tw/commit/5c10bee66769a5b3be9edace353572e11fd85052))
-- **ci:** unblock release tag push, scope unit tests to ngx-tw ([c2f5d0f](https://github.com/avs2001/ngx-tw/commit/c2f5d0f2a62696615dfd46f475de227655022295))
-
 ## [Unreleased]
+
+### Fixed — packaging (consumer-facing, previously silent)
+
+Both of these made the published `0.2.1` unusable from npm. Neither broke the
+build, the unit tests, the e2e suite, or the demo app; see
+`docs/production-audit.md` for the full write-up.
+
+- **`@cdevhub/ngx-tw/theme/index.css` now resolves.** The stylesheet shipped in
+  the tarball but the generated `exports` map had no entry for the subpath, so
+  the documented import failed with *"not exported under the condition style"*.
+  `projects/ngx-tw/package.json` now declares `"./theme/*.css"`.
+- **The theme now generates component utilities.** The shipped theme's
+  `@source` glob pointed at `../src/**/*.ts` — a directory the published package
+  does not contain. Tailwind does not error on a glob that matches nothing, so
+  consumer builds emitted semantic tokens and base styles but *zero* component
+  utilities; components rendered structurally correct and completely unstyled.
+  The glob now points at `../fesm2022/**/*.mjs`.
+- **Peer range raised to Angular `^22.0.0`** (`@angular/core`, `@angular/common`,
+  `@angular/cdk`). The published `0.2.1` still declares `^21`, so Angular 22
+  consumers hit `ERESOLVE`. READMEs updated to match.
+
+### Fixed — form validity (H1/H2 from the production audit)
+
+Both pickers rendered an error border while telling the form everything was
+fine, so a `form.invalid` submit guard let the bad value through.
+
+- **`tw-date-picker` constraint and parse failures now reach the form.** Typed
+  input outside `minDate`/`maxDate` (or rejected by `dateFilter`) is now
+  committed *and* marks the control invalid with the same `calendarMinDate` /
+  `calendarMaxDate` / `calendarDisabledDate` codes `tw-calendar` and
+  `tw-date-range-picker` already emit. Unparseable text clears the form value —
+  previously the **previous date silently survived** and would be submitted —
+  and surfaces `calendarInvalidValue`, while leaving the typed text on screen to
+  correct. `minDate`/`maxDate`/`dateFilter` changes re-run validation.
+- **`tw-time-picker` `minTime`/`maxTime` are no longer decorative.** They now
+  emit `timePickerMin` / `timePickerMax` on the bound control. New exported type
+  `TimePickerValidationErrors`.
+- Both components moved to the static `NG_VALUE_ACCESSOR` + deferred `NgControl`
+  registration shape required by Angular v22 for a self-provided
+  `NG_VALIDATORS`, and both ship the guard spec CLAUDE.md mandates. Each guard
+  was verified to fail when the static provider is removed — 6 of 62 date-picker
+  tests and 4 of 43 time-picker tests go red, and nothing else notices, which is
+  exactly the silent failure the rule exists to prevent.
+- `tw-date-picker`'s `rangeError` is now derived from the committed value rather
+  than a flag set at commit time, so it stays correct when a constraint moves.
+- JSDoc on `minDate`/`maxDate`/`dateFilter`/`minTime`/`maxTime` corrected — it
+  promised only `errorState`, which is what made the gap easy to miss.
+
+### Changed
+
+- **Icon adapter now targets `lucide` instead of `lucide-angular`.**
+  `lucide-angular@1.0.0` (its latest) declares `@angular/core`/`@angular/common`
+  peers of `13.x - 21.x`, which excludes Angular 22 — `npm ci` failed with
+  `ERESOLVE` on every CI job, and consumers would have hit the same wall. The
+  framework-agnostic `lucide` package has **no peer dependencies at all**,
+  exports the same PascalCase icon names, and emits the same
+  `[tag, attrs][]` data, so `provideTwLucideIcons({ Star, Search })` is
+  unchanged apart from the import specifier.
+- **`@cdevhub/ngx-tw/icon/lucide` no longer emits a type import into its
+  `.d.ts`.** It previously declared `import { LucideIconData } from
+  'lucide-angular'` while the library depended on that package *nowhere* —
+  so type-checking against this entry point silently required a package no
+  manifest mentioned. The types (`LucideIconNode`, `LucideIconData`,
+  `LucideIcons`) are now declared structurally and exported, leaving the entry
+  point dependency-free and compatible with `lucide`, `lucide-angular`, or any
+  source with the same shape.
+
+### Added
+
+- `npm run verify:package` — packs `dist/ngx-tw`, installs the tarball into a
+  scratch project outside the repo, resolves the documented theme specifier with
+  Tailwind's own resolver config, compiles it, and asserts real component
+  utilities appear. Wired into `ci.yml`, `release.yml`, and the `release.mjs`
+  pre-flight. This is the gate the two bugs above slipped past: the demo app
+  imports the theme by relative path and Tailwind auto-detects the raw monorepo
+  source, so no in-repo check can catch them.
+- The release script now requires **`e2e.yml`** to be green in addition to
+  `ci.yml`. `e2e.yml` owns the axe accessibility sweep, which previously could
+  be fully red without blocking a publish.
 
 The calendar component is undergoing a phased v1 cutover (see
 `docs/calendar-refactoring-plan.md`). Phases 0, 1, 2, 3, 5, 18-baseline, and 19
@@ -278,9 +343,24 @@ shape.
 
 ### Requirements
 
-- Angular `^21.2.0` with `@angular/cdk ^21.0.0`
+- Angular `^22.0.0` with `@angular/cdk ^22.0.0`
 - Tailwind CSS `^4.0.0`
 - `tailwind-variants ^0.3.0`
 - For `ngx-tw/calendar/luxon`: `luxon ^3.0.0` (peer)
 
-[Unreleased]: https://github.com/ciprianiuga/ngx-tw/compare/HEAD
+
+## 0.2.1 — 2026-05-28
+
+### Features
+
+- **release:** tag-driven release flow with `npm run release:*` ([85e6924](https://github.com/avs2001/ngx-tw/commit/85e692473ebe3dbd5ef8ff1c5842c491e66efff5))
+
+### Bug Fixes
+
+- **a11y:** clear dark-mode solid contrast + breadcrumbs duplicate landmarks ([09ab024](https://github.com/avs2001/ngx-tw/commit/09ab0241ee935a59cf8ffc8a79126dfb62a8f4d3))
+- **a11y:** WCAG-AA color-contrast + drop duplicate code-block landmarks ([4fe265f](https://github.com/avs2001/ngx-tw/commit/4fe265f4a914f3a3add4c01baf1527ce6c3f5e54))
+- **ci, e2e:** unstick the e2e workflow ([94fa08e](https://github.com/avs2001/ngx-tw/commit/94fa08e62b6b3ebe201631bfc2f80098822b0e45))
+- **ci:** unit tests need the built lib before running ([5c10bee](https://github.com/avs2001/ngx-tw/commit/5c10bee66769a5b3be9edace353572e11fd85052))
+- **ci:** unblock release tag push, scope unit tests to ngx-tw ([c2f5d0f](https://github.com/avs2001/ngx-tw/commit/c2f5d0f2a62696615dfd46f475de227655022295))
+
+[Unreleased]: https://github.com/avs2001/ngx-tw/commits/develop

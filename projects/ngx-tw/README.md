@@ -5,9 +5,9 @@ and **Angular CDK**. The quality bar is [Angular Material](https://material.angu
 — well-tested, accessible, composable — but styled with Tailwind utility classes
 instead of Material Design tokens.
 
-- **48 components** spanning forms, overlays, navigation, data display, layout,
+- **54 components** spanning forms, overlays, navigation, data display, layout,
   and feedback.
-- **Standalone, signal-based APIs** — Angular v21 idioms throughout (no
+- **Standalone, signal-based APIs** — Angular v22 idioms throughout (no
   NgModules, `OnPush`, `input()` / `output()` / `model()`).
 - **Accessible by default** — built on Angular CDK primitives (focus management,
   overlays, a11y, collections). Targets WCAG AA and is checked with AXE.
@@ -29,26 +29,39 @@ npm install @cdevhub/ngx-tw @angular/cdk tailwindcss tailwind-variants
 
 | Package | Version |
 |---|---|
-| `@angular/core`, `@angular/common` | `^21.2.0` |
-| `@angular/cdk` | `^21.0.0` |
+| `@angular/core`, `@angular/common` | `^22.0.0` |
+| `@angular/cdk` | `^22.0.0` |
 | `tailwindcss` | `^4.0.0` |
 | `tailwind-variants` | `^0.3.0` |
 
 Form controls additionally use `@angular/forms` (ships with Angular). Node
-`>=20.19.0` or `>=22.12.0`.
+`^22.22.3`, `^24.15.0`, or `>=26.0.0`.
 
 ## Setup
 
 ### 1. Import the default theme
 
-Tailwind v4 has no JS config file — all customization happens in CSS. Import
-Tailwind and the ngx-tw theme in your global stylesheet so semantic tokens
-resolve:
+Tailwind v4 has no JS config file — all customization happens in CSS. One
+import is all that is needed:
 
 ```css
 /* src/styles.css */
-@import 'tailwindcss';
 @import '@cdevhub/ngx-tw/theme/index.css';
+```
+
+That single line pulls in Tailwind itself, the semantic tokens, and a `@source`
+directive pointing at the library's compiled bundles — the last one matters
+because Tailwind v4 never scans `node_modules` on its own, so without it your
+build would emit tokens but no component utilities. You do not need to add a
+`@source` line yourself, and you do not need a separate `@import 'tailwindcss'`
+(a duplicate is harmless if you already have one).
+
+If you use any overlay-based component (dialog, sheet, menu, popover, select,
+tooltip, combobox, date-picker, time-picker, command-palette), also import the
+CDK overlay stylesheet:
+
+```css
+@import '@angular/cdk/overlay-prebuilt.css';
 ```
 
 The theme maps semantic roles (`info`, `success`, `warning`, `error`,
@@ -70,7 +83,7 @@ import { provideTwLucideIcons } from '@cdevhub/ngx-tw/icon/lucide';
 import { provideTwDialog } from '@cdevhub/ngx-tw/dialog';
 import { provideSheet } from '@cdevhub/ngx-tw/sheet';
 import { provideToast } from '@cdevhub/ngx-tw/toast';
-import { Star, Search, Settings } from 'lucide-angular';
+import { Star, Search, Settings } from 'lucide';
 
 export const appConfig: ApplicationConfig = {
   providers: [
@@ -125,7 +138,6 @@ Components never reference raw palette colors. They use **semantic roles** on a
 library — including dark mode and brand palettes — by overriding those tokens.
 
 ```css
-@import 'tailwindcss';
 @import '@cdevhub/ngx-tw/theme/index.css';
 
 @theme {
@@ -183,7 +195,7 @@ bootstrap:
 
 ```ts
 import { provideTwLucideIcons } from '@cdevhub/ngx-tw/icon/lucide';
-import { Star, Search } from 'lucide-angular';
+import { Star, Search } from 'lucide';
 
 // in providers:
 provideTwLucideIcons({ Star, Search });
@@ -220,7 +232,7 @@ strategies: template-driven, reactive, and signal forms. Pair them with
 
 ## Components
 
-48 components, each published as an independent secondary entry point
+54 components, each published as an independent secondary entry point
 (`@cdevhub/ngx-tw/<name>`). See the [live demo](https://avs2001.github.io/ngx-tw/)
 for full API tables and examples.
 
