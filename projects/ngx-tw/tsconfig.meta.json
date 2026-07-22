@@ -1,0 +1,20 @@
+/* Type-checks the hand-authored MCP guidance layer (`*.meta.ts`).
+ *
+ * `tsconfig.lib.json` nominally includes these files, but ng-packagr compiles
+ * only the graph reachable from each entry point's `entryFile` — and a
+ * `*.meta.ts` is deliberately not exported from `index.ts`, so whether it gets
+ * type-checked there is an implementation detail. This config makes the
+ * guarantee explicit and unconditional; `verify-mcp-index.mjs` runs it.
+ *
+ * Deliberately a single glob, not a per-directory include list: those lists
+ * are exactly why adding an entry point already takes four coordinated edits.
+ * Do not make it five.
+ */
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "types": []
+  },
+  "include": ["meta.types.ts", "*/*.meta.ts"]
+}

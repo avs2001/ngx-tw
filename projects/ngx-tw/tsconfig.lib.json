@@ -10,6 +10,12 @@
   },
   "include": [
     "src/**/*.ts",
+    // Build-time only: the ComponentMeta shape backing each `*.meta.ts`. Listed
+    // so ESLint's project service can resolve it (the `*.meta.ts` files are
+    // already covered by the per-directory globs below). It is unreachable from
+    // any entry file, so ng-packagr never emits it into the package.
+    // `tsconfig.meta.json`, not this file, is what actually type-checks it.
+    "meta.types.ts",
     "accordion/**/*.ts",
     "aspect-ratio/**/*.ts",
     "breadcrumbs/**/*.ts",

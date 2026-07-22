@@ -71,6 +71,28 @@ jobs:
           path: dist/ngx-tw
           retention-days: 7
 
+  mcp-index:
+    name: MCP index validation
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    # Advisory here, like every job in this workflow — the binding gate is the
+    # local pre-flight in scripts/release.mjs, which runs the same script before
+    # anything publishes. Running it on the PR too surfaces breakage where it is
+    # cheap to fix rather than at release time.
+    #
+    # Regenerates the index from source rather than downloading the build-lib
+    # artifact: the script's whole job is to check source, demo, and guidance
+    # against each other, and it builds its own index in memory to do so.
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - name: Validate MCP index (coverage, links, snippet API, imports)
+        run: npm run verify:mcp-index
+
   unit-test:
     name: unit tests
     runs-on: ubuntu-latest

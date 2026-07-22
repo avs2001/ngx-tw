@@ -5,7 +5,10 @@
     "ng": "ng",
     "start": "ng serve --port 4600",
     "build": "ng build",
-    "build:lib": "ng build --project ngx-tw",
+    "build:lib": "ng build --project ngx-tw && npm run build:mcp-index",
+    "build:mcp-index": "node scripts/build-mcp-index.mjs",
+    "build:mcp": "node scripts/build-mcp-package.mjs",
+    "verify:mcp-index": "node scripts/verify-mcp-index.mjs",
     "watch:lib": "ng build --project ngx-tw --watch",
     "watch": "ng build --watch --configuration development",
     "test": "ng test ngx-tw",
@@ -60,6 +63,7 @@
     "@angular/cli": "^22.0.7",
     "@angular/compiler-cli": "^22.0.7",
     "@axe-core/playwright": "^4.11.3",
+    "@modelcontextprotocol/sdk": "^1.29.0",
     "@playwright/test": "1.59.1",
     "@tailwindcss/postcss": "^4.1.12",
     "@types/luxon": "^3.7.1",
@@ -80,6 +84,7 @@
     "typescript": "~6.0.3",
     "typescript-eslint": "^8.59.0",
     "vitest": "^4.0.8",
-    "vitest-axe": "^0.1.0"
+    "vitest-axe": "^0.1.0",
+    "zod": "^4.4.2"
   }
 }

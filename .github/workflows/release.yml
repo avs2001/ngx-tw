@@ -8,7 +8,9 @@ name: release
 #   1. Builds the library and runs unit tests + pack-check against the tag SHA.
 #   2. Verifies the tag version matches the package.json version (mismatch =
 #      somebody pushed a hand-crafted tag; refuse to publish).
-#   3. Publishes `dist/ngx-tw/` to npm with provenance.
+#   3. Publishes `dist/ngx-tw/` and `dist/ngx-tw-mcp/` to npm with provenance.
+#      Both ship lockstep from the one tag — the MCP package embeds an index
+#      generated from this library build, so it cannot describe another version.
 #   4. Creates the matching GitHub Release, using the changelog section for
 #      this version as the release body.
 
@@ -53,6 +55,17 @@ jobs:
       - name: Build library
         run: npm run build:lib
 
+      - name: Validate MCP index
+        # Blocking here, unlike the advisory ci.yml job. The MCP package embeds
+        # this index; publishing a wrong one is worse than publishing none,
+        # because every consumer's agent then emits whatever it says.
+        run: npm run verify:mcp-index
+
+      - name: Build MCP server package
+        # Consumes dist/ngx-tw/index.json and fails without it, which is what
+        # makes the version lockstep mechanical rather than aspirational.
+        run: npm run build:mcp
+
       - name: Run unit tests
         run: npm run test:ci
 
@@ -74,6 +87,19 @@ jobs:
         # Mirrors ci.yml. This is the last gate before publish that exercises the
         # package the way a consumer does rather than the way this repo does.
         run: npm run verify:package
+
+      - name: Verify MCP package tarball
+        run: |
+          cd dist/ngx-tw-mcp
+          npm pack --dry-run --json | tee ../mcp-pack-manifest.json
+          node -e "
+            const m = require('../mcp-pack-manifest.json')[0];
+            const must = ['README.md', 'package.json', 'index.json', 'src/index.js'];
+            const have = new Set(m.files.map(f => f.path));
+            const missing = must.filter(f => !have.has(f));
+            if (missing.length) { console.error('Missing files in MCP tarball:', missing); process.exit(1); }
+            console.log('MCP tarball OK —', m.files.length, 'files,', (m.size/1024).toFixed(1), 'KB');
+          "
 
       - name: Verify tag matches dist version
         # A mismatch means someone pushed a tag that doesn't correspond to the
@@ -117,6 +143,7 @@ jobs:
           "
 
       - name: Publish to npm
+        # Publishes both dist/ngx-tw and dist/ngx-tw-mcp, library first.
         # Everything above this line is a gate. Nothing below it can un-publish.
         run: node scripts/publish.mjs
         env:

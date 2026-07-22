@@ -19,8 +19,64 @@ local development workflow.
 | `projects/ngx-tw/theme/`       | Default semantic theme CSS — ships as an asset, not an entry point.  |
 | `projects/ngx-tw/core/`        | Shared types (`TwColor`, `TwSize`) and utilities.                     |
 | `projects/demo/`               | Demo application with an overview / examples / API page per component.|
+| `projects/ngx-tw-mcp/`         | MCP server package (`@cdevhub/ngx-tw-mcp`) serving the library API to AI coding agents. |
 | `e2e/`                         | Playwright end-to-end harness (scaffold — specs to be filled in).     |
 | `docs/`                        | Long-form notes and component specs.                                  |
+
+## MCP server
+
+`@cdevhub/ngx-tw-mcp` gives an AI coding agent the library's real API — selectors,
+inputs with their defaults, usage examples, theme tokens, and guidance on which
+component fits a problem. Consumers add it to their MCP config:
+
+```json
+{
+  "mcpServers": {
+    "ngx-tw": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "@cdevhub/ngx-tw-mcp"]
+    }
+  }
+}
+```
+
+It serves a static `index.json` built inside this monorepo, where component
+source and the demo app both exist — a consumer's `node_modules` has neither.
+
+| Command | Does |
+|---|---|
+| `npm run build:lib` | Builds the library **and** generates `dist/ngx-tw/index.json` |
+| `npm run verify:mcp-index` | Validates the index — runs in the release pre-flight and in CI |
+| `npm run build:mcp` | Assembles `dist/ngx-tw-mcp/` from the library's dist index |
+
+The index is generated into `dist/` and **never committed**: a derived artifact
+under version control manufactures the drift class it would then have to police.
+
+Three content layers with three different authorities:
+
+| Layer | Source of truth |
+|---|---|
+| API — selectors, inputs/outputs/models, types, defaults, JSDoc | component **source** (not `.d.ts` — it erases defaults) |
+| Usage examples | the demo app's `*Snippet` literals |
+| Guidance — summary, whenToUse, whenNotToUse, related, aliases | hand-authored `projects/ngx-tw/<name>/<name>.meta.ts` |
+
+`*.meta.ts` is build-time only and never exported from an entry point's
+`index.ts`, so it stays out of the published tarball. It is co-located with the
+component precisely so it shows up in the same diff — the guidance prose is the
+one layer no mechanism can verify, and review is what keeps it honest.
+
+`verify:mcp-index` fails on a missing or orphaned `*.meta.ts`, a cross-reference
+to a component that no longer exists, a demo snippet binding an input that was
+renamed or removed, or an import path that would not resolve. See
+[`docs/mcp-server-architecture.md`](./docs/mcp-server-architecture.md).
+
+### Adding a component
+
+A new entry point needs a `*.meta.ts` alongside the four existing registration
+edits (`public-api.ts`, `tsconfig.lib.json`, `tsconfig.spec.json`,
+`angular.json`). `verify:mcp-index` fails the release if it is missing, so this
+is caught rather than silently skipped.
 
 ## Tech stack
 
