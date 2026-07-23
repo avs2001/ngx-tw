@@ -27,6 +27,51 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   asserts on rendered toast DOM *synchronously* after `show()` — most likely a
   test — must now await that tick. Runtime application code is unaffected.
 
+- **dialog / sheet:** load the Tailwind container + `@angular/cdk/dialog`
+  machinery through a dynamic `import()`, so `provideTwDialog()` / `provideSheet()`
+  no longer pull the container render layer into a consumer's initial bundle.
+  Measured on a production `ng build` of a minimal app: **dialog 63.9 kB →
+  55.7 kB**, **sheet 64.1 kB → 55.7 kB** gzipped, each moving ~10 kB to a lazy
+  chunk fetched on the first `open()`.
+
+  This is a smaller win than toast: the overlay stack stays eager because
+  `TwDialogConfig` / `SheetConfig` extend CDK's `DialogConfig`, and the `open()`
+  contract requires the ref (and thus its rxjs graph) to be constructed eagerly.
+  The deferred portion is the container component and the CDK dialog service.
+
+  `open()` still returns its ref synchronously; `id`, `state`, `close()`, the
+  lifecycle observables, and panel/size mutations all work immediately (mutations
+  are buffered and replayed on attach). The overlay reaches the DOM one microtask
+  later — same test-only caveat as toast.
+
+### Breaking Changes
+
+- **dialog / sheet:** `TwDialogRef.componentInstance` / `SheetRef.componentInstance`
+  are no longer populated synchronously by `open()` — the content component is
+  rendered by a dynamically-imported chunk that lands a microtask later. Use the
+  new **`whenComponentReady(): Promise<C | null>`** to obtain the instance:
+
+  ```ts
+  // before
+  const ref = dialog.open(EditorDialog);
+  ref.componentInstance.focusFirstField();
+
+  // after
+  const ref = dialog.open(EditorDialog);
+  const editor = await ref.whenComponentReady();
+  editor?.focusFirstField();
+  ```
+
+  `componentInstance` / `componentRef` remain readable as getters (for use after
+  `whenComponentReady()` resolves) but are `null` until the renderer attaches.
+  Passing data *into* the dialog via the `data` config is unaffected.
+
+- **dialog / sheet:** `DialogContainer` and `SheetContainer` are no longer
+  exported. They are internal render surfaces that now live in the lazy renderer
+  chunk. Their lifecycle types (`DialogState`, `DialogAnimationEvent`,
+  `SheetState`, `SheetAnimationEvent`) remain exported. Consumers should not have
+  been referencing the container classes directly.
+
 ### Fixed
 
 - **toast:** the auto-dismiss countdown started when the `ToastRef` was

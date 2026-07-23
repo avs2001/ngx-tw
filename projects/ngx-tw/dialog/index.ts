@@ -1,9 +1,11 @@
 export { TwDialog, provideTwDialog } from './dialog';
 export { TwDialogRef } from './dialog-ref';
-export {
-  DialogContainer,
-  type DialogAnimationEvent,
-  type DialogState,
+// `DialogContainer` is the internal render surface — it now lives in the
+// dynamically-imported renderer chunk and is no longer part of the public API.
+// Only its lifecycle types remain exported.
+export type {
+  DialogAnimationEvent,
+  DialogState,
 } from './dialog-container';
 export {
   TwDialogConfig,

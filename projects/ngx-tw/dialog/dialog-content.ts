@@ -10,7 +10,6 @@ import { _IdGenerator } from '@angular/cdk/a11y';
 import { CdkScrollable } from '@angular/cdk/scrolling';
 import type { TwColor } from '@cdevhub/ngx-tw/core';
 import { TwDialogRef } from './dialog-ref';
-import { DialogContainer } from './dialog-container';
 
 /**
  * Header wrapper for a dialog. Provides consistent padding and spacing for
@@ -75,22 +74,17 @@ export class DialogTitleDirective implements OnInit, OnDestroy {
   private readonly dialogRef = inject<TwDialogRef<unknown, unknown>>(TwDialogRef, {
     optional: true,
   });
-  // Ancestor-DI fallback for the rare case where `TwDialogRef` is not in the
-  // directive's injector chain (e.g. heavily nested template portals). The
-  // container ALWAYS resolves via element-injector traversal because the
-  // directive lives inside `<tw-dialog-container>`'s DOM tree.
-  private readonly container = inject(DialogContainer, { optional: true, skipSelf: true });
 
   /** Custom id for the title element. Defaults to a generated unique id. */
   readonly id = input<string>(this.generatedId);
 
   ngOnInit(): void {
-    const containerInstance = this.dialogRef?.containerInstance ?? this.container;
+    const containerInstance = this.dialogRef?.containerInstance;
     if (containerInstance) containerInstance._addAriaLabelledBy(this.id());
   }
 
   ngOnDestroy(): void {
-    const containerInstance = this.dialogRef?.containerInstance ?? this.container;
+    const containerInstance = this.dialogRef?.containerInstance;
     if (containerInstance) containerInstance._removeAriaLabelledBy(this.id());
   }
 }
@@ -120,19 +114,16 @@ export class DialogDescriptionDirective implements OnInit, OnDestroy {
   private readonly dialogRef = inject<TwDialogRef<unknown, unknown>>(TwDialogRef, {
     optional: true,
   });
-  // Ancestor-DI fallback — see DialogTitleDirective.
-  private readonly container = inject(DialogContainer, { optional: true, skipSelf: true });
-
   /** Custom id for the description element. Defaults to a generated unique id. */
   readonly id = input<string>(this.generatedId);
 
   ngOnInit(): void {
-    const containerInstance = this.dialogRef?.containerInstance ?? this.container;
+    const containerInstance = this.dialogRef?.containerInstance;
     if (containerInstance) containerInstance._addAriaDescribedBy(this.id());
   }
 
   ngOnDestroy(): void {
-    const containerInstance = this.dialogRef?.containerInstance ?? this.container;
+    const containerInstance = this.dialogRef?.containerInstance;
     if (containerInstance) containerInstance._removeAriaDescribedBy(this.id());
   }
 }

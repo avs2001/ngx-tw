@@ -1,49 +1,55 @@
 import {
-  type ComponentRef,
   inject,
   Injectable,
   Injector,
   type OnDestroy,
   type Provider,
-  type StaticProvider,
   type TemplateRef,
   signal,
   type Signal,
   makeEnvironmentProviders,
   type EnvironmentProviders,
 } from '@angular/core';
-import { Dialog, DialogConfig as CdkDialogConfig } from '@angular/cdk/dialog';
-import {
-  createBlockScrollStrategy,
-  createCloseScrollStrategy,
-  createNoopScrollStrategy,
-  createRepositionScrollStrategy,
-  type ScrollStrategy,
-} from '@angular/cdk/overlay';
 import type { ComponentType } from '@angular/cdk/portal';
 import { defer, type Observable, startWith, Subject } from 'rxjs';
 import {
-  TW_DIALOG_DATA,
   TW_DIALOG_DEFAULT_OPTIONS,
   TwDialogConfig,
-  type TwDialogScrollStrategy,
 } from './dialog-config';
-import { DialogContainer } from './dialog-container';
 import { TwDialogRef } from './dialog-ref';
+// Type-only: importing the renderer as a value would drag `@angular/cdk/dialog`
+// and the overlay scroll strategies back into the eager chunk. See
+// `dialog-renderer.ts`.
+import type { openRenderedDialog } from './dialog-renderer';
+
+let nextDialogId = 0;
+
+function generateDialogId(): string {
+  return `tw-dialog-${++nextDialogId}`;
+}
 
 /**
  * Opens Tailwind-styled modal dialogs. Composes `@angular/cdk/dialog` for focus
  * trapping, portals, overlay plumbing, and adds a Tailwind container, richer
  * ref API, and animation lifecycle.
  *
+ * The rendering layer (`@angular/cdk/dialog` + the Tailwind container) is loaded
+ * through a dynamic `import()` on the first `open()` call, so merely registering
+ * this service costs nothing in the initial bundle. `open()` still returns its
+ * {@link TwDialogRef} synchronously — the dialog is rendered once the chunk
+ * lands. Read the rendered component via {@link TwDialogRef.whenComponentReady}.
+ *
  * Not `providedIn: 'root'` — register it via {@link provideTwDialog}.
  */
 @Injectable()
 export class TwDialog implements OnDestroy {
-  private readonly cdkDialog = inject(Dialog);
   private readonly injector = inject(Injector);
   private readonly defaultOptions = inject(TW_DIALOG_DEFAULT_OPTIONS, { optional: true }) ?? {};
   private readonly parentDialog = inject(TwDialog, { optional: true, skipSelf: true });
+
+  /** Cached renderer chunk import — kicked off on the first `open()`. */
+  private rendererPromise: Promise<typeof openRenderedDialog | null> | null = null;
+  private destroyed = false;
 
   private readonly openDialogsAtThisLevel = signal<readonly TwDialogRef<unknown, unknown>[]>([]);
   private readonly afterOpenedSubject = new Subject<TwDialogRef<unknown, unknown>>();
@@ -73,74 +79,32 @@ export class TwDialog implements OnDestroy {
    * Opens a dialog using the given component or template.
    * @param content Component class or `TemplateRef`.
    * @param config Options merged over the application defaults.
-   * @returns Reference controlling the opened dialog.
+   * @returns Reference controlling the opened dialog, returned synchronously.
    */
   open<R = unknown, D = unknown, C = unknown>(
     content: ComponentType<C> | TemplateRef<C>,
     config?: TwDialogConfig<D, R>,
   ): TwDialogRef<R, C> {
     const merged = this.resolveConfig<D, R>(config);
-    let twRef!: TwDialogRef<R, C>;
+    const id = merged.id ?? generateDialogId();
+    merged.id = id;
 
-    const cdkRef = this.cdkDialog.open<R, D, C>(content, {
-      id: merged.id,
-      role: merged.role,
-      data: merged.data,
-      panelClass: merged.panelClass,
-      backdropClass: merged.backdropClass ?? 'tw-dialog-backdrop',
-      hasBackdrop: merged.hasBackdrop,
-      width: merged.width,
-      height: merged.height,
-      minWidth: merged.minWidth,
-      minHeight: merged.minHeight,
-      maxWidth: merged.maxWidth,
-      maxHeight: merged.maxHeight,
-      direction: merged.direction,
-      ariaDescribedBy: merged.ariaDescribedBy,
-      ariaLabelledBy: merged.ariaLabelledBy,
-      ariaLabel: merged.ariaLabel,
-      ariaModal: merged.ariaModal,
-      autoFocus: merged.autoFocus,
-      restoreFocus: merged.restoreFocus,
-      scrollStrategy: merged.scrollStrategy ?? this.resolveScrollStrategy(merged.scrollBehavior),
-      closeOnNavigation: merged.closeOnNavigation,
-      viewContainerRef: merged.viewContainerRef,
-      injector: merged.injector,
-      // We handle close/Escape/backdrop ourselves so we can run the exit animation.
-      disableClose: true,
-      closeOnOverlayDetachments: false,
-      container: {
-        type: DialogContainer,
-        providers: () => [
-          { provide: TwDialogConfig, useValue: merged },
-          { provide: CdkDialogConfig, useValue: merged },
-        ],
-      },
-      providers: (_cdkRef, _cdkConfig, container) => {
-        twRef = new TwDialogRef<R, C>(
-          _cdkRef,
-          merged as unknown as TwDialogConfig<unknown, R>,
-          container as DialogContainer,
-        );
-        const providers: StaticProvider[] = [
-          { provide: TwDialogRef, useValue: twRef },
-          { provide: TW_DIALOG_DATA, useValue: merged.data ?? null },
-        ];
-        if (Array.isArray(merged.providers)) providers.push(...merged.providers);
-        return providers;
-      },
-    });
+    // Enforce id uniqueness eagerly. CDK throws this synchronously from
+    // `open()`; since our CDK open is now deferred, replicate the check here so
+    // the error still surfaces at the call site rather than in a later tick.
+    if (this.getDialogById(id)) {
+      throw new Error(`Dialog with id "${id}" exists already. The dialog id must be unique.`);
+    }
 
-    // After CDK attaches the component, copy references onto our ref.
-    (twRef as { componentRef: ComponentRef<C> | null }).componentRef = cdkRef.componentRef;
-    twRef.componentInstance = cdkRef.componentInstance as C | null;
+    const twRef = new TwDialogRef<R, C>(id, merged as unknown as TwDialogConfig<unknown, R>);
 
     const scope = this.parentDialog ?? this;
     scope.registerOpen(twRef as unknown as TwDialogRef<unknown, unknown>);
-
     twRef.afterClosed().subscribe(() => {
       scope.unregister(twRef as unknown as TwDialogRef<unknown, unknown>);
     });
+
+    void this.renderWhenReady(content, merged, twRef);
 
     return twRef;
   }
@@ -157,10 +121,47 @@ export class TwDialog implements OnDestroy {
   }
 
   ngOnDestroy(): void {
+    this.destroyed = true;
     const dialogs = [...this.openDialogsAtThisLevel()];
     for (let i = dialogs.length - 1; i >= 0; i--) dialogs[i].close();
     this.afterOpenedSubject.complete();
     this.afterAllClosedSubject.complete();
+  }
+
+  /**
+   * @internal Resolves once the renderer chunk has loaded. Exposed for tests,
+   * which must await the dynamic import before asserting on rendered DOM.
+   */
+  async _whenRendered(): Promise<void> {
+    await this.loadRenderer();
+    await Promise.resolve();
+  }
+
+  /**
+   * Render a dialog once the renderer chunk has loaded. The ref was already
+   * returned to the caller, so it may have been closed (or the service
+   * destroyed) while the import was in flight — both skip the actual open.
+   */
+  private async renderWhenReady<R, D, C>(
+    content: ComponentType<C> | TemplateRef<C>,
+    merged: TwDialogConfig<D, R>,
+    twRef: TwDialogRef<R, C>,
+  ): Promise<void> {
+    const openRendered = await this.loadRenderer();
+    if (!openRendered || this.destroyed) return;
+    // Closed before the chunk landed — the facade already synthesized its
+    // closed state; never create the overlay.
+    if (twRef.state() === 'closed') return;
+    openRendered(this.injector, content, merged, twRef);
+  }
+
+  private loadRenderer(): Promise<typeof openRenderedDialog | null> {
+    if (!this.rendererPromise) {
+      this.rendererPromise = import('./dialog-renderer').then(({ openRenderedDialog }) =>
+        this.destroyed ? null : openRenderedDialog,
+      );
+    }
+    return this.rendererPromise;
   }
 
   private registerOpen(ref: TwDialogRef<unknown, unknown>): void {
@@ -193,22 +194,6 @@ export class TwDialog implements OnDestroy {
     const merged = new TwDialogConfig<D, R>();
     Object.assign(merged, this.defaultOptions, config);
     return merged;
-  }
-
-  private resolveScrollStrategy(
-    strategy: TwDialogScrollStrategy | undefined,
-  ): ScrollStrategy {
-    switch (strategy) {
-      case 'close':
-        return createCloseScrollStrategy(this.injector);
-      case 'reposition':
-        return createRepositionScrollStrategy(this.injector);
-      case 'noop':
-        return createNoopScrollStrategy();
-      case 'block':
-      default:
-        return createBlockScrollStrategy(this.injector);
-    }
   }
 }
 

@@ -254,9 +254,14 @@ import { CodeBlockComponent } from '@cdevhub/ngx-tw/code-block';
               <td class="px-4 py-2 text-fg-muted">Reactive animation state cycling through opening → open → closing → closed.</td>
             </tr>
             <tr>
+              <td class="px-4 py-2 font-mono text-xs">whenComponentReady()</td>
+              <td class="px-4 py-2 font-mono text-xs text-fg-muted">() =&gt; Promise&lt;C | null&gt;</td>
+              <td class="px-4 py-2 text-fg-muted">Resolves with the rendered content-component instance once the sheet's render chunk has loaded and attached. Resolves <code class="font-mono">null</code> for template sheets. Preferred over <code class="font-mono">componentInstance</code>, which is <code class="font-mono">null</code> until the deferred renderer attaches.</td>
+            </tr>
+            <tr>
               <td class="px-4 py-2 font-mono text-xs">componentInstance</td>
               <td class="px-4 py-2 font-mono text-xs text-fg-muted">C | null</td>
-              <td class="px-4 py-2 text-fg-muted">Instance of the rendered content component, or <code class="font-mono">null</code> for template sheets.</td>
+              <td class="px-4 py-2 text-fg-muted">Rendered content-component instance, or <code class="font-mono">null</code> before the deferred renderer attaches / for template sheets. Read after <code class="font-mono">whenComponentReady()</code> resolves.</td>
             </tr>
             <tr>
               <td class="px-4 py-2 font-mono text-xs">config</td>

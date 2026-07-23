@@ -10,7 +10,6 @@ import { _IdGenerator } from '@angular/cdk/a11y';
 import { CdkScrollable } from '@angular/cdk/scrolling';
 import type { TwColor } from '@cdevhub/ngx-tw/core';
 import { SheetRef } from './sheet-ref';
-import { SheetContainer } from './sheet-container';
 
 /**
  * Header wrapper for a sheet. Provides consistent padding and spacing for
@@ -73,22 +72,20 @@ export class SheetIconDirective {
 export class SheetTitleDirective implements OnInit, OnDestroy {
   private readonly generatedId = inject(_IdGenerator).getId('tw-sheet-title-');
   private readonly sheetRef = inject<SheetRef<unknown, unknown>>(SheetRef, { optional: true });
-  // Ancestor-DI fallback for the rare case where `SheetRef` is not in the
   // directive's injector chain (e.g. heavily nested template portals). The
   // container ALWAYS resolves via element-injector traversal because the
   // directive lives inside `<tw-sheet-container>`'s DOM tree.
-  private readonly container = inject(SheetContainer, { optional: true, skipSelf: true });
 
   /** Custom id for the title element. Defaults to a generated unique id. */
   readonly id = input<string>(this.generatedId);
 
   ngOnInit(): void {
-    const containerInstance = this.sheetRef?.containerInstance ?? this.container;
+    const containerInstance = this.sheetRef?.containerInstance;
     if (containerInstance) containerInstance._addAriaLabelledBy(this.id());
   }
 
   ngOnDestroy(): void {
-    const containerInstance = this.sheetRef?.containerInstance ?? this.container;
+    const containerInstance = this.sheetRef?.containerInstance;
     if (containerInstance) containerInstance._removeAriaLabelledBy(this.id());
   }
 }
@@ -116,19 +113,17 @@ export class SheetSubtitleDirective {}
 export class SheetDescriptionDirective implements OnInit, OnDestroy {
   private readonly generatedId = inject(_IdGenerator).getId('tw-sheet-description-');
   private readonly sheetRef = inject<SheetRef<unknown, unknown>>(SheetRef, { optional: true });
-  // Ancestor-DI fallback — see SheetTitleDirective.
-  private readonly container = inject(SheetContainer, { optional: true, skipSelf: true });
 
   /** Custom id for the description element. Defaults to a generated unique id. */
   readonly id = input<string>(this.generatedId);
 
   ngOnInit(): void {
-    const containerInstance = this.sheetRef?.containerInstance ?? this.container;
+    const containerInstance = this.sheetRef?.containerInstance;
     if (containerInstance) containerInstance._addAriaDescribedBy(this.id());
   }
 
   ngOnDestroy(): void {
-    const containerInstance = this.sheetRef?.containerInstance ?? this.container;
+    const containerInstance = this.sheetRef?.containerInstance;
     if (containerInstance) containerInstance._removeAriaDescribedBy(this.id());
   }
 }

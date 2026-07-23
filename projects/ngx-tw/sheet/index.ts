@@ -1,9 +1,11 @@
 export { Sheet, provideSheet } from './sheet';
 export { SheetRef } from './sheet-ref';
-export {
-  SheetContainer,
-  type SheetAnimationEvent,
-  type SheetState,
+// `SheetContainer` is the internal render surface — it now lives in the
+// dynamically-imported renderer chunk and is no longer part of the public API.
+// Only its lifecycle types remain exported.
+export type {
+  SheetAnimationEvent,
+  SheetState,
 } from './sheet-container';
 export {
   SheetConfig,

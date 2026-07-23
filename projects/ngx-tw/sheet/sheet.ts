@@ -1,38 +1,31 @@
 import {
-  type ComponentRef,
   inject,
   Injectable,
   Injector,
   type OnDestroy,
   type Provider,
-  type StaticProvider,
   type TemplateRef,
   signal,
   type Signal,
   makeEnvironmentProviders,
   type EnvironmentProviders,
 } from '@angular/core';
-import { Dialog, DialogConfig as CdkDialogConfig } from '@angular/cdk/dialog';
-import {
-  createBlockScrollStrategy,
-  createCloseScrollStrategy,
-  createGlobalPositionStrategy,
-  createNoopScrollStrategy,
-  createRepositionScrollStrategy,
-  type GlobalPositionStrategy,
-  type ScrollStrategy,
-} from '@angular/cdk/overlay';
 import type { ComponentType } from '@angular/cdk/portal';
 import { defer, type Observable, startWith, Subject } from 'rxjs';
 import {
-  SHEET_DATA,
   SHEET_DEFAULT_OPTIONS,
   SheetConfig,
-  type SheetScrollStrategy,
-  type SheetSide,
 } from './sheet-config';
-import { SheetContainer } from './sheet-container';
 import { SheetRef } from './sheet-ref';
+// Type-only: importing the renderer as a value would drag `@angular/cdk/dialog`
+// and the overlay strategies back into the eager chunk. See `sheet-renderer.ts`.
+import type { openRenderedSheet } from './sheet-renderer';
+
+let nextSheetId = 0;
+
+function generateSheetId(): string {
+  return `tw-sheet-${++nextSheetId}`;
+}
 
 /**
  * Opens edge-anchored sheet (drawer) overlays. Composes `@angular/cdk/dialog`
@@ -40,14 +33,23 @@ import { SheetRef } from './sheet-ref';
  * pinned to the requested viewport edge, a Tailwind container with axis-aware
  * sizing, slide enter/exit animations, and split close-behavior flags.
  *
+ * The rendering layer (`@angular/cdk/dialog` + the Tailwind container) is loaded
+ * through a dynamic `import()` on the first `open()` call, so merely registering
+ * this service costs nothing in the initial bundle. `open()` still returns its
+ * {@link SheetRef} synchronously — the sheet is rendered once the chunk lands.
+ * Read the rendered component via {@link SheetRef.whenComponentReady}.
+ *
  * Not `providedIn: 'root'` — register it via {@link provideSheet}.
  */
 @Injectable()
 export class Sheet implements OnDestroy {
-  private readonly cdkDialog = inject(Dialog);
   private readonly injector = inject(Injector);
   private readonly defaultOptions = inject(SHEET_DEFAULT_OPTIONS, { optional: true }) ?? {};
   private readonly parentSheet = inject(Sheet, { optional: true, skipSelf: true });
+
+  /** Cached renderer chunk import — kicked off on the first `open()`. */
+  private rendererPromise: Promise<typeof openRenderedSheet | null> | null = null;
+  private destroyed = false;
 
   private readonly openSheetsAtThisLevel = signal<readonly SheetRef<unknown, unknown>[]>([]);
   private readonly afterOpenedSubject = new Subject<SheetRef<unknown, unknown>>();
@@ -77,72 +79,32 @@ export class Sheet implements OnDestroy {
    * Opens a sheet using the given component or template.
    * @param content Component class or `TemplateRef`.
    * @param config Options merged over the application defaults.
-   * @returns Reference controlling the opened sheet.
+   * @returns Reference controlling the opened sheet, returned synchronously.
    */
   open<R = unknown, D = unknown, C = unknown>(
     content: ComponentType<C> | TemplateRef<C>,
     config?: SheetConfig<D, R>,
   ): SheetRef<R, C> {
     const merged = this.resolveConfig<D, R>(config);
-    let sheetRef!: SheetRef<R, C>;
+    const id = merged.id ?? generateSheetId();
+    merged.id = id;
 
-    const cdkRef = this.cdkDialog.open<R, D, C>(content, {
-      id: merged.id,
-      role: merged.role,
-      data: merged.data,
-      panelClass: merged.panelClass,
-      backdropClass: merged.backdropClass || 'tw-sheet-backdrop',
-      hasBackdrop: merged.hasBackdrop,
-      // Sheet sizing happens on the container element (axis-aware width/height
-      // utilities). The overlay pane itself is the full-edge bounding box.
-      direction: merged.direction,
-      ariaDescribedBy: merged.ariaDescribedBy,
-      ariaLabelledBy: merged.ariaLabelledBy,
-      ariaLabel: merged.ariaLabel,
-      ariaModal: merged.ariaModal,
-      autoFocus: merged.autoFocus,
-      restoreFocus: merged.restoreFocus,
-      scrollStrategy: merged.scrollStrategy ?? this.resolveScrollStrategy(merged.scrollBehavior),
-      positionStrategy:
-        merged.positionStrategy ?? this.resolvePositionStrategy(merged.side ?? 'right'),
-      closeOnNavigation: merged.closeOnNavigation,
-      viewContainerRef: merged.viewContainerRef,
-      injector: merged.injector,
-      // We handle close/Escape/backdrop ourselves so we can run the exit slide animation.
-      disableClose: true,
-      closeOnOverlayDetachments: false,
-      container: {
-        type: SheetContainer,
-        providers: () => [
-          { provide: SheetConfig, useValue: merged },
-          { provide: CdkDialogConfig, useValue: merged },
-        ],
-      },
-      providers: (_cdkRef, _cdkConfig, container) => {
-        sheetRef = new SheetRef<R, C>(
-          _cdkRef,
-          merged as unknown as SheetConfig<unknown, R>,
-          container as SheetContainer,
-        );
-        const providers: StaticProvider[] = [
-          { provide: SheetRef, useValue: sheetRef },
-          { provide: SHEET_DATA, useValue: merged.data ?? null },
-        ];
-        if (Array.isArray(merged.providers)) providers.push(...merged.providers);
-        return providers;
-      },
-    });
+    // Enforce id uniqueness eagerly. CDK throws this synchronously from
+    // `open()`; since our CDK open is now deferred, replicate the check here so
+    // the error still surfaces at the call site rather than in a later tick.
+    if (this.getSheetById(id)) {
+      throw new Error(`Sheet with id "${id}" exists already. The sheet id must be unique.`);
+    }
 
-    // After CDK attaches the component, copy references onto our ref.
-    (sheetRef as { componentRef: ComponentRef<C> | null }).componentRef = cdkRef.componentRef;
-    sheetRef.componentInstance = cdkRef.componentInstance as C | null;
+    const sheetRef = new SheetRef<R, C>(id, merged as unknown as SheetConfig<unknown, R>);
 
     const scope = this.parentSheet ?? this;
     scope.registerOpen(sheetRef as unknown as SheetRef<unknown, unknown>);
-
     sheetRef.afterClosed().subscribe(() => {
       scope.unregister(sheetRef as unknown as SheetRef<unknown, unknown>);
     });
+
+    void this.renderWhenReady(content, merged, sheetRef);
 
     return sheetRef;
   }
@@ -159,10 +121,47 @@ export class Sheet implements OnDestroy {
   }
 
   ngOnDestroy(): void {
+    this.destroyed = true;
     const sheets = [...this.openSheetsAtThisLevel()];
     for (let i = sheets.length - 1; i >= 0; i--) sheets[i].close();
     this.afterOpenedSubject.complete();
     this.afterAllClosedSubject.complete();
+  }
+
+  /**
+   * @internal Resolves once the renderer chunk has loaded. Exposed for tests,
+   * which must await the dynamic import before asserting on rendered DOM.
+   */
+  async _whenRendered(): Promise<void> {
+    await this.loadRenderer();
+    await Promise.resolve();
+  }
+
+  /**
+   * Render a sheet once the renderer chunk has loaded. The ref was already
+   * returned to the caller, so it may have been closed (or the service
+   * destroyed) while the import was in flight — both skip the actual open.
+   */
+  private async renderWhenReady<R, D, C>(
+    content: ComponentType<C> | TemplateRef<C>,
+    merged: SheetConfig<D, R>,
+    sheetRef: SheetRef<R, C>,
+  ): Promise<void> {
+    const openRendered = await this.loadRenderer();
+    if (!openRendered || this.destroyed) return;
+    // Closed before the chunk landed — the facade already synthesized its
+    // closed state; never create the overlay.
+    if (sheetRef.state() === 'closed') return;
+    openRendered(this.injector, content, merged, sheetRef);
+  }
+
+  private loadRenderer(): Promise<typeof openRenderedSheet | null> {
+    if (!this.rendererPromise) {
+      this.rendererPromise = import('./sheet-renderer').then(({ openRenderedSheet }) =>
+        this.destroyed ? null : openRenderedSheet,
+      );
+    }
+    return this.rendererPromise;
   }
 
   private registerOpen(ref: SheetRef<unknown, unknown>): void {
@@ -195,35 +194,6 @@ export class Sheet implements OnDestroy {
     const merged = new SheetConfig<D, R>();
     Object.assign(merged, this.defaultOptions, config);
     return merged;
-  }
-
-  private resolveScrollStrategy(strategy: SheetScrollStrategy | undefined): ScrollStrategy {
-    switch (strategy) {
-      case 'close':
-        return createCloseScrollStrategy(this.injector);
-      case 'reposition':
-        return createRepositionScrollStrategy(this.injector);
-      case 'noop':
-        return createNoopScrollStrategy();
-      case 'block':
-      default:
-        return createBlockScrollStrategy(this.injector);
-    }
-  }
-
-  private resolvePositionStrategy(side: SheetSide): GlobalPositionStrategy {
-    const strategy = createGlobalPositionStrategy(this.injector);
-    switch (side) {
-      case 'left':
-        return strategy.top('0').left('0').bottom('0');
-      case 'top':
-        return strategy.top('0').left('0').right('0');
-      case 'bottom':
-        return strategy.bottom('0').left('0').right('0');
-      case 'right':
-      default:
-        return strategy.top('0').right('0').bottom('0');
-    }
   }
 }
 
