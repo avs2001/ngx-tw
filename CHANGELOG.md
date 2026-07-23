@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+_Nothing yet._
+
+## 0.5.0 — 2026-07-23
+
 ### Performance
 
 - **toast:** load the rendering layer through a dynamic `import()`, so
@@ -83,6 +87,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   building `index.json`, mangling the surrounding prose in 26 API descriptions
   across `toast`, `dialog`, `core`, and others ("Reference to a dialog opened
   via ." / "register via ."). Links now render as their target symbol.
+
+### Performance
+
+- **dialog,sheet:** defer the container render layer behind a dynamic import ([da5dbcc](https://github.com/avs2001/ngx-tw/commit/da5dbcc59ff5dc2bfc86b5681d79e0795c252e75))
+- **toast:** defer the rendering layer behind a dynamic import ([1a52117](https://github.com/avs2001/ngx-tw/commit/1a52117b0a94cebe281e8b0f98e3a025cb70738e))
 
 ## 0.4.0 — 2026-07-22
 
