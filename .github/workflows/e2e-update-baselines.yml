@@ -28,7 +28,7 @@ jobs:
       # Need write access to push the regenerated PNGs back to the branch.
       contents: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           ref: ${{ inputs.branch || github.ref }}
           # Tokens that can push protected branches still need this for the
