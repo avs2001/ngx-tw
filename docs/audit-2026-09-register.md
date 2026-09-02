@@ -892,7 +892,7 @@ maintainer-check away from being abandoned wholesale.
 | P5-15 | **The MCP index served ZERO snippets for the entire runtime theming API** — the theme route had no `*Snippet` consts and no `<tw-code-block>`. Now 12. Repo-wide snippet count 733 → 745. | **[measured]** |
 | P5-16 | **`verify-mcp-index.mjs` check 4's `.css` carve-out was dead code** — the scanner regex `[\w/-]` excludes `.`, so `@cdevhub/ngx-tw/theme/index.css` captured as `theme/index`, failing the carve-out and both entry-point lookups. Landing P5-15's CSS snippet would have turned an advisory WARN into a **hard `exit 1` on the release pre-flight**. Check 5's "missing or renamed demo page" also reported a wrong cause. | **[measured]** — found by the fix agent *in the audit's own claim* that check 4 "already whitelists `theme/*.css`" |
 
-| P5-17 | **Overlay configuration was built once per component *lifetime* in `tooltip`, `select`, `combobox` and `popover`** — `position`, `offset`, `scrollStrategy` and backdrop config froze after the first open, because each guards creation on `if (this.overlayRef) return` and disposes only at destroy, while close merely `detach()`es. `tooltip` is the worst: `[twTooltipPosition]="isMobile() ? 'bottom' : 'right'"` is an ordinary binding and tooltips show and hide constantly. Extends the P4-6 / P4-9 "input read once, never re-read" class. | **[verified]** — `tooltip` re-derived by the orchestrator; all four re-verified by the fix agent |
+| P5-17 | **Overlay configuration was built once per component *lifetime* in `tooltip`, `select`, `combobox` and `popover`** — `position`, `offset`, `scrollStrategy` and backdrop config froze after the first open, because each guards creation on `if (this.overlayRef) return` and disposes only at destroy, while close merely `detach()`es. `tooltip` is the worst: `[twTooltipPosition]="isMobile() ? 'bottom' : 'right'"` is an ordinary binding and tooltips show and hide constantly. Extends the P4-6 / P4-9 "input read once, never re-read" class. | **[verified]** — the orchestrator re-derived `tooltip`'s *read site and detach-only hide* (`tooltip.ts:484`, `:554-556`); the **consequence** (a changed binding ignored on the next show) was established by the fix agent's failing-first spec, not by that read |
 | P5-18 | **`provideCalendarIntl` / `provideTimePickerIntl` merged with `Object.assign`,** so an explicitly-`undefined` field overwrote the default and a missing key then crashed the calendar on view switch. P4-8's class, but in a **bootstrap-level provider** — one bad key at startup breaks every calendar in the app, and it surfaces later, on a view switch, far from the cause. | **[verified]** |
 | P5-19 | **A disabled `tw-calendar` still presented every day cell as enabled**, and `cellHover` fired on every pointer move across the disabled grid. `effectiveDisabled` was never plumbed to the cells while `readonly` was. Prior art preserved: no native `[disabled]` on cells, and exactly one tabbable cell when disabled. | **[verified]** |
 | P5-20 | **New e2e guards**: the `[twTheme]` subtree fix (P5-1) had none — `theme-matrix.spec.ts` covers 4 sampled pages and the theme page was not among them, which is exactly why P5-1 shipped. Plus the first RTL keyboard case for `paginator`. `dialog.spec.ts:92`'s stale fixme promoted to a live passing test. | **[measured]** — theme guard's non-vacuity proven by commenting out `@import "./_light.css"` in the loaded CSS and watching all three assertions fail independently |
@@ -1034,11 +1034,20 @@ renames):
     components — `select` too, not three) stay excluded from the variant vocabulary, verified
     individually. `form-field`'s `appearance: outline | filled` was found to be a **fifth**
     exclusion the earlier scope never named.
-15. **37 `test.fixme` with no expiry.** `A11Y_BACKLOG` self-expires because axe *runs*; a
-    `test.fixme` body never executes. Honest fix: `test.fail()` for the 8 "library is broken"
-    entries plus a dated registry for the 19 demo-blocked ones. **Five real library defects live
-    only inside fixme comments**, four of them one root cause (`onFormReset` is dead under signal
-    forms).
+15. **35 `test.fixme` with no expiry** — 37 at entry, **two promoted to live passing tests this
+    pass**. `A11Y_BACKLOG` self-expires because axe *runs*; a `test.fixme` body never executes.
+    Honest fix: `test.fail()` for the "library is broken" entries plus a dated registry for the
+    demo-blocked ones. **Five real library defects live only inside fixme comments**, four of them
+    one root cause (`onFormReset` is dead under signal forms).
+
+    **The mechanism's cost is no longer hypothetical.** `calendar.spec.ts:153` read
+    *"BUG / NEEDS-INVESTIGATION: calling `ctrl.disable()` does NOT propagate to the individual day
+    cells"* — a precise, correct description of **P5-19**, which this pass found and fixed by an
+    entirely independent route (an audit agent reading `effectiveDisabled`'s consumers). The fixme
+    had the diagnosis and was invisible to every gate for as long as it sat there; promoted, it
+    passes. `dialog.spec.ts:92` was the opposite failure — a fixme that had gone **stale**, its
+    premise fixed at `dialog-config.ts:56` with three unit tests already asserting it. One
+    mechanism, both failure modes, in one pass. **[measured]**
 16. **`onFormReset` is cited by seven e2e spec files and imported by no component** — reset actually
     works via `writeValue(null)`. `docs/tree-shaking-audit.md:89` carries a milder version of the
     same misattribution, claiming `calendar.ts:1151` references a symbol it does not.
@@ -1128,8 +1137,22 @@ alias. Keying the Record on the rendered subset (`as const satisfies`) is the du
 | `npm run lint` | **0 errors, 75 warnings** — the same 75 as at entry, all in `e2e/` |
 | `npm run verify:package` | pass — theme resolves from a clean consumer install |
 | `npm run verify:mcp-index` | **6 warnings** (was 7) — the theme entry point now carries snippets |
-| `npm run e2e:fast` | **936 passed**, 53 skipped, 0 failed (was 932) |
+| `npm run e2e:fast` | **936 passed**, 52 skipped, **1 flake** (was 932). The flake is `transfer.spec.ts:58`, which passes 5/5 in isolation — see below |
 | `npm run e2e:visual` | **NOT regenerated, by design** — Linux via `workflow_dispatch` only |
+
+**A third load-dependent e2e flake, new this pass and NOT a regression.**
+`transfer.spec.ts:58` (`expect(focusHome).toBe('listbox')`) failed once under full-suite
+contention and passes **5/5 in isolation**. `git diff f1196e5..HEAD` confirms **no pass-5 change
+touches `transfer/`** — it was in no agent's ownership. It joins the two pass 4 recorded
+(`00-smoke/routes.spec.ts` on `/components/sort/api`, `date-picker.spec.ts:205`) and the
+`menu.spec.ts` type-ahead flake from pass 2. That is now **four**, all the same shape: a timing
+assertion that loses its race under parallel load.
+
+This is worth more than its individual severity. Four independent flakes train a maintainer to
+re-run a red suite until it goes green, which is exactly how a real failure gets waved through —
+and this pass's own `test.fixme` findings show what happens when a known-bad signal is left to sit.
+Pass 6 should fix the class (the repo already built the right tool: `pumpUntil` in
+`select.spec.ts` / `combobox.spec.ts`), not the four instances.
 
 **Visual baselines.** `_light.css` restates values `@theme` already set on `:root`, and all 195
 declarations were verified string-equal to `_semantic.css`, so a light-mode page is pixel-identical
