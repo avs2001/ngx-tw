@@ -150,15 +150,13 @@ test.describe('Calendar', () => {
     ).toHaveCount(0);
   });
 
-  test.fixme(
+  test(
     '@interaction reactive forms: toggle disabled propagates to every day cell',
     async ({ page }) => {
-      // BUG / NEEDS-INVESTIGATION: calling `ctrl.disable()` on the bound
-      // FormControl does NOT propagate to the individual day cells — the
-      // grid buttons remain enabled even after the form-level disable.
-      // Either the calendar's CVA `setDisabledState` is incomplete, or the
-      // day cells render independently of host disabled state. Unit spec
-      // covers the API surface; this E2E asserts the rendered contract.
+      // Was `test.fixme` until pass 5. The bug was real and is fixed: the
+      // calendar's `effectiveDisabled` had only two consumers and was never
+      // plumbed through to the cells, while `readonly` — the sibling concept —
+      // was. `disabledGrid` now reaches all three cell builders.
       const calendar = new CalendarPage(page);
       await calendar.goto();
       const target = calendar.calendarIn(calendar.reactiveSection);
