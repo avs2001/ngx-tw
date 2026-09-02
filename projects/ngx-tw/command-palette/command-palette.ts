@@ -18,10 +18,11 @@ import {
   TemplateRef,
   untracked,
   viewChild,
+  PLATFORM_ID,
   ViewContainerRef,
   type Signal,
 } from '@angular/core';
-import { NgTemplateOutlet } from '@angular/common';
+import { DOCUMENT, isPlatformBrowser, NgTemplateOutlet } from '@angular/common';
 import { Overlay, type OverlayRef } from '@angular/cdk/overlay';
 import { ComponentPortal } from '@angular/cdk/portal';
 import { FocusTrapFactory, LiveAnnouncer } from '@angular/cdk/a11y';
@@ -455,6 +456,8 @@ export class CommandPaletteComponent {
   private readonly destroyRef = inject(DestroyRef);
   private readonly focusTrapFactory = inject(FocusTrapFactory);
   private readonly announcer = inject(LiveAnnouncer);
+  private readonly document = inject(DOCUMENT);
+  private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
 
   private readonly declarativeItems = contentChildren(CommandPaletteItemDirective, {
     descendants: true,
@@ -671,8 +674,19 @@ export class CommandPaletteComponent {
   // ── Private ──
 
   private openPalette(): void {
+    // SSR guard. `openPalette()` is reachable from the constructor `effect()`
+    // below, and effects run during server render (only `afterRender*` hooks
+    // are client-only) — so a consumer deep-linking the palette with a bound
+    // `[open]="true"` executed this path on Node. A CDK overlay is a
+    // browser-only construct and there is nothing meaningful to serialize, so
+    // bail out entirely; the client instance re-runs the same effect during
+    // hydration and opens then. Matches `split.ts` / `theme.service.ts`, which
+    // gate on the same `isPlatformBrowser(inject(PLATFORM_ID))` flag.
+    if (!this.isBrowser) return;
+    // `document` is injected rather than read as a global so the reference is
+    // testable and consistent with the rest of the library.
     this.previousFocus =
-      (document.activeElement as HTMLElement | null) ?? null;
+      (this.document.activeElement as HTMLElement | null) ?? null;
     this.ensureOverlay();
     this.attachContent();
     this.subscribePerOpen();

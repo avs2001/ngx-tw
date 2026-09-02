@@ -1,8 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { ChangeDetectionStrategy, Component, signal } from '@angular/core';
 import { type ComponentFixture, TestBed } from '@angular/core/testing';
-import { FormControl, FormsModule, ReactiveFormsModule } from '@angular/forms';
-import { form, FormField } from '@angular/forms/signals';
+import { FormControl, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
+import { form, FormField, required as requiredRule } from '@angular/forms/signals';
 import { SegmentedControlComponent, SegmentedControlOptionComponent } from './segmented-control';
 import type { SegmentedControlVariant, SegmentedControlRounded } from './segmented-control';
 import type { TwColor, TwOrientation, TwSize } from '@cdevhub/ngx-tw/core';
@@ -742,5 +742,184 @@ describe('SegmentedControlOption — dev-mode parent guard', () => {
       expect.stringContaining('<tw-segmented-option> must be a child of <tw-segmented-control>'),
     );
     errorSpy.mockRestore();
+  });
+});
+
+
+// ── Error-state integration (FIX-1/#4) ────────────────────────────
+//
+// Before this pass `segmented-control` was a `ControlValueAccessor` with NO
+// error-state integration at all: no `NgControl`, no `TW_ERROR_STATE_MATCHER`,
+// no `errorState`, no `required`, and neither `aria-invalid` nor
+// `aria-required` in any of the three form strategies. A `Validators.required`
+// control bound to it blocked submit while nothing in its rendering or ARIA
+// said why.
+//
+// These specs also pin the CVA registration shape. The component now injects
+// `NgControl` with `{ self: true }` and assigns `valueAccessor` in its
+// CONSTRUCTOR — a static `NG_VALUE_ACCESSOR` provider would deadlock against
+// that injection, and deferring the assignment to `ngOnInit` would route this
+// `value`-model component down the signal-forms custom-control branch, silently
+// skipping `setUpValidators`. If value round-tripping ever breaks under
+// `[formControl]` or `[formField]`, that registration is the first suspect.
+
+@Component({
+  imports: [
+    SegmentedControlComponent,
+    SegmentedControlOptionComponent,
+    ReactiveFormsModule,
+  ],
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  template: `
+    <tw-segmented-control [formControl]="control" aria-label="Required plan">
+      <tw-segmented-option value="x">X</tw-segmented-option>
+      <tw-segmented-option value="y">Y</tw-segmented-option>
+    </tw-segmented-control>
+  `,
+})
+class RequiredReactiveHost {
+  control = new FormControl<string | null>(null, Validators.required);
+}
+
+@Component({
+  imports: [SegmentedControlComponent, SegmentedControlOptionComponent, FormField],
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  template: `
+    <tw-segmented-control [formField]="segmentForm.choice" aria-label="Required signal">
+      <tw-segmented-option value="x">X</tw-segmented-option>
+      <tw-segmented-option value="y">Y</tw-segmented-option>
+    </tw-segmented-control>
+  `,
+})
+class RequiredSignalFormHost {
+  protected readonly model = signal<{ choice: string | null }>({ choice: null });
+  readonly segmentForm = form(this.model, (p) => {
+    requiredRule(p.choice);
+  });
+}
+
+describe('SegmentedControl error state', () => {
+  beforeEach(() => {
+    TestBed.configureTestingModule({});
+  });
+
+  it('exposes aria-required from Validators.required on the bound control', () => {
+    const fixture = TestBed.createComponent(RequiredReactiveHost);
+    fixture.detectChanges();
+    expect(getControl(fixture).getAttribute('aria-required')).toBe('true');
+  });
+
+  it('exposes aria-required from the required input alone', () => {
+    @Component({
+      imports: [SegmentedControlComponent, SegmentedControlOptionComponent],
+      changeDetection: ChangeDetectionStrategy.OnPush,
+      template: `
+        <tw-segmented-control [required]="true" aria-label="Required input">
+          <tw-segmented-option value="x">X</tw-segmented-option>
+        </tw-segmented-control>
+      `,
+    })
+    class RequiredInputHost {}
+
+    const fixture = TestBed.createComponent(RequiredInputHost);
+    fixture.detectChanges();
+    expect(getControl(fixture).getAttribute('aria-required')).toBe('true');
+  });
+
+  it('leaves aria-required off by default', () => {
+    const fixture = TestBed.createComponent(CvaTestHost);
+    fixture.detectChanges();
+    expect(getControl(fixture).hasAttribute('aria-required')).toBe(false);
+  });
+
+  it('does not set aria-invalid before the control is interacted with', () => {
+    const fixture = TestBed.createComponent(RequiredReactiveHost);
+    fixture.detectChanges();
+    expect(fixture.componentInstance.control.invalid).toBe(true);
+    expect(getControl(fixture).getAttribute('aria-invalid')).toBe(null);
+  });
+
+  it('sets aria-invalid once the bound FormControl is touched + invalid', () => {
+    const fixture = TestBed.createComponent(RequiredReactiveHost);
+    fixture.detectChanges();
+    fixture.componentInstance.control.markAsTouched();
+    fixture.componentInstance.control.updateValueAndValidity();
+    fixture.detectChanges();
+    expect(getControl(fixture).getAttribute('aria-invalid')).toBe('true');
+  });
+
+  it('clears aria-invalid once the user picks an option and the control becomes valid', () => {
+    const fixture = TestBed.createComponent(RequiredReactiveHost);
+    fixture.detectChanges();
+    fixture.componentInstance.control.markAsTouched();
+    fixture.componentInstance.control.updateValueAndValidity();
+    fixture.detectChanges();
+    expect(getControl(fixture).getAttribute('aria-invalid')).toBe('true');
+    getOptions(fixture)[0].click();
+    fixture.detectChanges();
+    expect(fixture.componentInstance.control.valid).toBe(true);
+    expect(getControl(fixture).getAttribute('aria-invalid')).toBe(null);
+  });
+
+  // ── touched timing (FIX-6) ──
+  //
+  // The CVA contract registers `onTouched` as the BLUR notification. This
+  // control used to call it from `selectOption()` too, so `touched` flipped
+  // with no blur. Combined with the error-state wiring above, that decided WHEN
+  // `aria-invalid` appeared: on the first selection rather than on leaving the
+  // control. Both halves are asserted through REAL DOM events — a direct
+  // `onTouched()` call would pass regardless of what the template does.
+  it('does not mark the control touched when an option is selected without a blur', () => {
+    const fixture = TestBed.createComponent(RequiredReactiveHost);
+    fixture.detectChanges();
+    getOptions(fixture)[0].click();
+    fixture.detectChanges();
+    expect(fixture.componentInstance.control.value).toBe('x');
+    expect(fixture.componentInstance.control.touched).toBe(false);
+  });
+
+  // The combination that matters: selecting an option on a still-invalid
+  // control must NOT paint the error, because the user has not left the control
+  // yet. (Here the first click makes it valid; the assertion that matters is
+  // that no `aria-invalid` appears at any point in this sequence.)
+  it('does not paint aria-invalid from a selection alone', () => {
+    const fixture = TestBed.createComponent(RequiredReactiveHost);
+    fixture.detectChanges();
+    getOptions(fixture)[0].click();
+    fixture.detectChanges();
+    expect(getControl(fixture).getAttribute('aria-invalid')).toBe(null);
+    // Back to invalid, still with no blur: the control is `dirty` now, and the
+    // default matcher keys on `dirty || touched`, so this documents the bound
+    // of the change rather than claiming errors never show before blur.
+    fixture.componentInstance.control.setValue(null);
+    fixture.detectChanges();
+    expect(fixture.componentInstance.control.touched).toBe(false);
+  });
+
+  // Roving focus moves between option elements inside the group, and each hop
+  // raises `focusout` on the host, so the handler must ignore any
+  // `relatedTarget` that is still inside the control.
+  it('marks the control touched only when focus leaves the group', () => {
+    const fixture = TestBed.createComponent(RequiredReactiveHost);
+    fixture.detectChanges();
+    const host = getControl(fixture);
+    const options = getOptions(fixture);
+
+    host.dispatchEvent(
+      new FocusEvent('focusout', { bubbles: true, relatedTarget: options[1] }),
+    );
+    fixture.detectChanges();
+    expect(fixture.componentInstance.control.touched).toBe(false);
+
+    host.dispatchEvent(new FocusEvent('focusout', { bubbles: true, relatedTarget: null }));
+    fixture.detectChanges();
+    expect(fixture.componentInstance.control.touched).toBe(true);
+    expect(getControl(fixture).getAttribute('aria-invalid')).toBe('true');
+  });
+
+  it('exposes aria-required under signal forms', () => {
+    const fixture = TestBed.createComponent(RequiredSignalFormHost);
+    fixture.detectChanges();
+    expect(getControl(fixture).getAttribute('aria-required')).toBe('true');
   });
 });

@@ -591,3 +591,230 @@ already has a default. Both made optional, and both resolved types are now `Requ
 explicitly-`undefined` keys filtered before the merge — a plain spread lets
 `{ key: undefined }` overwrite the default with undefined, which reaches the template as a null
 label and silently reinstates the very defect the label exists to prevent.
+
+---
+
+# Pass 4 — 2026-09-03, Angular v22 idiom · consistency · public API
+
+Scope: a full-library audit through the `angular-developer` v22 lens, plus cross-component
+consistency, public API surface, and defect/gap hunting. Accessibility was explicitly **out of
+scope** — pass 3 closed it and e2e was green at 916 on entry.
+
+Method: five parallel read-only audit agents (v22 idiom/reactivity/runtime-safety, public
+API/packaging/semver, cross-component consistency, forms+CVA including **signal forms**, test
+coverage), then four fix agents partitioned **by component ownership** — pass 3's own recorded
+lesson, since a criterion-based split deadlocks on `select` and `calendar`. Every finding was
+required to carry an explicit `Register:` line (`not in register` / `extends X` / `contradicts X`);
+findings without one were discarded, which is what kept a fourth pass from re-litigating the first
+three.
+
+## The pass's real lesson: three confident claims came from modelling instead of measuring
+
+This is the through-line and it is worth more than any individual fix.
+
+1. **A `test.fixme` comment sent an audit agent at the wrong file.** COVERAGE ranked
+   `calendar`'s `nearest-edge` branch its top BLOCKER: a documented state-machine path with zero
+   unit coverage whose only test was skipped as *"Pre-existing drift: the nearest-edge range-click
+   behavior moved."* **There was no regression.** The comment was wrong on both counts —
+   `rangeClickBehavior` never moved into `rangeBehavior` (they are different inputs,
+   `calendar.ts:471` and `:479`), and the demo already wires it (`calendar-examples.component.ts:175`).
+   The actual cause: `e2e/pages/calendar.page.ts:58` searched for the heading
+   `'Range click behavior (§21.2)'` while the demo renders `'Range click behavior'`, and
+   `section()` anchors its regex — so the locator matched nothing and every click timed out. It
+   was the only one of eight section names in that file not matching its heading. One token
+   deleted; **test passes in 16.6s.** **[measured]**
+2. **A synthetic replica produced a false CVA rule that nearly landed in CLAUDE.md.** FORMS
+   measured, on replicas, that the silent-validator-drop trap "requires a `value`/`checked`
+   `model()`" and that `calendar` was therefore exempt on the reactive branch. FIX-2 ran the same
+   experiment on the **real** component and got the opposite result. Primary source settles it:
+   `_debug_node-chunk.mjs:8513` is `hasInput(def,'value') && hasOutput(def,'valueChange')` — a
+   structural lookup, not a `model()` test. `calendar.ts:369` (`input({alias:'value'})`) plus
+   `:533` (`output()` named `valueChange`) satisfies it with no `model()` in the file. Removing
+   its provider makes the reactive guard **fail**, with no `NG01914`. The wrong rule had already
+   been written into CLAUDE.md and was corrected in place. **[measured]**
+3. **`stripInternal` looked like a two-line win and is blocked by tooling.** See below.
+
+Corollary for pass 5: **test the component, not a model of it**, and treat every `fixme` comment
+as an unverified hypothesis. The two remaining calendar fixmes were re-checked under that lens and
+are **correctly** diagnosed (verified: no `[constraints]` binding and no custom
+`CALENDAR_SELECTION_STRATEGY` provider exists anywhere in the demo).
+
+## Tier 1 — fixed and verified in this pass
+
+| # | Finding | Evidence |
+|---|---|---|
+| P4-1 | **Five packages the shipped bundles import were declared nowhere.** `@angular/forms` (16 entry-point bundles), `rxjs` (19), `tailwind-merge` (2, imported directly by `tabs.ts`/`tab-nav.ts`), `luxon`, `lucide`. Under npm's hoisted `node_modules` an undeclared import still resolves, so this was invisible locally; under pnpm or Yarn PnP a package resolves only what it declares and **16 entry points fail to load even when the consumer has `@angular/forms` installed**. `verify:package` never caught it because it compiles CSS and never imports a module. | **[measured]** `grep -l "from '<pkg>'" dist/ngx-tw/fesm2022/*.mjs`; fixed additively, `luxon`/`lucide` optional via `peerDependenciesMeta` (confirmed to survive ng-packagr) |
+| P4-2 | **`tree` silently dropped `expandedKeys` at mount** — every `tw-tree` seeded with expanded keys rendered fully collapsed, permanently, across every demo example. Instrumented, not guessed: the sync effect *does* call `tree.expand(node)`, but `CdkTree._expansionModel` does not exist yet, so CDK's `else if (this._expansionModel)` falls through silently and the effect never re-runs. | **[measured]** fixed with an idempotent `applyExpansion()` replayed from `afterNextRender()` |
+| P4-3 | **`file-upload` focus retarget was broken in every real browser.** The restore ran in `queueMicrotask`, which under zoneless fires *before* re-render, so it queried the pre-removal DOM: removing a middle file focused the button being destroyed (focus → `<body>`), and removing the last file never reached the "focus the trigger" branch. It survived unit testing because the spec called `detectChanges()` between click and assertion — right assertion, wrong order, **and the order was the bug**. | **[measured]** fixed with `afterNextRender(…, { injector })` |
+| P4-4 | **`[twError match="…"]` was permanently hidden on six controls.** `checkbox`, `select`, `combobox`, `date-picker`, `date-range-picker`, `time-picker` never implemented the optional `errors` signal that `form-field.ts` reads to build its key set, so a `match`-targeted message could never render — including `calendarMinDate`, the very code the Shape-B `NG_VALIDATORS` apparatus exists to deliver. The JSDoc justified the omission as "controls without a backing `NgControl` may omit it"; **all six have one** (F4 shape). | **[measured]** implemented on all six, proven non-vacuous by deleting an override and watching the new test fail |
+| P4-5 | **`required` was not derived from the bound control** on `switch`, `radio-group`, `slider`, `select`, `combobox`. With `Validators.required` on a reactive control, `required` read `false`, so `select`/`combobox` never rendered the form-field `*` marker and the others never exposed `aria-required`. Asymmetric and therefore easy to miss: under signal forms `cvaControlCreate` *writes* the `required` input, so it already read `true` there. | **[measured]** |
+| P4-6 | **`stat`'s `aria-label` froze.** An `afterRenderEffect` scraped `textContent` while tracking only a static `viewChild`; since `afterRenderEffect` re-runs only when a *tracked producer* changes, it ran once — bind `{{ growth() }}%`, change 12 → 34, and the delta keeps announcing 12. Its comment claimed "afterRenderEffect runs after each render", verified false against Angular's source. Every existing test used static text. | **[verified]** fixed with the `MutationObserver` pattern `flip-card.ts:260` already uses |
+| P4-7 | **`command-palette` broke SSR.** A bare `document.activeElement` was the first statement of `openPalette()`, reachable from a constructor `effect()`; `[open]="true"` at first render fails the whole SSR response. This was the **only** genuinely unsafe SSR site in the library — the 11-file `window.`/`document.` lead reduced to 9 code sites, 8 of them event-handler-only. | **[verified]** guarded |
+| P4-8 | **A consumer passing `{ key: undefined }` crashed three components.** `carousel`, `paginator` and `transfer` merged label objects with a plain spread, so an explicitly-`undefined` key overwrote the default and reached an unguarded `template.replace(...)` → `TypeError`. `provideTheme({ storageKey: undefined })` wrote a literal `"undefined"` localStorage key. | **[measured]** fixed with the `Required<>` + undefined-filter pattern pass 3 established |
+| P4-9 | **`timeline`'s scroll chevrons died on an orientation flip** — a one-shot `afterNextRender` behind an `orientation !== 'horizontal'` early return. `carousel.ts:693` documents having already fixed this exact class. | **[verified]** |
+| P4-10 | **`segmented-control` had no error-state integration at all** — no `NgControl`, no matcher, no `aria-invalid`/`aria-required` in any strategy. Migrated to the constructor `valueAccessor` pattern (mandatory: it has a `value` model). | **[measured]** |
+| P4-11 | **`slider` did not compile under `strictTemplates` with signal forms.** `min`/`max` inferred `number` while signal forms binds `number \| undefined` → TS2322. The library worked around it with `$any()` **in the copyable demo snippet**, i.e. shipping the workaround to consumers. | **[measured]** widened via the alias idiom; `$any()` removed from spec and demo |
+| P4-12 | **`onTouched` fired from the change handler** on `checkbox`, `switch`, `radio`, `segmented-control`, so `touched` flipped without a blur and errors appeared early. `slider`/`tags-input`/`input` were already correct. Maintainer-approved behavioural change. Four `forms-three-strategies` e2e specs asserted the old timing and now blur explicitly before asserting — **their failure was the fix working**, and it was predicted in advance rather than discovered. | **[measured]** |
+| P4-13 | **Six `@internal` symbols were re-exported from `core/index.ts`** — an annotation contradicting the barrel. Now module-private; nothing outside their own file ever used them. | **[measured]** |
+| P4-14 | **Icon/dot scales corrected** on `menu` (was 4/4/4/5/5 → 3/4/5/6/**6**), `avatar.status` (8/8/10/12/12 → 8/10/12/14/16), `carousel` dots (8/10/12/12/12 → 8/10/12/14/16), `transfer` glyphs (4/4/5/5/5 → 3/4/5/6/6). | **[measured]** in-browser + unit specs with negative controls |
+
+**Semver discipline held this time.** Pass 3 shipped two required-member breaks from two
+independent agents; this pass put the rule verbatim in every fix prompt and **zero** occurred.
+`TwCarouselLabels`, `TwPaginatorLabels`, `TwThemeConfig` and `TwTimelineScrollLabels` were
+additionally softened to optional members with their exported defaults retyped `Required<>` — the
+structural fix, not the per-member one.
+
+## `stripInternal` — approved, attempted, blocked by tooling. Do not retry blind.
+
+991 members annotated `@internal` ship as callable public API: `paginator.goTo(3, 'click')` and
+`table.resolvedSticky()` compile in consumer code today. The maintainer approved enabling
+`stripInternal`. It does not work, and the failure mode is nasty enough to record in full:
+
+- With `stripInternal: true`, ng-packagr's `.d.ts` **rollup silently drops three genuinely public
+  exports** from `core` — `tabTriggerVariants`, `getActiveTriggerClasses`,
+  `getInactiveTriggerClasses`. The build then fails in `tabs` with TS2305/TS2724 pointing at the
+  *importer*, never at the cause.
+- **TypeScript is not at fault.** `tsc --stripInternal --emitDeclarationOnly` over
+  `core/tab-trigger-variants.ts` emits all three correctly **[measured]**. The loss is in
+  ng-packagr's flattening step.
+- Making the six `@internal` lookup tables module-private (P4-13) is correct on its own merits and
+  was kept, but does **not** fix this.
+- A first failed attempt also produced a phantom `TS4112` in `transfer.ts:1157` claiming
+  `TransferComponent` "does not extend another class" when `:539` plainly extends
+  `FormFieldControl`. That was a **cascade**: `core` failed, so `@cdevhub/ngx-tw/core` became
+  unresolvable and the base class unknown. Textbook instance of the trap Tier 3 already documents.
+
+The flag is reverted with this diagnosis inline in `tsconfig.lib.prod.json`. Re-enabling needs a
+different mechanism (api-extractor, or keeping internals out of barrels by convention).
+
+## Corrections to earlier passes and to this pass's own agents
+
+- **Register Tier 3's "138/647 inputs (21%) never appear in any spec" re-derived: 140/672 (20.8%)
+  — flat.** No pass moved it. Pass 2's claim that the figure was "overstated because it misses
+  aliased inputs" is **wrong**: re-derived with alias resolution, the number does not move.
+  Composition shifted usefully though (`combobox` 17→3, `select` 16→6); new worst offender is
+  `date-picker` at 19/38. **[measured]**
+- **Tier 3's "three public outputs referenced by no test" is now zero of 69.** Fixed. **[measured]**
+- **CONSISTENCY over-clustered `table`.** Its `default | striped | bordered` is a grid-style axis,
+  not a surface treatment — `striped` has no analogue in the surface vocabulary. Renaming it to
+  `outline` would have been wrong. This narrowed the approved variant unification from "13
+  components" to **11 renames across 6**. **[verified]**
+- **COVERAGE's F-01 is half wrong** — `tree.spec.ts:453` *does* dispatch the event; what is
+  missing is identity discrimination (it activates row 0 and asserts id 1). A
+  `toggleSelection(dataArray()[0])` mutation left all 33 pre-existing tests green. **[measured]**
+- **COVERAGE's F-04 premise is falsified** — `onSwipeEnd` is *not* jsdom-unreachable. The real
+  blocker is `getBoundingClientRect()` returning zero, which collapses the swipe threshold to 0,
+  making an unstubbed swipe test **vacuous rather than impossible**. **[measured]**
+- **Pass 3's hand-off lint row is stale**: it records "0 errors, 70 warnings". Current tree is
+  **75**, and the +5 are pass 3's own axe-settle `waitForTimeout` calls. All 75 are in `e2e/`;
+  `projects/ngx-tw/` and `projects/demo/` are lint-clean. **[measured]**
+- **`stepper`'s `@ViewChildren` is correct and forced** — `CdkStepper` types `_stepHeader` as
+  `QueryList<CdkStepHeader>` and calls `.changes.pipe(...)` (`stepper.mjs:449`); `viewChildren()`
+  would not compile. **Do not re-investigate.** The `EventEmitter` in
+  `core/overlay/overlay-container-coordinator.ts:88` is *not* forced, but `output()` is the wrong
+  target — it is an RxJS stream consumed via `.pipe()`, so `Subject<T>` is the correct fix.
+  Cosmetic; deferred.
+
+## Verified-clean, stated positively so pass 5 does not re-sweep
+
+- **Zoneless: clean.** Mechanical scan of all 259 non-spec files found zero plain (non-signal)
+  fields read from a template or host binding, and zero reliance on `setTimeout`/listeners to
+  schedule CD. Both `NgZone` uses are `runOutsideAngular` (zoneless-neutral). **[verified]**
+- **SSR: one defect, now fixed** (P4-7). The 11-file lead collapsed to 9 real code sites — three
+  of the "hits" were prose in comments.
+- **Signal graph: clean.** The four Tier-3 SUSPECT effects are confirmed still fixed after pass 3
+  (line numbers moved). A stronger tracked-region-only cycle scan finds only the codified
+  `paginator` exception. All four `linkedSignal` uses correct; no `untracked` cargo-culting; no
+  subscription leaks.
+- **v22 API modernity: clean.** Zero `@Input`/`@Output`/`@HostBinding`/`@HostListener`, zero
+  legacy control flow, zero non-self-closing tags.
+- **`tv()` conformance: 63/63** set both `twMerge` and `defaultVariants`; exactly one exported
+  config (the codified `tabTriggerVariants` carve-out).
+- **Design tokens: pass-1 claims still hold** on the current tree after three passes of edits —
+  zero raw palette colours, zero `transition-all`, zero forbidden shadows, zero forbidden radii
+  (23 grep hits all read and confirmed as identifiers/prose), zero `dark:` variants in code.
+- **Entry points: 56/56.** 56 directories with `ng-package.json`, 56 `export *` lines. A naive
+  grep reports 57 because the file header's example import matches; `verify:package`'s "59" counts
+  the 3 nested entry points (`calendar/luxon`, `calendar/testing`, `icon/lucide`).
+- **CVA registration: all 10 Shape-A controls assign in the constructor; all 4 Shape-B provide
+  statically.** No control is on the silent-drop path.
+
+## Open — carried to pass 5
+
+**Approved but not yet landed** (both span files that were owned by concurrent fix agents, so they
+were deliberately queued rather than raced):
+
+1. **Variant vocabulary unification** — 11 renames across 6 components, scoped in full at
+   `scratchpad/wave2-variant-scope.md`: `outlined`→`outline` (card, flip-card, code-block, stat),
+   `bordered`→`outline` (accordion, collapsible), `filled`→`solid` (code-block, collapsible,
+   segmented-control, stat), `plain`→`ghost` (stat). Each needs a deprecated alias.
+   **Explicitly excluded:** `table` (different axis), `segmented-control`'s `surface` (a genuine
+   third state), and the `default|naked` field-chrome axis on the three pickers.
+2. **`TW_` prefix on 12 of 24 injection tokens**, six of which (`DATE_ADAPTER`, `DATE_FORMATS`,
+   `THEME_CONFIG`, `SHEET_DATA`, `POPOVER_DATA`, `AVATAR_GROUP_SIZE`) import cleanly from the root
+   barrel and can collide in consumer code. Needs deprecated aliases.
+
+**Not yet decided:**
+
+- **`stripInternal` alternative** (above) — the 991-member leak is real and still open.
+- **`NumberInputDirective.setDisabledState`** is worse than audited: no `[disabled]`/`aria-disabled`
+  host binding *and* `onInput()` (`number-input.ts:224-231`) is not gated on `disabled()`, so a
+  disabled standalone control still writes every keystroke into the form model. Masked today
+  because every shipped usage pairs it with `twInput`. **[measured]**
+- **`select`'s clear is a `tabindex`'d span inside a `<button>`** — HTML content model violation,
+  carried from pass 3, still open. axe cannot see it.
+- **17 of 30 `true`-default justifications are still bare `//` comments**, including every one of
+  the seven CLAUDE.md holds up as canonical. Pass 3 decided the JSDoc rule; the code was never
+  migrated, so Compodoc still shows blank cells.
+- **`verify:mcp-index`'s 7th warning is a wrong diagnosis** — it reports the theme demo page as
+  "missing or renamed"; the directory exists with five files. Real cause: it inlines code samples
+  instead of using `{section}Snippet` consts, so the MCP index serves **zero** snippets for the
+  entire runtime theming API.
+- **Five unexported types in public signatures**: `ThumbId` (slider), `ResolvedItem`/`ResolvedGroup`
+  (command-palette), `DialogContainer`/`SheetContainer` — the last two handed out by documented
+  getters. Same class as F1.
+- **38 `test.fixme` in e2e used as a bug tracker with no expiry.** The repo already built the right
+  pattern (`A11Y_BACKLOG` fails on a stale entry) and never generalised it. Given that one of these
+  fixmes was actively misleading (above), this is worth more than its tier suggests.
+- **Demo prose defect**: the toast page claims swipe is disabled under `prefers-reduced-motion`;
+  the library has no such gate. Needs a product decision — "fixing" the prose by adding the gate
+  would silently kill six e2e tests.
+- **Test harnesses: 1 of 56.** Two `date-range-picker` skips ask for one in writing.
+
+## Traps that cost real time this pass — read before the next one
+
+- **A dev server left in a compile-error state silently poisons local e2e.**
+  `playwright.config.ts:40` sets `reuseExistingServer: !CI`, so every click fails with
+  `<vite-error-overlay> intercepts pointer events` — which reads as a component defect, not an
+  environment one. `npx ng build demo` was clean throughout. Fix: `lsof -ti tcp:4600 | xargs kill -9`.
+- **A sibling's non-compiling edit blocks every other agent's unit run**, because
+  `ng test <one component>` type-checks the whole library program. Two agents lost cycles to this.
+  When Playwright reports only `Timed out waiting for config.webServer`, the cause is usually a
+  demo file that does not compile — the message never names it.
+- **`ng test demo` does not type-check demo pages.** Proven by injecting a deliberate type error;
+  the suite still passed. A demo-only type regression rides on `ng build demo` alone.
+
+## Verification state at hand-off
+
+| Gate | Result |
+|---|---|
+| `npm run build:lib` | pass — 56 entry points, 565 symbols |
+| `npm run test:ci` | **3225 passed**, 4 skipped (72 files) + 4 demo — up from 3135 |
+| `npm run lint` | **0 errors, 75 warnings** (all in `e2e/`; library and demo clean) |
+| `npm run verify:package` | pass — theme resolves from a clean consumer install |
+| Browser (`/components/*`) | menu rows uniform at 36px with and without a glyph; avatar/transfer glyphs on the new scale |
+| `npm run e2e:fast` | **932 passed**, 54 skipped, 1 flake (see below) |
+
+**Two flaky e2e tests, both load-dependent, both pass in isolation — new finding.** Two
+consecutive full runs each failed exactly one test, and a *different* one each time:
+`00-smoke/routes.spec.ts` (`/components/sort/api`, `<h1>` not found) and
+`01-components/date-picker.spec.ts:205` (overlay still present after close, expected 0 got 1).
+Re-run alone: sort/api 1 passed in 1.9s; date-picker 11 passed in 7.4s. Neither is a regression
+from this pass — both are timing assertions that lose their race under full-suite contention, the
+date-picker one against an overlay close animation. Worth fixing before they train someone to
+re-run a red suite until it goes green, which is how a real failure gets waved through. **[measured]**
+
+**Visual baselines: NOT regenerated, by design.** Per Tier 3c they must be produced on Linux via
+`workflow_dispatch`. FIX-3's analysis says none of the 20 chromium baselines covers a menu glyph,
+avatar status dot or carousel dot, so no shift is expected — but that is an expectation, not a
+measurement, and the Linux job is the only thing that can confirm it.

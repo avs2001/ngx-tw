@@ -337,6 +337,51 @@ describe('AvatarComponent', () => {
         expect(dot).toBeTruthy();
       });
     }
+
+    // Pass-4 size-axis correction. The status dot used to render 2/2/2.5/3/3,
+    // so `xs`/`sm` were identical and `lg`/`xl` were both frozen at 12px —
+    // two of the five advertised steps did nothing. It now follows CLAUDE.md's
+    // dot-indicator sub-scale (2 / 2.5 / 3 / 3.5 / 4). Nothing asserted the
+    // dot's size before, which is why the dead steps survived three passes.
+    const statusSizeClassMap: Record<TwSize, string> = {
+      xs: 'size-2',
+      sm: 'size-2.5',
+      md: 'size-3',
+      lg: 'size-3.5',
+      xl: 'size-4',
+    };
+
+    for (const [size, expectedClass] of Object.entries(statusSizeClassMap)) {
+      it(`should apply ${expectedClass} to the status dot for size="${size}"`, () => {
+        const fixture = TestBed.createComponent(SizedAvatarHost);
+        fixture.componentRef.setInput('size', size);
+        fixture.componentRef.setInput('appearance', {
+          status: 'online',
+        } satisfies AvatarAppearance);
+        fixture.detectChanges();
+        const dot = getAvatar(fixture).querySelector('span[aria-hidden="true"]');
+        expect(dot).toBeTruthy();
+        // Exact token, anchored so `size-2` does not match `size-2.5`.
+        expect(new RegExp(`(^|\\s)${expectedClass}(\\s|$)`).test(dot!.className)).toBe(true);
+      });
+    }
+
+    it('renders a distinct status-dot size for every step', () => {
+      const seen = new Set<string>();
+      for (const size of ['xs', 'sm', 'md', 'lg', 'xl'] as const) {
+        const fixture = TestBed.createComponent(SizedAvatarHost);
+        fixture.componentRef.setInput('size', size);
+        fixture.componentRef.setInput('appearance', {
+          status: 'online',
+        } satisfies AvatarAppearance);
+        fixture.detectChanges();
+        const dot = getAvatar(fixture).querySelector('span[aria-hidden="true"]');
+        const match = /(^|\s)(size-[\d.]+)(\s|$)/.exec(dot!.className);
+        expect(match).toBeTruthy();
+        seen.add(match![2]);
+      }
+      expect(seen.size).toBe(5);
+    });
   });
 
   describe('content projection', () => {

@@ -533,6 +533,48 @@ describe('CheckboxComponent CVA', () => {
 
 // ── Signal forms ──
 
+describe('CheckboxComponent touched timing', () => {
+  const focusMonitorSpy = {
+    monitor: vi.fn(),
+    stopMonitoring: vi.fn(),
+  };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    TestBed.configureTestingModule({
+      providers: [{ provide: FocusMonitor, useValue: focusMonitorSpy }],
+    });
+  });
+
+  // ── touched timing (FIX-6) ──
+  //
+  // Angular's CVA contract registers `onTouched` as the BLUR notification.
+  // These four controls used to call it from their CHANGE handler too, so
+  // `touched` flipped with no blur — `tw-checkbox` behaved differently from
+  // `tw-slider` / `tw-input` for a consumer staging error display on `touched`
+  // ("only show the error once they leave the field"). Both halves are
+  // asserted through REAL DOM events: a direct `onTouched()` call would pass
+  // regardless of what the template does.
+
+  it('does not mark the control touched when the value changes without a blur', () => {
+    const fixture = TestBed.createComponent(ReactiveHost);
+    fixture.detectChanges();
+    getCheckbox(fixture).click();
+    fixture.detectChanges();
+    expect(fixture.componentInstance.control.value).toBe(true);
+    expect(fixture.componentInstance.control.touched).toBe(false);
+  });
+
+  it('marks the control touched on blur, even with no value change', () => {
+    const fixture = TestBed.createComponent(ReactiveHost);
+    fixture.detectChanges();
+    getCheckbox(fixture).dispatchEvent(new FocusEvent('blur'));
+    fixture.detectChanges();
+    expect(fixture.componentInstance.control.value).toBe(false);
+    expect(fixture.componentInstance.control.touched).toBe(true);
+  });
+});
+
 describe('CheckboxComponent signal forms', () => {
   const focusMonitorSpy = {
     monitor: vi.fn(),
@@ -935,6 +977,98 @@ describe('CheckboxComponent inside tw-form-field', () => {
       .join(' ')
       .trim();
     expect(name).toBe('Accept terms');
+  });
+});
+
+// ── form-field interop: [twError match="…"] ──────────────────────
+//
+// Guard for FIX-1/#2. `FormFieldComponent.activeErrorKeys` is built from
+// `control()?.errors?.()`, an OPTIONAL member of `FormFieldControl`. While the
+// checkbox omitted it the key set was permanently empty, so every `match`ed
+// error carried `class="hidden"` forever — in all three form strategies, and
+// including error codes the control itself produces. Deleting the `errors`
+// computed from `checkbox.ts` still passes every other test in this file.
+
+@Component({
+  imports: [
+    CheckboxComponent,
+    FormFieldComponent,
+    LabelDirective,
+    ErrorDirective,
+    ReactiveFormsModule,
+  ],
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  template: `
+    <form [formGroup]="formGroup">
+      <tw-form-field>
+        <label twLabel>Accept terms</label>
+        <tw-checkbox formControlName="terms" />
+        <span twError match="required" data-testid="matched">You must accept the terms</span>
+        <span twError match="somethingElse" data-testid="unmatched">Not this one</span>
+      </tw-form-field>
+    </form>
+  `,
+})
+class MatchedErrorHost {
+  readonly formGroup = new FormGroup({
+    terms: new FormControl<boolean>(false, {
+      nonNullable: true,
+      validators: [Validators.requiredTrue],
+    }),
+  });
+}
+
+describe('CheckboxComponent [twError match]', () => {
+  beforeEach(() => {
+    TestBed.configureTestingModule({});
+  });
+
+  /**
+   * "Visible" = present in the DOM AND not carrying `ErrorDirective`'s
+   * `hidden` class. Both halves matter: `match` filtering works by toggling
+   * `hidden`, but the form-field also drops the whole subscript row once it
+   * leaves the error state, so a cleared error disappears rather than hides.
+   */
+  function errorVisible(fixture: ComponentFixture<unknown>, testid: string): boolean {
+    const el = fixture.nativeElement.querySelector(
+      `[data-testid="${testid}"]`,
+    ) as HTMLElement | null;
+    return !!el && !el.classList.contains('hidden');
+  }
+
+  it('shows a match-targeted error once the control reports that key', () => {
+    const fixture = TestBed.createComponent(MatchedErrorHost);
+    fixture.detectChanges();
+    const ctrl = fixture.componentInstance.formGroup.controls.terms;
+    ctrl.markAsTouched();
+    ctrl.updateValueAndValidity();
+    fixture.detectChanges();
+    expect(ctrl.errors).toEqual({ required: true });
+    expect(errorVisible(fixture, 'matched')).toBe(true);
+  });
+
+  it('keeps a non-matching error hidden', () => {
+    const fixture = TestBed.createComponent(MatchedErrorHost);
+    fixture.detectChanges();
+    const ctrl = fixture.componentInstance.formGroup.controls.terms;
+    ctrl.markAsTouched();
+    ctrl.updateValueAndValidity();
+    fixture.detectChanges();
+    expect(errorVisible(fixture, 'unmatched')).toBe(false);
+  });
+
+  it('re-hides the matched error once the validator clears', () => {
+    const fixture = TestBed.createComponent(MatchedErrorHost);
+    fixture.detectChanges();
+    const ctrl = fixture.componentInstance.formGroup.controls.terms;
+    ctrl.markAsTouched();
+    ctrl.updateValueAndValidity();
+    fixture.detectChanges();
+    expect(errorVisible(fixture, 'matched')).toBe(true);
+    getCheckbox(fixture).click();
+    fixture.detectChanges();
+    expect(ctrl.errors).toBe(null);
+    expect(errorVisible(fixture, 'matched')).toBe(false);
   });
 });
 

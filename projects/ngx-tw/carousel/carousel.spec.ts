@@ -1,6 +1,7 @@
 import { Component, signal, ChangeDetectionStrategy } from '@angular/core';
 import { TestBed, type ComponentFixture } from '@angular/core/testing';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import type { TwSize } from '@cdevhub/ngx-tw/core';
 
 import {
   CarouselComponent,
@@ -608,6 +609,95 @@ describe('CarouselComponent — labels', () => {
     ) as NodeListOf<HTMLButtonElement>;
     expect(indicators[0].getAttribute('aria-label')).toBe('Slide 1');
     expect(indicators[1].getAttribute('aria-label')).toBe('Slide 2');
+  });
+
+  // Pass-4 size-axis correction. The `dots` indicator — the *default* variant —
+  // used to render 2/2.5/3/3/3, freezing md/lg/xl at 12px so two of the five
+  // advertised steps did nothing. It now follows CLAUDE.md's dot-indicator
+  // sub-scale (2 / 2.5 / 3 / 3.5 / 4). Nothing asserted indicator size before,
+  // which is why the dead steps survived.
+  it('renders a distinct dots-indicator size for every step', () => {
+    @Component({
+      imports: [CarouselComponent, CarouselSlideComponent, CarouselIndicatorsComponent],
+      template: `
+        <tw-carousel aria-label="Test">
+          <tw-carousel-slide><div>A</div></tw-carousel-slide>
+          <tw-carousel-slide><div>B</div></tw-carousel-slide>
+          <tw-carousel-indicators variant="dots" [size]="size()" />
+        </tw-carousel>
+      `,
+    })
+    class DotSizeHost {
+      readonly size = signal<TwSize>('md');
+    }
+
+    const expected: Record<TwSize, string> = {
+      xs: 'size-2',
+      sm: 'size-2.5',
+      md: 'size-3',
+      lg: 'size-3.5',
+      xl: 'size-4',
+    };
+
+    const fixture = TestBed.createComponent(DotSizeHost);
+    fixture.detectChanges();
+    const seen = new Set<string>();
+
+    for (const size of ['xs', 'sm', 'md', 'lg', 'xl'] as const) {
+      fixture.componentInstance.size.set(size);
+      fixture.detectChanges();
+      // The painted mark is the <span> inside the indicator button.
+      const mark = fixture.nativeElement.querySelector(
+        'tw-carousel-indicators button > span',
+      ) as HTMLElement;
+      const match = /(^|\s)(size-[\d.]+)(\s|$)/.exec(mark.className);
+      expect(match).toBeTruthy();
+      expect(match![2]).toBe(expected[size]);
+      seen.add(match![2]);
+    }
+
+    expect(seen.size).toBe(5);
+  });
+
+  // Regression guard for pass-4 API H4. `exactOptionalPropertyTypes` is off, so
+  // `[labels]="{ indicator: t('carousel.indicator') }"` compiles when `t()`
+  // returns `string | undefined`. A plain spread let that `undefined` overwrite
+  // the default and reach `formatLabel()`'s `template.replace(...)`, throwing
+  // inside a `computed`.
+  it('ignores explicitly-undefined label keys instead of throwing', () => {
+    @Component({
+      imports: [CarouselComponent, CarouselSlideComponent, CarouselIndicatorsComponent],
+      template: `
+        <tw-carousel aria-label="Test" [labels]="labels">
+          <tw-carousel-slide><div>A</div></tw-carousel-slide>
+          <tw-carousel-slide><div>B</div></tw-carousel-slide>
+          <tw-carousel-indicators />
+        </tw-carousel>
+      `,
+    })
+    class UndefinedLabelHost {
+      readonly labels: Record<string, string | undefined> = {
+        indicator: undefined,
+        slideOf: undefined,
+        slideOfWithLabel: undefined,
+        previous: undefined,
+      };
+    }
+
+    const fixture = TestBed.createComponent(UndefinedLabelHost);
+    expect(() => fixture.detectChanges()).not.toThrow();
+
+    const indicators = fixture.nativeElement.querySelectorAll(
+      'tw-carousel-indicators button',
+    ) as NodeListOf<HTMLButtonElement>;
+    expect(indicators[0].getAttribute('aria-label')).toBe('Go to slide 1');
+
+    const slides = fixture.nativeElement.querySelectorAll(
+      'tw-carousel-slide',
+    ) as NodeListOf<HTMLElement>;
+    expect(slides[0].getAttribute('aria-label')).toBe(
+      DEFAULT_CAROUSEL_LABELS.slideOf.replace('{index}', '1').replace('{total}', '2'),
+    );
   });
 
   it('consumer aria-label on prev/next host wins over directive default', () => {

@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { ChangeDetectionStrategy, Component, signal } from '@angular/core';
 import { type ComponentFixture, TestBed } from '@angular/core/testing';
-import { FormControl, FormsModule, ReactiveFormsModule } from '@angular/forms';
+import { FormControl, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
 import { form, FormField } from '@angular/forms/signals';
 import { FocusMonitor } from '@angular/cdk/a11y';
 import { NEVER } from 'rxjs';
@@ -79,10 +79,27 @@ class TemplateDrivenHost {
   value = 10;
 }
 
+/** Reactive control carrying `Validators.required` and NO `[required]` input. */
+@Component({
+  imports: [SliderComponent, ReactiveFormsModule],
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  template: `<tw-slider label="Required validator" [formControl]="control" />`,
+})
+class RequiredValidatorHost {
+  control = new FormControl<number>(20, {
+    nonNullable: true,
+    validators: Validators.required,
+  });
+}
+
 @Component({
   imports: [SliderComponent, FormField],
   changeDetection: ChangeDetectionStrategy.OnPush,
-  template: `<tw-slider label="Signal" [formField]="$any(sliderForm.volume)" />`,
+  // No `$any()`: `min`/`max` accept `number | undefined` so this binding
+  // type-checks under `strictTemplates` exactly as a consumer would write it.
+  // Signal forms writes the `min`/`max` control bindings from the field state,
+  // which are `number | undefined` — a cast here would hide a real TS2322.
+  template: `<tw-slider label="Signal" [formField]="sliderForm.volume" />`,
 })
 class SignalFormHost {
   protected readonly model = signal<{ volume: number }>({ volume: 30 });
@@ -661,6 +678,23 @@ describe('SliderComponent CVA', () => {
     fixture.detectChanges();
     await fixture.whenStable();
     expect(fixture.componentInstance.value).toBe(11);
+  });
+
+  // Guard for FIX-1/#3. `Validators.required` on the bound control must reach
+  // `aria-required` without the consumer ALSO writing `[required]="true"`.
+  // Regressing `required` back to a bare `input(false)` still passes every
+  // other test in this file (and every signal-forms test, because
+  // `cvaControlCreate` writes the input directly) — only this one fails.
+  it('derives aria-required from Validators.required on the bound control', () => {
+    const fixture = TestBed.createComponent(RequiredValidatorHost);
+    fixture.detectChanges();
+    expect(getThumbs(fixture)[0].getAttribute('aria-required')).toBe('true');
+  });
+
+  it('leaves aria-required off when the bound control carries no required validator', () => {
+    const fixture = TestBed.createComponent(ReactiveHost);
+    fixture.detectChanges();
+    expect(getThumbs(fixture)[0].hasAttribute('aria-required')).toBe(false);
   });
 });
 

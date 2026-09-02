@@ -27,6 +27,7 @@ import {
   FormGroupDirective,
   NgControl,
   NgForm,
+  Validators,
 } from '@angular/forms';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { merge } from 'rxjs';
@@ -279,7 +280,7 @@ export class ComboboxSuffixDirective {}
         [attr.aria-expanded]="open() ? 'true' : 'false'"
         [attr.aria-controls]="open() ? listboxId : null"
         [attr.aria-activedescendant]="open() ? (activeOptionId() || null) : null"
-        [attr.aria-required]="requiredInput() ? 'true' : null"
+        [attr.aria-required]="required() ? 'true' : null"
         [attr.aria-invalid]="errorState() ? 'true' : null"
         [attr.aria-label]="ariaLabel() || null"
         [attr.aria-labelledby]="resolvedLabelledBy() || null"
@@ -392,7 +393,7 @@ export class ComboboxComponent<T = unknown>
   /** Disables the input and prevents the popover from opening. Defaults to `false`. Alias: `disabled`. */
   readonly disabledInput = input<boolean>(false, { alias: 'disabled' });
 
-  /** Sets `aria-required="true"` on the input. Defaults to `false`. */
+  /** Sets `aria-required="true"` on the input and the `*` marker on a wrapping `tw-form-field`. Also inferred from `Validators.required` on a bound control, so a reactive/template-driven form does not have to state it twice. Defaults to `false`. */
   readonly requiredInput = input<boolean>(false, { alias: 'required' });
 
   /** Controls trigger padding and font size per the inline padding scale. Defaults to `'md'`. */
@@ -733,8 +734,25 @@ export class ComboboxComponent<T = unknown>
   readonly empty: Signal<boolean> = this.isEmpty;
   /** @internal */
   readonly disabled: Signal<boolean> = this.isDisabled;
-  /** @internal */
-  readonly required: Signal<boolean> = computed(() => this.requiredInput());
+  /**
+   * @internal Resolved required state: the `required` input OR'd with
+   * `Validators.required` on a bound `NgControl`. Without the validator arm the
+   * form-field `*` marker (`FormFieldComponent.isRequired`) and the input's
+   * `aria-required` silently vanish under reactive/template-driven forms, while
+   * signal forms shows them — `cvaControlCreate` writes the `required` *input*
+   * directly from the field state and never consults validators. The OR keeps
+   * both branches true at once.
+   */
+  readonly required: Signal<boolean> = computed(() => {
+    this._ngControlRev();
+    if (this.requiredInput()) return true;
+    return !!this.ngControl?.control?.hasValidator(Validators.required);
+  });
+  /** @internal Active validation errors map from the bound `NgControl` (or `null` when it reports none / is unbound). Drives `[twError match="…"]` inside a wrapping `tw-form-field`; without it the form-field's key set is permanently empty and every `match`ed error stays hidden. Recomputes on every `_ngControlRev` tick so it reacts to validator transitions that do not flip `VALID`/`INVALID`. */
+  readonly errors: Signal<Record<string, unknown> | null> = computed(() => {
+    this._ngControlRev();
+    return (this.ngControl?.control?.errors as Record<string, unknown> | null) ?? null;
+  });
   /** @internal */
   readonly controlType = 'combobox';
   /** @internal */

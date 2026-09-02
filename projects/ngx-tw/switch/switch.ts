@@ -20,6 +20,7 @@ import {
   FormGroupDirective,
   NgControl,
   NgForm,
+  Validators,
 } from '@angular/forms';
 import { FocusMonitor } from '@angular/cdk/a11y';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
@@ -214,8 +215,24 @@ export class SwitchComponent implements ControlValueAccessor, OnInit {
   /** When true, prevents interaction and applies muted styling. Defaults to `false`. */
   readonly disabled = input(false);
 
-  /** When true, sets `aria-required="true"` so assistive tech announces the control as required. Defaults to `false`. */
-  readonly required = input(false);
+  /** When true, sets `aria-required="true"` so assistive tech announces the control as required. Also inferred from `Validators.required` / `Validators.requiredTrue` on a bound control, so a reactive/template-driven form does not have to state it twice. Defaults to `false`. */
+  readonly requiredInput = input(false, { alias: 'required' });
+
+  /**
+   * @internal Resolved required state: the `required` input OR'd with
+   * `Validators.required` / `Validators.requiredTrue` on a bound `NgControl`.
+   * The OR (rather than a validator-only read) is what keeps signal forms
+   * working — `cvaControlCreate` writes the `required` *input* directly from the
+   * field state and never consults validators, so the input arm carries that
+   * branch while the validator arm carries reactive/template-driven forms.
+   */
+  readonly required: Signal<boolean> = computed(() => {
+    this._ngControlRev();
+    if (this.requiredInput()) return true;
+    const ctrl = this.ngControl?.control;
+    if (!ctrl) return false;
+    return ctrl.hasValidator(Validators.required) || ctrl.hasValidator(Validators.requiredTrue);
+  });
 
   /** Optional inline label rendered next to the switch. Use default content projection for rich label content instead. */
   readonly label = input<string | undefined>(undefined);
@@ -359,7 +376,12 @@ export class SwitchComponent implements ControlValueAccessor, OnInit {
     this.internalChecked.set(next);
     this.checked.set(next);
     this.onChange(next);
-    this.onTouched();
+    // Deliberately NOT `onTouched()`. Angular's CVA contract registers
+    // `onTouched` as the BLUR notification; calling it here flipped `touched`
+    // the instant the value changed, so a consumer staging error display on
+    // `touched` ("only once they leave the field") got different behaviour from
+    // `tw-switch` than from `tw-slider` / `tw-input`. `onBlur()` below is the
+    // only place that fires it.
     this.change.emit(next);
   }
 

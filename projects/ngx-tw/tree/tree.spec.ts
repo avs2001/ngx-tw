@@ -109,6 +109,39 @@ class TreeHost {
   }
 }
 
+/**
+ * A tree behind `@if`, so it mounts after the host's first render. Guards the
+ * one-shot `afterNextRender` expansion replay against the two ways it could go
+ * wrong on a deferred mount: never firing at all, or firing against an
+ * unresolved `viewChild.required` when the tree is destroyed before its first
+ * render.
+ */
+@Component({
+  imports: [TreeComponent, TreeNodeDefDirective],
+  changeDetection: ChangeDetectionStrategy.Eager,
+  template: `
+    @if (show()) {
+      <tw-tree
+        [data]="data()"
+        [childrenAccessor]="accessor"
+        [trackBy]="byId"
+        [expandedKeys]="expandedKeys()"
+      >
+        <ng-template twTreeNode let-node>
+          <span class="label">{{ $any(node).label }}</span>
+        </ng-template>
+      </tw-tree>
+    }
+  `,
+})
+class DeferredTreeHost {
+  readonly show = signal(false);
+  readonly data = signal<Node[]>(makeTree());
+  readonly expandedKeys = signal<readonly unknown[]>([1]);
+  readonly accessor = (n: Node): Node[] => n.children ?? [];
+  readonly byId = (n: Node): unknown => n.id;
+}
+
 // ── Helpers ───────────────────────────────────────────────────────
 
 function tree(fixture: ComponentFixture<TreeHost>): TreeComponent<Node> {
@@ -297,6 +330,70 @@ describe('TreeComponent', () => {
       expect(labels(fixture)).toContain('Child 1.1');
     });
 
+    // ── Regression: expandedKeys already populated at MOUNT ──
+    //
+    // The test above sets `expandedKeys` after the first change-detection pass,
+    // which is the easy half. A value present at mount travelled a different
+    // path and was silently dropped: the model→CDK effect's first run lands
+    // before `cdk-tree`'s `dataSource` binding is applied, CDK creates its
+    // expansion model lazily at that binding, and `CdkTree.expand()` falls
+    // through both of its branches — no error — while the model is undefined.
+    // The effect then never re-ran (none of its inputs changed), so the tree
+    // stayed collapsed forever. Every demo example that seeds `[expandedKeys]`
+    // rendered fully collapsed. Fixed with a one-shot `afterNextRender` replay.
+    it('expands keys that are already set when the tree first renders', async () => {
+      const f = TestBed.createComponent(TreeHost);
+      f.componentInstance.expandedKeys.set([1, 2]);
+      f.detectChanges();
+      await f.whenStable();
+      f.detectChanges();
+      expect(labels(f)).toEqual([
+        'Root 1',
+        'Child 1.1',
+        'Leaf 1.1.1',
+        'Leaf 1.1.2',
+        'Leaf 1.2',
+        'Root 2',
+      ]);
+      expect(nodeByLabel(f, 'Root 1').getAttribute('aria-expanded')).toBe('true');
+    });
+
+    it('leaves the tree collapsed when expandedKeys is empty at mount', async () => {
+      // The negative half — the replay must not expand anything on its own.
+      const f = TestBed.createComponent(TreeHost);
+      f.detectChanges();
+      await f.whenStable();
+      f.detectChanges();
+      expect(labels(f)).toEqual(['Root 1', 'Root 2']);
+    });
+
+    it('expands seeded keys when the tree mounts later (behind @if)', async () => {
+      const f = TestBed.createComponent(DeferredTreeHost);
+      f.detectChanges();
+      await f.whenStable();
+      f.componentInstance.show.set(true);
+      f.detectChanges();
+      await f.whenStable();
+      f.detectChanges();
+      const rendered = Array.from(
+        f.nativeElement.querySelectorAll('.label') as NodeListOf<HTMLElement>,
+      ).map((e) => e.textContent?.trim());
+      expect(rendered).toContain('Child 1.1');
+    });
+
+    it('survives a tree destroyed before its first render', async () => {
+      // The replay reads a `viewChild.required`, which throws when unresolved.
+      // Angular disposes render hooks with the component's injector, so this
+      // must be a clean no-op rather than an uncaught error in a render hook.
+      const f = TestBed.createComponent(DeferredTreeHost);
+      f.componentInstance.show.set(true);
+      f.detectChanges();
+      f.componentInstance.show.set(false);
+      f.detectChanges();
+      await f.whenStable();
+      expect(f.nativeElement.querySelectorAll('.label').length).toBe(0);
+    });
+
     it('two-way binds expandedKeys: user expand updates the bound value', async () => {
       const btn = nodeByLabel(fixture, 'Root 1').querySelector(
         '.toggle-btn',
@@ -481,6 +578,75 @@ describe('TreeComponent', () => {
       await fixture.whenStable();
       fixture.detectChanges();
       expect(labels(fixture)).toContain('Child 1.1');
+    });
+
+    // ── `(activation)` → `toggleSelection(node)` identity ──
+    //
+    // `tree.ts:238` binds CDK's `activation` output to `toggleSelection(node)`
+    // where `node` comes from the `*cdkTreeNodeDef` template context, NOT from
+    // `$event`. That argument is glue no non-DOM entry point exercises: every
+    // other selection test calls `toggleSelection(node)` on the component and
+    // therefore supplies the node itself.
+    //
+    // The pre-existing Enter test above activates the FIRST row and asserts id 1,
+    // so it passes even if the binding always resolved to row 0's closure. These
+    // two activate a MIDDLE row and assert both halves — the activated row became
+    // checked, and no other visible row did. That is what makes them falsifiable.
+    it('activation selects the row it fired on, not the first row (Enter)', async () => {
+      host.selection.set({ mode: 'multiple', cascade: false });
+      host.expandedKeys.set([1, 2]);
+      fixture.detectChanges();
+      await fixture.whenStable();
+      fixture.detectChanges();
+      // Visible rows: Root 1, Child 1.1, Leaf 1.1.1, Leaf 1.1.2, Leaf 1.2, Root 2.
+      expect(labels(fixture)).toEqual([
+        'Root 1',
+        'Child 1.1',
+        'Leaf 1.1.1',
+        'Leaf 1.1.2',
+        'Leaf 1.2',
+        'Root 2',
+      ]);
+
+      const target = nodeByLabel(fixture, 'Leaf 1.1.2'); // 4th row, id 5
+      target.dispatchEvent(new FocusEvent('focus'));
+      fixture.detectChanges();
+      target.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+      fixture.detectChanges();
+      await fixture.whenStable();
+      fixture.detectChanges();
+
+      expect(host.lastSelection.map((n) => n.id)).toEqual([5]);
+      // The activated row is checked …
+      expect(nodeByLabel(fixture, 'Leaf 1.1.2').getAttribute('aria-checked')).toBe('true');
+      // … and it is the ONLY one. `cascade: false` keeps ancestors out of it, so a
+      // binding that resolved the wrong closure shows up here as a wrong row.
+      const checked = treeItems(fixture)
+        .filter((n) => n.getAttribute('aria-checked') === 'true')
+        .map((n) => n.querySelector('.label')?.textContent?.trim());
+      expect(checked).toEqual(['Leaf 1.1.2']);
+    });
+
+    it('activation selects the row it fired on, not the first row (Space)', async () => {
+      host.selection.set({ mode: 'single' });
+      host.expandedKeys.set([1]);
+      fixture.detectChanges();
+      await fixture.whenStable();
+      fixture.detectChanges();
+
+      const target = nodeByLabel(fixture, 'Leaf 1.2'); // id 3
+      target.dispatchEvent(new FocusEvent('focus'));
+      fixture.detectChanges();
+      // TreeKeyManager matches the space key as ' ', not 'Space'.
+      target.dispatchEvent(new KeyboardEvent('keydown', { key: ' ', bubbles: true }));
+      fixture.detectChanges();
+      await fixture.whenStable();
+      fixture.detectChanges();
+
+      expect(host.lastSelection.map((n) => n.id)).toEqual([3]);
+      expect(nodeByLabel(fixture, 'Leaf 1.2').getAttribute('aria-selected')).toBe('true');
+      expect(nodeByLabel(fixture, 'Root 1').getAttribute('aria-selected')).toBe('false');
+      expect(nodeByLabel(fixture, 'Root 2').getAttribute('aria-selected')).toBe('false');
     });
   });
 

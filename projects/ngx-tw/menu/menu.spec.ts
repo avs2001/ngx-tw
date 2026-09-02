@@ -853,8 +853,9 @@ describe('Menu', () => {
       openMenu(fixture);
       const indicator = document.querySelector('.submenu-icon');
       expect(indicator).toBeTruthy();
-      // Default size is `md` → `size-4` per the glyph scale.
-      expect(indicator!.className).toMatch(/size-4/);
+      // Default size is `md` → `size-5` per CLAUDE.md's glyph sub-scale
+      // (3/4/5/6/8). Was `size-4` while menu shipped a flatter 3/4/4/5/5 ramp.
+      expect(indicator!.className).toMatch(/size-5/);
     });
 
     it('should render `size-3` for xs-density menus', () => {
@@ -870,7 +871,7 @@ describe('Menu', () => {
       expect(indicator!.className).toMatch(/size-3(?!\.)/);
     });
 
-    it('should render `size-5` for xl-density menus', () => {
+    it('should render `size-6` for xl-density menus', () => {
       const fixture = TestBed.configureTestingModule({
         imports: [SubmenuIndicatorSizedHost, OverlayModule],
       }).createComponent(SubmenuIndicatorSizedHost);
@@ -880,7 +881,41 @@ describe('Menu', () => {
       openMenu(fixture);
       const indicator = document.querySelector('.submenu-icon-sized');
       expect(indicator).toBeTruthy();
-      expect(indicator!.className).toMatch(/size-5/);
+      expect(indicator!.className).toMatch(/size-6/);
+    });
+
+    // The scale renders 3 / 4 / 5 / 6 / 6 — four distinct values across five
+    // steps. Before the glyph-scale correction it was 4/4/4/5/5, collapsing
+    // xs/sm/md onto one value: three dead steps, which is the defect this
+    // guards against.
+    //
+    // `xl` reusing `lg`'s 24px is deliberate, not a surviving dead step. A
+    // 32px glyph plus `py-2.5` measures 52px against menu's `min-h-12` (48px)
+    // floor, so the floor would stop binding for glyph-bearing rows only and
+    // an xl menu would render ragged 52/48px rows. See the justification on
+    // `menuItemIconVariants`. Assert 4, and if a future change raises the row
+    // floor so a 32px glyph fits, raise this to 5 in the same commit.
+    it('renders a distinct submenu-indicator size for every step', () => {
+      const seen = new Set<string>();
+      for (const size of ['xs', 'sm', 'md', 'lg', 'xl'] as const) {
+        const fixture = TestBed.configureTestingModule({
+          imports: [SubmenuIndicatorSizedHost, OverlayModule],
+        }).createComponent(SubmenuIndicatorSizedHost);
+        fixture.componentInstance.size = size;
+        fixture.detectChanges();
+        openMenu(fixture);
+        const indicator = document.querySelector('.submenu-icon-sized');
+        // Anchored so a future half-step (`size-3.5`) cannot register as a
+        // partial match on `size-3`.
+        const match = /(^|\s)(size-[\d.]+)(\s|$)/.exec(indicator!.className);
+        expect(match).toBeTruthy();
+        seen.add(match![2]);
+        document.querySelectorAll('.cdk-overlay-container').forEach((el) => {
+          el.innerHTML = '';
+        });
+        TestBed.resetTestingModule();
+      }
+      expect(seen.size).toBe(4);
     });
   });
 });

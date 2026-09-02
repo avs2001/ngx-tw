@@ -366,18 +366,20 @@ type TwCarouselAutoplayReason =
   | 'visibility'
   | 'manual';
 
+// Every key is optional — unset keys fall back to the English defaults.
 interface TwCarouselLabels {
-  previous: string;
-  next: string;
-  pauseAutoplay: string;
-  resumeAutoplay: string;
+  previous?: string;
+  next?: string;
+  pauseAutoplay?: string;
+  resumeAutoplay?: string;
   /** Template — variable: {page}. */
-  indicator: string;
+  indicator?: string;
   /** Template — variables: {index}, {total}, {label}. */
-  slideOfWithLabel: string;
+  slideOfWithLabel?: string;
   /** Template — variables: {index}, {total}. */
-  slideOf: string;
+  slideOf?: string;
 }
 
-// English defaults exported as DEFAULT_CAROUSEL_LABELS.`;
+// English defaults exported as DEFAULT_CAROUSEL_LABELS,
+// typed Readonly<Required<TwCarouselLabels>>.`;
 }

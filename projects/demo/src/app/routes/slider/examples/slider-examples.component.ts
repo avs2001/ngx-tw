@@ -347,7 +347,7 @@ const BRIGHTNESS_MARKS: SliderMark[] = [
           label="Font size"
           color="accent"
           [showValue]="true"
-          [formField]="$any(signalForm.fontSize)"
+          [formField]="signalForm.fontSize"
         />
         <p class="text-xs text-fg-muted mt-4 font-mono">
           value = {{ signalForm.fontSize().value() }} · touched = {{ signalForm.fontSize().touched() }}

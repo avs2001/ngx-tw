@@ -258,4 +258,50 @@ describe('ThemeService', () => {
     expect(service.theme()).toBe('dark');
     expect(localStorage.getItem).not.toHaveBeenCalled();
   });
+
+  // Regression guard for pass-4 API M2. `exactOptionalPropertyTypes` is off, so
+  // `provideTheme({ storageKey: env.themeKey })` compiles when `env.themeKey`
+  // is `string | undefined`. A plain spread wrote that `undefined` into fields
+  // `TwThemeConfig` types as `string`, so `ThemeService` persisted under the
+  // literal key `"undefined"` and would have called
+  // `setAttribute("undefined", …)`.
+  it('drops explicitly-undefined provideTheme keys instead of writing undefined', () => {
+    const storage = new Map<string, string>();
+    vi.stubGlobal('localStorage', {
+      getItem: vi.fn((key: string) => storage.get(key) ?? null),
+      setItem: vi.fn((key: string, value: string) => storage.set(key, value)),
+      removeItem: vi.fn((key: string) => storage.delete(key)),
+    });
+    vi.stubGlobal('matchMedia', vi.fn(() => ({
+      matches: false,
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+    })));
+
+    TestBed.configureTestingModule({
+      providers: [
+        provideTheme({
+          storageKey: undefined,
+          attribute: undefined,
+          target: undefined,
+          defaultTheme: 'dark',
+        }),
+      ],
+    });
+
+    expect(TestBed.inject(THEME_CONFIG)).toEqual({
+      ...DEFAULT_TW_THEME_CONFIG,
+      defaultTheme: 'dark',
+    });
+
+    service = TestBed.inject(ThemeService);
+    doc = TestBed.inject(DOCUMENT);
+    service.setTheme('light');
+    TestBed.flushEffects();
+
+    expect(storage.has('undefined')).toBe(false);
+    expect(storage.get(DEFAULT_TW_THEME_CONFIG.storageKey)).toBe('light');
+    expect(doc.documentElement.getAttribute('undefined')).toBeNull();
+    expect(doc.documentElement.getAttribute('data-theme')).toBe('light');
+  });
 });

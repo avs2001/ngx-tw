@@ -1,4 +1,4 @@
-import { Component, signal, viewChild, ChangeDetectionStrategy } from '@angular/core';
+import { Component, PLATFORM_ID, signal, viewChild, ChangeDetectionStrategy } from '@angular/core';
 import { type ComponentFixture, TestBed } from '@angular/core/testing';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { OverlayModule } from '@angular/cdk/overlay';
@@ -1230,5 +1230,22 @@ describe('CommandPaletteComponent', () => {
     });
   });
 
+  // Regression guard for pass-4 IDIOM H2. `openPalette()` is reachable from a
+  // constructor `effect()`, and effects run during server render — so a bound
+  // `[open]="true"` used to dereference the bare `document` global on Node and
+  // take the whole SSR response down with a ReferenceError. jsdom always has a
+  // `document`, so the reproducible half here is the platform guard: on a
+  // server PLATFORM_ID the palette must not build an overlay at all.
+  describe('SSR / server platform', () => {
+    it('does not open (or touch the DOM) when rendered on the server', () => {
+      const fixture = TestBed.configureTestingModule({
+        imports: [BasicPaletteHost, OverlayModule],
+        providers: [{ provide: PLATFORM_ID, useValue: 'server' }],
+      }).createComponent(BasicPaletteHost);
 
+      fixture.componentInstance.isOpen.set(true);
+      expect(() => fixture.detectChanges()).not.toThrow();
+      expect(getOverlay()).toBeNull();
+    });
+  });
 });

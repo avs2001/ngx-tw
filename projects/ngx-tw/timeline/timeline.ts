@@ -1,6 +1,6 @@
 import {
   type AfterContentInit,
-  afterNextRender,
+  afterRenderEffect,
   ChangeDetectionStrategy,
   Component,
   computed,
@@ -15,6 +15,7 @@ import {
   input,
   makeEnvironmentProviders,
   signal,
+  untracked,
   viewChild,
 } from '@angular/core';
 import { NgTemplateOutlet } from '@angular/common';
@@ -42,28 +43,35 @@ export type TimelineLineStyle = 'solid' | 'dashed';
 /** Visibility policy for the horizontal-overflow chevron buttons. */
 export type TimelineScrollControls = 'auto' | 'always' | 'never';
 
-/** Localisable labels for the horizontal-overflow chevron buttons on `tw-timeline`. */
+/**
+ * Localisable labels for the horizontal-overflow chevron buttons on
+ * `tw-timeline`.
+ *
+ * Every member is optional. This interface only ever reaches consumers through
+ * `provideTwTimelineScrollLabels(labels: Partial<TwTimelineScrollLabels>)`, and
+ * unset keys fall back to {@link DEFAULT_TW_TIMELINE_SCROLL_LABELS} — so a
+ * consumer who annotates a complete literal must not be forced to restate keys
+ * they do not override, and adding a label in a future minor must not break
+ * them on a non-major release. `scrollRegion` was already optional for exactly
+ * this reason when it was added after the interface shipped; making the other
+ * two optional is the structural version of the same fix, so the next added
+ * label does not reproduce the break.
+ */
 export interface TwTimelineScrollLabels {
   /** Accessible label for the previous-scroll chevron. Used as `aria-label`. Defaults to `'Scroll to previous events'`. */
-  scrollPrevious: string;
+  scrollPrevious?: string;
   /** Accessible label for the next-scroll chevron. Used as `aria-label`. Defaults to `'Scroll to next events'`. */
-  scrollNext: string;
-  /**
-   * Accessible label for the horizontal scroll viewport, which is a
-   * keyboard-focusable scrollable region. Defaults to `'Timeline events'`.
-   *
-   * Optional on purpose. This field was added after the interface shipped, and
-   * a required member would break any consumer who annotated a complete
-   * literal (`const labels: TwTimelineScrollLabels = { scrollPrevious, scrollNext }`)
-   * — a compile error in exchange for a label that already has a sensible
-   * default. The component merges against
-   * `DEFAULT_TW_TIMELINE_SCROLL_LABELS`, so omitting it is fully supported.
-   */
+  scrollNext?: string;
+  /** Accessible label for the horizontal scroll viewport, which is a keyboard-focusable scrollable region. Defaults to `'Timeline events'`. */
   scrollRegion?: string;
 }
 
-/** Default English labels used when `TW_TIMELINE_SCROLL_LABELS` is not provided. */
-export const DEFAULT_TW_TIMELINE_SCROLL_LABELS: TwTimelineScrollLabels = {
+/**
+ * Default English labels used when `TW_TIMELINE_SCROLL_LABELS` is not provided.
+ * Typed `Required<TwTimelineScrollLabels>` so readers keep a non-optional
+ * `string` for every key even though the interface itself is all-optional.
+ */
+export const DEFAULT_TW_TIMELINE_SCROLL_LABELS: Required<TwTimelineScrollLabels> = {
   scrollPrevious: 'Scroll to previous events',
   scrollNext: 'Scroll to next events',
   scrollRegion: 'Timeline events',
@@ -698,9 +706,10 @@ export class TimelineComponent {
   readonly _isRtl = computed(() => this._cdkDir() === 'rtl');
 
   /**
-   * @internal Defaults to `false` until the first measurement runs in
-   * `afterNextRender`. This avoids a one-frame "enabled-then-disabled" flash
-   * where the buttons appear live before the scroll state has been read.
+   * @internal Defaults to `false` until the first measurement runs in the
+   * `afterRenderEffect` in the constructor. This avoids a one-frame
+   * "enabled-then-disabled" flash where the buttons appear live before the
+   * scroll state has been read.
    */
   readonly _canScrollPrev = signal(false);
   readonly _canScrollNext = signal(false);
@@ -773,9 +782,33 @@ export class TimelineComponent {
   private _resizeObserver: ResizeObserver | null = null;
 
   constructor() {
-    // The viewport materialises on the first frame after horizontal
-    // orientation is committed; afterNextRender hooks into that point.
-    afterNextRender(() => this._setupScrollDetection());
+    // The horizontal viewport is gated behind `@if (orientation() ===
+    // 'horizontal')`, so scroll detection has to re-run whenever orientation
+    // is (re)committed — not just once at mount. The previous
+    // `afterNextRender(() => this._setupScrollDetection())` fired a single
+    // time, and `_setupScrollDetection()` early-returns when the orientation
+    // is vertical: a timeline mounted vertical and later flipped to horizontal
+    // (`[orientation]="isWide() ? 'horizontal' : 'vertical'"`) never got a
+    // ResizeObserver and never measured, so `_canScrollPrev`/`_canScrollNext`
+    // stayed `false` and both chevrons were permanently invisible AND
+    // disabled. Same bug class `carousel.ts` records having already fixed.
+    //
+    // `afterRenderEffect` is the right primitive rather than `effect()`: the
+    // work is a DOM *measurement* that must observe the embedded view holding
+    // the viewport, and a plain `effect()` runs before this cycle's embedded
+    // views are refreshed. Tracking `_viewportRef()` as well as `orientation()`
+    // makes it self-healing — if the view query has not resolved on the pass
+    // that commits `'horizontal'`, the effect re-runs when it does.
+    //
+    // The body is wrapped in `untracked()` so the tracked region is exactly
+    // `{ orientation, _viewportRef }`: `_setupScrollDetection()` writes
+    // `_canScrollPrev`/`_canScrollNext`, and reading them here would be a
+    // read-write cycle of the shape CLAUDE.md bans.
+    afterRenderEffect(() => {
+      this.orientation();
+      this._viewportRef();
+      untracked(() => this._setupScrollDetection());
+    });
 
     this._destroyRef.onDestroy(() => {
       this._resizeObserver?.disconnect();
@@ -791,6 +824,13 @@ export class TimelineComponent {
   }
 
   private _setupScrollDetection(): void {
+    // Re-entrant: this runs on every orientation/viewport change, so drop any
+    // observer bound to the previous (now detached) viewport element first.
+    // Done before the early return so flipping back to vertical also releases
+    // it. `_destroyRef.onDestroy` still owns the final teardown.
+    this._resizeObserver?.disconnect();
+    this._resizeObserver = null;
+
     // Vertical orientation never renders the viewport — nothing to do.
     if (this.orientation() !== 'horizontal') return;
     const el = this._viewportRef()?.nativeElement;

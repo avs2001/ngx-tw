@@ -20,7 +20,7 @@ import { CodeBlockComponent } from '@cdevhub/ngx-tw/code-block';
         <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">ControlValueAccessor</code>.
         Selection is driven by a swappable strategy — single, range, multi, and week are built in,
         with a
-        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">TW_CALENDAR_SELECTION_STRATEGY</code>
+        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">CALENDAR_SELECTION_STRATEGY</code>
         token for custom behaviour (business-days-only ranges, anchored selections, etc.).
       </p>
     </section>
@@ -119,7 +119,7 @@ import { CodeBlockComponent } from '@cdevhub/ngx-tw/code-block';
           <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">'multi'</code>, and
           <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">'week'</code></li>
         <li>Pluggable selection strategies via
-          <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">TW_CALENDAR_SELECTION_STRATEGY</code>
+          <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">CALENDAR_SELECTION_STRATEGY</code>
           — drop in a subclass for drag-to-select, business-days-only, anchored ranges, etc.
         </li>
         <li>Pluggable

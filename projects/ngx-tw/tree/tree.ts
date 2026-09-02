@@ -23,12 +23,16 @@
  *    bridging an RxJS `changed` stream. NOT a form control (no CVA).
  *  - Expansion is bidirectionally synced with the `expandedKeys` model:
  *    model→CDK via a guarded `effect()` (CDK's `select`/`deselect` are
- *    idempotent → settles in one tick); CDK→model via each node's
- *    `(expandedChange)` output with compare-before-write (no signal cycle).
+ *    idempotent → settles in one tick), plus a one-shot `afterNextRender()`
+ *    replay because CDK's expansion model does not exist yet on the effect's
+ *    first run and `CdkTree.expand()` no-ops silently until it does; CDK→model
+ *    via each node's `(expandedChange)` output with compare-before-write (no
+ *    signal cycle).
  */
 
 import { NgTemplateOutlet } from '@angular/common';
 import {
+  afterNextRender,
   ChangeDetectionStrategy,
   Component,
   computed,
@@ -352,15 +356,48 @@ export class TreeComponent<T = unknown> {
       const wanted = new Set(this.expandedKeys());
       const all = this.flattenAll();
       if (!tree) return;
-      untracked(() => {
-        for (const node of all) {
-          const key = this.keyOf(node);
-          const isOpen = tree.isExpanded(node);
-          if (wanted.has(key) && !isOpen) tree.expand(node);
-          else if (!wanted.has(key) && isOpen) tree.collapse(node);
-        }
-      });
+      untracked(() => this.applyExpansion(tree, wanted, all));
     });
+
+    // The effect above runs for the first time BEFORE `cdk-tree`'s `dataSource`
+    // binding is applied — and CDK creates its expansion model lazily, at that
+    // binding. Until the model exists, `CdkTree.expand()` falls through both of
+    // its branches (`if (this.treeControl) … else if (this._expansionModel) …`)
+    // and does nothing, with no error. So an `expandedKeys` value that was
+    // already populated at mount was dropped on the floor, and the effect never
+    // re-ran to correct it because none of its inputs had changed: the tree
+    // rendered fully collapsed for the rest of its life. Re-apply once the first
+    // render has happened, by which point the model exists.
+    //
+    // `applyExpansion` is idempotent (it compares against `tree.isExpanded`), so
+    // this is a no-op in every case where the effect already succeeded, and
+    // `onCdkExpandedChange` compares before writing, so no spurious
+    // `expandedChange` is emitted.
+    // No `if (!tree)` guard here, deliberately: `cdkTree` is a `viewChild.required`,
+    // which throws rather than returning undefined, and this hook only runs after a
+    // render — so the query is always resolved. Angular disposes render hooks with
+    // the component's injector, so a tree destroyed before its first render never
+    // reaches this at all (both cases are asserted in `tree.spec.ts`).
+    afterNextRender(() => {
+      this.applyExpansion(this.cdkTree(), new Set(this.expandedKeys()), this.flattenAll());
+    });
+  }
+
+  /**
+   * @internal Drives CDK's expansion model to match `wanted`. Idempotent — every
+   * node is compared against `tree.isExpanded` before being touched.
+   */
+  private applyExpansion(
+    tree: CdkTree<T>,
+    wanted: ReadonlySet<unknown>,
+    all: readonly T[],
+  ): void {
+    for (const node of all) {
+      const key = this.keyOf(node);
+      const isOpen = tree.isExpanded(node);
+      if (wanted.has(key) && !isOpen) tree.expand(node);
+      else if (!wanted.has(key) && isOpen) tree.collapse(node);
+    }
   }
 
   // ── Key + traversal helpers ──

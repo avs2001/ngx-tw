@@ -88,6 +88,12 @@ test.describe('Forms · Three strategies · Switch', () => {
     await sw.goto();
 
     await sw.switchIn('signal').click();
+
+    // `touched` flips on blur, not on change — aligned with Angular's native
+    // controls in audit pass 4 (previously these controls marked themselves
+    // touched from the change handler, so errors appeared a gesture early).
+    // Blur explicitly before asserting; the click alone no longer suffices.
+    await sw.switchIn('signal').blur();
     await expect(sw.readoutIn('signal')).toContainText('touched = true');
 
     await sw.buttonIn('signal', 'Reset').click();

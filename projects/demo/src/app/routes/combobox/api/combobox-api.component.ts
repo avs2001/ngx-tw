@@ -87,7 +87,7 @@ import { CodeBlockComponent } from '@cdevhub/ngx-tw/code-block';
               <td class="px-4 py-2 font-mono text-xs">required</td>
               <td class="px-4 py-2 font-mono text-xs text-fg-muted">boolean</td>
               <td class="px-4 py-2 font-mono text-xs text-fg-muted">false</td>
-              <td class="px-4 py-2 text-fg-muted">Sets <code class="font-mono">aria-required="true"</code> on the input.</td>
+              <td class="px-4 py-2 text-fg-muted">Sets <code class="font-mono">aria-required="true"</code> on the input and the <code class="font-mono">*</code> marker on a wrapping <code class="font-mono">tw-form-field</code>. Also inferred from <code class="font-mono">Validators.required</code> on a bound control.</td>
             </tr>
             <tr>
               <td class="px-4 py-2 font-mono text-xs">size</td>

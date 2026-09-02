@@ -113,11 +113,14 @@ import { ChangeDetectionStrategy, Component } from '@angular/core';
         <pre class="text-sm font-mono whitespace-pre text-fg"><code>type TwTheme = 'light' | 'dark' | 'high-contrast' | 'system';
 type TwResolvedTheme = 'light' | 'dark' | 'high-contrast';
 
+// Every key is optional. provideTheme() fills the unset ones from
+// DEFAULT_TW_THEME_CONFIG, so the injected THEME_CONFIG value always
+// carries all four settings.
 interface TwThemeConfig {{ '{' }}
-  defaultTheme: TwTheme;   // default: 'system'
-  storageKey: string;      // default: 'ngx-tw-theme'
-  attribute: string;       // default: 'data-theme'
-  target: 'documentElement' | 'body';  // default: 'documentElement'
+  defaultTheme?: TwTheme;   // default: 'system'
+  storageKey?: string;      // default: 'ngx-tw-theme'
+  attribute?: string;       // default: 'data-theme'
+  target?: 'documentElement' | 'body';  // default: 'documentElement'
 {{ '}' }}</code></pre>
       </div>
     </section>

@@ -39,16 +39,16 @@ export {
   type OverlayContainerState,
   type OverlayContainerAnimationEvent,
 } from './overlay/overlay-container-coordinator';
+// The six active/inactive class-lookup tables are `@internal` and consumed only
+// by `getActiveTriggerClasses`/`getInactiveTriggerClasses` in their own file, so
+// they are deliberately NOT re-exported here. Re-exporting an `@internal` symbol
+// is a build error under `stripInternal` (the annotation strips it from the
+// emitted `.d.ts`, and the barrel is then left importing a name that no longer
+// exists) — which is how this contradiction was finally caught.
 export {
   tabTriggerVariants,
   getActiveTriggerClasses,
   getInactiveTriggerClasses,
-  UNDERLINE_ACTIVE_HORIZONTAL,
-  UNDERLINE_ACTIVE_VERTICAL,
-  ENCLOSED_ACTIVE_HORIZONTAL,
-  ENCLOSED_ACTIVE_VERTICAL,
-  PILL_ACTIVE,
-  INACTIVE_TRIGGER_CLASSES,
 } from './tab-trigger-variants';
 export type { TabTriggerVariant } from './tab-trigger-variants';
 export {

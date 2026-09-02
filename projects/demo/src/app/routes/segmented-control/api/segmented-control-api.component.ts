@@ -60,6 +60,18 @@ import { CodeBlockComponent } from '@cdevhub/ngx-tw/code-block';
               <td class="px-4 py-2 text-fg-muted">Blocks interaction on every option and applies muted styling to the group.</td>
             </tr>
             <tr>
+              <td class="px-4 py-2 font-mono text-xs">required</td>
+              <td class="px-4 py-2 font-mono text-xs text-fg-muted">boolean</td>
+              <td class="px-4 py-2 font-mono text-xs text-fg-muted">false</td>
+              <td class="px-4 py-2 text-fg-muted">Sets <code class="font-mono">aria-required="true"</code> on the radiogroup. Also inferred from <code class="font-mono">Validators.required</code> on a bound control.</td>
+            </tr>
+            <tr>
+              <td class="px-4 py-2 font-mono text-xs">errorStateMatcher</td>
+              <td class="px-4 py-2 font-mono text-xs text-fg-muted">ErrorStateMatcher | undefined</td>
+              <td class="px-4 py-2 font-mono text-xs text-fg-muted">undefined</td>
+              <td class="px-4 py-2 text-fg-muted">Per-instance override of the error-display strategy. When omitted, the control uses the <code class="font-mono">TW_ERROR_STATE_MATCHER</code> token's value.</td>
+            </tr>
+            <tr>
               <td class="px-4 py-2 font-mono text-xs">aria-label</td>
               <td class="px-4 py-2 font-mono text-xs text-fg-muted">string | undefined</td>
               <td class="px-4 py-2 font-mono text-xs text-fg-muted">undefined</td>
@@ -92,6 +104,39 @@ import { CodeBlockComponent } from '@cdevhub/ngx-tw/code-block';
               <td class="px-4 py-2 font-mono text-xs text-fg-muted">string | null</td>
               <td class="px-4 py-2 font-mono text-xs text-fg-muted">null</td>
               <td class="px-4 py-2 text-fg-muted">Value of the currently selected option; updates on user selection and programmatic writes.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3 class="text-xs font-semibold text-fg-muted uppercase tracking-wide mb-2">Form-control state</h3>
+      <p class="text-sm text-fg-muted leading-relaxed max-w-2xl mb-4">
+        The control registers itself as the value accessor on any host-level
+        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">NgControl</code>
+        and reads validation state back through the active
+        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">ErrorStateMatcher</code>.
+        Both signals below are read-only and work identically under template-driven, reactive, and
+        signal forms.
+      </p>
+      <div class="overflow-x-auto border border-border rounded-lg mb-6">
+        <table class="w-full text-sm">
+          <thead>
+            <tr class="bg-surface-muted text-left">
+              <th class="px-4 py-2 font-medium text-fg-muted">Name</th>
+              <th class="px-4 py-2 font-medium text-fg-muted">Type</th>
+              <th class="px-4 py-2 font-medium text-fg-muted">Description</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-border-muted">
+            <tr>
+              <td class="px-4 py-2 font-mono text-xs">required</td>
+              <td class="px-4 py-2 font-mono text-xs text-fg-muted">Signal&lt;boolean&gt;</td>
+              <td class="px-4 py-2 text-fg-muted">True when the <code class="font-mono">required</code> input is set OR the bound <code class="font-mono">NgControl</code> carries <code class="font-mono">Validators.required</code>. Drives <code class="font-mono">aria-required</code>.</td>
+            </tr>
+            <tr>
+              <td class="px-4 py-2 font-mono text-xs">errorState</td>
+              <td class="px-4 py-2 font-mono text-xs text-fg-muted">Signal&lt;boolean&gt;</td>
+              <td class="px-4 py-2 text-fg-muted">Drives <code class="font-mono">aria-invalid</code>. Computed from the active <code class="font-mono">ErrorStateMatcher</code> against the bound <code class="font-mono">NgControl</code> + form submit state. The control is marked touched when focus leaves the group, not when an option is selected.</td>
             </tr>
           </tbody>
         </table>

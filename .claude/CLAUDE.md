@@ -88,7 +88,9 @@ Describe *purpose and behavior* in one line. Do not describe TypeScript types �
 - Shared code (e.g., `types.ts`) lives in a `core/` secondary entry point (`@cdevhub/ngx-tw/core`).
 - Root `public-api.ts` re-exports all entry points for convenience; consumers are encouraged to use direct imports for tree-shaking.
 - `projects/ngx-tw/theme/` ships **both** the default theme CSS (semantic-token → Tailwind palette mapping, copied as a CSS asset via the root `ng-package.json` `assets` glob and consumed by direct file path) **and** a secondary entry point `@cdevhub/ngx-tw/theme` exporting the runtime theming API (`provideTheme`, `ThemeService`, `ThemeDirective`, `THEME_CONFIG`). The TS entry is re-exported from the root barrel like every other entry point.
-- Peer dependencies: `@angular/core`, `@angular/common`, `@angular/cdk`, `tailwindcss`, `tailwind-variants`.
+- Peer dependencies: `@angular/core`, `@angular/common`, `@angular/cdk`, `@angular/forms`, `rxjs`, `tailwindcss`, `tailwind-variants`, `tailwind-merge`, plus `luxon` and `lucide` as **optional** peers (the `calendar/luxon` and `icon/lucide` nested entry points).
+
+  **Every package the shipped bundles import must be declared here and in `projects/ngx-tw/package.json`.** Under npm's hoisted `node_modules` an undeclared import still resolves, so this is invisible locally; under pnpm or Yarn PnP a package resolves only what it declares, and the entry point fails to load *even when the consumer has the package installed*. `@angular/forms` (16 entry points), `rxjs` (19) and `tailwind-merge` (2, imported directly by `tabs.ts` and `tab-nav.ts`) were all undeclared until 2026-09-02. `npm run verify:package` does not catch this — it compiles CSS and never imports a library module. To re-check: `grep -l "from '<pkg>'" dist/ngx-tw/fesm2022/*.mjs`.
 
 ## Styling with Tailwind CSS v4
 
@@ -421,7 +423,17 @@ Two supported shapes:
 | Standard form control | `inject(NgControl, { self: true })` + assign in the **constructor** | No — circular DI |
 | Control that also self-provides `NG_VALIDATORS` (`calendar`, `date-range-picker`) | Lookup deferred to `ngOnInit` (eager `inject(NgControl, { self })` deadlocks against the self-provided validator) | **Yes — required**, or validators are silently dropped |
 
-Any control providing `NG_VALIDATORS` MUST ship a spec asserting one error code reaches a bound `FormControl`. That test is the only thing standing between this trap and a silent regression.
+**What actually triggers the custom-control branch is structural, and it is broader than `model()`.** Angular's check is `hasInput(def, 'value') && hasOutput(def, 'valueChange')` (and the same for `checked`/`checkedChange`) — a pure lookup in the compiled inputs/outputs maps, at `@angular/core/fesm2022/_debug_node-chunk.mjs:8513`. A `model()` is the *usual* way to produce that pair, but a hand-written `input(..., { alias: 'value' })` plus a separate `output()` named `valueChange` is **indistinguishable to the compiler**. Verified 2026-09-02.
+
+This matters because it is easy to look at a component with no `model()` and conclude it is exempt. `calendar` is exactly that trap: `calendar.ts:369` declares `input(..., { alias: 'value' })` and `:533` declares `output()` named `valueChange`, so it is on the custom-control path despite having no `model()` anywhere. Measured on the real component (not a replica): commenting out its static `NG_VALUE_ACCESSOR` makes the reactive guard spec **fail**, and there is **no** loud `NG01914` — the field mounts and silently stops validating. Treat any `value`-aliased input paired with a `valueChange` output as carrying the full trap.
+
+The genuinely different shape is a control with **no `value` input at all** — `tags-input`, `transfer`, `file-upload`. Those are not custom controls, and for them the constructor/static registration is the only thing keeping `[formField]` from throwing `NG01914`.
+
+Any control providing `NG_VALIDATORS` MUST ship a spec asserting one error code reaches a bound `FormControl`, and **you must confirm the spec fails when the registration is removed**. A guard that cannot fail is worse than none, because it advertises coverage that does not exist. Do not reason about which branch your control takes — delete the provider, watch the test go red, put it back.
+
+Note also that `[formField]` provides `NgControl` as an `InteropNgControl`, whose `valueAccessor` field the constructor assignment fills in before `ɵngControlCreate` runs — which is *why* every Shape-A control takes the classic branch under signal forms, and why self-provided `NG_VALIDATORS` compose there too.
+
+> An earlier draft of this section claimed the trap "requires a `value`/`checked` `model()`" and that `calendar` was therefore exempt on the reactive branch. That was wrong, and it came from testing a synthetic replica instead of the real component — the replica omitted the aliased-input/output pair that makes `calendar` a custom control. Corrected 2026-09-02 against the Angular source predicate and a forced-failure run on `calendar.ts` itself. The lesson generalises: **verify a claim about a component against that component, not a model of it.**
 
 Exception: pure-CVA controls that do *not* integrate `TW_ERROR_STATE_MATCHER` (`input`, `textarea`) may use static `NG_VALUE_ACCESSOR`. Any new form control that adds matcher integration MUST migrate to the runtime pattern at the same time.
 

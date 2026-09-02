@@ -50,14 +50,19 @@ const avatarVariants = tv({
   },
   variants: {
     size: {
+      // `root` follows the container scale — avatars are surfaces, not glyphs
+      // (see CLAUDE.md icon sizing). `status` follows CLAUDE.md's **dot
+      // indicator** sub-scale (2 / 2.5 / 3 / 3.5 / 4), the same five-step 2px
+      // cadence `badge-dot` was corrected onto. It previously rendered
+      // 2/2/2.5/3/3, which duplicated `xs`→`sm` and froze `lg`/`xl` at 12px,
+      // leaving two of the five advertised steps dead.
       xs: { root: 'size-6 text-xs', status: 'size-2' },
-      sm: { root: 'size-8 text-xs', status: 'size-2' },
-      md: { root: 'size-10 text-sm', status: 'size-2.5' },
-      lg: { root: 'size-12 text-sm', status: 'size-3' },
-      // Container scale — avatars are surfaces, not glyphs (see CLAUDE.md icon sizing).
+      sm: { root: 'size-8 text-xs', status: 'size-2.5' },
+      md: { root: 'size-10 text-sm', status: 'size-3' },
+      lg: { root: 'size-12 text-sm', status: 'size-3.5' },
       // The xl avatar lands at 64px, which sits above the glyph scale's ceiling
       // (size-10 / 40px) because avatars host imagery, initials, or icon glyphs.
-      xl: { root: 'size-16 text-base', status: 'size-3' },
+      xl: { root: 'size-16 text-base', status: 'size-4' },
     },
     rounded: {
       full: { root: 'rounded-full', status: 'bottom-0 right-0' },

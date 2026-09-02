@@ -42,36 +42,44 @@ export type TwPaginatorLabelSlot =
   | 'last'
   | 'pageSizeLabel';
 
-/** String labels used throughout the paginator. All are optional on the `labels` input — unset keys fall back to the English defaults. */
+/**
+ * String labels used throughout the paginator.
+ *
+ * Every member is optional. This interface only ever reaches consumers through
+ * `input<Partial<TwPaginatorLabels>>`, and unset keys fall back to the English
+ * defaults — so a consumer holding an i18n bundle typed as `TwPaginatorLabels`
+ * must not be forced to restate all fourteen keys, and adding a label in a
+ * future minor must not break them on a non-major release.
+ */
 export interface TwPaginatorLabels {
   /** Accessible name for the `<nav>` landmark. */
-  ariaLabel: string;
+  ariaLabel?: string;
   /** Label on the Previous button. */
-  previous: string;
+  previous?: string;
   /** Label on the Next button. */
-  next: string;
+  next?: string;
   /** Label on the First-page button. */
-  first: string;
+  first?: string;
   /** Label on the Last-page button. */
-  last: string;
+  last?: string;
   /** Visible label before the current-page indicator. Used as `"{pageInfo} {page}{pageInfoSeparator}{totalPages}"`. */
-  pageInfo: string;
+  pageInfo?: string;
   /** Text that joins the current page and total. */
-  pageInfoSeparator: string;
+  pageInfoSeparator?: string;
   /** Range-style page info template. Variables: `{start}`, `{end}`, `{total}`. */
-  pageRange: string;
+  pageRange?: string;
   /** Visible label next to the page-size selector. */
-  pageSizeLabel: string;
+  pageSizeLabel?: string;
   /** `LiveAnnouncer` template used on every page change. Variables: `{page}`, `{totalPages}`, `{start}`, `{end}`, `{total}`. */
-  announcement: string;
+  announcement?: string;
   /** Accessible label per numbered page button. Variable: `{page}`. */
-  pageButtonAriaLabel: string;
+  pageButtonAriaLabel?: string;
   /** Accessible label for the current numbered page button. Variable: `{page}`. */
-  currentPageAriaLabel: string;
+  currentPageAriaLabel?: string;
   /** Accessible label applied to ellipsis items. */
-  ellipsis: string;
+  ellipsis?: string;
   /** Rendered when `hideOnEmpty` is `false` and `totalItems === 0`. */
-  empty: string;
+  empty?: string;
 }
 
 /** Emitted by `pageChange`. */
@@ -132,7 +140,8 @@ type PageChangeSource = TwPaginatorPageChangeEvent['source'];
 
 // ── Default labels ────────────────────────────────────────────────
 
-const DEFAULT_LABELS: Readonly<TwPaginatorLabels> = {
+/** English defaults. `Required<>` so every key reads back as a plain `string`. */
+const DEFAULT_LABELS: Readonly<Required<TwPaginatorLabels>> = {
   ariaLabel: 'Pagination',
   previous: 'Previous',
   next: 'Next',
@@ -247,6 +256,12 @@ function formatLabel(
   template: string,
   vars: Readonly<Record<string, string | number>>,
 ): string {
+  // Defence in depth. `resolvedLabels()` already filters explicitly-undefined
+  // consumer keys, so a non-string cannot reach here through the public
+  // `labels` input today. The guard exists so a future regression in that
+  // merge degrades to a missing label instead of throwing inside a `computed`
+  // and taking the render down.
+  if (typeof template !== 'string') return '';
   return template.replace(/\{(\w+)\}/g, (match, key: string) =>
     Object.prototype.hasOwnProperty.call(vars, key) ? String(vars[key]) : match,
   );
@@ -629,11 +644,25 @@ export class PaginatorComponent {
     ),
   );
 
-  /** @internal Merged labels. */
-  readonly resolvedLabels = computed<TwPaginatorLabels>(() => ({
-    ...DEFAULT_LABELS,
-    ...this.labels(),
-  }));
+  /**
+   * @internal Merged labels.
+   *
+   * Explicitly-undefined keys are dropped before merging. Root `tsconfig.json`
+   * does not set `exactOptionalPropertyTypes`, so
+   * `[labels]="{ pageButtonAriaLabel: i18n.pageBtn }"` type-checks even when
+   * the i18n bundle has no such key — and a plain spread would then overwrite
+   * the default with `undefined`, which reaches `formatLabel()` and throws
+   * `Cannot read properties of undefined (reading 'replace')` inside a
+   * `computed`, taking the whole page down on first render. Same filter
+   * `table.ts` and `timeline.ts` already use; `Required<>` then guarantees the
+   * template a string for every label.
+   */
+  readonly resolvedLabels = computed<Required<TwPaginatorLabels>>(() => {
+    const overrides = Object.fromEntries(
+      Object.entries(this.labels() ?? {}).filter(([, value]) => value !== undefined),
+    );
+    return { ...DEFAULT_LABELS, ...overrides } as Required<TwPaginatorLabels>;
+  });
 
   /** @internal Resolved aria-label for the root. */
   readonly resolvedAriaLabel = computed(

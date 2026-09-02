@@ -111,6 +111,12 @@ test.describe('Forms · Three strategies · Radio', () => {
     await radio.goto();
 
     await radio.radioIn('signal', /^Pro/).click();
+
+    // `touched` flips on blur, not on change — aligned with Angular's native
+    // controls in audit pass 4 (previously these controls marked themselves
+    // touched from the change handler, so errors appeared a gesture early).
+    // Blur explicitly before asserting; the click alone no longer suffices.
+    await radio.radioIn('signal', /^Pro/).blur();
     await expect(radio.readoutIn('signal')).toContainText('touched = true');
 
     await radio.buttonIn('signal', 'Reset').click();

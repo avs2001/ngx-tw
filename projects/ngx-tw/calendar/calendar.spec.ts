@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ChangeDetectionStrategy, Component, signal } from '@angular/core';
 import { type ComponentFixture, TestBed } from '@angular/core/testing';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
+import { form, FormField } from '@angular/forms/signals';
 import { LiveAnnouncer } from '@angular/cdk/a11y';
 import { CalendarComponent } from './calendar';
 import { provideNativeDateAdapter } from './native-date-adapter';
@@ -2300,12 +2301,27 @@ describe('CalendarComponent', () => {
   });
   // ── Validator ──
   //
-  // Guards the Angular v22 CVA/validator trap documented in CLAUDE.md: this
-  // component self-provides NG_VALIDATORS and defers its NgControl lookup to
-  // ngOnInit, so it MUST also provide NG_VALUE_ACCESSOR statically. Without
-  // that provider Angular routes it down the signal-forms custom-control
-  // branch, `validate()` is never invoked, and every error code below silently
-  // vanishes while every other test still passes.
+  // This component self-provides NG_VALIDATORS and defers its NgControl lookup to ngOnInit (an
+  // eager `inject(NgControl, {self})` deadlocks against the self-provided validator with
+  // NG0200), so it MUST also provide NG_VALUE_ACCESSOR statically — see the provider comment in
+  // calendar.ts. This block is the guard for that provider, in both binding strategies.
+  //
+  // Why the trap applies here even though tw-calendar declares no `model()`: Angular's
+  // custom-control detection is NOT "has a value/checked model()". It is
+  // `hasInput(def, 'value') && hasOutput(def, 'valueChange')`
+  // (@angular/core `_debug_node-chunk.mjs`, `hasModelInput` / `initializeCustomControlStatus`).
+  // A separate `input({alias: 'value'})` + `output()` pair is indistinguishable from a `model()`
+  // at the directive-def level, and tw-calendar has exactly that pair. So it IS eligible for the
+  // custom-control branch, and without a value accessor visible at directive-creation time it
+  // takes it — skipping `setUpValidators`, so `validate()` never runs.
+  //
+  // [measured] Commenting the NG_VALUE_ACCESSOR provider out of calendar.ts and re-running this
+  // file fails exactly two tests: 'surfaces calendarMinDate through a bound FormControl'
+  // (reactive) and 'surfaces calendarMinDate onto the bound signal field' (signal forms).
+  // Everything else, including the signal-forms mount, stays green — there is no NG01914 throw,
+  // because the custom-control branch is available as a fallback. Those two assertions are
+  // therefore the only thing standing between a deleted provider and a silent, total loss of
+  // every calendar error code. Keep both; neither substitutes for the other.
 
   describe('validator', () => {
     @Component({
@@ -2343,6 +2359,89 @@ describe('CalendarComponent', () => {
       fixture.detectChanges();
 
       expect(fixture.componentInstance.ctrl.errors).toBeNull();
+    });
+  });
+
+  // ── Signal forms ──
+  //
+  // The signal-forms half of the provider guard above. Note the failure mode here is silent, not
+  // loud: `[formField]` falls back to the custom-control branch (see the note above on how that
+  // branch is detected), so the field still mounts and still round-trips its value — it just
+  // stops running `validate()`. The constraint assertion below is the guard; the mount test is
+  // only a smoke test and passes with or without the provider.
+
+  describe('signal forms', () => {
+    @Component({
+      imports: [CalendarComponent, FormField],
+      changeDetection: ChangeDetectionStrategy.OnPush,
+      template: `
+        <tw-calendar [formField]="f.day" [minDate]="floor" [startAt]="startAt" />
+      `,
+    })
+    class SignalHost {
+      readonly floor = new Date(2026, 3, 15);
+      readonly startAt = new Date(2026, 3, 26);
+      readonly model = signal<{ day: Date | null }>({ day: null });
+      readonly f = form(this.model);
+    }
+
+    it('mounts under [formField]', () => {
+      // Smoke test only. This does NOT guard the NG_VALUE_ACCESSOR provider: with the provider
+      // removed the field still binds, via the custom-control branch. The guard is the
+      // constraint assertion below.
+      const fixture = TestBed.createComponent(SignalHost);
+      expect(() => {
+        fixture.detectChanges();
+      }).not.toThrow();
+      expect(getCalendarHost(fixture)).toBeTruthy();
+    });
+
+    it('surfaces calendarMinDate onto the bound signal field', async () => {
+      // Set the value through the model rather than by clicking: a cell before `minDate` is
+      // rendered disabled, so a click can never commit an out-of-range value and a click-driven
+      // assertion would be vacuously green.
+      const fixture = TestBed.createComponent(SignalHost);
+      fixture.detectChanges();
+      await fixture.whenStable();
+
+      fixture.componentInstance.model.set({ day: new Date(2026, 3, 10) });
+      fixture.detectChanges();
+      await fixture.whenStable();
+      fixture.detectChanges();
+
+      const state = fixture.componentInstance.f.day();
+      const kinds = (state.errors() as unknown as readonly Record<string, unknown>[]).map((e) =>
+        String(e['kind']),
+      );
+      expect(kinds).toContain('calendarMinDate');
+      expect(state.valid()).toBe(false);
+      expect(fixture.componentInstance.f().valid()).toBe(false);
+    });
+
+    it('reports no error for a value inside the constraints', async () => {
+      const fixture = TestBed.createComponent(SignalHost);
+      fixture.detectChanges();
+      await fixture.whenStable();
+
+      fixture.componentInstance.model.set({ day: new Date(2026, 3, 20) });
+      fixture.detectChanges();
+      await fixture.whenStable();
+      fixture.detectChanges();
+
+      expect(fixture.componentInstance.f.day().valid()).toBe(true);
+    });
+
+    it('a day-cell click flows back into the signal model', async () => {
+      const fixture = TestBed.createComponent(SignalHost);
+      fixture.detectChanges();
+      await fixture.whenStable();
+
+      getDayCell(fixture, '20')!.click();
+      fixture.detectChanges();
+      await fixture.whenStable();
+
+      expect(fixture.componentInstance.model().day).toBeInstanceOf(Date);
+      expect((fixture.componentInstance.model().day as Date).getDate()).toBe(20);
     });
   });
 

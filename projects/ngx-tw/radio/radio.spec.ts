@@ -766,6 +766,49 @@ describe('RadioComponent standalone', () => {
     fixture.detectChanges();
     expect(radio.getAttribute('aria-disabled')).toBe('true');
   });
+
+  // ── touched timing (FIX-6), standalone branch ──
+  //
+  // `RadioComponent.onActivate()` has a standalone `if (!this.parent)` branch with
+  // its OWN CVA callbacks, separate from `RadioGroupComponent.selectValue()`. It
+  // used to call `onTouched()` on selection too, so `touched` flipped with no
+  // blur — the same divergence from `tw-slider` / `tw-input` the group had.
+  // These two are the ONLY tests covering that branch: the group's timing tests
+  // run through a grouped host and cannot reach it.
+  it('does not mark a standalone radio touched when it is selected without a blur', () => {
+    @Component({
+      imports: [RadioComponent, ReactiveFormsModule],
+      changeDetection: ChangeDetectionStrategy.OnPush,
+      template: `<tw-radio [formControl]="control" label="Confirm" />`,
+    })
+    class ReactiveStandaloneHost {
+      control = new FormControl<boolean>(false);
+    }
+    const fixture = TestBed.createComponent(ReactiveStandaloneHost);
+    fixture.detectChanges();
+    fixture.nativeElement.querySelector('tw-radio').click();
+    fixture.detectChanges();
+    expect(fixture.componentInstance.control.value).toBe(true);
+    expect(fixture.componentInstance.control.touched).toBe(false);
+  });
+
+  it('marks a standalone radio touched on blur, even with no selection change', () => {
+    @Component({
+      imports: [RadioComponent, ReactiveFormsModule],
+      changeDetection: ChangeDetectionStrategy.OnPush,
+      template: `<tw-radio [formControl]="control" label="Confirm" />`,
+    })
+    class ReactiveStandaloneHost {
+      control = new FormControl<boolean>(false);
+    }
+    const fixture = TestBed.createComponent(ReactiveStandaloneHost);
+    fixture.detectChanges();
+    const radio = fixture.nativeElement.querySelector('tw-radio') as HTMLElement;
+    radio.dispatchEvent(new FocusEvent('blur'));
+    fixture.detectChanges();
+    expect(fixture.componentInstance.control.value).toBe(false);
+    expect(fixture.componentInstance.control.touched).toBe(true);
+  });
 });
 
 // ── ControlValueAccessor ──────────────────────────────────────────
@@ -834,6 +877,56 @@ describe('RadioGroup CVA', () => {
 });
 
 // ── Signal forms ──
+
+describe('RadioGroup touched timing', () => {
+  const focusMonitorSpy = {
+    monitor: vi.fn(),
+    stopMonitoring: vi.fn(),
+  };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    TestBed.configureTestingModule({
+      providers: [{ provide: FocusMonitor, useValue: focusMonitorSpy }],
+    });
+  });
+
+  // ── touched timing (FIX-6) ──
+  //
+  // Angular's CVA contract registers `onTouched` as the BLUR notification.
+  // This control used to call it from its CHANGE handler too, so `touched`
+  // flipped with no blur — `tw-radio-group` behaved differently from `tw-slider` /
+  // `tw-input` for a consumer staging error display on `touched` ("only show
+  // the error once they leave the field"). Both halves are asserted through
+  // REAL DOM events: a direct `onTouched()` call would pass regardless of what
+  // the template does.
+
+  it('does not mark the group touched when a radio is selected without a blur', () => {
+    const fixture = TestBed.createComponent(ReactiveHost);
+    fixture.detectChanges();
+    getRadios(fixture)[1].click();
+    fixture.detectChanges();
+    expect(fixture.componentInstance.control.value).toBe('b');
+    expect(fixture.componentInstance.control.touched).toBe(false);
+  });
+
+  it('does not mark the group touched when the already-selected radio is re-clicked', () => {
+    const fixture = TestBed.createComponent(ReactiveHost);
+    fixture.detectChanges();
+    getRadios(fixture)[0].click();
+    fixture.detectChanges();
+    expect(fixture.componentInstance.control.touched).toBe(false);
+  });
+
+  it('marks the group touched when a child radio blurs, even with no selection change', () => {
+    const fixture = TestBed.createComponent(ReactiveHost);
+    fixture.detectChanges();
+    getRadios(fixture)[0].dispatchEvent(new FocusEvent('blur'));
+    fixture.detectChanges();
+    expect(fixture.componentInstance.control.value).toBe('a');
+    expect(fixture.componentInstance.control.touched).toBe(true);
+  });
+});
 
 describe('RadioGroupComponent signal forms', () => {
   const focusMonitorSpy = {
@@ -941,6 +1034,24 @@ describe('RadioGroupComponent errorState', () => {
     fixture.detectChanges();
     expect(fixture.componentInstance.control.valid).toBe(true);
     expect(getGroup(fixture).getAttribute('aria-invalid')).toBe(null);
+  });
+
+  // Guard for FIX-1/#3. `Validators.required` on the bound control must reach
+  // `aria-required` without the consumer ALSO writing `[required]="true"`.
+  // Regressing `required` back to a bare `input(false)` still passes every
+  // other test in this file — and every signal-forms test, because
+  // `cvaControlCreate` writes the `required` input directly rather than
+  // reading validators. Only this pair fails.
+  it('derives aria-required from Validators.required on the bound control', () => {
+    const fixture = TestBed.createComponent(RequiredGroupHost);
+    fixture.detectChanges();
+    expect(getGroup(fixture).getAttribute('aria-required')).toBe('true');
+  });
+
+  it('leaves aria-required off when the bound control carries no required validator', () => {
+    const fixture = TestBed.createComponent(ReactiveHost);
+    fixture.detectChanges();
+    expect(getGroup(fixture).hasAttribute('aria-required')).toBe(false);
   });
 });
 

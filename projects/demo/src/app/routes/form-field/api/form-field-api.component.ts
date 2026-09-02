@@ -318,7 +318,7 @@ import { CodeBlockComponent } from '@cdevhub/ngx-tw/code-block';
             <tr>
               <td class="px-4 py-2 font-mono text-xs">errors?</td>
               <td class="px-4 py-2 font-mono text-xs text-fg-muted">Signal&lt;Record&lt;string, unknown&gt; | null&gt;</td>
-              <td class="px-4 py-2 text-fg-muted">Active validation errors map keyed by validator name (e.g. <code class="font-mono">&#123; required: true &#125;</code>). Drives <code class="font-mono">[twError match="…"]</code> filtering. Optional — controls without a backing <code class="font-mono">NgControl</code> may omit it.</td>
+              <td class="px-4 py-2 text-fg-muted">Active validation errors map keyed by validator name (e.g. <code class="font-mono">&#123; required: true &#125;</code>). The only source <code class="font-mono">[twError match="…"]</code> filters on — a control that leaves it undefined reports an empty key set, so every <code class="font-mono">match</code>-targeted message under it stays hidden in all three form strategies. Unmatched <code class="font-mono">[twError]</code> follows <code class="font-mono">errorState</code> alone and is unaffected. Optional only so the member could be added without a breaking change: any control that resolves an <code class="font-mono">NgControl</code> should implement it.</td>
             </tr>
             <tr>
               <td class="px-4 py-2 font-mono text-xs">controlType?</td>

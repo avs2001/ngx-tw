@@ -28,6 +28,7 @@ import {
   ElementRef,
   forwardRef,
   inject,
+  Injector,
   input,
   isDevMode,
   type OnInit,
@@ -356,6 +357,7 @@ export class FileUploadComponent
   // ── Injections ──
 
   private readonly elementRef = inject(ElementRef<HTMLElement>);
+  private readonly injector = inject(Injector);
   private readonly focusMonitor = inject(FocusMonitor);
   private readonly liveAnnouncer = inject(LiveAnnouncer);
   private readonly destroyRef = inject(DestroyRef);
@@ -609,19 +611,35 @@ export class FileUploadComponent
     this.emitChange();
     this.fileRemoved.emit(removed);
     this.liveAnnouncer.announce(`${removed.file.name} removed.`, 'polite');
-    // Move focus to the next remove button, or to the trigger button when none remain.
-    queueMicrotask(() => {
-      const host = this.elementRef.nativeElement as HTMLElement;
-      const nextButtons = host.querySelectorAll('[data-tw-file-upload-remove]');
-      if (nextButtons.length === 0) {
-        this.triggerRef()?.nativeElement.focus();
-      } else {
-        const fallback = nextButtons[Math.min(idx, nextButtons.length - 1)] as
-          | HTMLButtonElement
-          | undefined;
-        fallback?.focus();
-      }
-    });
+    // Move focus to the next remove button, or to the trigger button when none
+    // remain.
+    //
+    // This MUST wait for the render, not merely for the microtask queue. A
+    // `queueMicrotask` here (what this used to be) runs before Angular's
+    // zoneless scheduler has re-rendered the list, so `nextButtons` was still
+    // the PRE-removal node list: the "next" button we focused was the one about
+    // to be destroyed, and focus fell to `<body>`. Removing the last item took
+    // the `length === 0` branch for the same reason — the count was stale, so
+    // the trigger never got focus either.
+    //
+    // It survived unit testing because a spec that calls `detectChanges()`
+    // between the click and the assertion has already re-rendered by the time
+    // the microtask runs, which is the opposite order from a real browser.
+    afterNextRender(
+      () => {
+        const host = this.elementRef.nativeElement as HTMLElement;
+        const nextButtons = host.querySelectorAll('[data-tw-file-upload-remove]');
+        if (nextButtons.length === 0) {
+          this.triggerRef()?.nativeElement.focus();
+        } else {
+          const fallback = nextButtons[Math.min(idx, nextButtons.length - 1)] as
+            | HTMLButtonElement
+            | undefined;
+          fallback?.focus();
+        }
+      },
+      { injector: this.injector },
+    );
   }
 
   /** Removes all items. Emits `cleared` and calls `onChange([])`. No-op when already empty or disabled. */

@@ -86,7 +86,8 @@ class VariantHost {
   hideOnEmpty = signal(true);
   hideOnSinglePage = signal(false);
   disabled = signal(false);
-  labels = signal<Record<string, string>>({});
+  // `string | undefined` so the spec can drive the explicitly-undefined case.
+  labels = signal<Record<string, string | undefined>>({});
   linkFactory = signal<((p: number) => string) | undefined>(undefined);
 
   events: TwPaginatorPageChangeEvent[] = [];
@@ -861,6 +862,33 @@ describe('PaginatorComponent — labels', () => {
     const pages = queryPageButtons(fixture);
     const two = pages.find((b) => b.textContent?.trim() === '2');
     expect(two?.getAttribute('aria-label')).toBe('Navigate to page 2');
+  });
+
+  // Regression guard for pass-4 API H4. `exactOptionalPropertyTypes` is off, so
+  // `[labels]="{ pageButtonAriaLabel: i18n.pageBtn }"` compiles when the i18n
+  // bundle has no such key. A plain spread let that `undefined` overwrite the
+  // default and reach `formatLabel()`'s `template.replace(...)`, throwing
+  // inside a `computed` and taking the page down on first render.
+  it('ignores explicitly-undefined label keys instead of throwing', () => {
+    expect(() => {
+      host.labels.set({
+        pageButtonAriaLabel: undefined,
+        currentPageAriaLabel: undefined,
+        announcement: undefined,
+        pageRange: undefined,
+        previous: undefined,
+      });
+      fixture.detectChanges();
+    }).not.toThrow();
+
+    const prev = queryNavButton(fixture, 'prev') as HTMLButtonElement;
+    expect(prev.getAttribute('aria-label')).toBe('Previous');
+
+    const pages = queryPageButtons(fixture);
+    const two = pages.find((b) => b.textContent?.trim() === '2');
+    expect(two?.getAttribute('aria-label')).toBe('Go to page 2');
+    const one = pages.find((b) => b.textContent?.trim() === '1');
+    expect(one?.getAttribute('aria-label')).toBe('Page 1, current page');
   });
 
   it('localises the ellipsis name rendered as visually-hidden text', () => {
