@@ -7,7 +7,7 @@ import {
   CollapsibleTriggerDirective,
 } from '@cdevhub/ngx-tw/collapsible';
 
-const VARIANTS: AccordionVariant[] = ['default', 'bordered', 'ghost'];
+const VARIANTS: AccordionVariant[] = ['default', 'outline', 'ghost'];
 const TYPES: AccordionType[] = ['single', 'multiple'];
 
 @Component({
@@ -51,7 +51,7 @@ const TYPES: AccordionType[] = ['single', 'multiple'];
         <div class="space-y-6">
           <div>
             <p class="text-xs font-medium text-fg-muted mb-2 uppercase tracking-wide">Single (default)</p>
-            <tw-accordion variant="bordered" [(value)]="singleValue">
+            <tw-accordion variant="outline" [(value)]="singleValue">
               <tw-collapsible value="a">
                 <button twCollapsibleTrigger>Panel A</button>
                 <p>Opening another panel closes this one automatically.</p>
@@ -70,7 +70,7 @@ const TYPES: AccordionType[] = ['single', 'multiple'];
 
           <div>
             <p class="text-xs font-medium text-fg-muted mb-2 uppercase tracking-wide">Multiple</p>
-            <tw-accordion type="multiple" variant="bordered" [(value)]="multipleValue">
+            <tw-accordion type="multiple" variant="outline" [(value)]="multipleValue">
               <tw-collapsible value="x">
                 <button twCollapsibleTrigger>Panel X</button>
                 <p>Multiple panels can be open at the same time.</p>
@@ -89,7 +89,7 @@ const TYPES: AccordionType[] = ['single', 'multiple'];
 
           <div>
             <p class="text-xs font-medium text-fg-muted mb-2 uppercase tracking-wide">Single with forced open</p>
-            <tw-accordion variant="bordered" [collapsible]="false" [(value)]="forcedValue">
+            <tw-accordion variant="outline" [collapsible]="false" [(value)]="forcedValue">
               <tw-collapsible value="overview">
                 <button twCollapsibleTrigger>Overview</button>
                 <p>Open by default and cannot be closed by re-clicking.</p>
@@ -113,7 +113,7 @@ const TYPES: AccordionType[] = ['single', 'multiple'];
       <h2 class="text-sm font-semibold mb-3">States</h2>
       <div class="rounded-lg border border-border p-6 bg-surface-raised">
         <p class="text-xs text-fg-muted mb-3">Disabled panels cannot be toggled and are skipped by keyboard navigation.</p>
-        <tw-accordion variant="bordered">
+        <tw-accordion variant="outline">
           <tw-collapsible value="free">
             <button twCollapsibleTrigger>Free plan</button>
             <p>Available to everyone.</p>
@@ -241,7 +241,7 @@ export class AccordionExamples {
   protected readonly multipleValue = signal<string | string[] | null>([]);
   protected readonly forcedValue = signal<string | string[] | null>('overview');
 
-  protected readonly playVariant = signal<AccordionVariant>('bordered');
+  protected readonly playVariant = signal<AccordionVariant>('outline');
   protected readonly playType = signal<AccordionType>('single');
   protected readonly playCollapsible = signal(true);
   protected readonly playValue = signal<string | string[] | null>(null);

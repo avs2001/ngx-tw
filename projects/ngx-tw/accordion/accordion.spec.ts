@@ -7,7 +7,7 @@ import {
   CollapsibleGroupComponent,
   CollapsibleTriggerDirective,
 } from '@cdevhub/ngx-tw/collapsible';
-import { AccordionComponent } from './accordion';
+import { AccordionComponent, type AccordionVariant } from './accordion';
 
 // ── Test host: single-mode accordion ──
 
@@ -73,7 +73,7 @@ class MultipleHost {
   `,
 })
 class VariantHost {
-  variant = signal<'default' | 'bordered' | 'ghost'>('default');
+  variant = signal<AccordionVariant>('default');
 }
 
 // ── Test host: ARIA labelling ──
@@ -170,7 +170,7 @@ describe('AccordionComponent', () => {
 
     it('should render all variants without error', () => {
       const fixture = createFixture(VariantHost);
-      const variants = ['default', 'bordered', 'ghost'] as const;
+      const variants = ['default', 'outline', 'ghost'] as const;
       for (const variant of variants) {
         fixture.componentInstance.variant.set(variant);
         expect(() => fixture.detectChanges()).not.toThrow();
@@ -181,7 +181,7 @@ describe('AccordionComponent', () => {
       const fixture = createFixture(VariantHost);
       const accordion = fixture.nativeElement.querySelector('tw-accordion');
 
-      fixture.componentInstance.variant.set('bordered');
+      fixture.componentInstance.variant.set('outline');
       fixture.detectChanges();
       expect(accordion.className).toContain('border');
 
@@ -190,7 +190,7 @@ describe('AccordionComponent', () => {
       expect(accordion.className).not.toContain('border-border');
     });
 
-    it('should apply divide-y on default and bordered variants', () => {
+    it('should apply divide-y on default and outline variants', () => {
       const fixture = createFixture(VariantHost);
       const accordion = fixture.nativeElement.querySelector('tw-accordion');
 
@@ -198,7 +198,7 @@ describe('AccordionComponent', () => {
       fixture.detectChanges();
       expect(accordion.className).toContain('divide-y');
 
-      fixture.componentInstance.variant.set('bordered');
+      fixture.componentInstance.variant.set('outline');
       fixture.detectChanges();
       expect(accordion.className).toContain('divide-y');
     });
@@ -210,6 +210,33 @@ describe('AccordionComponent', () => {
       fixture.componentInstance.variant.set('ghost');
       fixture.detectChanges();
       expect(accordion.className).not.toContain('divide-y');
+    });
+
+    // ── Deprecated variant aliases ──
+    //
+    // `'bordered'` was renamed to `'outline'`. The old string must keep
+    // rendering byte-identical classes: `tv()` returns base classes only for
+    // an unrecognised variant value — no throw, no warning, just a silently
+    // unstyled container. String equality is the literal encoding of that
+    // promise.
+    //
+    // Non-vacuous: delete the `bordered` entry from `VARIANT_ALIASES` and the
+    // legacy string reaches `tv()` unrecognised, dropping
+    // `rounded-lg overflow-hidden divide-y divide-border border border-border`
+    // down to the bare `block` base — the two strings diverge and this fails.
+    it('"bordered" resolves to exactly the same classes as "outline"', () => {
+      const fixture = createFixture(VariantHost);
+      const accordion = fixture.nativeElement.querySelector('tw-accordion');
+
+      fixture.componentInstance.variant.set('outline');
+      fixture.detectChanges();
+      const canonical = accordion.className;
+
+      fixture.componentInstance.variant.set('bordered');
+      fixture.detectChanges();
+      expect(accordion.className).toBe(canonical);
+      expect(accordion.className).toContain('border-border');
+      expect(accordion.className).toContain('divide-y');
     });
   });
 

@@ -68,7 +68,7 @@ import {
     <section class="mb-10">
       <h2 class="text-sm font-semibold mb-3">Basic Usage</h2>
       <div class="rounded-lg border border-border p-6 bg-surface-raised mb-4">
-        <tw-accordion variant="bordered">
+        <tw-accordion variant="outline">
           <tw-collapsible value="a">
             <button twCollapsibleTrigger>What is ngx-tw?</button>
             <p>An Angular component library built with Tailwind CSS v4, designed for flexibility and accessibility.</p>
@@ -95,7 +95,7 @@ import {
       <h2 class="text-sm font-semibold mb-3">Key Features</h2>
       <ul class="list-disc list-inside text-sm text-fg-muted space-y-1.5">
         <li>Two modes: <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">single</code> or <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">multiple</code></li>
-        <li>Three container variants: <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">default</code>, <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">bordered</code>, <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">ghost</code></li>
+        <li>Three container variants: <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">default</code>, <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">outline</code>, <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">ghost</code></li>
         <li>Optional forced-open behavior via <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">[collapsible]="false"</code> in single mode</li>
         <li>Composes <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">tw-collapsible</code> through DI — no duplicated ARIA, animation, or trigger logic</li>
         <li>Two-way bindable <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">[(value)]</code>: string in single mode, string[] in multiple mode</li>
@@ -106,7 +106,7 @@ import {
   `,
 })
 export class AccordionOverview {
-  protected readonly usageSnippet = `<tw-accordion variant="bordered">
+  protected readonly usageSnippet = `<tw-accordion variant="outline">
   <tw-collapsible value="a">
     <button twCollapsibleTrigger>What is ngx-tw?</button>
     <p>An Angular component library...</p>

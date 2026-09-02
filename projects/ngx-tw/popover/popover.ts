@@ -347,30 +347,22 @@ export class PopoverDirective {
   /** Pixel distance between trigger and panel edge. Defaults to `8`. */
   readonly twPopoverOffset = input(8);
 
-  // Default true: the panel reads as a floating callout without the arrow; opt-out
-  // is intended for compact iconic triggers where the arrow would crowd the layout.
-  /** Whether to render a directional arrow pointing at the trigger. Defaults to `true`. */
+  /** Whether to render a directional arrow pointing at the trigger. Defaults to `true` — the arrow is the visual anchor tying the panel to its trigger; the special case is a compact iconic trigger where the arrow would crowd the layout. */
   readonly twPopoverArrow = input(true);
 
   /** Backdrop behavior. `'transparent'` catches outside clicks invisibly. `'dimmed'` adds a semi-transparent overlay. `'none'` disables the backdrop. Defaults to `'transparent'`. */
   readonly twPopoverBackdrop = input<PopoverBackdrop>('transparent');
 
-  // Default true: clicking away is the universal dismiss gesture for floating panels;
-  // opt-out is for popovers that own multi-step flows the user must complete.
-  /** Whether clicking outside the panel closes the popover. Only relevant when backdrop is `'none'`. Defaults to `true`. */
+  /** Whether clicking outside the panel closes the popover. Only relevant when backdrop is `'none'`. Defaults to `true` — clicking away is the universal dismiss gesture for floating panels; the special case is a popover owning a multi-step flow the user must complete. */
   readonly twPopoverCloseOnOutside = input(true);
 
-  // Default true: WAI-ARIA dialog pattern mandates Escape closes; opt-out is for
-  // popovers that own a child layer (nested dialog/menu) that should consume Escape first.
-  /** Whether pressing Escape closes the popover. Defaults to `true`. */
+  /** Whether pressing Escape closes the popover. Defaults to `true` — the WAI-ARIA dialog pattern mandates that Escape closes; the special case is a popover owning a child layer (nested dialog or menu) that should consume Escape first. */
   readonly twPopoverCloseOnEscape = input(true);
 
   /** CDK scroll strategy for the overlay. Defaults to `'reposition'`. */
   readonly twPopoverScrollStrategy = input<PopoverScrollStrategy>('reposition');
 
-  // Default true: matches the role="dialog" baseline — a focus-trapped panel announces
-  // itself as modal-ish; opt-out for inline popovers acting as informational tooltips.
-  /** Whether to trap focus inside the popover panel using CDK FocusTrapFactory. Defaults to `true`. */
+  /** Whether to trap focus inside the popover panel using CDK FocusTrapFactory. Defaults to `true` — it matches the `role="dialog"` baseline, where a focus-trapped panel announces itself as modal; the special case is an inline popover acting as an informational tooltip. */
   readonly twPopoverTrapFocus = input(true);
 
   /** Arbitrary data passed to template context or component via `POPOVER_DATA` token. Defaults to `undefined`. */

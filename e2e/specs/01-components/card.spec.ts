@@ -12,7 +12,7 @@ test.describe.configure({ mode: 'parallel' });
  *   - Omitting `[twCardHeader]` or `[twCardFooter]` leaves no header- or
  *     footer-styled element in the DOM (absence is observable).
  *
- * Visual states (`elevated` hover shadow, `outlined` + color compound) are
+ * Visual states (`elevated` hover shadow, `outline` + color compound) are
  * left to smoke/visual regression.
  */
 test.describe('Card', () => {

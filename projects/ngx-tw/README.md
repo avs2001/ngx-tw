@@ -87,7 +87,7 @@ import { Star, Search, Settings } from 'lucide';
 
 export const appConfig: ApplicationConfig = {
   providers: [
-    provideTheme(),                              // theme service + persistence
+    provideTheme(),                              // applies + persists the theme
     provideNativeDateAdapter(),                  // calendar / date pickers
     provideTwLucideIcons({ Star, Search, Settings }), // register named icons
     provideTwDialog(),                           // tw-dialog overlay service
@@ -101,7 +101,7 @@ You only need the providers for the features you use:
 
 | Provider | Required for | Entry point |
 |---|---|---|
-| `provideTheme()` | runtime theme switching / `ThemeService` (optional — see below) | `@cdevhub/ngx-tw/theme` |
+| `provideTheme()` | explicit / persisted theme switching and `ThemeService` (optional — pure-CSS dark mode needs none) | `@cdevhub/ngx-tw/theme` |
 | `provideNativeDateAdapter()` | `calendar`, `date-picker`, `date-range-picker` | `@cdevhub/ngx-tw/calendar` |
 | `provideTwLucideIcons()` / `provideTwIcons()` | `<tw-icon>` and any component that renders glyphs | `@cdevhub/ngx-tw/icon/lucide`, `@cdevhub/ngx-tw/icon` |
 | `provideTwDialog()` | imperative dialogs via the `TwDialog` service | `@cdevhub/ngx-tw/dialog` |
@@ -153,13 +153,25 @@ library — including dark mode and brand palettes — by overriding those token
 
 ### Dark mode & runtime switching
 
-Dark mode is driven by a `data-theme` attribute on `<html>` (with a
-`prefers-color-scheme` fallback when no attribute is set), so the simplest setup
-needs **no JavaScript** — the imported theme CSS already responds to the OS
-preference.
+Dark mode is driven by a `data-theme` attribute (with a `prefers-color-scheme`
+fallback when no attribute is set), so the simplest setup needs **no
+JavaScript** — the imported theme CSS already responds to the OS preference.
 
-For explicit, persisted switching, register `provideTheme()` and inject
-`ThemeService`:
+All three schemes ship as element-agnostic `[data-theme="…"]` blocks, so the
+attribute works on `<html>` *and* on any element in the page — including
+switching a subtree back to `light` inside a dark page.
+
+For explicit, persisted switching, register `provideTheme()`:
+
+```ts
+import { provideTheme } from '@cdevhub/ngx-tw/theme';
+
+bootstrapApplication(App, { providers: [provideTheme()] });
+```
+
+`provideTheme()` is self-sufficient: it constructs `ThemeService` at bootstrap,
+so the stored preference is applied on first paint whether or not anything
+injects the service. Inject it where you need to read or change the theme:
 
 ```ts
 import { ThemeService } from '@cdevhub/ngx-tw/theme';
@@ -181,11 +193,62 @@ export class ThemeToggle {
 }
 ```
 
-`ThemeService` writes the active theme to `data-theme` on `documentElement`,
-tracks the OS preference, and persists the selection to `localStorage`
-(`ngx-tw-theme` by default). Configure via `provideTheme({ defaultTheme,
-storageKey, attribute, target })`. A `[twTheme]` directive is also available to
-scope a theme to a subtree.
+`ThemeService` writes the active theme to `data-theme` on `documentElement` and
+tracks the OS preference — `prefers-color-scheme: dark` resolves `'system'` to
+`dark`, and `prefers-contrast: more` resolves it to `high-contrast` when dark is
+not also requested (the shipped high-contrast scheme is light-based, so contrast
+never overrides a dark preference). Configure via `provideTheme({ defaultTheme,
+storageKey, attribute, target })`.
+
+**Storage is written only by `setTheme()` / `cycleTheme()`.** Providing the
+service never touches `localStorage`, so `defaultTheme` keeps applying until the
+user actually picks something, and apps under a storage-consent flow can
+register the provider before consent is granted.
+
+### Scoping a theme to a subtree
+
+The `[twTheme]` directive writes `data-theme` on its host, and the token blocks
+re-resolve there and cascade into the subtree — in any direction:
+
+```html
+<div [twTheme]="'light'" class="bg-surface text-fg p-4">
+  Always light, even on a dark page.
+</div>
+```
+
+Note the directive writes the literal `data-theme` attribute, which is what the
+shipped CSS keys off. `provideTheme({ attribute })` renames the attribute
+`ThemeService` writes to the document, but a renamed attribute needs matching
+CSS of your own.
+
+### Avoiding a theme flash on reload
+
+The CSS fallback already gives a flash-free first paint to anyone who never
+picked a theme. An **explicit** choice that disagrees with the OS is different:
+`ThemeService` is application JavaScript, so the browser paints the OS-derived
+theme before the bundle runs. Add the standard inline bootstrap to `index.html`
+— it must be inline in `<head>`, before any stylesheet:
+
+```html
+<head>
+  <script>try{var t=localStorage.getItem('ngx-tw-theme');if(t&&t!=='system')document.documentElement.setAttribute('data-theme',t)}catch(e){}</script>
+</head>
+```
+
+The same string is exported as `TW_THEME_BOOTSTRAP_SCRIPT` for SSR or
+`index.html`-transform setups, built from the same defaults `ThemeService` uses
+so the key and attribute cannot drift:
+
+```ts
+import { TW_THEME_BOOTSTRAP_SCRIPT } from '@cdevhub/ngx-tw/theme';
+
+const head = `<script>${TW_THEME_BOOTSTRAP_SCRIPT}</script>`;
+```
+
+A stored `'system'` deliberately writes nothing, so the CSS
+`prefers-color-scheme` fallback keeps deciding. The snippet assumes the default
+`target: 'documentElement'` — a `<head>` script runs before `<body>` exists — and
+if you overrode `storageKey` or `attribute`, adapt the literal snippet to match.
 
 ## Icons
 
@@ -326,8 +389,8 @@ for full API tables and examples.
 | `@cdevhub/ngx-tw/<component>` | One per component (preferred — tree-shakeable) |
 | `@cdevhub/ngx-tw` | Catch-all re-export of every public API (convenience) |
 | `@cdevhub/ngx-tw/core` | Shared types (`TwColor`, `TwSize`) and `TW_ERROR_STATE_MATCHER` |
-| `@cdevhub/ngx-tw/theme` | `ThemeService`, `provideTheme`, `[twTheme]`, theme types |
-| `@cdevhub/ngx-tw/theme/index.css` | Default semantic theme stylesheet (asset) |
+| `@cdevhub/ngx-tw/theme` | `ThemeService`, `provideTheme`, `[twTheme]`, `TW_THEME_BOOTSTRAP_SCRIPT`, theme types |
+| `@cdevhub/ngx-tw/theme/index.css` | Default semantic theme stylesheet — the same directory ships as a copied CSS asset *and* as the TypeScript entry point above |
 | `@cdevhub/ngx-tw/icon/lucide` | `provideTwLucideIcons`, `fromLucideIcon` |
 | `@cdevhub/ngx-tw/calendar/luxon` | Luxon date adapter |
 | `@cdevhub/ngx-tw/calendar/testing` | Calendar test harnesses |

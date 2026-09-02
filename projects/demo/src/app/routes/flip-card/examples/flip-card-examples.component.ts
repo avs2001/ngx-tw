@@ -8,7 +8,7 @@ import {
 import { ButtonDirective } from '@cdevhub/ngx-tw/button';
 import { CodeBlockComponent } from '@cdevhub/ngx-tw/code-block';
 
-const VARIANTS: FlipCardVariant[] = ['outlined', 'elevated', 'ghost'];
+const VARIANTS: FlipCardVariant[] = ['outline', 'elevated', 'ghost'];
 const DIRECTIONS: FlipCardDirection[] = ['horizontal', 'vertical'];
 const TRIGGERS: FlipCardTrigger[] = ['click', 'hover', 'both', 'manual'];
 
@@ -24,7 +24,7 @@ const TRIGGERS: FlipCardTrigger[] = ['click', 'hover', 'both', 'manual'];
         Variants change the card's chrome without changing its behavior. Reach for
         <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">elevated</code>
         when the card should float above the page (marketing grids, feature highlights),
-        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">outlined</code>
+        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">outline</code>
         when it sits inside a denser layout (team pages, product lists), and
         <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">ghost</code>
         when only the flipping content should carry visual weight.
@@ -231,7 +231,7 @@ const TRIGGERS: FlipCardTrigger[] = ['click', 'hover', 'both', 'manual'];
         <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">elevated</code>
         + <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">both</code>
         for a classic product card; or
-        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">outlined</code>
+        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">outline</code>
         + <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">manual</code>
         + the Flipped toggle for a controlled reveal. When trigger is
         <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">manual</code>,

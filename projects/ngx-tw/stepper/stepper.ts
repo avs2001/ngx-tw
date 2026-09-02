@@ -321,14 +321,10 @@ export class StepperComponent extends CdkStepper implements AfterViewInit {
   /** Controls indicator size and label typography. Defaults to `'md'`. */
   readonly size = input<TwSize>('md');
 
-  /** When true, steps with `hasError` render error styling, icon, and `aria-invalid`. Defaults to `true`. */
-  // TRUE-default: error states must be visible by default — silently swallowing
-  // a stepped flow's failure state is a UX regression. Consumers opt out per step.
+  /** When true, steps with `hasError` render error styling, icon, and `aria-invalid`. Defaults to `true` — error states must be visible by default, since silently swallowing a stepped flow's failure state is a UX regression; the special case is opting out per step. */
   readonly showError = input(true);
 
-  /** When true, clicking a navigable step header selects it. Set to `false` to only allow advancement via `twStepperNext` / `twStepperPrevious`. Defaults to `true`. */
-  // TRUE-default: free-navigation is the standard stepper UX; restricted flows
-  // (e.g. wizards that must complete in order) explicitly opt out.
+  /** When true, clicking a navigable step header selects it. Set to `false` to only allow advancement via `twStepperNext` / `twStepperPrevious`. Defaults to `true` — free navigation is the standard stepper UX; the special case is a restricted flow such as a wizard that must complete in order. */
   readonly headerInteractive = input(true);
 
   private readonly _liveAnnouncer = inject(LiveAnnouncer);

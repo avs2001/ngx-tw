@@ -482,9 +482,7 @@ export class CalendarComponent<
   /** Function producing per-cell CSS classes, appended to the cell button. Defaults to `null` (no extra classes). */
   readonly dateClass: InputSignal<DateClassFn<D> | null> = input<DateClassFn<D> | null>(null);
 
-  /** When `true`, the calendar renders with a border and a soft shadow. Defaults to `true`. */
-  // TRUE-default: an embedded calendar reads as a bordered panel; the borderless
-  // variant is the special case (codified in CLAUDE.md's boolean-default list).
+  /** When `true`, the calendar renders with a border and a soft shadow. Defaults to `true` — an embedded calendar reads as a bordered panel; the special case is the borderless variant. */
   readonly bordered: InputSignal<boolean> = input<boolean>(true);
 
   /** Which view opens first. Defaults to `'day'`. Phase 8 will derive the default from `rangeGranularity`. */

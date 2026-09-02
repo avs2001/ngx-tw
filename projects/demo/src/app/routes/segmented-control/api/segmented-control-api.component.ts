@@ -25,7 +25,7 @@ import { CodeBlockComponent } from '@cdevhub/ngx-tw/code-block';
           <tbody class="divide-y divide-border-muted">
             <tr>
               <td class="px-4 py-2 font-mono text-xs">variant</td>
-              <td class="px-4 py-2 font-mono text-xs text-fg-muted">'surface' | 'filled' | 'outline'</td>
+              <td class="px-4 py-2 font-mono text-xs text-fg-muted">'surface' | 'solid' | 'outline'</td>
               <td class="px-4 py-2 font-mono text-xs text-fg-muted">'surface'</td>
               <td class="px-4 py-2 text-fg-muted">Controls the active-indicator style.</td>
             </tr>
@@ -185,7 +185,7 @@ import { CodeBlockComponent } from '@cdevhub/ngx-tw/code-block';
   `,
 })
 export class SegmentedControlApi {
-  protected readonly typesSnippet = `type SegmentedControlVariant = 'surface' | 'filled' | 'outline';
+  protected readonly typesSnippet = `type SegmentedControlVariant = 'surface' | 'solid' | 'outline';
 
 type SegmentedControlRounded = 'pill' | 'md';`;
 }

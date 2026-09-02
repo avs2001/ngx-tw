@@ -26,7 +26,7 @@ import { CodeBlockComponent } from '@cdevhub/ngx-tw/code-block';
             <tr>
               <td class="px-4 py-2 font-mono text-xs">variant</td>
               <td class="px-4 py-2 font-mono text-xs text-fg-muted">FlipCardVariant</td>
-              <td class="px-4 py-2 font-mono text-xs text-fg-muted">'outlined'</td>
+              <td class="px-4 py-2 font-mono text-xs text-fg-muted">'outline'</td>
               <td class="px-4 py-2 text-fg-muted">Controls the card's chrome. Mirrors the Card component's variant vocabulary.</td>
             </tr>
             <tr>
@@ -136,7 +136,12 @@ import { CodeBlockComponent } from '@cdevhub/ngx-tw/code-block';
   `,
 })
 export class FlipCardApi {
-  protected readonly typesSnippet = `type FlipCardVariant = 'outlined' | 'elevated' | 'ghost';
+  protected readonly typesSnippet = `type FlipCardVariant =
+  | 'outline' | 'elevated' | 'ghost'
+  | FlipCardVariantLegacy;
+
+/** @deprecated 'outlined' is an alias for 'outline'; removed in the next major. */
+type FlipCardVariantLegacy = 'outlined';
 
 type FlipCardDirection = 'horizontal' | 'vertical';
 

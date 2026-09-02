@@ -23,19 +23,53 @@ import { tv } from 'tailwind-variants';
 import type { TwColor, TwSize } from '@cdevhub/ngx-tw/core';
 
 /** Visual style of the collapsible container. */
-export type CollapsibleVariant = 'default' | 'bordered' | 'ghost' | 'filled';
+export type CollapsibleVariant =
+  | 'default'
+  | 'outline'
+  | 'ghost'
+  | 'solid'
+  | CollapsibleVariantLegacy;
+
+/**
+ * Legacy `variant` spellings, kept so existing templates keep compiling.
+ * @deprecated `'bordered'` aliases `'outline'` and `'filled'` aliases
+ * `'solid'`. Both render identically to their replacements and will be
+ * removed in the next major.
+ */
+export type CollapsibleVariantLegacy = 'bordered' | 'filled';
+
+/** Canonical `variant` spellings — the set `tv()` actually keys on. */
+type CollapsibleVariantCanonical = Exclude<CollapsibleVariant, CollapsibleVariantLegacy>;
+
+/** Maps every legacy spelling onto its canonical replacement. */
+const VARIANT_ALIASES: Readonly<
+  Record<CollapsibleVariantLegacy, CollapsibleVariantCanonical>
+> = {
+  bordered: 'outline',
+  filled: 'solid',
+};
 
 /** Decorative axes bundled into a single collapsible input. */
 export interface CollapsibleDisplay {
   /** Visual style of the panel container. Defaults to `'default'`. */
   variant?: CollapsibleVariant;
-  /** Semantic color; applies to the `bordered` and `filled` variants. Defaults to `'neutral'`. */
+  /** Semantic color; applies to the `outline` and `solid` variants. Defaults to `'neutral'`. */
   color?: TwColor;
   /** Padding scale for the trigger and content sections. Defaults to `'md'`. */
   size?: TwSize;
 }
 
-const DISPLAY_DEFAULTS: Required<CollapsibleDisplay> = {
+/**
+ * `CollapsibleDisplay` after defaults are filled in and legacy `variant`
+ * spellings are normalised. Module-private on purpose: narrowing `variant`
+ * to the canonical set is what makes the compiler prove the normalisation
+ * happened before `tv()` is called, and it is not consumer API.
+ */
+type ResolvedCollapsibleDisplay = Required<Omit<CollapsibleDisplay, 'variant'>> & {
+  variant: CollapsibleVariantCanonical;
+};
+
+const DISPLAY_DEFAULTS: ResolvedCollapsibleDisplay = {
   variant: 'default',
   color: 'neutral',
   size: 'md',
@@ -57,7 +91,7 @@ const collapsibleVariants = tv({
         root: 'border-b border-border',
         trigger: 'hover:bg-surface-muted',
       },
-      bordered: {
+      outline: {
         root: 'border border-border',
         trigger: 'hover:bg-surface-muted',
         content: 'border-t border-border',
@@ -66,7 +100,7 @@ const collapsibleVariants = tv({
         root: '',
         trigger: 'hover:bg-surface-muted rounded-md',
       },
-      filled: {
+      solid: {
         root: '',
       },
     },
@@ -104,24 +138,24 @@ const collapsibleVariants = tv({
     },
   },
   compoundVariants: [
-    // ── Filled + color ──
-    { variant: 'filled', color: 'primary', class: { root: 'bg-primary-50', trigger: 'text-primary-800 hover:bg-primary-100', content: 'text-primary-700', icon: 'text-primary-600' } },
-    { variant: 'filled', color: 'secondary', class: { root: 'bg-secondary-50', trigger: 'text-secondary-800 hover:bg-secondary-100', content: 'text-secondary-700', icon: 'text-secondary-600' } },
-    { variant: 'filled', color: 'accent', class: { root: 'bg-accent-50', trigger: 'text-accent-800 hover:bg-accent-100', content: 'text-accent-700', icon: 'text-accent-600' } },
-    { variant: 'filled', color: 'neutral', class: { root: 'bg-surface-muted', trigger: 'text-fg hover:bg-surface-sunken', content: 'text-fg-muted' } },
-    { variant: 'filled', color: 'info', class: { root: 'bg-info-50', trigger: 'text-info-800 hover:bg-info-100', content: 'text-info-700', icon: 'text-info-600' } },
-    { variant: 'filled', color: 'success', class: { root: 'bg-success-50', trigger: 'text-success-800 hover:bg-success-100', content: 'text-success-700', icon: 'text-success-600' } },
-    { variant: 'filled', color: 'warning', class: { root: 'bg-warning-50', trigger: 'text-warning-800 hover:bg-warning-100', content: 'text-warning-700', icon: 'text-warning-600' } },
-    { variant: 'filled', color: 'error', class: { root: 'bg-error-50', trigger: 'text-error-800 hover:bg-error-100', content: 'text-error-700', icon: 'text-error-600' } },
+    // ── Solid + color ──
+    { variant: 'solid', color: 'primary', class: { root: 'bg-primary-50', trigger: 'text-primary-800 hover:bg-primary-100', content: 'text-primary-700', icon: 'text-primary-600' } },
+    { variant: 'solid', color: 'secondary', class: { root: 'bg-secondary-50', trigger: 'text-secondary-800 hover:bg-secondary-100', content: 'text-secondary-700', icon: 'text-secondary-600' } },
+    { variant: 'solid', color: 'accent', class: { root: 'bg-accent-50', trigger: 'text-accent-800 hover:bg-accent-100', content: 'text-accent-700', icon: 'text-accent-600' } },
+    { variant: 'solid', color: 'neutral', class: { root: 'bg-surface-muted', trigger: 'text-fg hover:bg-surface-sunken', content: 'text-fg-muted' } },
+    { variant: 'solid', color: 'info', class: { root: 'bg-info-50', trigger: 'text-info-800 hover:bg-info-100', content: 'text-info-700', icon: 'text-info-600' } },
+    { variant: 'solid', color: 'success', class: { root: 'bg-success-50', trigger: 'text-success-800 hover:bg-success-100', content: 'text-success-700', icon: 'text-success-600' } },
+    { variant: 'solid', color: 'warning', class: { root: 'bg-warning-50', trigger: 'text-warning-800 hover:bg-warning-100', content: 'text-warning-700', icon: 'text-warning-600' } },
+    { variant: 'solid', color: 'error', class: { root: 'bg-error-50', trigger: 'text-error-800 hover:bg-error-100', content: 'text-error-700', icon: 'text-error-600' } },
 
-    // ── Bordered + color ──
-    { variant: 'bordered', color: 'primary', class: { root: 'border-primary-300' } },
-    { variant: 'bordered', color: 'secondary', class: { root: 'border-secondary-300' } },
-    { variant: 'bordered', color: 'accent', class: { root: 'border-accent-300' } },
-    { variant: 'bordered', color: 'info', class: { root: 'border-info-300' } },
-    { variant: 'bordered', color: 'success', class: { root: 'border-success-300' } },
-    { variant: 'bordered', color: 'warning', class: { root: 'border-warning-300' } },
-    { variant: 'bordered', color: 'error', class: { root: 'border-error-300' } },
+    // ── Outline + color ──
+    { variant: 'outline', color: 'primary', class: { root: 'border-primary-300' } },
+    { variant: 'outline', color: 'secondary', class: { root: 'border-secondary-300' } },
+    { variant: 'outline', color: 'accent', class: { root: 'border-accent-300' } },
+    { variant: 'outline', color: 'info', class: { root: 'border-info-300' } },
+    { variant: 'outline', color: 'success', class: { root: 'border-success-300' } },
+    { variant: 'outline', color: 'warning', class: { root: 'border-warning-300' } },
+    { variant: 'outline', color: 'error', class: { root: 'border-error-300' } },
   ],
   defaultVariants: {
     variant: 'default',
@@ -306,11 +340,24 @@ export class CollapsibleComponent {
 
   // ── Resolved display config ──
 
-  /** @internal Resolved decorative configuration. */
-  readonly resolvedDisplay = computed<Required<CollapsibleDisplay>>(() => ({
-    ...DISPLAY_DEFAULTS,
-    ...this.display(),
-  }));
+  /**
+   * @internal Resolved decorative configuration: defaults filled in, then
+   * legacy `variant` spellings folded onto their canonical replacements. The
+   * narrowed return type is the guard — `tv()` silently returns *base classes
+   * only* for a variant value it does not know, so an un-normalised legacy
+   * string would render an unstyled panel with no error anywhere.
+   */
+  readonly resolvedDisplay = computed<ResolvedCollapsibleDisplay>(() => {
+    const merged = { ...DISPLAY_DEFAULTS, ...this.display() };
+    const variant = merged.variant;
+    return {
+      ...merged,
+      variant:
+        (VARIANT_ALIASES as Record<string, CollapsibleVariantCanonical | undefined>)[
+          variant
+        ] ?? (variant as CollapsibleVariantCanonical),
+    };
+  });
 
   // ── Variant classes ──
 

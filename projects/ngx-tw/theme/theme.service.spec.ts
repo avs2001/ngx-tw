@@ -5,7 +5,38 @@ import { ThemeService } from './theme.service';
 import { provideTheme, THEME_CONFIG } from './theme.config';
 import { DEFAULT_TW_THEME_CONFIG } from './theme.types';
 import type { TwTheme } from './theme.types';
-import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
+import { describe, it, expect, vi, afterEach } from 'vitest';
+
+const DARK_QUERY = '(prefers-color-scheme: dark)';
+const CONTRAST_QUERY = '(prefers-contrast: more)';
+
+/**
+ * A `MediaQueryList` double that is *stateful* and keyed by its query string.
+ * The previous mock returned a fresh object with a fixed `matches` for every
+ * query, which meant `matchMedia('(prefers-contrast: more)')` would answer with
+ * the colour-scheme preference — a mock that lies about the thing under test.
+ */
+function createMediaQueryList(query: string, matches: boolean) {
+  const listeners: ((e: MediaQueryListEvent) => void)[] = [];
+  const mql = {
+    media: query,
+    matches,
+    addEventListener: vi.fn((_: string, cb: (e: MediaQueryListEvent) => void) => {
+      listeners.push(cb);
+    }),
+    removeEventListener: vi.fn((_: string, cb: (e: MediaQueryListEvent) => void) => {
+      const i = listeners.indexOf(cb);
+      if (i >= 0) listeners.splice(i, 1);
+    }),
+    /** Flips the preference and notifies, the way a real OS change does. */
+    emit(next: boolean) {
+      mql.matches = next;
+      for (const cb of [...listeners]) cb({ matches: next } as MediaQueryListEvent);
+    },
+    listenerCount: () => listeners.length,
+  };
+  return mql;
+}
 
 describe('ThemeService', () => {
   let service: ThemeService;
@@ -15,12 +46,14 @@ describe('ThemeService', () => {
     defaultTheme?: TwTheme;
     storedTheme?: string | null;
     prefersDark?: boolean;
+    prefersContrast?: boolean;
     platform?: string;
   }) {
     const {
       defaultTheme = 'system',
       storedTheme = null,
       prefersDark = false,
+      prefersContrast = false,
       platform = 'browser',
     } = options ?? {};
 
@@ -35,14 +68,22 @@ describe('ThemeService', () => {
       removeItem: vi.fn((key: string) => storage.delete(key)),
     });
 
-    // Mock matchMedia
-    const listeners: ((e: MediaQueryListEvent) => void)[] = [];
-    vi.stubGlobal('matchMedia', vi.fn(() => ({
-      matches: prefersDark,
-      media: '(prefers-color-scheme: dark)',
-      addEventListener: vi.fn((_: string, cb: (e: MediaQueryListEvent) => void) => listeners.push(cb)),
-      removeEventListener: vi.fn(),
-    })));
+    // Mock matchMedia — one persistent double per query, so repeated calls
+    // return the same object the service attached its listener to.
+    const queries = new Map<string, ReturnType<typeof createMediaQueryList>>();
+    queries.set(DARK_QUERY, createMediaQueryList(DARK_QUERY, prefersDark));
+    queries.set(CONTRAST_QUERY, createMediaQueryList(CONTRAST_QUERY, prefersContrast));
+    vi.stubGlobal(
+      'matchMedia',
+      vi.fn((query: string) => {
+        let mql = queries.get(query);
+        if (!mql) {
+          mql = createMediaQueryList(query, false);
+          queries.set(query, mql);
+        }
+        return mql;
+      }),
+    );
 
     TestBed.configureTestingModule({
       providers: [
@@ -54,12 +95,23 @@ describe('ThemeService', () => {
     service = TestBed.inject(ThemeService);
     doc = TestBed.inject(DOCUMENT);
 
-    return { storage, listeners };
+    const media = (query: string) => {
+      const mql = queries.get(query);
+      if (!mql) throw new Error(`matchMedia was never called with ${query}`);
+      return mql;
+    };
+
+    return { storage, media };
   }
 
   afterEach(() => {
     vi.restoreAllMocks();
     TestBed.resetTestingModule();
+    // `data-theme` lives on the shared jsdom documentElement and survives
+    // `resetTestingModule`. Without this, a test asserting the attribute can
+    // pass on residue left by an earlier one.
+    document.documentElement.removeAttribute('data-theme');
+    document.body.removeAttribute('data-theme');
   });
 
   it('should load theme from localStorage when a valid value is stored', () => {
@@ -176,12 +228,68 @@ describe('ThemeService', () => {
   });
 
   it('should update systemTheme when media query changes', () => {
-    const { listeners } = setup({ defaultTheme: 'system', prefersDark: false });
+    const { media } = setup({ defaultTheme: 'system', prefersDark: false });
     expect(service.resolvedTheme()).toBe('light');
 
-    listeners[0]({ matches: true } as MediaQueryListEvent);
+    media(DARK_QUERY).emit(true);
     expect(service.systemTheme()).toBe('dark');
     expect(service.resolvedTheme()).toBe('dark');
+  });
+
+  // ===== F4: `'system'` must be able to resolve to `'high-contrast'` =====
+  // Before this, `detectSystemTheme()` and the listener queried only
+  // `prefers-color-scheme`, so `systemTheme` was typed `TwResolvedTheme` but
+  // could only ever hold `'light' | 'dark'` — the shipped, fully-parity'd
+  // high-contrast scheme was unreachable from `'system'`.
+
+  it('resolves system to high-contrast when the OS asks for more contrast', () => {
+    setup({ defaultTheme: 'system', prefersDark: false, prefersContrast: true });
+    expect(service.systemTheme()).toBe('high-contrast');
+    expect(service.resolvedTheme()).toBe('high-contrast');
+    expect(service.isHighContrast()).toBe(true);
+  });
+
+  // The deliberate tradeoff: the shipped high-contrast scheme is light-based,
+  // so contrast must NOT override a dark preference or dark+contrast users
+  // would be moved onto a white surface.
+  it('keeps dark when the OS asks for both dark and more contrast', () => {
+    setup({ defaultTheme: 'system', prefersDark: true, prefersContrast: true });
+    expect(service.resolvedTheme()).toBe('dark');
+  });
+
+  it('re-resolves live when the contrast preference changes', () => {
+    const { media } = setup({ defaultTheme: 'system' });
+    expect(service.resolvedTheme()).toBe('light');
+
+    media(CONTRAST_QUERY).emit(true);
+    expect(service.resolvedTheme()).toBe('high-contrast');
+
+    media(CONTRAST_QUERY).emit(false);
+    expect(service.resolvedTheme()).toBe('light');
+  });
+
+  // Guards the clobber this design exists to prevent: two independent
+  // listeners, each setting `systemTheme` from its own query alone, would let
+  // the next colour-scheme tick erase the contrast decision.
+  it('does not let a colour-scheme change clobber the contrast decision', () => {
+    const { media } = setup({ defaultTheme: 'system', prefersContrast: true });
+    expect(service.resolvedTheme()).toBe('high-contrast');
+
+    media(DARK_QUERY).emit(true);
+    expect(service.resolvedTheme()).toBe('dark');
+
+    media(DARK_QUERY).emit(false);
+    expect(service.resolvedTheme()).toBe('high-contrast');
+  });
+
+  it('detaches both media listeners on destroy', () => {
+    const { media } = setup();
+    expect(media(DARK_QUERY).listenerCount()).toBe(1);
+    expect(media(CONTRAST_QUERY).listenerCount()).toBe(1);
+
+    service.ngOnDestroy();
+    expect(media(DARK_QUERY).listenerCount()).toBe(0);
+    expect(media(CONTRAST_QUERY).listenerCount()).toBe(0);
   });
 
   it('should apply theme to a specific element via applyToElement', () => {
@@ -303,5 +411,97 @@ describe('ThemeService', () => {
     expect(storage.get(DEFAULT_TW_THEME_CONFIG.storageKey)).toBe('light');
     expect(doc.documentElement.getAttribute('undefined')).toBeNull();
     expect(doc.documentElement.getAttribute('data-theme')).toBe('light');
+  });
+
+  // ===== F5: constructing the service must not write to localStorage =====
+  // The constructor effect used to call `persistTheme(selected)` on its first
+  // run, so merely loading the app stored the configured `defaultTheme`. From
+  // then on `loadInitialTheme()` found a value and `defaultTheme` was
+  // permanently ignored for that browser — and the library wrote to client
+  // storage with no user action, which consumers under a storage-consent flow
+  // cannot accept. Against the old code this fails on the very first
+  // assertion: the flushed effect has already called `setItem`.
+  it('does not write to localStorage until an explicit setTheme', () => {
+    const { storage } = setup({ defaultTheme: 'dark' });
+    TestBed.flushEffects();
+
+    expect(localStorage.setItem).not.toHaveBeenCalled();
+    expect(storage.size).toBe(0);
+    // The theme still applied — this is about storage, not about the DOM.
+    expect(doc.documentElement.getAttribute('data-theme')).toBe('dark');
+
+    service.setTheme('light');
+    expect(storage.get(DEFAULT_TW_THEME_CONFIG.storageKey)).toBe('light');
+  });
+
+  it('persists through cycleTheme as well', () => {
+    const { storage } = setup({ defaultTheme: 'light' });
+    service.cycleTheme();
+    expect(storage.get(DEFAULT_TW_THEME_CONFIG.storageKey)).toBe('dark');
+  });
+});
+
+// ===== F2: `provideTheme()` must construct the service itself =====
+// This describe deliberately never injects `ThemeService`. `provideTheme`
+// previously only *registered* it, so everything that applies a theme — the
+// field initialisers and the constructor effect — waited for a first
+// `inject()`. An app whose toggle lives in a lazily-loaded route rendered
+// every other route with no `data-theme` at all. Against the old code nothing
+// constructs the service here, so the attribute stays `null` and the
+// assertion fails.
+describe('provideTheme bootstrap', () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+    TestBed.resetTestingModule();
+    document.documentElement.removeAttribute('data-theme');
+  });
+
+  it('applies the theme without anything injecting ThemeService', () => {
+    vi.stubGlobal('localStorage', {
+      getItem: vi.fn(() => null),
+      setItem: vi.fn(),
+    });
+    vi.stubGlobal(
+      'matchMedia',
+      vi.fn((query: string) => createMediaQueryList(query, false)),
+    );
+
+    TestBed.configureTestingModule({
+      providers: [provideTheme({ defaultTheme: 'dark' })],
+    });
+
+    // Prove the assertion below cannot pass on residue from another test.
+    document.documentElement.removeAttribute('data-theme');
+    expect(document.documentElement.getAttribute('data-theme')).toBeNull();
+
+    // Resolving *any* token creates the environment injector, which runs the
+    // environment initializers — including the one that constructs
+    // `ThemeService`. `DOCUMENT` is not `ThemeService`, which is the point.
+    const doc = TestBed.inject(DOCUMENT);
+    TestBed.flushEffects();
+
+    expect(doc.documentElement.getAttribute('data-theme')).toBe('dark');
+  });
+
+  it('reads a persisted choice without anything injecting ThemeService', () => {
+    const storage = new Map<string, string>([
+      [DEFAULT_TW_THEME_CONFIG.storageKey, 'high-contrast'],
+    ]);
+    vi.stubGlobal('localStorage', {
+      getItem: vi.fn((key: string) => storage.get(key) ?? null),
+      setItem: vi.fn(),
+    });
+    vi.stubGlobal(
+      'matchMedia',
+      vi.fn((query: string) => createMediaQueryList(query, false)),
+    );
+
+    TestBed.configureTestingModule({ providers: [provideTheme()] });
+
+    document.documentElement.removeAttribute('data-theme');
+    const doc = TestBed.inject(DOCUMENT);
+    TestBed.flushEffects();
+
+    expect(doc.documentElement.getAttribute('data-theme')).toBe('high-contrast');
   });
 });

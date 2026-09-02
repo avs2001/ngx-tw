@@ -30,7 +30,7 @@ import {
   Validators,
 } from '@angular/forms';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { merge } from 'rxjs';
+import { merge, Subscription } from 'rxjs';
 import {
   buildSelectLikePositions,
   consumeOverlayEscape,
@@ -403,13 +403,9 @@ export class ComboboxComponent<T = unknown>
   readonly color = input<TwColor>('primary');
 
   /** Whether the trailing chevron affordance is rendered. Defaults to `true` — the chevron signals the dropdown affordance; the special case is an inline search input that opts out. */
-  // TRUE-default: the chevron signals the dropdown affordance; without it the
-  // combobox reads as a plain input. Opt-out is for inline search inputs.
   readonly showChevron = input<boolean>(true);
 
   /** Whether the inline clear (×) button appears while `inputValue` is non-empty. Defaults to `true` — clearing a typed value is the expected combobox gesture; the special case is a required-only flow. */
-  // TRUE-default: the clear affordance is the expected combobox UX once a value
-  // is set; opt-out is for required-only flows.
   readonly clearable = input<boolean>(true);
 
   /** When `true`, shows an in-popover spinner and an inline spinner in the trigger while the popover is open. Defaults to `false`. */
@@ -422,8 +418,6 @@ export class ComboboxComponent<T = unknown>
   readonly minQueryLength = input<number>(0);
 
   /** Whether the popover opens automatically when the input receives focus. Defaults to `true` — clicking into a combobox opens the dropdown, matching select-like UX; the special case is a flow that should open only once the user types. */
-  // TRUE-default: clicking into a combobox opens the dropdown — standard select-
-  // like UX. Opt-out is for command-palette-style flows triggered only by typing.
   readonly openOnFocus = input<boolean>(true);
 
   /** Maximum height (px) of the popover scroll region. Defaults to `256`. */
@@ -552,6 +546,11 @@ export class ComboboxComponent<T = unknown>
   private queryDebounceTimer: ReturnType<typeof setTimeout> | null = null;
   private announceTimer: ReturnType<typeof setTimeout> | null = null;
   private resizeObserver: ResizeObserver | null = null;
+  // Backdrop + Escape subscriptions are scoped to a single open, not to the
+  // component lifetime: the `OverlayRef` is reused across opens (it is only
+  // disposed on destroy), so `destroyRef`-scoped teardown would leave one live
+  // subscription per open on the same ref. Mirrors `select.ts`.
+  private perOpenSubs: Subscription | null = null;
 
   // Overlay bookkeeping is deliberately held in plain fields, not signals — same
   // shape as popover and command-palette. A signal here would be track-read by the
@@ -898,6 +897,10 @@ export class ComboboxComponent<T = unknown>
       this.clearCloseTimer();
       this.clearQueryDebounceTimer();
       this.clearAnnounceTimer();
+      // Destroy cancels the close timer, so a destroy landing mid-close would
+      // otherwise never run the timer callback that releases these.
+      this.perOpenSubs?.unsubscribe();
+      this.perOpenSubs = null;
       this.resizeObserver?.disconnect();
       this.resizeObserver = null;
       this.overlayRef?.dispose();
@@ -1300,8 +1303,7 @@ export class ComboboxComponent<T = unknown>
   private openOverlay(): void {
     this.ensureOverlay();
     this.attachOverlayComponent();
-    this.subscribeBackdrop();
-    this.subscribeOverlayEscape();
+    this.subscribePerOpen();
     // Reset active to first enabled when opening.
     this.activeIndex.set(this.firstEnabledIndex());
     // Set last: this is what wakes the state-push effect, and it must not fire
@@ -1327,10 +1329,16 @@ export class ComboboxComponent<T = unknown>
       if (this.overlayRef?.hasAttached()) {
         this.overlayRef.detach();
       }
+      this.perOpenSubs?.unsubscribe();
+      this.perOpenSubs = null;
       this.overlayInstance = null;
       this.isAttached.set(false);
-      this.resizeObserver?.disconnect();
-      this.resizeObserver = null;
+      // The `ResizeObserver` is deliberately NOT disconnected here. The
+      // `OverlayRef` survives a close (it is only disposed on destroy), so
+      // `ensureOverlay()` early-returns on every reopen and the observer would
+      // never be re-installed — live trigger-width tracking would be dead after
+      // the first close. `updateOverlaySize()` is safe against a detached ref.
+      // Teardown lives in the destroy hook. Mirrors `select.ts`.
       untracked(() => this.open.set(false));
       this.closing = false;
       this.openedChange.emit({
@@ -1413,30 +1421,38 @@ export class ComboboxComponent<T = unknown>
     this.overlayInstance = instance;
   }
 
-  private subscribeBackdrop(): void {
-    if (!this.overlayRef) return;
-    const sub = this.overlayRef.backdropClick().subscribe(() => {
-      this.closePanel();
-    });
-    this.destroyRef.onDestroy(() => sub.unsubscribe());
-  }
-
   /**
-   * Listens for `Escape` on the overlay's `keydownEvents()`. Mirrors
+   * Registers the backdrop-click and Escape listeners for one open.
+   *
+   * The Escape listener rides the overlay's `keydownEvents()`. Mirrors
    * `SelectComponent` so focus inside the overlay panel (e.g., if the user
    * tabs into projected loading/empty templates) still dismisses cleanly.
    * The combobox's own `<input>` keydown handler already short-circuits
    * Escape when focus is on the input; this layer is the safety net for
    * panel-internal focus.
+   *
+   * Both are scoped to `perOpenSubs`, torn down on close and on destroy: the
+   * `OverlayRef` is reused across opens, so component-scoped teardown would
+   * accumulate one live subscription per open.
    */
-  private subscribeOverlayEscape(): void {
+  private subscribePerOpen(): void {
+    this.perOpenSubs?.unsubscribe();
+    this.perOpenSubs = new Subscription();
     if (!this.overlayRef) return;
-    const teardown = consumeOverlayEscape(this.overlayRef, (event) => {
+
+    this.perOpenSubs.add(
+      this.overlayRef
+        .backdropClick()
+        .pipe(takeUntilDestroyed(this.destroyRef))
+        .subscribe(() => this.closePanel()),
+    );
+
+    const teardownEscape = consumeOverlayEscape(this.overlayRef, (event) => {
       event.preventDefault();
       this.inputValue.set(this.lastCommittedLabel());
       this.closePanel();
     });
-    this.destroyRef.onDestroy(() => teardown());
+    this.perOpenSubs.add(() => teardownEscape());
   }
 
   private resolvePanelClass(): string {

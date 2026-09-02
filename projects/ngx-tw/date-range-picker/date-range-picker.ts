@@ -447,8 +447,7 @@ export class DateRangePickerComponent<D = Date>
   /** Optional quick-select presets rendered as a vertical list before the calendars. Each preset provides a label and a factory returning a `TwDateRange<D>`. An empty array hides the preset panel. Defaults to an empty array. */
   readonly presets = input<readonly DateRangePreset<D>[]>([]);
 
-  /** Whether to show a clear-button affordance inside the trigger when a value is set. Defaults to `true`. */
-  // TRUE-default: a picker without a clear affordance forces consumers to wire one — most form pickers expect the inline clear, matching `<tw-input>`'s clear button.
+  /** Whether to show a clear-button affordance inside the trigger when a value is set. Defaults to `true` — most form pickers expect the inline clear, matching `<tw-input>`'s clear button; without it consumers must wire one themselves. */
   readonly showClear = input<boolean>(true);
 
   /** Minimum range length in days, inclusive. Commits shorter than this are rejected and surface `calendarRangeTooShort` on the bound `NgControl`. `null` = no minimum. Defaults to `null`. */

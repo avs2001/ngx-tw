@@ -26,8 +26,8 @@ import { CodeBlockComponent } from '@cdevhub/ngx-tw/code-block';
             <tr>
               <td class="px-4 py-2 font-mono text-xs">variant</td>
               <td class="px-4 py-2 font-mono text-xs text-fg-muted">StatVariant</td>
-              <td class="px-4 py-2 font-mono text-xs text-fg-muted">'outlined'</td>
-              <td class="px-4 py-2 text-fg-muted">Surface treatment. <code class="font-mono text-xs">'plain'</code> removes border and background; <code class="font-mono text-xs">'outlined'</code> (default) adds a border on the surface token; <code class="font-mono text-xs">'elevated'</code> adds shadow and uses the raised surface; <code class="font-mono text-xs">'filled'</code> uses the muted surface with no border.</td>
+              <td class="px-4 py-2 font-mono text-xs text-fg-muted">'outline'</td>
+              <td class="px-4 py-2 text-fg-muted">Surface treatment. <code class="font-mono text-xs">'ghost'</code> removes border and background; <code class="font-mono text-xs">'outline'</code> (default) adds a border on the surface token; <code class="font-mono text-xs">'elevated'</code> adds shadow and uses the raised surface; <code class="font-mono text-xs">'solid'</code> uses the muted surface with no border.</td>
             </tr>
             <tr>
               <td class="px-4 py-2 font-mono text-xs">size</td>
@@ -203,7 +203,12 @@ import { CodeBlockComponent } from '@cdevhub/ngx-tw/code-block';
   `,
 })
 export class StatApi {
-  protected readonly typesSnippet = `export type StatVariant = 'plain' | 'outlined' | 'elevated' | 'filled';
+  protected readonly typesSnippet = `export type StatVariant =
+  | 'ghost' | 'outline' | 'elevated' | 'solid'
+  | StatVariantLegacy;
+
+/** @deprecated 'plain'/'outlined'/'filled' alias 'ghost'/'outline'/'solid'; removed in the next major. */
+export type StatVariantLegacy = 'plain' | 'outlined' | 'filled';
 
 export type StatDeltaDirection = 'up' | 'down' | 'neutral';
 

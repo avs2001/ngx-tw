@@ -77,7 +77,7 @@ import { CodeBlockComponent } from '@cdevhub/ngx-tw/code-block';
     <section class="mb-10">
       <h2 class="text-sm font-semibold mb-3">Basic Usage</h2>
       <div class="rounded-lg border border-border p-6 bg-surface-raised mb-4">
-        <tw-collapsible [display]="{ variant: 'bordered' }">
+        <tw-collapsible [display]="{ variant: 'outline' }">
           <button twCollapsibleTrigger>What is ngx-tw?</button>
           <p>An Angular component library built with Tailwind CSS v4, designed for flexibility and accessibility.</p>
         </tw-collapsible>
@@ -95,11 +95,11 @@ import { CodeBlockComponent } from '@cdevhub/ngx-tw/code-block';
       <ul class="list-disc list-inside text-sm text-fg-muted space-y-1.5">
         <li>4 variants:
           <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">default</code>,
-          <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">bordered</code>,
+          <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">outline</code>,
           <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">ghost</code>,
-          <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">filled</code>
+          <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">solid</code>
         </li>
-        <li>5 sizes and 8 semantic colors that tint the filled and bordered variants</li>
+        <li>5 sizes and 8 semantic colors that tint the solid and outline variants</li>
         <li>Accordion mode (single open) and independent group mode (multiple open) via
           <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">tw-collapsible-group</code>
         </li>
@@ -150,7 +150,7 @@ import { CodeBlockComponent } from '@cdevhub/ngx-tw/code-block';
   `,
 })
 export class CollapsibleOverview {
-  protected readonly basicUsageSnippet = `<tw-collapsible [display]="{ variant: 'bordered' }">
+  protected readonly basicUsageSnippet = `<tw-collapsible [display]="{ variant: 'outline' }">
   <button twCollapsibleTrigger>What is ngx-tw?</button>
   <p>An Angular component library built with Tailwind CSS v4...</p>
 </tw-collapsible>`;

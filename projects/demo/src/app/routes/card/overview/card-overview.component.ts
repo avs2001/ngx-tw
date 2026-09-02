@@ -106,10 +106,10 @@ import { CodeBlockComponent } from '@cdevhub/ngx-tw/code-block';
       <ul class="list-disc list-inside text-sm text-fg-muted space-y-1.5">
         <li>Three variants:
           <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">elevated</code>,
-          <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">outlined</code>,
+          <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">outline</code>,
           and
           <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">ghost</code></li>
-        <li>Semantic color tinting on outlined borders across all eight library colors</li>
+        <li>Semantic color tinting on outline borders across all eight library colors</li>
         <li>Five sizes controlling section padding from
           <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">xs</code>
           to
@@ -182,7 +182,7 @@ export class CardOverview {
   </tw-card>
 </a>`;
 
-  protected readonly interactiveRowSnippet = `<tw-card variant="outlined" size="xs">
+  protected readonly interactiveRowSnippet = `<tw-card variant="outline" size="xs">
   @for (member of teamMembers; track member.id) {
     <tw-item
       twCardBody

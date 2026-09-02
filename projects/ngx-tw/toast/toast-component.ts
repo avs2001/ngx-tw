@@ -197,9 +197,7 @@ export class ToastComponent {
   /** Severity variant. Drives color palette, default icon, and ARIA role / live politeness. Defaults to `'info'`. */
   readonly severity = input<ToastSeverity>('info');
 
-  // Default true: mirrors `ToastConfig.dismissible` — toasts must offer an escape
-  // hatch by default; opt-out only for ephemeral progress markers paired with `duration`.
-  /** Whether to render the close button. Defaults to `true`. */
+  /** Whether to render the close button. Defaults to `true` — mirroring `ToastConfig.dismissible`, toasts must offer an escape hatch; the special case is an ephemeral progress marker paired with `duration`. */
   readonly dismissible = input<boolean>(true);
 
   /**

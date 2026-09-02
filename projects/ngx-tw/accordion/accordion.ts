@@ -13,7 +13,24 @@ import { CollapsibleGroupComponent } from '@cdevhub/ngx-tw/collapsible';
 export type AccordionType = 'single' | 'multiple';
 
 /** Visual style of the accordion container. */
-export type AccordionVariant = 'default' | 'bordered' | 'ghost';
+export type AccordionVariant = 'default' | 'outline' | 'ghost' | AccordionVariantLegacy;
+
+/**
+ * Legacy `variant` spellings, kept so existing templates keep compiling.
+ * @deprecated `'bordered'` is an alias for `'outline'` and renders identically.
+ * It will be removed in the next major — prefer `'outline'`.
+ */
+export type AccordionVariantLegacy = 'bordered';
+
+/** Canonical `variant` spellings — the set `tv()` actually keys on. */
+type AccordionVariantCanonical = Exclude<AccordionVariant, AccordionVariantLegacy>;
+
+/** Maps every legacy spelling onto its canonical replacement. */
+const VARIANT_ALIASES: Readonly<
+  Record<AccordionVariantLegacy, AccordionVariantCanonical>
+> = {
+  bordered: 'outline',
+};
 
 // ── tv() config ──
 
@@ -27,7 +44,7 @@ const accordionVariants = tv(
         default: {
           root: 'rounded-lg overflow-hidden divide-y divide-border',
         },
-        bordered: {
+        outline: {
           root: 'rounded-lg overflow-hidden divide-y divide-border border border-border',
         },
         ghost: {
@@ -85,7 +102,7 @@ export class AccordionComponent extends CollapsibleGroupComponent {
   /** Open mode. `'single'` allows one panel open at a time; `'multiple'` allows many. Defaults to `'single'`. */
   readonly type = input<AccordionType>('single');
 
-  /** Visual style of the accordion container. Defaults to `'default'`. */
+  /** Visual style of the accordion container. Defaults to `'default'`. `'bordered'` is a deprecated alias for `'outline'` and renders identically. */
   readonly variant = input<AccordionVariant>('default');
 
   /** In `'single'` mode, whether re-clicking the open panel closes it. Defaults to `true` — accordions are collapsible by definition; opt-out only. */
@@ -102,9 +119,18 @@ export class AccordionComponent extends CollapsibleGroupComponent {
   /** @internal APG: accordions don't carry `role="group"`. */
   override readonly hostRole = computed<string | null>(() => null);
 
+  /** @internal Canonical variant with legacy spellings folded in. */
+  private readonly resolvedVariant = computed<AccordionVariantCanonical>(() => {
+    const v = this.variant();
+    return (
+      (VARIANT_ALIASES as Record<string, AccordionVariantCanonical | undefined>)[v] ??
+      (v as AccordionVariantCanonical)
+    );
+  });
+
   /** @internal Variant-driven container classes; replaces the parent's default group string. */
   override readonly hostClasses = computed(() =>
-    accordionVariants({ variant: this.variant() }).root(),
+    accordionVariants({ variant: this.resolvedVariant() }).root(),
   );
 
   // ── Virtual-hook overrides ──

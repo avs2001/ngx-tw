@@ -492,8 +492,7 @@ export class DatePickerComponent<D = Date>
   /** Visual style of the trigger. `'default'` draws its own border; `'naked'` strips chrome. Auto-resolves to `'naked'` when inside `<tw-form-field>`. */
   readonly variant = input<DatePickerVariant | undefined>(undefined);
 
-  /** Whether to show a clear-button affordance inside the trigger when a value is set. Defaults to `true`. */
-  // TRUE-default: a picker without a clear affordance forces consumers to wire one — most form pickers expect the inline clear, matching `<tw-input>`'s clear button.
+  /** Whether to show a clear-button affordance inside the trigger when a value is set. Defaults to `true` — most form pickers expect the inline clear, matching `<tw-input>`'s clear button; without it consumers must wire one themselves. */
   readonly showClear = input<boolean>(true);
 
   /** When true, renders a `Today / Clear / Cancel / Apply` action bar at the bottom of the overlay. Defaults to `false`. */
