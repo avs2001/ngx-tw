@@ -48,7 +48,7 @@ test.describe('Calendar', () => {
 
     const target = calendar.calendarIn(calendar.rangeSection);
     const enabled = target.locator(
-      '[role="grid"] button:not([disabled])',
+      '[role="grid"] button:not([aria-disabled="true"])',
     );
     await enabled.nth(0).click();
     await enabled.nth(5).click();
@@ -67,8 +67,14 @@ test.describe('Calendar', () => {
     const target = calendar.calendarIn(calendar.constraintsSection);
     // The demo sets weekendDays = [0, 6] → Sunday and Saturday cells carry
     // `data-state-weekend`. Cells outside [min, max] carry
-    // `data-state-disabled` and the `disabled` attribute.
-    await expect(target.locator('[role="grid"] button[disabled]')).not.toHaveCount(0);
+    // `data-state-disabled` and `aria-disabled="true"` on their button.
+    //
+    // Deliberately NOT `button[disabled]`: calendar cells use `aria-disabled`,
+    // never the native attribute, so a disabled cell stays focusable and the
+    // roving tabindex cannot desynchronise from real DOM focus (SC 2.1.1).
+    await expect(
+      target.locator('[role="grid"] button[aria-disabled="true"]'),
+    ).not.toHaveCount(0);
   });
 
   test.fixme('@interaction multi-month: range-selection renders two grids and supports cross-grid selection', async ({
@@ -157,13 +163,13 @@ test.describe('Calendar', () => {
       await calendar.goto();
       const target = calendar.calendarIn(calendar.reactiveSection);
       await expect(
-        target.locator('[role="grid"] button:not([disabled])'),
+        target.locator('[role="grid"] button:not([aria-disabled="true"])'),
       ).not.toHaveCount(0);
       await calendar.reactiveSection
         .getByRole('button', { name: 'Toggle disabled' })
         .click();
       await expect(
-        target.locator('[role="grid"] button:not([disabled])'),
+        target.locator('[role="grid"] button:not([aria-disabled="true"])'),
       ).toHaveCount(0);
     },
   );
@@ -180,7 +186,7 @@ test.describe('Calendar', () => {
     await calendar.goto();
 
     const target = calendar.calendarIn(calendar.rangeClickSection);
-    const cells = target.locator('[role="grid"] button:not([disabled])');
+    const cells = target.locator('[role="grid"] button:not([aria-disabled="true"])');
 
     // Form a range: click cells at indices 5 and 15.
     await cells.nth(5).click();

@@ -119,8 +119,14 @@ const comboboxVariants = tv(
         'flex w-full items-center gap-1.5 rounded-md border border-border bg-surface text-fg transition-colors duration-normal motion-reduce:transition-none hover:border-border-strong focus-within:outline-2 focus-within:outline-offset-2',
       input:
         'flex-1 min-w-0 bg-transparent outline-none placeholder:text-fg-subtle disabled:cursor-not-allowed',
+      // `size-6` (24px) is the WCAG 2.2 SC 2.5.8 target-size floor and the `xs`
+      // step of the square-interactive scale. It does NOT scale with `size`:
+      // the clear sits inside the trigger, whose smallest pinned height is
+      // 24px (`xs` -> `h-6`), so any larger step would overflow the smallest
+      // trigger. The floor is what the success criterion asks for — which is
+      // also why `xs` no longer shrinks it to `size-4`.
       clearButton:
-        'inline-flex items-center justify-center shrink-0 size-5 rounded-md text-fg-muted hover:text-fg hover:bg-surface-muted transition-colors duration-normal motion-reduce:transition-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500',
+        'inline-flex items-center justify-center shrink-0 size-6 rounded-md text-fg-muted hover:text-fg hover:bg-surface-muted transition-colors duration-normal motion-reduce:transition-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500',
       chevron:
         'shrink-0 text-fg-muted transition-transform duration-normal motion-reduce:transition-none',
       spinner: 'shrink-0 text-fg-muted animate-spin',
@@ -133,7 +139,7 @@ const comboboxVariants = tv(
         // xs density: chevron and spinner use `size-3.5` (14px) — the codified
         // half-step between size-3 and size-4 that lines up with text-xs metric
         // inside a 24px trigger.
-        xs: { trigger: 'px-2 text-xs h-6', chevron: 'size-3.5', clearButton: 'size-4', spinner: 'size-3.5' },
+        xs: { trigger: 'px-2 text-xs h-6', chevron: 'size-3.5', spinner: 'size-3.5' },
         sm: { trigger: 'px-3 text-sm h-8', chevron: 'size-4', spinner: 'size-4' },
         md: { trigger: 'px-4 text-sm h-9', chevron: 'size-4', spinner: 'size-4' },
         lg: { trigger: 'px-5 text-base h-11', chevron: 'size-5', spinner: 'size-5' },
@@ -312,7 +318,6 @@ export class ComboboxSuffixDirective {}
       @if (showClearButton()) {
         <button
           type="button"
-          tabindex="-1"
           [class]="clearButtonClasses()"
           aria-label="Clear"
           (mousedown)="onClearMousedown($event)"
@@ -1080,7 +1085,15 @@ export class ComboboxComponent<T = unknown>
     event.stopPropagation();
   }
 
-  /** @internal */
+  /**
+   * @internal
+   *
+   * Reached by mouse and — since the button left `tabindex="-1"` — by Enter or
+   * Space from the keyboard, both of which a native `<button>` delivers here
+   * as a click. Clearing unmounts this button (`showClearButton()` goes
+   * false), so focus is handed back to the input rather than falling to
+   * `<body>` (SC 2.4.3).
+   */
   onClearClick(event: MouseEvent): void {
     event.preventDefault();
     event.stopPropagation();

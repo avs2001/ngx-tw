@@ -362,7 +362,15 @@ function compareOrders(active: string | null, dir: SortDirection): (a: Order, b:
         on a flex row or toolbar and use
         <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">&lt;button&gt;</code>
         headers for list views, kanban boards, or any grid that doesn't render as a
-        table.
+        table. On a
+        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">&lt;button&gt;</code>
+        host the host itself is the control — nothing interactive is nested inside it
+        — and
+        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">aria-sort</code>
+        is omitted, because outside a table there is no
+        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">columnheader</code>
+        for it to sit on. Pair the list with your own live region if the new order
+        needs announcing.
       </p>
       <div class="rounded-lg border border-border p-4 bg-surface-raised mb-4">
         <div

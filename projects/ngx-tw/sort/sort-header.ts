@@ -4,7 +4,7 @@ import {
   Component,
   computed,
   effect,
-  type ElementRef,
+  ElementRef,
   inject,
   input,
   isDevMode,
@@ -29,6 +29,29 @@ function snapshot(self: SortHeaderComponent): TwSortable {
 
 /** Position of the sort arrow relative to the header label. */
 export type TwSortArrowPosition = 'before' | 'after';
+
+/**
+ * Whether the host element exposes a `columnheader` / `rowheader` role, which are the only two
+ * roles `aria-sort` is valid on. A static `role` attribute wins over the tag name; a `[attr.role]`
+ * *binding* is not visible yet at construction time and is deliberately not consulted.
+ */
+function isHeaderCell(el: HTMLElement): boolean {
+  const role = el.getAttribute('role');
+  if (role !== null) return role === 'columnheader' || role === 'rowheader';
+  return el.tagName === 'TH';
+}
+
+/**
+ * Whether the host element is already an interactive control. When it is, the inner container must
+ * NOT also become one — two nested widgets is an axe `nested-interactive` failure and leaves
+ * assistive tech with an ambiguous activation target.
+ */
+function isInteractiveHost(el: HTMLElement): boolean {
+  const role = el.getAttribute('role');
+  if (role === 'button' || role === 'link') return true;
+  const tag = el.tagName;
+  return tag === 'BUTTON' || (tag === 'A' && el.hasAttribute('href'));
+}
 
 // ── Static per-color maps (Tailwind v4 requires literal class strings for its JIT scanner). ──
 
@@ -116,12 +139,23 @@ const sortHeaderVariants = tv(
         },
         false: {},
       },
+      // True when the consumer mounted the header on an element that is
+      // already a control (`<button>`, `<a href>`, `[role="button"]`). The
+      // inner container then stays inert, so the canonical focus ring has to
+      // move onto the host — it is the element that actually receives focus.
+      hostControl: {
+        true: {
+          host: 'rounded-md cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500',
+        },
+        false: {},
+      },
     },
     defaultVariants: {
       size: 'md',
       active: false,
       direction: 'none',
       disabled: false,
+      hostControl: false,
     },
   },
   { twMerge: true },
@@ -131,6 +165,24 @@ const sortHeaderVariants = tv(
  * Turns any element (e.g., `<th>`, `<div>`, `<button>`) into a sortable header under a parent
  * `SortDirective`. Renders the projected label plus an arrow that reflects the current direction.
  * Triggers a sort cycle on click or Enter/Space.
+ *
+ * @remarks
+ * **Where the control and `aria-sort` live depends on the host element.** Both are decided once,
+ * at construction, from the host's tag name and its *static* `role` attribute:
+ *
+ * | Host | `aria-sort` | Interactive element |
+ * |---|---|---|
+ * | `<th>` / `[role="columnheader"\|"rowheader"]` | on the host | inner container (`role="button"`) |
+ * | `<span>` / `<div>` (no role) | **not emitted** | inner container (`role="button"`) |
+ * | `<button>` / `<a href>` / `[role="button"\|"link"]` | **not emitted** | the host itself |
+ *
+ * `aria-sort` is only valid on a `columnheader` / `rowheader`, so emitting it on a `<span>` or
+ * `<button>` is an axe `aria-allowed-attr` failure and is silently ignored by assistive tech. When
+ * the header is composed *inside* a header cell — `<th><span tw-sort-header>…</span></th>`, the
+ * shape `tw-table` generates — the `<th>` owns `aria-sort` (see `tw-column`'s `sortState` input,
+ * which auto-resolves against the same `[twSort]` directive). Outside a table there is no
+ * `columnheader` to carry the state; the header remains a labelled button and the sort direction
+ * is conveyed by the arrow plus the consumer's own live region.
  */
 // Selector is deliberately kebab-case to read naturally as an HTML attribute on
 // host elements (e.g. `<th tw-sort-header>`). Camelcasing it to `twSortHeader`
@@ -144,7 +196,18 @@ const sortHeaderVariants = tv(
   templateUrl: './sort-header.html',
   host: {
     '[class]': 'hostClasses()',
-    '[attr.aria-sort]': 'ariaSort()',
+    '[attr.aria-sort]': 'hostAriaSort()',
+    // Sort state as a data attribute, on EVERY host shape.
+    //
+    // `aria-sort` is only legal on a header cell, so on a span or button host
+    // it is deliberately absent — which left the sort state with no stable,
+    // valid hook at all on those hosts. The direction was readable only from
+    // the arrow's rotation utility class, which is implementation detail no
+    // test or consumer should depend on. A `data-*` attribute is valid on any
+    // element and carries no ARIA semantics, so it states the same thing
+    // without lying to assistive tech. Values mirror `aria-sort` exactly, so
+    // a reader does not have to learn a second vocabulary.
+    '[attr.data-sort-direction]': 'ariaSort()',
     '[attr.aria-disabled]': 'isDisabled() ? "true" : null',
     '(click)': 'handleClick()',
     '(keydown)': 'handleKeydown($event)',
@@ -179,6 +242,18 @@ export class SortHeaderComponent implements OnInit, AfterViewInit, OnDestroy {
   private readonly focusMonitor = inject(FocusMonitor);
   private readonly ariaDescriber = inject(AriaDescriber, { optional: true });
 
+  private readonly hostEl: HTMLElement = inject(ElementRef).nativeElement;
+
+  /**
+   * Whether the host element can legally carry `aria-sort`. Resolved once, at construction — the
+   * host's tag name and static attributes are already applied by then, and a later `[attr.role]`
+   * binding would make this timing-dependent.
+   */
+  private readonly hostIsHeaderCell = isHeaderCell(this.hostEl);
+
+  /** Whether the host is already a control, in which case the inner container must stay inert. */
+  private readonly hostIsControl = isInteractiveHost(this.hostEl);
+
   private readonly containerRef =
     viewChild<ElementRef<HTMLElement>>('container');
 
@@ -198,7 +273,7 @@ export class SortHeaderComponent implements OnInit, AfterViewInit, OnDestroy {
     // silently ignore subsequent rebinds.
     effect(() => {
       const description = this.sortActionDescription();
-      const el = this.containerRef()?.nativeElement;
+      const el = this.controlElement();
       if (!el || !this.ariaDescriber) return;
       if (this._describedBy) {
         this.ariaDescriber.removeDescription(el, this._describedBy);
@@ -233,8 +308,36 @@ export class SortHeaderComponent implements OnInit, AfterViewInit, OnDestroy {
     return 'none';
   });
 
+  /**
+   * @internal Value actually written to the host's `aria-sort` attribute. `null` — i.e. no
+   * attribute — unless the host is a `columnheader` / `rowheader`; see the class remarks.
+   */
+  readonly hostAriaSort = computed(() =>
+    this.hostIsHeaderCell ? this.ariaSort() : null,
+  );
+
+  /** @internal `role` for the inner container: `'button'` unless the host is already the control. */
+  readonly controlRole = computed(() =>
+    this.hostIsControl || this.isDisabled() ? null : 'button',
+  );
+
+  /** @internal `tabindex` for the inner container. Mirrors `controlRole()`. */
+  readonly controlTabIndex = computed(() =>
+    this.hostIsControl || this.isDisabled() ? null : 0,
+  );
+
   /** Whether the arrow element should render. Active headers always render; inactive render when not disabled so hover reveals the affordance. */
   readonly renderArrow = computed(() => this.isActive() || !this.isDisabled());
+
+  /**
+   * The element that carries focus and the accessible description — the host when the consumer
+   * mounted the header on a control, the inner container otherwise.
+   */
+  private controlElement(): HTMLElement | undefined {
+    return this.hostIsControl
+      ? this.hostEl
+      : this.containerRef()?.nativeElement;
+  }
 
   // ── Variant class computation ──
 
@@ -244,6 +347,7 @@ export class SortHeaderComponent implements OnInit, AfterViewInit, OnDestroy {
       active: this.isActive(),
       direction: this.effectiveDirection() ?? 'none',
       disabled: this.isDisabled(),
+      hostControl: this.hostIsControl,
     }),
   );
 
@@ -273,14 +377,14 @@ export class SortHeaderComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   ngAfterViewInit(): void {
-    const el = this.containerRef()?.nativeElement;
+    const el = this.controlElement();
     if (el) {
       this.focusMonitor.monitor(el, true);
     }
   }
 
   ngOnDestroy(): void {
-    const el = this.containerRef()?.nativeElement;
+    const el = this.controlElement();
     if (el) {
       this.focusMonitor.stopMonitoring(el);
       if (this._describedBy && this.ariaDescriber) {

@@ -211,9 +211,21 @@ const carouselVariants = tv(
         'text-white hover:bg-overlay-control-hover transition-colors duration-200 motion-reduce:transition-none ' +
         'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500',
       indicators: 'flex items-center justify-center',
-      indicator:
-        'inline-block transition-colors duration-200 motion-reduce:transition-none cursor-pointer ' +
+      // The indicator <button> — the pointer/keyboard target. WCAG 2.2
+      // SC 2.5.8 wants 24x24 CSS px and the spacing exception is unavailable
+      // (indicators sit in a row, a 24px circle on each would intersect its
+      // neighbour). A 12px dot cannot be the target, so the target and the
+      // painted mark are two elements: this one is floored at 24x24 at every
+      // size and stays transparent; `indicator` below is the visible mark and
+      // keeps the whole size axis. Targets wider than the floor (numbers at
+      // lg/xl, an active line at `w-12`) grow from the mark inside.
+      indicatorTarget:
+        'inline-flex shrink-0 items-center justify-center min-h-6 min-w-6 cursor-pointer ' +
         'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500',
+      // The painted mark inside the target. Never focusable — the focus ring
+      // lives on `indicatorTarget`, the color transition lives here because
+      // this is the element whose `bg-*` changes.
+      indicator: 'block transition-colors duration-200 motion-reduce:transition-none',
     },
     variants: {
       orientation: {
@@ -1432,14 +1444,16 @@ export class CarouselComponent {
     @for (page of _pages(); track page) {
       <button
         type="button"
-        [class]="_buttonClasses(page)"
+        [class]="_buttonClasses()"
         [attr.aria-label]="_buttonLabel(page)"
         [attr.aria-current]="page === carousel.activePage() ? 'true' : null"
         (click)="_onClick(page)"
       >
-        @if (variant() === 'numbers') {
-          {{ page + 1 }}
-        }
+        <span [class]="_indicatorClasses(page)">
+          @if (variant() === 'numbers') {
+            {{ page + 1 }}
+          }
+        </span>
       </button>
     }
   `,
@@ -1504,7 +1518,11 @@ export class CarouselIndicatorsComponent {
     }
   }
 
-  _buttonClasses(page: number): string {
+  /** @internal Classes for the indicator `<button>` — the 24x24-floored hit target (SC 2.5.8). Identical for every page, so it is a computed rather than a per-page call. */
+  readonly _buttonClasses = computed(() => this._variantResult().indicatorTarget());
+
+  /** @internal Classes for the painted mark inside the target: geometry from the `variant` × `size` compound variants, fill from the active/inactive lookup. */
+  _indicatorClasses(page: number): string {
     const base = this._variantResult().indicator();
     const active = page === this.carousel.activePage();
     const stateClasses = active

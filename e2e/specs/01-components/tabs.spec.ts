@@ -107,16 +107,17 @@ test.describe('Tabs', () => {
     const t = new TabsPage(page);
     await t.goto();
 
-    // Post-S* the trigger is `<div role="tab">` (not `<button>`) so the
-    // inner close `<button>` is valid HTML — see `tabs.html` and the
-    // backlog notes on `nested-interactive`. Anchor by `role="tab"` only;
-    // the `<button>` selector would never match.
+    // The trigger is a `<div role="tab">` and the close affordance inside it
+    // is a pointer-only `<span data-tw-tab-close>` — nothing focusable may
+    // live inside an element with an interactive role (axe
+    // `nested-interactive`). Anchor on the role and the data marker; a
+    // `<button>` selector matches neither.
     const review = t.closableSection.locator('[role="tab"][id$="tab-review"]');
     await review.click();
     await expect(review).toHaveAttribute('aria-selected', 'true');
 
-    const closeBtn = t.closableSection.locator('button[aria-label="Close Review"]');
-    await closeBtn.click();
+    const closeControl = review.locator('[data-tw-tab-close]');
+    await closeControl.click();
 
     // The source's `findNearestEnabledTab` searches forward first, then
     // backward. Closing 'review' (the active tab) re-selects 'published'

@@ -22,10 +22,27 @@
   --color-fg-muted: var(--color-gray-600);
   --color-fg-subtle: var(--color-gray-500);
 
-  /* ===== Border ===== */
-  --color-border: var(--color-gray-300);
+  /* ===== Border =====
+     `--color-border` and `--color-border-strong` carry the boundary that
+     IDENTIFIES a control — the outline of an input, a checkbox, a select
+     trigger. WCAG 2.2 SC 1.4.11 (Non-text Contrast) requires 3:1 for exactly
+     that, and for an unchecked checkbox the border IS the component. Measured
+     against `--color-surface`, gray-300 gave 1.47:1 and gray-400 gave 2.60:1,
+     so both failed; the values below are the first palette steps that clear
+     3:1 (4.79:1 and 7.56:1 in light, 4.16:1 and 8.59:1 in dark).
+
+     `--color-border-muted` is deliberately NOT raised. It is the decorative
+     divider — ghost-variant footers, subtle rules between rows — and SC 1.4.11
+     exempts boundaries that are purely decorative and not needed to identify a
+     component or its state. Raising it would darken every hairline in the
+     library for no accessibility gain.
+
+     axe does not catch any of this: its `color-contrast` rule tests TEXT only,
+     so these three tokens were invisible to the a11y sweep and were measured
+     by hand. See docs/audit-2026-09-register.md. */
+  --color-border: var(--color-gray-500);
   --color-border-muted: var(--color-gray-200);
-  --color-border-strong: var(--color-gray-400);
+  --color-border-strong: var(--color-gray-600);
 
   /* ===== Table sticky shadows =====
      Hairline 1px shadows used to separate sticky table chrome from scrolled

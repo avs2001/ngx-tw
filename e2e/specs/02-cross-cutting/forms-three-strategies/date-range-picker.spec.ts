@@ -31,7 +31,7 @@ test.describe('Forms · Three strategies · Date Range Picker', () => {
     await picker.trigger(target).click();
     await picker.waitForOpen();
     const enabled = picker.overlayCalendar.locator(
-      '[role="grid"] button:not([disabled])',
+      '[role="grid"] button:not([aria-disabled="true"])',
     );
     await enabled.nth(0).click();
     await enabled.nth(3).click();
@@ -89,7 +89,7 @@ test.describe('Forms · Three strategies · Date Range Picker', () => {
     await picker.trigger(target).click();
     await picker.waitForOpen();
     const enabled = picker.overlayCalendar.locator(
-      '[role="grid"] button:not([disabled])',
+      '[role="grid"] button:not([aria-disabled="true"])',
     );
     await enabled.nth(0).click();
     await enabled.nth(3).click();

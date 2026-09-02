@@ -57,7 +57,7 @@ test.describe('Date Picker', () => {
     await picker.waitForOpen();
 
     const enabledCell = picker.overlayCalendar
-      .locator('[role="grid"] button:not([disabled])')
+      .locator('[role="grid"] button:not([aria-disabled="true"])')
       .first();
     await enabledCell.click();
     await picker.waitForClosed();
@@ -80,7 +80,7 @@ test.describe('Date Picker', () => {
     // 30-day min/max window together always disable several cells in the
     // visible grid. Assert the observable contract: at least one disabled
     // cell appears with `data-state-disabled`.
-    const disabled = picker.overlayCalendar.locator('[role="grid"] button[disabled]');
+    const disabled = picker.overlayCalendar.locator('[role="grid"] button[aria-disabled="true"]');
     await expect(disabled.first()).toBeVisible();
   });
 
@@ -98,7 +98,7 @@ test.describe('Date Picker', () => {
     // today+30 are disabled. There is always at least one disabled cell in
     // the rendered month grid since the active month spans the window edge.
     const disabled = picker.overlayCalendar.locator(
-      '[role="grid"] button[disabled]',
+      '[role="grid"] button[aria-disabled="true"]',
     );
     await expect(disabled.first()).toBeVisible();
   });

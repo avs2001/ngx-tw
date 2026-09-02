@@ -74,6 +74,17 @@ Describe *purpose and behavior* in one line. Do not describe TypeScript types �
 - **Naming.** Angular v22 style guide: bare names, no type suffixes — `button.ts`, `badge.ts`, `button.spec.ts`.
 - **Secondary entry points.** Every component directory is its own entry point. Consumers import per-component: `import { ButtonComponent } from '@cdevhub/ngx-tw/button'`. Each directory needs its own `ng-package.json` with `{ "lib": { "entryFile": "index.ts" } }` and an `index.ts` re-exporting the public API.
 - **Class naming.** Angular CLI conventions — `ButtonComponent`, `BadgeDirective`, `TooltipDirective`. **Never** apply a `Tw*` prefix to component or directive class identifiers — the package scope (`@cdevhub/ngx-tw/button`) provides namespacing, and Angular CLI reserves bare names for component classes. Selectors are unaffected: element selectors keep the `tw-` prefix (`tw-button`); attribute selectors keep the `tw` camelCase prefix (`twBadge`). Shared **types** are the only identifiers that carry a `Tw` prefix (`TwColor`, `TwSize`) because they are hand-authored and appear in consumer code with no other namespace cue. The `TwSplit*` family has since been renamed (`SplitComponent`, `SplitPaneComponent`, `SplitGutterDirective`, `SplitPaneHeaderDirective`); no component or directive class carries a `Tw` prefix today. The remaining `Tw*` classes — `TwDialog`, `TwDialogRef`, `TwDialogConfig`, `TwDateRange` — are a service, a ref, a config and a value type, none of which this rule covers.
+
+  **Scope of the rule, stated positively** so it stops being read as ambiguous:
+
+  | Identifier kind | Prefix | Why |
+  |---|---|---|
+  | Component / directive class | **never** `Tw` | the entry point namespaces it, and Angular CLI reserves the bare name |
+  | Shared type, interface, enum | `Tw` | hand-authored, appears in consumer code with no other namespace cue (`TwColor`, `TwSize`, `TwDateRange`) |
+  | Service, ref, config class | `Tw` **permitted** | these are injected or constructed by name in consumer code, where the bare name would collide with common words (`TwDialog`, `TwDialogRef`, `TwDialogConfig`) |
+  | Injection token | `TW_` | matches the Angular convention for tokens (`TW_ERROR_STATE_MATCHER`) |
+
+  A `Tw`-prefixed service or config is therefore correct, not a tolerated exception.
 - Shared code (e.g., `types.ts`) lives in a `core/` secondary entry point (`@cdevhub/ngx-tw/core`).
 - Root `public-api.ts` re-exports all entry points for convenience; consumers are encouraged to use direct imports for tree-shaking.
 - `projects/ngx-tw/theme/` ships **both** the default theme CSS (semantic-token → Tailwind palette mapping, copied as a CSS asset via the root `ng-package.json` `assets` glob and consumed by direct file path) **and** a secondary entry point `@cdevhub/ngx-tw/theme` exporting the runtime theming API (`provideTheme`, `ThemeService`, `ThemeDirective`, `THEME_CONFIG`). The TS entry is re-exported from the root barrel like every other entry point.
@@ -349,6 +360,7 @@ Do not use `border-2` or thicker for structural borders. Reserve 2px borders for
 
 - Use **tailwind-variants** (`tv`) for all variant-driven styling. The single pattern for managing class strings across the library.
 - Define a `tv()` config per component, co-located in the same file. Do not export variant configs.
+- **Carve-out: a `tv()` config shared by two or more components** may live in `core/` and be exported, because the alternative is duplicating it and letting the copies drift. `tabTriggerVariants` (`core/tab-trigger-variants.ts`, shared by `tabs` and `tab-nav`) is the only one today. A shared config is still not consumer API — it is exported so a sibling entry point can import it, and it carries no compatibility promise.
 - **Slots** for multi-part components (e.g., a card with root/header/body/footer). Single-element components use `tv()` without slots.
 - Wire variants to signal inputs via `computed()` and apply through `host: { '[class]': 'classes()' }` (or per-slot in templates).
 - Always define `defaultVariants` so the component works with zero configuration.
@@ -433,14 +445,16 @@ The library codifies five exceptions where the cap is impractical because the co
 | **Overlay-bearing components** | CDK overlay primitives demand position, scroll strategy, backdrop, focus-trap, close-behavior, etc. | popover, menu, tooltip, dialog, command-palette, select, calendar/date-picker, time-picker |
 | **Form controls** | ARIA + Forms baseline (`aria-label{ledby,by}`, `name`, `label`, `description`, `required`, `disabled`, `labelPosition`, plus `color`/`size`/`variant`) is ~12 inputs minimum | `checkbox` (12+ inputs) |
 | **Structural-layout primitives** | Each input is an independent geometric or behavioural axis (axis, unit, gutter, persistence, keyboard step, RTL, label) | `split` (`SplitComponent` 8 + `SplitPaneComponent` 7) |
-| **Data primitives** | Tabular APIs have multiple orthogonal config axes (appearance, sticky, responsive, selection) | `table` — temporary; PR8 reshapes into config objects, after which this exception no longer applies |
+| **Data primitives** | Tabular APIs have multiple orthogonal config axes (appearance, sticky, responsive, selection) that do not usefully collapse into config objects — each is independently set and independently read | `table` |
 | **Navigation primitives** | Pagination demands many independent semantic axes (boundary/sibling counts, layout, type, page-size selector, first/last jump buttons, responsive collapse, link-mode factory, custom labels for i18n) that cannot meaningfully be flattened into config objects. Material's `MatPaginator` carries a comparable surface. | `paginator` (~20 inputs) |
 
 Visual primitives (avatar, icon) and decorative primitives (progress-bar) do **not** qualify — reshape with config objects.
 
 ### Boolean defaults
 
-Boolean inputs default to `false`. The exception: defaults of `true` are permitted when the resting "off" state would surprise consumers and the rationale is documented in an inline JSDoc comment on the same input. The codified list:
+Boolean inputs default to `false`. The exception: defaults of `true` are permitted when the resting "off" state would surprise consumers and the rationale is documented **in the JSDoc block on the same input** — not in a bare `//` comment, which Compodoc cannot see and which therefore never reaches the demo's API table.
+
+The list below is **illustrative, not exhaustive**. It records the cases that were codified first; the library has ~30 such inputs and every one carries a justification. The rule is the JSDoc requirement, not membership of this list — do not treat an absent entry as a violation, and do not expect to update this list when adding a justified input.
 
 - `spinner.track = input(true)` — without the track ring the spinner reads as a partial arc, not a loading indicator
 - `accordion.collapsible = input(true)` — accordions are collapsible by definition; opt-out only
@@ -457,7 +471,7 @@ Boolean inputs default to `false`. The exception: defaults of `true` are permitt
 - `timePicker.showSteppers = input(true)` — the stepper buttons are the time-picker's primary affordance
 - `timePicker.showClear = input(true)` — clearing a partial time is the expected gesture; suppressing it is the special case
 
-New boolean inputs that default to `true` MUST land with the same inline-comment justification or the input must be inverted (e.g., `disabled` instead of `enabled`).
+New boolean inputs that default to `true` MUST carry their justification in the input's JSDoc block, or the input must be inverted (e.g., `disabled` instead of `enabled`).
 
 ## Accessibility
 

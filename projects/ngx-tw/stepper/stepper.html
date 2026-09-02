@@ -1,27 +1,44 @@
 <!-- Header strip + inline panels (vertical) / header-only (horizontal) -->
-<!-- WAI-ARIA tablist pattern: the tablist relays keydown to the FocusKeyManager
-     but does not itself receive focus — each step header is the focus target. -->
+<!-- Two ARIA shapes share this template, selected by orientation:
+
+     horizontal — WAI-ARIA tabs. The strip is a tablist, each header is a tab,
+     and the single panel renders BELOW the strip, outside it, as the pattern
+     requires.
+
+     vertical — disclosure buttons. The panel renders inline under its own
+     header, i.e. inside the strip. A tablist may own nothing but tabs, so the
+     tab roles fail there: axe reports "Element has children which are not
+     allowed: [role=tabpanel]" on the strip. A stack of expand/collapse
+     sections is what the vertical layout actually is, so the strip drops its
+     role, each header stays a plain button carrying aria-expanded, and the
+     inline panel is a named group.
+
+     In both shapes the strip only relays keydown to CdkStepper's
+     FocusKeyManager — it never takes focus itself; the headers do. -->
 <!-- eslint-disable-next-line @angular-eslint/template/interactive-supports-focus -->
 <div
   [class]="headerClasses()"
-  role="tablist"
-  [attr.aria-orientation]="orientationValue()"
+  [attr.role]="usesTabPattern() ? 'tablist' : null"
+  [attr.aria-orientation]="usesTabPattern() ? orientationValue() : null"
   (keydown)="onTablistKeydown($event)"
 >
   @for (step of twSteps; track $index; let i = $index; let last = $last) {
     <div [class]="stepItemClasses()">
-      <!-- Step header button -->
+      <!-- Step header button. `role` is bound, not static: CdkStepHeader sets
+           `role="tab"` as a host attribute, and only an attribute binding can
+           override it for the vertical disclosure shape. -->
       <button
         type="button"
         cdkStepHeader
-        role="tab"
+        [attr.role]="usesTabPattern() ? 'tab' : 'button'"
         [attr.tabindex]="focusIndexValue() === i ? 0 : -1"
         [class]="stepHeaderClasses()"
         [class.pointer-events-none]="!headerInteractive() || !step.isNavigable()"
         [class.opacity-60]="!step.isNavigable()"
         [id]="_getStepLabelId(i)"
-        [attr.aria-controls]="_getStepContentId(i)"
-        [attr.aria-selected]="selectedIndexValue() === i"
+        [attr.aria-controls]="controlledPanelId(step, i)"
+        [attr.aria-selected]="usesTabPattern() ? selectedIndexValue() === i : null"
+        [attr.aria-expanded]="usesTabPattern() ? null : hasInlinePanel(step, i)"
         [attr.aria-current]="selectedIndexValue() === i ? 'step' : null"
         [attr.aria-disabled]="!step.isNavigable() || null"
         [attr.aria-invalid]="shouldRenderError(step) || null"
@@ -127,10 +144,12 @@
         ></span>
       }
 
-      <!-- Vertical: panel is rendered inline under each selected step -->
-      @if (orientationValue() === 'vertical' && selectedIndexValue() === i && step.content) {
+      <!-- Vertical: panel is rendered inline under each selected step. It sits
+           inside the header strip, so it is a named group, not a tabpanel —
+           see the ARIA note at the top of this file. -->
+      @if (hasInlinePanel(step, i)) {
         <div
-          role="tabpanel"
+          role="group"
           [id]="_getStepContentId(i)"
           [attr.aria-labelledby]="_getStepLabelId(i)"
           [class]="stepPanelClasses()"

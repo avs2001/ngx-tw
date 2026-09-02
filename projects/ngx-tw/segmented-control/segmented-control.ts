@@ -206,13 +206,18 @@ export class SegmentedControlOptionComponent {
   readonly isFocusable = computed(() => {
     if (this.isDisabled()) return false;
     if (this.isActive()) return true;
-    // If no option is active, first non-disabled option gets focus
-    if (this.parent?.activeValue() === null) {
-      const opts = this.parent.options();
-      const first = opts.find((o: SegmentedControlOptionComponent) => !o.isDisabled());
-      return first?.value() === this.value();
-    }
-    return false;
+    // Roving-tabindex recovery. The fallback used to be gated on
+    // `activeValue() === null`, which is a strict check: `undefined`, `''`, a
+    // stale id, or an active option that is itself disabled all left NO
+    // option tabbable and dropped the whole control out of the tab order
+    // (WCAG SC 2.1.1). The real condition is "no enabled option is active".
+    const opts = this.parent?.options() ?? [];
+    const hasTabbableActive = opts.some(
+      (o: SegmentedControlOptionComponent) => o.isActive() && !o.isDisabled(),
+    );
+    if (hasTabbableActive) return false;
+    const first = opts.find((o: SegmentedControlOptionComponent) => !o.isDisabled());
+    return first?.value() === this.value();
   });
 
   readonly classes = computed(() => {
@@ -327,10 +332,28 @@ export class SegmentedControlComponent implements ControlValueAccessor {
 
   // ── Keyboard navigation ──
 
-  /** @internal Handles roving-focus keyboard navigation (Arrow keys, Home, End) across the option group. */
+  /** @internal Handles roving-focus keyboard navigation (Arrow keys, Home, End) and Space / Enter activation across the option group. */
   onKeydown(event: KeyboardEvent): void {
     const opts = this.options();
     if (opts.length === 0) return;
+
+    // Space activates the focused option, as WAI-ARIA requires of every
+    // `role="radio"`. The option host is a custom element, not a native
+    // control, so no click event is synthesised for us — without this branch
+    // selection is pointer-only (WCAG SC 2.1.1). Enter is accepted too: it
+    // costs nothing and matches what users expect from a button-like control.
+    if (event.key === ' ' || event.key === 'Spacebar' || event.key === 'Enter') {
+      const target = event.target as Node | null;
+      const focused = target
+        ? opts.find(o => o.elementRef.nativeElement.contains(target))
+        : undefined;
+      if (focused && !focused.isDisabled()) {
+        // Space would otherwise scroll the page.
+        event.preventDefault();
+        this.selectOption(focused.value());
+      }
+      return;
+    }
 
     let targetIndex = -1;
     const currentIdx = opts.findIndex(o => o.value() === this.activeValue());

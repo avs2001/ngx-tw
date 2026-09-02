@@ -398,7 +398,7 @@ const SIZES: TwSize[] = ['xs', 'sm', 'md', 'lg', 'xl'];
         >
           <tw-step>
             <ng-template twStepLabel>
-              <span class="font-semibold text-primary-700 dark:text-primary-300">Step one</span>
+              <span class="font-semibold text-primary-fg">Step one</span>
               <span class="text-xs text-fg-muted ml-1">— required</span>
             </ng-template>
             <p class="text-sm text-fg-muted">Custom label template.</p>
@@ -745,7 +745,7 @@ protected readonly passwordControl = new FormControl('', {
 >
   <tw-step>
     <ng-template twStepLabel>
-      <span class="font-semibold text-primary-700">Step one</span>
+      <span class="font-semibold text-primary-fg">Step one</span>
       <span class="text-xs text-fg-muted ml-1">— required</span>
     </ng-template>
     <p>Custom label template.</p>

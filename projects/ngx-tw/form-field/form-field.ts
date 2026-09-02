@@ -190,8 +190,28 @@ const formFieldVariants = tv({
       true: { subscriptWrapper: 'min-h-5' },
       false: {},
     },
+    // The disabled treatment splits across two slots on purpose.
+    //
+    // `opacity-50` moved OFF `root`. `root` wraps both the control row and the
+    // subscript (hint/error) row, so dimming it composited every hint down to
+    // 50% alpha over the page surface. At that alpha no foreground token can
+    // reach AA: pure black at 50% over white is #808080 = 3.95:1, and
+    // `text-fg-muted` (gray-600, 7.56:1 at rest) measured 2.34:1 light /
+    // 3.92:1 dark. That is a real SC 1.4.3 failure — a hint is a description OF
+    // the control, not part OF the inactive control, so it does not inherit
+    // 1.4.3's inactive-component exemption — and it is the text most worth
+    // reading on a disabled field ("Disabled — slugs can no longer be edited").
+    // The label wrapper is nested inside `controlWrapper` (see
+    // `form-field.html`), so the label keeps exactly the dimming it had, and
+    // axe already exempts it anyway via its `<label for>` → disabled control.
+    //
+    // `pointer-events-none` deliberately STAYS on `root`. Moving it would make
+    // the subscript row live again, and the host's `(click)` forwards to
+    // `control.onContainerClick()` — which not every wrapped control guards on
+    // its disabled state. Keeping it on the host preserves the interaction
+    // semantics exactly; only the composited alpha changes.
     disabled: {
-      true: { root: 'opacity-50 pointer-events-none' },
+      true: { root: 'pointer-events-none', controlWrapper: 'opacity-50' },
       false: {},
     },
   },

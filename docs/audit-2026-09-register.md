@@ -138,10 +138,10 @@ into the rhythm diff would make a regression in either unattributable.
 ### Coverage gaps behind all of the above
 
 1. `AXE_TAGS` omits `wcag22aa` (above).
-1. **axe never scans an interactive state** — `runAxe` runs only after `goto`. No open overlay,
+2. **axe never scans an interactive state** — `runAxe` runs only after `goto`. No open overlay,
    error or disabled state is ever scanned. That is where a11y bugs live.
 3. The only cross-theme contrast sweep is `test.fixme`'d; **high-contrast has zero verification.**
-3. `A11Y_BACKLOG` excludes 12 components wholesale rather than per-rule.
+4. `A11Y_BACKLOG` excludes 12 components wholesale rather than per-rule.
 
 ---
 
@@ -253,15 +253,15 @@ rule wins before anything should change.
    certainly the stale half — but that is your call, not mine. **[measured]**
 2. **The `table` data-primitive exception has self-expired.** It is written as valid only until
    PR8 reshapes the API into config objects. That shipped; `table` still has 12 inputs. **[verified]**
-2. **`tabTriggerVariants` is exported from `core/index.ts:42`**, contradicting "Do not export
+3. **`tabTriggerVariants` is exported from `core/index.ts:42`**, contradicting "Do not export
    variant configs." Either the rule needs a carve-out for shared cross-component configs, or the
    export should go. **[verified]**
-3. **The boolean `true`-default allow-list is 17 entries short** — 30 exist in code. All 17
+4. **The boolean `true`-default allow-list is 17 entries short** — 30 exist in code. All 17
    unlisted ones *do* carry justification, so the code complies and the spec lags. Decide whether
    the list is exhaustive-normative or illustrative. **[reported]**
-4. **Boolean justification comment style is specified two ways** (JSDoc at `:433`, inline `//` at
+5. **Boolean justification comment style is specified two ways** (JSDoc at `:433`, inline `//` at
    `:451`); 12 of 17 use `//`, which Compodoc cannot see. **[reported]**
-5. **`Tw*` class prefixes.** `TwDialog`, `TwDialogRef`, `TwDialogConfig`, `TwDateRange` exist. The
+6. **`Tw*` class prefixes.** `TwDialog`, `TwDialogRef`, `TwDialogConfig`, `TwDateRange` exist. The
    rule as written covers only *components and directives*, so these are not violations by the
    letter — but the intent is ambiguous. **[verified]**
 
@@ -381,3 +381,213 @@ overstated: it greps by property name and so misses every aliased input (`disabl
 3. **The dev server does not pick up a `dist/ngx-tw` rebuild on its own.** It watches demo source.
    After `build:lib`, touch a demo file (or restart it) before measuring, or you will verify a fix
    against the build that predates it — which happened here, and made a landed fix look inert.
+
+---
+
+# Pass 3 — 2026-09-02, accessibility
+
+Scope: resolve Tier 2 (the 26 HIGH accessibility findings), the remaining Tier 4 policy
+contradictions, and the open items from Pass 2 §2.2. Maintainer decisions taken up front:
+contrast **in scope**; toast and tooltip behavioural changes **both approved**; the `table`
+input-cap exception **loses its sunset clause**; all remaining Tier 4 spec items **resolved**.
+
+## 3.0 — The coverage gaps came first, because nothing else was measurable without them
+
+The register said to enable `wcag22aa` and triage in the same change. That was right, and
+understated: three of the four coverage gaps had to be fixed before a single component finding
+could be trusted.
+
+**1. `A11Y_BACKLOG` excluded 12 components WHOLESALE.** Those twelve held most of Tier 2. A
+component-wide skip hides every rule the component does *not* violate as well as the one it does,
+so a backlogged component could regress on anything and the sweep stayed green. It is now a map
+keyed `component:scheme` → rule ids, seeded from a measured sweep. Fixing a component means
+deleting its rule ids one at a time, and a rule that stops firing is reported as a **stale
+allowance** and must be deleted — so the list cannot rot into permanent permission.
+
+**2. axe was scanning mid-animation, and 43 of its 49 contrast failures were phantoms.**
+`runAxe` ran the instant the `<h1>` appeared, while the demo shell was still fading its chrome in,
+so axe sampled intermediate blended colours. The same element reported a different colour on every
+page — which is what gave it away. With a 1200ms settle:
+
+| | before | after |
+|---|---|---|
+| components reporting `color-contrast` | **49 of 52** | **6** |
+| total (component, rule) pairs | — | 22 |
+
+The A11Y_BACKLOG comment's claim that "several semantic tokens in `_dark.css` don't yet satisfy AA"
+was substantially this artefact. **[measured]**
+
+**3. `wcag22aa` is now in `AXE_TAGS`.** It surfaced exactly one new rule the suite could not
+previously see: `target-size` on `carousel`.
+
+**4. axe never scanned an interactive state.** New sweep,
+`e2e/specs/03-accessibility/interactive-states.spec.ts` (`@openstate`): opens the overlay on nine
+components and scans it. This surface had **never been scanned in the library's history**, and it
+immediately found five real defects that no rest-state scan can reach:
+
+| Component | Rule | What it means |
+|---|---|---|
+| `select` | `aria-prohibited-attr`, `button-name` | an ARIA attribute the role forbids, and a button with no discernible text |
+| `dialog` | `scrollable-region-focusable` | a mouse user can scroll the dialog body, a keyboard user cannot |
+| `popover` | `aria-dialog-name` | renders `role="dialog"` with no accessible name |
+| `menu`, `combobox`, `select` | `region` | overlay content is portalled outside any landmark |
+
+The opener is role-based rather than per-component, and three details were needed to make it
+honest: scope the trigger search to `main` (an unscoped "first trigger" picks the demo shell's own
+theme picker on every route), dismiss between strategies (a leftover transparent backdrop
+intercepts the next click and makes a working component read as "has no trigger"), and wait on the
+pane's first CHILD rather than the pane (`sheet` and `command-palette` use a zero-size positioning
+box, so the pane itself is never "visible" and two correct components read as broken).
+
+**5. The cross-theme contrast sweep is no longer `test.fixme`'d.** High-contrast had **zero**
+verification. With the settle applied it passes in all three themes, with one documented
+selector exclusion — the form-field hint, which is the single genuinely failing surface.
+
+## 3.1 — Contrast: measured, and narrower than the register implied
+
+The register's numbers reproduce exactly: `--color-border` **1.47:1** and `--color-border-strong`
+**2.60:1** in light, against SC 1.4.11's 3:1. Both raised (now 4.79:1 and 7.56:1 light, 4.16:1 and
+8.59:1 dark), in both hand-duplicated dark activation blocks.
+
+Two corrections to the register, both measured:
+
+- **`--color-fg-muted` and `--color-fg-subtle` PASS everywhere** — 7.56:1 and 4.84:1 against
+  surface in light. The claim that muted text was failing was the animation artefact above.
+- **`--color-border-muted` is deliberately NOT raised.** It is the decorative divider, and
+  SC 1.4.11 exempts boundaries not needed to identify a component or its state.
+
+Worth recording for the next audit: **axe cannot see any of this.** Its `color-contrast` rule
+tests text only, so all three border tokens were invisible to the sweep and had to be measured by
+hand against a canvas-rasterised `oklch()` value. A first attempt that parsed the `oklch()` string
+as RGB produced confident, entirely wrong ratios.
+
+## 3.2 — Tier 4, resolved
+
+| # | Resolution |
+|---|---|
+| 1 | `text-base` — settled in Pass 2; the trigger table is authoritative. |
+| 2 | `table`'s data-primitive exception **loses its sunset clause** and becomes permanent. Its 12 inputs are independently set and independently read; collapsing them into config objects buys nothing and breaks every consumer. |
+| 3 | **Carve-out added** for a `tv()` config shared by two or more components. `tabTriggerVariants` is the only one, and it is exported so a sibling entry point can import it — not as consumer API. |
+| 4 | The boolean `true`-default list is now **illustrative, not exhaustive**. The rule is the JSDoc requirement; ~30 such inputs exist and all carry justification. An absent entry is not a violation. |
+| 5 | Justification must live in the input's **JSDoc block**, not a bare `//` — Compodoc cannot read `//`, so 12 of 17 justifications never reached the demo's API table. |
+| 6 | The `Tw*` prefix rule now states its scope **positively**, as a table: never on a component/directive class; expected on shared types; permitted on services, refs and configs; `TW_` on injection tokens. A `Tw`-prefixed service is correct, not tolerated. |
+
+## 3.3 — `twMerge` blindness: the audit's claim verified, with a correction
+
+Pass 2 recorded "three `classGroups` lines, not a 55-call-site refactor". Tested against the
+installed `tailwind-variants@0.3.1` and `tailwind-merge`:
+
+- The config is genuinely tiny, but it must **extend the existing `duration` group**, not declare
+  a new one. A first attempt that invented a `transition-duration` group returned both classes and
+  looked like proof the fix was impossible.
+- `createTV` **does** apply it globally: `createTV({ twMergeConfig: { extend: { classGroups: {
+  duration: ['duration-normal'] } } } })` collapses `duration-normal duration-500` to
+  `duration-500`.
+- **But the plumbing is still ~55 files**, because every component imports `tv` from
+  `tailwind-variants` directly. The config is 3 lines; threading a shared factory is not. The
+  audit's "worth reprioritising" is half right: cheap to specify, not cheap to land.
+
+## 3.4 — Component fixes
+
+Partitioned by component ownership, not by success criterion — the Tier 2 tables slice by SC, so
+`select` appears in four of them and `calendar` in three. An SC-based split would have deadlocked
+on the same files.
+
+### select / combobox
+
+- **The axe failures were the F10 footgun again, not a library defect.** `aria-prohibited-attr`
+  and `button-name` fired on 15 nodes from ONE cause: `[attr.aria-label]` on `<tw-select>`, which
+  aliases `aria-label` as an *input*. The attribute binding never feeds the input, the inner
+  `role="combobox"` button resolves its name to null, and because the button then has no name,
+  axe's `ariaProhibitedAttrEvaluate` takes the branch that returns a **violation** rather than
+  "incomplete". Pages using the static `aria-label="…"` form never fired. Fixed demo-side.
+  This is now the third distinct way this one footgun has produced a bug.
+- Clear control is keyboard reachable in both components, and **returns focus to the trigger**
+  after clearing — clearing unmounts the control the user is standing on, so focus would otherwise
+  fall to `<body>` (SC 2.4.3). The refocus carries an explicit `isDisabled()` guard because
+  `[disabled]` makes `.focus()` a silent no-op.
+- `variant="naked"` standalone now has a focus ring. It could **not** be fixed by overriding:
+  `outline-none` and `outline-2` are different tailwind-merge conflict groups, so both survive and
+  `outline-style: none` wins. Needed a real `fieldOwnsFocusRing` axis.
+- `aria-activedescendant` moved to whichever element holds DOM focus — the trigger when closed,
+  the overlay search input when searchable and open.
+- Both clears raised to 24px. Combobox's `xs: { clearButton: 'size-4' }` had to be **deleted**
+  rather than superseded, because the size variant beats the slot base.
+- **Known deviation, recorded rather than hidden:** select's clear is a `tabindex`'d span inside a
+  `<button>`, which the HTML content model disallows. Hoisting it to a sibling button is the
+  correct fix and remains open; axe's `nested-interactive` does not catch it, because that rule
+  requires `childrenPresentational` on the role and `combobox` has no such flag.
+
+### timeline / paginator / toast
+
+- **timeline** — one structural correction cleared all three rules: `aria-orientation` removed
+  from a `role="list"` host that does not support it, `role="list"` moved off the host (which also
+  owned the two scroll chevrons) onto the viewport that actually contains the `listitem`s, and the
+  scroll viewport made keyboard-reachable with a name and a focus ring.
+- **paginator** — `landmark-unique` was demo-side: ~19 paginators all rendering
+  `role="navigation"` with the same default name. Each instance now gets a distinct name, and
+  `customAriaLabel`'s JSDoc tells consumers a page with more than one paginator must name each.
+- **paginator `color-contrast` is deliberately RETAINED in the backlog.** The surviving node is
+  the page-info line of a *deliberately disabled* paginator, which carries the
+  `opacity-50 pointer-events-none` treatment CLAUDE.md prescribes. WCAG 1.4.3 exempts text in an
+  inactive component; axe cannot model that exception. Lightening the disabled treatment to satisfy
+  a rule that does not apply would make disabled and enabled paginators look alike.
+- **toast: the register's SC 2.2.1 entry was stale.** Pause-on-hover AND pause-on-focus were
+  already implemented before this session. The real hole was narrower and worse: a toast with
+  `dismissible: false` and no action had **zero focusable descendants**, so a keyboard-only user
+  could never stop its clock. Every toast is now one extra tab stop — that is the consumer-visible
+  delta, not a timer change. No focus trap (a toast is not modal), no autofocus (it would yank the
+  caret out of the user's task).
+- `TwTimelineScrollLabels.scrollRegion` was added as a **required** member, which breaks any
+  consumer annotating a complete literal. Made optional, and the resolved type is now
+  `Required<>` with explicit-`undefined` keys filtered before the merge — a plain spread would let
+  `{ scrollRegion: undefined }` overwrite the default and silently strip the name.
+
+### table / sort
+
+- **One host binding caused every `aria-allowed-attr` node in both components.**
+  `SortHeaderComponent` emitted `[attr.aria-sort]` on *every* host, but `aria-sort` is legal only
+  on `columnheader`/`rowheader` — so a `<span>` or `<button>` host was a violation, and inside
+  `tw-table` it was also redundant, because the generated `<th>` already owned the attribute.
+  Now gated on the host actually being a header cell. Measured before the change: 30+ nodes on
+  the sort page, 8 on the table page, and **zero** on a `<th>` host — the valid path was already
+  correct and is untouched.
+- Gating it left sort state with **no valid hook at all** on span/button hosts: the direction was
+  readable only from the arrow's rotation utility class. Added `data-sort-direction` on every host
+  shape, mirroring `aria-sort`'s vocabulary. A `data-*` attribute is valid on any element and
+  carries no ARIA semantics, so it states the same thing without lying to assistive tech — and it
+  gives consumers a state hook to style on. Documented in the sort API page.
+- Clickable rows are keyboard-operable behind an explicit `clickableRows` opt-in, because Angular
+  exposes no way to ask whether `(rowClicked)` has a subscriber, and putting every row of a static
+  table into the tab order would be worse than the bug. Deliberately **no `role` override** on the
+  `<tr>` — retagging a `row` as `button` trades one violation for `aria-required-children`.
+
+### tabs / segmented-control / stepper
+
+- **`nested-interactive` on tabs has no clean fix, and the alternatives were measured, not
+  assumed.** Hoisting the close button to a sibling inside the tablist trades it for
+  `aria-required-children`; `aria-hidden` + `tabindex="-1"` is explicitly rejected by axe. The
+  close affordance is now a pointer-only `<span aria-hidden="true">`, with **Delete on the focused
+  tab** as the keyboard path, advertised via `aria-keyshortcuts="Delete"`.
+  **This is a UX change, and the honest framing is that it is a trade, not a pure win:** the close
+  control was focusable before and is not now. SC 2.1.1 is still satisfied because the function
+  remains keyboard-reachable, and Delete is the APG-sanctioned gesture — but a sighted keyboard
+  user who expects to Tab to a close button will not find one.
+- **stepper's `aria-required-children` was a role error, not a missing child.** The vertical
+  stepper renders its panel inside the header strip, so a `role="tablist"` could never be valid
+  there. Horizontal keeps the tab pattern; vertical is now a disclosure — headers are
+  `role="button"` with `aria-expanded`, and the inline panel is a labelled `role="group"`.
+- **stepper's dark-only `color-contrast` was the `dark:` trap again, demo-side.** A custom step
+  label carried `text-primary-700 dark:text-primary-300`; because the theme inverts the ramp, the
+  override re-inverted it to blue-700 on gray-900 = **2.59:1**. This is the third component-level
+  instance of the rule CLAUDE.md now forbids outright.
+
+### Semver: two required interface members, both caught and softened
+
+Two agents independently added a **required** member to an exported interface —
+`TwTimelineScrollLabels.scrollRegion` and `TwTableLabels.selectionColumnLabel`. Each would have
+been a compile break for any consumer annotating a complete literal, in exchange for a label that
+already has a default. Both made optional, and both resolved types are now `Required<>` with
+explicitly-`undefined` keys filtered before the merge — a plain spread lets
+`{ key: undefined }` overwrite the default with undefined, which reaches the template as a null
+label and silently reinstates the very defect the label exists to prevent.

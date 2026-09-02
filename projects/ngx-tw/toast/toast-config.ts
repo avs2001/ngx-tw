@@ -63,7 +63,16 @@ export class ToastConfig<D = unknown, _R = unknown> {
   /** Screen position of the toast stack. Defaults to `'bottom-right'`. */
   position?: ToastPosition = 'bottom-right';
 
-  /** Auto-dismiss duration in ms. `0` disables auto-dismiss. Defaults to `5000`. */
+  /**
+   * Auto-dismiss duration in ms. `0` disables auto-dismiss. Defaults to `5000`.
+   *
+   * The duration alone would fail SC 2.2.1 (Timing Adjustable) — a time limit the
+   * user cannot influence. What makes 5s conformant is `pauseOnInteraction`
+   * (default `true`): the clock stops while the pointer is over the toast or
+   * focus is anywhere inside it, and resumes on leave / blur. Setting
+   * `pauseOnInteraction: false` alongside a non-zero duration re-introduces the
+   * failure, so pair it with `duration: 0`.
+   */
   duration?: number = 5000;
 
   // Default true: toasts must offer an escape hatch — sticky / long-duration toasts
@@ -97,9 +106,11 @@ export class ToastConfig<D = unknown, _R = unknown> {
    */
   icon?: string | false;
 
-  // Default true: matches Material/Radix/Sonner conventions — prevents a toast from
-  // disappearing mid-read; opt-out only for fully ambient progress indicators.
-  /** When true, pause the auto-dismiss timer while the toast is hovered or holds focus. Defaults to `true`. */
+  // Default true: this is what keeps a non-zero `duration` conformant with
+  // SC 2.2.1 (Timing Adjustable) — it is the user's control over the time limit,
+  // not a nicety. Also matches Material/Radix/Sonner. Opt out only together with
+  // `duration: 0`, for fully ambient progress indicators.
+  /** When true, pause the auto-dismiss timer while the toast is hovered or holds focus anywhere inside it, resuming on leave / blur. Defaults to `true`. */
   pauseOnInteraction?: boolean = true;
 
   // Default true: matches mobile-platform expectations and gives non-precise pointers

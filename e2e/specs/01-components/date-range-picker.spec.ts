@@ -69,7 +69,7 @@ test.describe('Date Range Picker', () => {
     // enforces a weekdays-only filter, so we use enabled cells regardless of
     // the system date.
     const enabled = picker.overlayCalendar.locator(
-      '[role="grid"] button:not([disabled])',
+      '[role="grid"] button:not([aria-disabled="true"])',
     );
     await enabled.nth(0).click();
     await enabled.nth(3).click();
@@ -141,7 +141,7 @@ test.describe('Date Range Picker', () => {
     // Click two enabled cells to form a range — does NOT commit because
     // showActions=true.
     const enabled = picker.overlayCalendar.locator(
-      '[role="grid"] button:not([disabled])',
+      '[role="grid"] button:not([aria-disabled="true"])',
     );
     await enabled.nth(0).click();
     await enabled.nth(3).click();
@@ -164,7 +164,7 @@ test.describe('Date Range Picker', () => {
 
     // Time row only appears once a complete range is selected.
     const enabled = picker.overlayCalendar.locator(
-      '[role="grid"] button:not([disabled])',
+      '[role="grid"] button:not([aria-disabled="true"])',
     );
     await enabled.nth(0).click();
     await enabled.nth(3).click();

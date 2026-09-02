@@ -281,12 +281,15 @@ const MAIN_POSITIONS: TooltipPosition[] = ['top', 'bottom', 'left', 'right'];
       <p class="text-sm text-fg-muted leading-relaxed max-w-2xl mb-4">
         Show and hide delays are independent and measured in milliseconds. Longer show delays
         (300–500ms) keep tooltips out of the way while users move the pointer past triggers
-        incidentally; a non-zero hide delay lets users move the pointer from the trigger into
-        adjacent UI without the tooltip vanishing mid-gesture. The defaults —
+        incidentally; the hide delay is the window in which the pointer can travel from the
+        trigger onto the tooltip itself, which WCAG 2.1 SC 1.4.13 requires it to be able to do.
+        The defaults —
         <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">200ms</code>
         show,
-        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">0ms</code>
-        hide — are calibrated for typical toolbar and button usage.
+        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">150ms</code>
+        hide — are calibrated for typical toolbar and button usage. Setting the hide delay to
+        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">0</code>
+        dismisses instantly but puts the tooltip out of the pointer's reach.
       </p>
       <div class="rounded-lg border border-border p-6 bg-surface-raised mb-4">
         <div class="flex flex-wrap items-center gap-3">

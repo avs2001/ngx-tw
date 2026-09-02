@@ -26,20 +26,21 @@
   <!-- Scrollable trigger strip -->
   <div #tablistInner [class]="tablistInnerClasses()" style="scrollbar-width: none">
     @for (tab of tabs(); track tab.value()) {
-      <!-- Trigger is rendered as <div role="tab"> (not <button>) so the close
-           affordance can be a native <button> child without nesting interactive
-           content (invalid HTML). Activation is wired explicitly via (click)
-           and the parent tablist (keydown.enter / keydown.space). -->
+      <!-- Trigger is rendered as <div role="tab">, not <button>: activation is
+           wired explicitly via (click) and the parent tablist's keydown
+           (Enter / Space), and the roving tab stop comes from
+           twTabTriggerElement. -->
       <!-- eslint-disable-next-line @angular-eslint/template/click-events-have-key-events, @angular-eslint/template/interactive-supports-focus -->
       <div
         role="tab"
         twTabTriggerElement
-        [isActive]="isTabActive(tab.value())"
+        [isFocusStop]="isTabFocusStop(tab.value())"
         [isDisabled]="tab.disabled()"
         [id]="getTabId(tab.value())"
         [attr.aria-selected]="isTabActive(tab.value())"
         [attr.aria-controls]="getPanelId(tab.value())"
         [attr.aria-disabled]="tab.disabled() || null"
+        [attr.aria-keyshortcuts]="tab.closable() && !tab.disabled() ? 'Delete' : null"
         [class]="getTriggerClasses(tab.value(), isTabActive(tab.value()))"
         [class.opacity-50]="tab.disabled()"
         [class.pointer-events-none]="tab.disabled()"
@@ -55,19 +56,25 @@
           {{ tab.label() }}
         }
 
-        <!-- Close affordance — native <button> so it is keyboard-focusable.
-             Valid because the trigger is a <div role="tab">, not a button. -->
+        <!-- Close affordance — a pointer-only span, deliberately NOT a button.
+             Anything focusable inside an element carrying an interactive role
+             fails axe's nested-interactive rule, and hoisting a real button
+             out to a sibling only trades that for aria-required-children
+             (a tablist may own nothing but tabs — both measured). The
+             keyboard path is the APG-recommended Delete key on the tab
+             itself, handled in onKeydown and advertised to assistive tech
+             through aria-keyshortcuts on the trigger above. -->
         @if (tab.closable() && !tab.disabled()) {
-          <button
-            type="button"
-            [attr.aria-label]="'Close ' + (tab.label() || tab.value())"
+          <span
+            data-tw-tab-close
+            aria-hidden="true"
             [class]="closeButtonClasses()"
             (click)="closeTab(tab, $event)"
           >
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" class="size-4 shrink-0">
               <path d="M5.28 4.22a.75.75 0 0 0-1.06 1.06L6.94 8l-2.72 2.72a.75.75 0 1 0 1.06 1.06L8 9.06l2.72 2.72a.75.75 0 1 0 1.06-1.06L9.06 8l2.72-2.72a.75.75 0 0 0-1.06-1.06L8 6.94 5.28 4.22Z"/>
             </svg>
-          </button>
+          </span>
         }
       </div>
     }

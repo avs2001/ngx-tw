@@ -267,15 +267,25 @@ const timePickerVariants = tv(
 // ── Static active-state color lookup for the AM/PM meridiem button ─────────────
 // Each entry is written out so Tailwind v4's static scanner picks the classes up.
 // Mirrors the lookup-table pattern used by `checkbox.ts` and `radio.ts`.
+//
+// Every entry uses the `{role}-solid` / `-solid-fg` / `-solid-hover` slot trio,
+// which the theme layer picks specifically so the label reaches AA on the fill
+// (see the light-mode contrast table in `theme/_semantic.css`). The previous
+// `bg-{role}-500 text-on-{role}` pairing was off that contract: `primary-500`
+// is blue-500, and white on blue-500 measures 3.76:1 in light / 3.92:1 in dark
+// against a 4.5:1 bar for this 12px label. `primary-solid` is blue-600 in light
+// (≈6:1 on white) and blue-400 in dark (≈5.6:1 on blue-950). `--color-on-{role}`
+// is additionally a legacy alias the theme marks for removal — new code takes
+// the slot token directly.
 const MERIDIEM_ACTIVE_COLOR: Record<TwColor, string> = {
-  primary: 'bg-primary-500 text-on-primary hover:bg-primary-600',
-  secondary: 'bg-secondary-500 text-on-secondary hover:bg-secondary-600',
-  accent: 'bg-accent-500 text-on-accent hover:bg-accent-600',
-  neutral: 'bg-fg text-on-neutral hover:bg-fg/90',
-  info: 'bg-info-500 text-on-info hover:bg-info-600',
-  success: 'bg-success-500 text-on-success hover:bg-success-600',
-  warning: 'bg-warning-500 text-on-warning hover:bg-warning-600',
-  error: 'bg-error-500 text-on-error hover:bg-error-600',
+  primary: 'bg-primary-solid text-primary-solid-fg hover:bg-primary-solid-hover',
+  secondary: 'bg-secondary-solid text-secondary-solid-fg hover:bg-secondary-solid-hover',
+  accent: 'bg-accent-solid text-accent-solid-fg hover:bg-accent-solid-hover',
+  neutral: 'bg-neutral-solid text-neutral-solid-fg hover:bg-neutral-solid-hover',
+  info: 'bg-info-solid text-info-solid-fg hover:bg-info-solid-hover',
+  success: 'bg-success-solid text-success-solid-fg hover:bg-success-solid-hover',
+  warning: 'bg-warning-solid text-warning-solid-fg hover:bg-warning-solid-hover',
+  error: 'bg-error-solid text-error-solid-fg hover:bg-error-solid-hover',
 };
 
 let nextTimePickerId = 0;
@@ -331,7 +341,12 @@ export type TimePickerValidationErrors = Partial<{
     },
   ],
   template: `
-    <div [class]="fieldGroupClasses()" role="group" [attr.aria-label]="groupAriaLabel()">
+    <div
+      [class]="fieldGroupClasses()"
+      role="group"
+      [attr.aria-label]="groupAriaLabel()"
+      [attr.aria-labelledby]="groupLabelledBy()"
+    >
       <input
         #hourInput
         type="text"
@@ -509,7 +524,7 @@ export class TimePickerComponent<D = Date>
 {
   // ── Inputs ──
 
-  /** Id on the time-picker's host element. Auto-generated when not provided. Used by the form-field's `<label for>` attribute. */
+  /** Id on the time-picker's host element. Auto-generated when not provided. The accessible name inside a `<tw-form-field>` comes from `aria-labelledby` on the inner `role="group"` wrapper, not from the field's `<label for>` — the host is a custom element, which `for` cannot target. */
   readonly idInput = input<string | undefined>(undefined, { alias: 'id' });
 
   /** When true, the whole component is disabled and every field sets `aria-disabled="true"`. Defaults to `false`. */
@@ -656,6 +671,7 @@ export class TimePickerComponent<D = Date>
 
   private readonly cvaDisabled = signal(false);
   private readonly describedByIdsSignal = signal<readonly string[]>([]);
+  private readonly labelledByIdsSignal = signal<readonly string[]>([]);
   private readonly focusedSignal = signal(false);
   private readonly _ngControlRev = signal(0);
   private readonly _formSubmitRev = signal(0);
@@ -741,8 +757,32 @@ export class TimePickerComponent<D = Date>
     return n === null ? this.intl.emptyValueText : padTwo(n);
   });
 
-  /** @internal */
-  readonly groupAriaLabel = computed(() => this.ariaLabel() ?? this.intl.groupLabel);
+  /**
+   * @internal Merged `aria-labelledby` for the `role="group"` wrapper: the ids a
+   * wrapping `<tw-form-field>` pushes down (its projected `<label twLabel>` plus
+   * anything the consumer supplied) or, standalone, the consumer's own
+   * `aria-labelledby`. The host is `<tw-time-picker>`, a custom element the
+   * field's `<label for>` cannot target, so this attribute is the only route
+   * from the visible label to the composite. Returns `null` when nothing labels
+   * the group by reference.
+   */
+  readonly groupLabelledBy = computed<string | null>(() => {
+    const pushed = this.labelledByIdsSignal();
+    if (pushed.length) return pushed.join(' ');
+    return this.ariaLabelledby() ?? null;
+  });
+
+  /**
+   * @internal `aria-label` for the group. An explicit `aria-label` always wins;
+   * otherwise the generic intl fallback is suppressed whenever `groupLabelledBy`
+   * already names the group, so a real label is not shadowed by "Time" in the
+   * accessibility tree inspector.
+   */
+  readonly groupAriaLabel = computed(() => {
+    const explicit = this.ariaLabel();
+    if (explicit) return explicit;
+    return this.groupLabelledBy() ? null : this.intl.groupLabel;
+  });
 
   /** @internal Label of the currently focused field, used by stepper aria-labels. */
   readonly focusedFieldLabel = computed(() => {
@@ -824,6 +864,11 @@ export class TimePickerComponent<D = Date>
   /** @internal */
   readonly userAriaDescribedBy: Signal<string | undefined> = computed(() =>
     this.userAriaDescribedByInput(),
+  );
+
+  /** @internal Consumer-supplied `aria-labelledby`, surfaced so the wrapping form-field merges it into the ids it pushes back rather than replacing it. */
+  override readonly userAriaLabelledby: Signal<string | undefined> = computed(() =>
+    this.ariaLabelledby(),
   );
 
   // ── Constructor ──
@@ -1450,6 +1495,11 @@ export class TimePickerComponent<D = Date>
   /** @internal */
   setDescribedByIds(ids: string[]): void {
     this.describedByIdsSignal.set([...ids]);
+  }
+
+  /** @internal Receives the merged `aria-labelledby` ids from the wrapping form-field and applies them to the `role="group"` wrapper. Required because the host is a custom element rather than a labelable control, so the field's `<label for>` never reaches it. */
+  override setLabelledByIds(ids: string[]): void {
+    this.labelledByIdsSignal.set([...ids]);
   }
 
   /** @internal */

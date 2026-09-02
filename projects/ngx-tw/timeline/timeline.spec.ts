@@ -237,16 +237,29 @@ describe('TimelineComponent', () => {
       expect(host.querySelectorAll('tw-timeline-item').length).toBe(0);
     });
 
-    it('applies aria-orientation="horizontal" only in horizontal orientation', () => {
+    it('never exposes aria-orientation, which role="list" does not support', () => {
       const fixture = TestBed.createComponent(BasicTimelineHost);
       fixture.detectChanges();
-      let host = timelineEl(fixture);
-      expect(host.getAttribute('aria-orientation')).toBeNull();
+      expect(timelineEl(fixture).getAttribute('aria-orientation')).toBeNull();
 
       fixture.componentRef.setInput('orientation', 'horizontal');
       fixture.detectChanges();
-      host = timelineEl(fixture);
-      expect(host.getAttribute('aria-orientation')).toBe('horizontal');
+      expect(timelineEl(fixture).getAttribute('aria-orientation')).toBeNull();
+    });
+
+    it('moves the list role onto the scroll viewport in horizontal orientation', () => {
+      const fixture = TestBed.createComponent(BasicTimelineHost);
+      fixture.componentRef.setInput('orientation', 'horizontal');
+      fixture.detectChanges();
+
+      // The host also owns the two scroll chevrons, which a `list` may not own.
+      const host = timelineEl(fixture);
+      expect(host.getAttribute('role')).toBeNull();
+
+      const vp = host.querySelector('div.overflow-x-auto') as HTMLElement;
+      expect(vp.getAttribute('role')).toBe('list');
+      // The items are direct children of the element carrying the role.
+      expect(vp.querySelectorAll(':scope > tw-timeline-item').length).toBe(3);
     });
 
     it('renders each align value in vertical orientation', () => {
@@ -849,6 +862,28 @@ describe('TimelineComponent', () => {
       const btns = chevrons(fixture);
       expect(btns[0].getAttribute('aria-label')).toBe('Voriger');
       expect(btns[1].getAttribute('aria-label')).toBe('Scroll to next events');
+      expect(viewport(fixture)!.getAttribute('aria-label')).toBe('Timeline events');
+    });
+
+    it('makes the scroll viewport keyboard-reachable, named, and focus-ringed', () => {
+      const fixture = TestBed.createComponent(HorizontalScrollHost);
+      fixture.detectChanges();
+      const vp = viewport(fixture)!;
+      // Without a tab stop a keyboard-only user can never scroll this region
+      // (axe: scrollable-region-focusable).
+      expect(vp.getAttribute('tabindex')).toBe('0');
+      expect(vp.getAttribute('aria-label')).toBe('Timeline events');
+      expect(vp.className).toContain('focus-visible:outline-2');
+      expect(vp.className).toContain('focus-visible:outline-primary-500');
+    });
+
+    it('localises the scroll-region name from TW_TIMELINE_SCROLL_LABELS', () => {
+      TestBed.configureTestingModule({
+        providers: [provideTwTimelineScrollLabels({ scrollRegion: 'Chronologie' })],
+      });
+      const fixture = TestBed.createComponent(HorizontalScrollHost);
+      fixture.detectChanges();
+      expect(viewport(fixture)!.getAttribute('aria-label')).toBe('Chronologie');
     });
 
     it('reflects scrollControls="never" by hiding both chevrons', () => {

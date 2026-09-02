@@ -81,7 +81,7 @@ import { CodeBlockComponent } from '@cdevhub/ngx-tw/code-block';
               <td class="px-4 py-2 font-mono text-xs">id</td>
               <td class="px-4 py-2 font-mono text-xs text-fg-muted">string | undefined</td>
               <td class="px-4 py-2 font-mono text-xs text-fg-muted">undefined</td>
-              <td class="px-4 py-2 text-fg-muted">Id on the host element. Auto-generated as <code class="font-mono">tw-checkbox-N</code> when not provided; used by <code class="font-mono">tw-form-field</code>'s <code class="font-mono">&lt;label for&gt;</code>.</td>
+              <td class="px-4 py-2 text-fg-muted">Id on the host element. Auto-generated as <code class="font-mono">tw-checkbox-N</code> when not provided; anchors the derived label / description ids. Inside a form-field the accessible name arrives as <code class="font-mono">aria-labelledby</code>, not via <code class="font-mono">&lt;label for&gt;</code>.</td>
             </tr>
             <tr>
               <td class="px-4 py-2 font-mono text-xs">errorStateMatcher</td>
@@ -210,7 +210,7 @@ import { CodeBlockComponent } from '@cdevhub/ngx-tw/code-block';
             <tr>
               <td class="px-4 py-2 font-mono text-xs">id</td>
               <td class="px-4 py-2 font-mono text-xs text-fg-muted">Signal&lt;string&gt;</td>
-              <td class="px-4 py-2 text-fg-muted">Resolved id of the host element; the form-field's <code class="font-mono">&lt;label for&gt;</code> points here.</td>
+              <td class="px-4 py-2 text-fg-muted">Resolved id of the host element; the form-field's <code class="font-mono">&lt;label for&gt;</code> points here, and the name itself is pushed down as <code class="font-mono">aria-labelledby</code>.</td>
             </tr>
             <tr>
               <td class="px-4 py-2 font-mono text-xs">value</td>

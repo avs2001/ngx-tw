@@ -216,6 +216,108 @@ describe('ToastService', () => {
   });
 
   describe('pause on interaction', () => {
+    /** The entry wrapper the container binds its pointer / focus handlers to. */
+    function wrapperFor(ref: { readonly id: string }): HTMLElement {
+      const el = document.querySelector<HTMLElement>(`[data-toast-id="${ref.id}"]`);
+      expect(el).not.toBeNull();
+      return el!;
+    }
+
+    function tick(): void {
+      TestBed.inject(ApplicationRef).tick();
+    }
+
+    // ── SC 2.2.1 (Timing Adjustable) ──
+    // The 5000ms default is only conformant because the user can stop the
+    // clock. These drive real DOM events rather than `ref._setHovered(...)`,
+    // so a broken template binding fails them.
+
+    it('a real pointerenter holds the toast past its duration; pointerleave releases it', async () => {
+      const ref = toast.show('hover me'); // default duration: 5000
+      await flushEnter();
+      const wrapper = wrapperFor(ref);
+
+      advance(1000);
+      wrapper.dispatchEvent(new PointerEvent('pointerenter'));
+      advance(30_000);
+      tick();
+      expect(getAllToasts().length).toBe(1);
+
+      const dismissed = vi.fn();
+      ref.afterDismissed().subscribe(dismissed);
+      wrapper.dispatchEvent(new PointerEvent('pointerleave'));
+      // Only the 4000ms that had not yet elapsed remain.
+      advance(3900);
+      expect(dismissed).not.toHaveBeenCalled();
+      advance(100);
+      flushLeave();
+      expect(dismissed.mock.calls[0][0].reason).toBe('timeout');
+    });
+
+    it('keyboard focus anywhere inside the toast holds it; blurring away releases it', async () => {
+      const ref = toast.show('focus me');
+      await flushEnter();
+      const wrapper = wrapperFor(ref);
+      const closeBtn = wrapper.querySelector<HTMLElement>('button[aria-label="Dismiss"]');
+      expect(closeBtn).not.toBeNull();
+
+      closeBtn!.dispatchEvent(new FocusEvent('focusin', { bubbles: true }));
+      advance(30_000);
+      tick();
+      expect(getAllToasts().length).toBe(1);
+
+      const dismissed = vi.fn();
+      ref.afterDismissed().subscribe(dismissed);
+      closeBtn!.dispatchEvent(
+        new FocusEvent('focusout', { bubbles: true, relatedTarget: null }),
+      );
+      advance(5000);
+      flushLeave();
+      expect(dismissed.mock.calls[0][0].reason).toBe('timeout');
+    });
+
+    it('moving focus between controls inside the toast does not resume the timer', async () => {
+      const ref = toast.show('two controls', {
+        action: { label: 'Undo', handler: () => {} },
+      });
+      await flushEnter();
+      const wrapper = wrapperFor(ref);
+      const closeBtn = wrapper.querySelector<HTMLElement>('button[aria-label="Dismiss"]')!;
+      const actionBtn = wrapper.querySelector<HTMLElement>('[twToastAction]')!;
+
+      closeBtn.dispatchEvent(new FocusEvent('focusin', { bubbles: true }));
+      // focusout whose relatedTarget is still inside the toast is not a blur.
+      closeBtn.dispatchEvent(
+        new FocusEvent('focusout', { bubbles: true, relatedTarget: actionBtn }),
+      );
+      actionBtn.dispatchEvent(new FocusEvent('focusin', { bubbles: true }));
+
+      advance(30_000);
+      tick();
+      expect(getAllToasts().length).toBe(1);
+    });
+
+    it('is a tab stop itself, so a toast with no buttons can still be paused', async () => {
+      // dismissible:false with no action leaves nothing focusable inside — the
+      // wrapper's own tabindex is the only way a keyboard user reaches it.
+      const ref = toast.show('ambient', { dismissible: false });
+      await flushEnter();
+      const wrapper = wrapperFor(ref);
+
+      expect(wrapper.getAttribute('tabindex')).toBe('0');
+      expect(
+        wrapper.querySelectorAll(
+          'button, a[href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
+        ).length,
+      ).toBe(0);
+      expect(wrapper.className).toContain('focus-visible:outline-2');
+
+      wrapper.dispatchEvent(new FocusEvent('focusin', { bubbles: true }));
+      advance(30_000);
+      tick();
+      expect(getAllToasts().length).toBe(1);
+    });
+
     it('pause/resume from pointer enter/leave gates the auto-dismiss timer', async () => {
       const ref = toast.show('hover', { duration: 1000 });
       await flushEnter();

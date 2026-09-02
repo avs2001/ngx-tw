@@ -380,6 +380,35 @@ describe('CarouselIndicatorsComponent', () => {
     );
   });
 
+  // The painted dot is a child of the button, not the button itself, so the
+  // button can carry the WCAG 2.2 SC 2.5.8 24x24 target while the mark keeps
+  // its 12px geometry. Everything the user actually points at is inside the
+  // button, so a click landing on the mark must still navigate.
+  it('renders the painted mark inside the indicator button, not as the button', () => {
+    const { carouselHost } = setup();
+    const buttons = carouselHost.querySelectorAll<HTMLButtonElement>(
+      'tw-carousel-indicators button',
+    );
+    expect(buttons.length).toBe(3);
+    for (const button of buttons) {
+      expect(button.children.length).toBe(1);
+      expect(button.firstElementChild!.tagName).toBe('SPAN');
+    }
+  });
+
+  it('clicking the painted mark inside an indicator still navigates', () => {
+    const { carouselHost, carousel } = setup();
+    const mark = carouselHost.querySelectorAll<HTMLElement>(
+      'tw-carousel-indicators button > span',
+    )[2];
+    const spy = vi.fn();
+    carousel.slideChange.subscribe(spy);
+    mark.click();
+    expect(spy).toHaveBeenCalledWith(
+      expect.objectContaining({ trigger: 'indicator', to: 2 }),
+    );
+  });
+
   it('marks the active indicator with aria-current="true"', () => {
     const { carousel, fixture, carouselHost } = setup();
     carousel.activeIndex.set(1);

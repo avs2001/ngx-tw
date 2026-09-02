@@ -185,6 +185,11 @@ function queryPanel(fixture: ComponentFixture<unknown>): HTMLElement | null {
   return fixture.nativeElement.querySelector('[role="tabpanel"]');
 }
 
+/** The vertical stepper's inline panel — a named group, not a tabpanel. */
+function queryGroupPanel(fixture: ComponentFixture<unknown>): HTMLElement | null {
+  return fixture.nativeElement.querySelector('[role="group"]');
+}
+
 // ── Specs ──
 
 describe('StepperComponent', () => {
@@ -249,7 +254,12 @@ describe('StepperComponent', () => {
       fixture.detectChanges();
       fixture.componentInstance.orientation.set('vertical');
       fixture.detectChanges();
-      expect(queryTablist(fixture).getAttribute('aria-orientation')).toBe('vertical');
+      // Vertical renders the disclosure shape — no tablist at all, panel
+      // inline under its own header. See the Accessibility describe below.
+      expect(queryTablist(fixture)).toBeNull();
+      expect(queryHeaders(fixture)).toHaveLength(3);
+      expect(queryGroupPanel(fixture)?.textContent).toContain('A');
+
       fixture.componentInstance.orientation.set('horizontal');
       fixture.detectChanges();
       expect(queryTablist(fixture).getAttribute('aria-orientation')).toBe('horizontal');
@@ -473,6 +483,92 @@ describe('StepperComponent', () => {
       const panel = queryPanel(fixture);
       expect(panel?.getAttribute('role')).toBe('tabpanel');
       expect(panel?.getAttribute('tabindex')).toBe('0');
+    });
+
+    // ── Vertical: disclosure shape ──
+    //
+    // The vertical panel renders inline INSIDE the header strip, and a
+    // tablist may own nothing but tabs — axe fails that strip with
+    // "Element has children which are not allowed: [role=tabpanel]". The
+    // vertical stepper is therefore exposed as a stack of disclosure
+    // buttons: no tablist, no tab roles, aria-expanded instead of
+    // aria-selected, and the panel as a named group.
+
+    it('drops the tablist role and aria-orientation in vertical orientation', () => {
+      const fixture = TestBed.createComponent(VariantHost);
+      fixture.detectChanges();
+      fixture.componentInstance.orientation.set('vertical');
+      fixture.detectChanges();
+
+      expect(queryTablist(fixture)).toBeNull();
+      expect(
+        fixture.nativeElement.querySelector('[aria-orientation]'),
+      ).toBeNull();
+    });
+
+    it('exposes vertical headers as buttons with aria-expanded, not tabs', () => {
+      const fixture = TestBed.createComponent(VariantHost);
+      fixture.detectChanges();
+      fixture.componentInstance.orientation.set('vertical');
+      fixture.detectChanges();
+
+      const headers = queryHeaders(fixture);
+      expect(headers[0].getAttribute('role')).toBe('button');
+      expect(headers[0].getAttribute('aria-selected')).toBeNull();
+      expect(headers[0].getAttribute('aria-expanded')).toBe('true');
+      expect(headers[1].getAttribute('aria-expanded')).toBe('false');
+    });
+
+    it('moves aria-expanded with the selection in vertical orientation', () => {
+      const fixture = TestBed.createComponent(VariantHost);
+      fixture.detectChanges();
+      fixture.componentInstance.orientation.set('vertical');
+      fixture.detectChanges();
+
+      queryHeaders(fixture)[1].click();
+      fixture.detectChanges();
+
+      const headers = queryHeaders(fixture);
+      expect(headers[0].getAttribute('aria-expanded')).toBe('false');
+      expect(headers[1].getAttribute('aria-expanded')).toBe('true');
+    });
+
+    it('renders the vertical panel as a group labelled by its own header', () => {
+      const fixture = TestBed.createComponent(VariantHost);
+      fixture.detectChanges();
+      fixture.componentInstance.orientation.set('vertical');
+      fixture.detectChanges();
+
+      const header = queryHeaders(fixture)[0];
+      const panel = queryGroupPanel(fixture);
+      expect(queryPanel(fixture)).toBeNull();
+      expect(panel?.getAttribute('aria-labelledby')).toBe(header.id);
+      expect(panel?.getAttribute('tabindex')).toBe('0');
+      expect(header.getAttribute('aria-controls')).toBe(panel?.id);
+    });
+
+    it('points aria-controls only at a panel that is in the DOM', () => {
+      const fixture = TestBed.createComponent(VariantHost);
+      fixture.detectChanges();
+      fixture.componentInstance.orientation.set('vertical');
+      fixture.detectChanges();
+
+      const headers = queryHeaders(fixture);
+      // Collapsed steps render no panel, so they claim control of nothing.
+      expect(headers[1].getAttribute('aria-controls')).toBeNull();
+      const controlled = headers[0].getAttribute('aria-controls');
+      expect(fixture.nativeElement.querySelector(`#${controlled}`)).toBeTruthy();
+    });
+
+    it('keeps aria-current on the selected header in both orientations', () => {
+      const fixture = TestBed.createComponent(VariantHost);
+      fixture.detectChanges();
+      fixture.componentInstance.orientation.set('vertical');
+      fixture.detectChanges();
+
+      const headers = queryHeaders(fixture);
+      expect(headers[0].getAttribute('aria-current')).toBe('step');
+      expect(headers[1].getAttribute('aria-current')).toBeNull();
     });
 
     it('applies a focus-visible outline ring to the focusable panel', () => {

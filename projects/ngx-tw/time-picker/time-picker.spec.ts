@@ -7,6 +7,11 @@ import { provideNativeDateAdapter } from '@cdevhub/ngx-tw/calendar';
 import type { TwColor } from '@cdevhub/ngx-tw/core';
 import { TimePickerComponent } from './time-picker';
 import { provideTimePickerIntl, TimePickerIntl } from './time-picker-intl';
+import {
+  FormFieldComponent,
+  HintDirective,
+  LabelDirective,
+} from '@cdevhub/ngx-tw/form-field';
 import type {
   TimePickerChangeEvent,
   TimePickerFormat,
@@ -561,7 +566,11 @@ describe('TimePickerComponent', () => {
       expect(hour.className).not.toContain('focus-visible:bg-surface-muted');
     });
 
-    it('active meridiem button uses the text-on-primary semantic token', () => {
+    // The active meridiem fill takes the theme's AA-checked `-solid` /
+    // `-solid-fg` slot pair. It used to take `bg-{role}-500` + `text-on-{role}`:
+    // white on blue-500 is 3.76:1 light / 3.92:1 dark against a 4.5:1 bar for
+    // this 12px label, which is what put `time-picker` on the a11y backlog.
+    it('active meridiem button uses the primary solid slot pair', () => {
       const fixture = setup(BasicHost);
       fixture.componentInstance.format.set('12h');
       fixture.componentInstance.value.set(new Date(2026, 0, 1, 14, 30, 0));
@@ -570,30 +579,36 @@ describe('TimePickerComponent', () => {
       const pm = (fixture.nativeElement as HTMLElement).querySelector(
         'button[aria-label="PM"]',
       ) as HTMLButtonElement;
-      expect(pm.className).toContain('text-on-primary');
-      expect(pm.className).not.toContain('text-primary-50');
+      const classes = pm.className.split(/\s+/);
+      expect(classes).toContain('bg-primary-solid');
+      expect(classes).toContain('text-primary-solid-fg');
+      expect(classes).not.toContain('bg-primary-500');
+      expect(classes).not.toContain('text-on-primary');
     });
 
     it('active meridiem button routes through the color input across every semantic color', () => {
       const fixture = setup(ColorHost);
-      const colors: readonly { color: TwColor; bg: string; text: string }[] = [
-        { color: 'primary', bg: 'bg-primary-500', text: 'text-on-primary' },
-        { color: 'secondary', bg: 'bg-secondary-500', text: 'text-on-secondary' },
-        { color: 'accent', bg: 'bg-accent-500', text: 'text-on-accent' },
-        { color: 'neutral', bg: 'bg-fg', text: 'text-on-neutral' },
-        { color: 'info', bg: 'bg-info-500', text: 'text-on-info' },
-        { color: 'success', bg: 'bg-success-500', text: 'text-on-success' },
-        { color: 'warning', bg: 'bg-warning-500', text: 'text-on-warning' },
-        { color: 'error', bg: 'bg-error-500', text: 'text-on-error' },
+      const colors: readonly TwColor[] = [
+        'primary',
+        'secondary',
+        'accent',
+        'neutral',
+        'info',
+        'success',
+        'warning',
+        'error',
       ];
-      for (const { color, bg, text } of colors) {
+      for (const color of colors) {
         fixture.componentInstance.color.set(color);
         fixture.detectChanges();
         const pm = (fixture.nativeElement as HTMLElement).querySelector(
           'button[aria-label="PM"]',
         ) as HTMLButtonElement;
-        expect(pm.className, `active background for ${color}`).toContain(bg);
-        expect(pm.className, `active foreground for ${color}`).toContain(text);
+        const classes = pm.className.split(/\s+/);
+        expect(classes, `active background for ${color}`).toContain(`bg-${color}-solid`);
+        expect(classes, `active foreground for ${color}`).toContain(
+          `text-${color}-solid-fg`,
+        );
       }
     });
   });
@@ -831,4 +846,126 @@ describe('TimePickerComponent', () => {
   });
 
 
+});
+
+// ── form-field interop: accessible name ──────────────────────────
+
+@Component({
+  imports: [TimePickerComponent, FormFieldComponent, LabelDirective, HintDirective],
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  template: `
+    <tw-form-field>
+      <label twLabel>Preferred call time</label>
+      <tw-time-picker [(value)]="value" />
+      <span twHint>When we can reach you.</span>
+    </tw-form-field>
+  `,
+})
+class TimePickerFormFieldHost {
+  readonly value = signal<Date | null>(null);
+}
+
+@Component({
+  imports: [TimePickerComponent, FormFieldComponent, LabelDirective],
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  template: `
+    <span id="tp-external-note">in your local timezone</span>
+    <tw-form-field>
+      <label twLabel>Preferred call time</label>
+      <tw-time-picker aria-labelledby="tp-external-note" />
+    </tw-form-field>
+  `,
+})
+class TimePickerFormFieldExternalLabelHost {}
+
+describe('TimePickerComponent inside tw-form-field', () => {
+  function group(fixture: ComponentFixture<unknown>): HTMLElement {
+    return (fixture.nativeElement as HTMLElement).querySelector(
+      '[role="group"]',
+    ) as HTMLElement;
+  }
+
+  // SC 4.1.2 regression guard. `<tw-time-picker>` is a custom element, so the
+  // field's `<label for>` resolves to nothing. Before `setLabelledByIds` was
+  // overridden the composite fell back to the generic intl group label ("Time")
+  // and the visible label never reached assistive tech at all.
+  it('points the group aria-labelledby at the projected form-field label', () => {
+    const fixture = setup(TimePickerFormFieldHost);
+    const label = (fixture.nativeElement as HTMLElement).querySelector(
+      'label[twLabel]',
+    ) as HTMLLabelElement;
+
+    const labelledBy = group(fixture).getAttribute('aria-labelledby') ?? '';
+    expect(labelledBy.split(' ')).toContain(label.id);
+  });
+
+  it('resolves the group aria-labelledby to the visible label text', () => {
+    const fixture = setup(TimePickerFormFieldHost);
+    const ids = (group(fixture).getAttribute('aria-labelledby') ?? '').split(' ');
+    const name = ids
+      .map(
+        (id) =>
+          (fixture.nativeElement as HTMLElement)
+            .querySelector(`#${id}`)
+            ?.textContent?.trim() ?? '',
+      )
+      .join(' ')
+      .trim();
+    expect(name).toBe('Preferred call time');
+  });
+
+  it('drops the generic intl group label once a real label names the group', () => {
+    const fixture = setup(TimePickerFormFieldHost);
+    expect(group(fixture).getAttribute('aria-label')).toBeNull();
+  });
+
+  it('keeps both the projected label id and a consumer-supplied aria-labelledby', () => {
+    const fixture = setup(TimePickerFormFieldExternalLabelHost);
+    const label = (fixture.nativeElement as HTMLElement).querySelector(
+      'label[twLabel]',
+    ) as HTMLLabelElement;
+
+    const ids = (group(fixture).getAttribute('aria-labelledby') ?? '').split(' ');
+    expect(ids).toContain(label.id);
+    expect(ids).toContain('tp-external-note');
+  });
+});
+
+describe('TimePickerComponent standalone accessible name', () => {
+  it('applies a consumer aria-labelledby to the group when there is no form-field', () => {
+    @Component({
+      imports: [TimePickerComponent],
+      changeDetection: ChangeDetectionStrategy.OnPush,
+      template: `
+        <span id="tp-standalone-label">Call time</span>
+        <tw-time-picker aria-labelledby="tp-standalone-label" />
+      `,
+    })
+    class StandaloneLabelledbyHost {}
+
+    const fixture = setup(StandaloneLabelledbyHost);
+    const group = (fixture.nativeElement as HTMLElement).querySelector(
+      '[role="group"]',
+    ) as HTMLElement;
+
+    expect(group.getAttribute('aria-labelledby')).toBe('tp-standalone-label');
+    expect(group.getAttribute('aria-label')).toBeNull();
+  });
+
+  it('keeps an explicit aria-label as the group name', () => {
+    @Component({
+      imports: [TimePickerComponent],
+      changeDetection: ChangeDetectionStrategy.OnPush,
+      template: `<tw-time-picker aria-label="Explicit name" />`,
+    })
+    class ExplicitLabelHost {}
+
+    const fixture = setup(ExplicitLabelHost);
+    const group = (fixture.nativeElement as HTMLElement).querySelector(
+      '[role="group"]',
+    ) as HTMLElement;
+
+    expect(group.getAttribute('aria-label')).toBe('Explicit name');
+    expect(group.getAttribute('aria-labelledby')).toBeNull();
+  });
 });

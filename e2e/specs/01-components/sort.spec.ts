@@ -39,14 +39,16 @@ test.describe('Sort', () => {
     const s = new SortPage(page);
     await s.goto();
 
+    // This section's hosts are <span>s, which cannot carry `aria-sort`
+    // (invalid ARIA on a roleless element) — read `data-sort-direction`.
     const name = s.header(s.startSection, 'name');
     const amount = s.header(s.startSection, 'amount');
 
     await name.click();
-    await expect(name).toHaveAttribute('aria-sort', 'ascending');
+    await expect(name).toHaveAttribute('data-sort-direction', 'ascending');
 
     await amount.click();
-    await expect(amount).toHaveAttribute('aria-sort', 'descending');
+    await expect(amount).toHaveAttribute('data-sort-direction', 'descending');
   });
 
   test('@interaction disableClear toggles asc ⇄ desc and never returns to none', async ({
@@ -56,14 +58,17 @@ test.describe('Sort', () => {
     await s.goto();
 
     const customer = s.header(s.disableClearSection, 'customer');
-    // Initial: aria-sort="ascending" per the section's twSortDirection="asc".
-    await expect(customer).toHaveAttribute('aria-sort', 'ascending');
+    // These hosts are <span>s. `aria-sort` is invalid on a roleless span and
+    // is therefore no longer emitted there — assert the equivalent
+    // `data-sort-direction`, which carries the same vocabulary on any host.
+    // Initial: ascending per the section's twSortDirection="asc".
+    await expect(customer).toHaveAttribute('data-sort-direction', 'ascending');
     await customer.click();
-    await expect(customer).toHaveAttribute('aria-sort', 'descending');
+    await expect(customer).toHaveAttribute('data-sort-direction', 'descending');
     await customer.click();
-    await expect(customer).toHaveAttribute('aria-sort', 'ascending');
+    await expect(customer).toHaveAttribute('data-sort-direction', 'ascending');
     await customer.click();
-    await expect(customer).toHaveAttribute('aria-sort', 'descending');
+    await expect(customer).toHaveAttribute('data-sort-direction', 'descending');
   });
 
   test('@a11y disabled directive removes role="button" and tabindex', async ({ page }) => {
@@ -92,9 +97,10 @@ test.describe('Sort', () => {
     await expect(locked).toHaveAttribute('aria-disabled', 'true');
 
     // Force-click through the disabled styling — host handler returns early
-    // and aria-sort stays "none".
+    // and the sort state stays "none". A <span> host emits no `aria-sort`
+    // (invalid ARIA there), so read `data-sort-direction`.
     await locked.click({ force: true });
-    await expect(locked).toHaveAttribute('aria-sort', 'none');
+    await expect(locked).toHaveAttribute('data-sort-direction', 'none');
   });
 
   test('@interaction twSortChange event includes a previous-state snapshot on user click', async ({
@@ -124,9 +130,10 @@ test.describe('Sort', () => {
     const customer = s.listSection.locator('button[tw-sort-header][id="customer"]');
     await customer.focus();
     await expect(customer).toBeFocused();
+    // <button> hosts emit no `aria-sort` either — same reason.
     await page.keyboard.press('Enter');
-    await expect(customer).toHaveAttribute('aria-sort', 'ascending');
+    await expect(customer).toHaveAttribute('data-sort-direction', 'ascending');
     await page.keyboard.press('Space');
-    await expect(customer).toHaveAttribute('aria-sort', 'descending');
+    await expect(customer).toHaveAttribute('data-sort-direction', 'descending');
   });
 });

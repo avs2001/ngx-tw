@@ -127,7 +127,7 @@ const VARIANTS: SelectVariant[] = ['default', 'naked'];
                 [variant]="v"
                 [(value)]="variantValues[v]"
                 placeholder="Choose a fruit"
-                [attr.aria-label]="'Variant ' + v"
+                [aria-label]="'Variant ' + v"
                 class="w-64"
               />
             </div>
@@ -160,7 +160,7 @@ const VARIANTS: SelectVariant[] = ['default', 'naked'];
               [color]="c"
               [(value)]="colorValues[c]"
               [placeholder]="c"
-              [attr.aria-label]="'Color ' + c"
+              [aria-label]="'Color ' + c"
             />
           }
         </div>
@@ -189,7 +189,7 @@ const VARIANTS: SelectVariant[] = ['default', 'naked'];
                 [size]="s"
                 [(value)]="sizeValues[s]"
                 [placeholder]="'Choose a fruit (' + s + ')'"
-                [attr.aria-label]="'Size ' + s"
+                [aria-label]="'Size ' + s"
                 class="w-64"
               />
             </div>
@@ -780,7 +780,7 @@ export class SelectExamples {
     [variant]="v"
     [(value)]="variantValues[v]"
     placeholder="Choose a fruit"
-    [attr.aria-label]="'Variant ' + v"
+    [aria-label]="'Variant ' + v"
   />
 }`.trim();
 
@@ -791,7 +791,7 @@ export class SelectExamples {
     [color]="c"
     [(value)]="colorValues[c]"
     [placeholder]="c"
-    [attr.aria-label]="'Color ' + c"
+    [aria-label]="'Color ' + c"
   />
 }`.trim();
 
@@ -802,7 +802,7 @@ export class SelectExamples {
     [size]="s"
     [(value)]="sizeValues[s]"
     [placeholder]="'Choose a fruit (' + s + ')'"
-    [attr.aria-label]="'Size ' + s"
+    [aria-label]="'Size ' + s"
   />
 }`.trim();
 

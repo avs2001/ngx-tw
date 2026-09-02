@@ -192,7 +192,7 @@ const SIZES: readonly TwSize[] = ['xs', 'sm', 'md', 'lg', 'xl'];
                 [options]="fruits"
                 [size]="s"
                 [placeholder]="'Type a fruit (' + s + ')'"
-                [attr.aria-label]="'Size ' + s"
+                [aria-label]="'Size ' + s"
                 class="w-64"
               />
             </div>
@@ -223,7 +223,7 @@ const SIZES: readonly TwSize[] = ['xs', 'sm', 'md', 'lg', 'xl'];
               [options]="fruits"
               [color]="c"
               [placeholder]="c"
-              [attr.aria-label]="'Color ' + c"
+              [aria-label]="'Color ' + c"
             />
           }
         </div>
@@ -1060,7 +1060,7 @@ export class ComboboxExamples {
     [options]="fruits"
     [size]="s"
     [placeholder]="'Type a fruit (' + s + ')'"
-    [attr.aria-label]="'Size ' + s"
+    [aria-label]="'Size ' + s"
   />
 }`.trim();
 
@@ -1070,7 +1070,7 @@ export class ComboboxExamples {
     [options]="fruits"
     [color]="c"
     [placeholder]="c"
-    [attr.aria-label]="'Color ' + c"
+    [aria-label]="'Color ' + c"
   />
 }`.trim();
 

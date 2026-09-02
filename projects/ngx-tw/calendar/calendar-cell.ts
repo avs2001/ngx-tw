@@ -27,8 +27,11 @@ const cellVariants = tv(
   {
     slots: {
       wrapper: 'relative flex items-center justify-center',
+      // `aria-disabled:` rather than `disabled:` — the button never carries the
+      // native `disabled` attribute (see the host template), so the `disabled:`
+      // variant would never match.
       button:
-        'relative flex items-center justify-center cursor-pointer select-none transition-colors duration-normal motion-reduce:transition-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500 disabled:cursor-not-allowed',
+        'relative flex items-center justify-center cursor-pointer select-none transition-colors duration-normal motion-reduce:transition-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500 aria-disabled:cursor-not-allowed',
     },
     variants: {
       // Every view's cell is `h-9` — the 36px `md` control height from
@@ -130,6 +133,12 @@ const cellVariants = tv(
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: {
     role: 'gridcell',
+    // `aria-selected` belongs HERE, not on the inner <button>. A button's
+    // implicit role does not support `aria-selected`, so the previous binding
+    // exposed nothing: the selected day's state was invisible to assistive tech
+    // (SC 4.1.2). `gridcell` is the role that carries selection state, and it is
+    // the element the grid/row structure actually addresses.
+    '[attr.aria-selected]': "cell().isSelected || null",
     // Phase 4 — `data-state-*` styling contract (§34.5). Each attribute is `''`
     // when its boolean state is true and absent (`null`) otherwise so consumers
     // can target via `tw-calendar-cell[data-state-today]` selectors.
@@ -150,16 +159,23 @@ const cellVariants = tv(
   },
   template: `
     <div [class]="wrapperClasses()">
+      <!--
+        No native disabled attribute. A disabled button cannot take DOM focus,
+        so focusButton was a silent no-op on any out-of-range cell and the
+        roving tabindex drifted out of sync with the real activeElement -
+        pressing Tab into a grid whose cursor sat on a bounded date focused
+        nothing at all. APG uses aria-disabled for grid cells for exactly this
+        reason: the cell stays focusable and announceable, while activation is
+        refused in onClick and onKeydown.
+      -->
       <button
         #cellButton
         type="button"
         [class]="buttonClasses()"
         [attr.aria-label]="cell().ariaLabel"
-        [attr.aria-selected]="cell().isSelected || null"
         [attr.aria-disabled]="!cell().enabled || null"
         [attr.aria-current]="cell().isToday ? 'date' : null"
         [attr.tabindex]="tabindex()"
-        [disabled]="!cell().enabled"
         (click)="onClick()"
         (keydown)="onKeydown($event)"
         (mouseenter)="onMouseEnter()"
@@ -279,6 +295,11 @@ export class CalendarCellComponent<D> {
   }
 
   protected onMouseEnter(): void {
+    // Browsers do not dispatch mouse events on a natively disabled button, so
+    // before the switch to `aria-disabled` a disabled cell never previewed.
+    // Guard explicitly to keep range preview from extending over dates the user
+    // cannot pick.
+    if (!this.cell().enabled) return;
     this.previewed.emit(this.cell());
   }
 

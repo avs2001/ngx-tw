@@ -87,6 +87,12 @@ import { CodeBlockComponent } from '@cdevhub/ngx-tw/code-block';
               <td class="px-4 py-2 text-fg-muted">Required for <code class="font-mono">*twRowExpansion</code> and advanced CDK row-template variants.</td>
             </tr>
             <tr>
+              <td class="px-4 py-2 font-mono text-xs">clickableRows</td>
+              <td class="px-4 py-2 font-mono text-xs text-fg-muted">boolean</td>
+              <td class="px-4 py-2 font-mono text-xs text-fg-muted">false</td>
+              <td class="px-4 py-2 text-fg-muted">Set this whenever you bind <code class="font-mono">(rowClicked)</code>: it puts each row in the tab order, wires Enter / Space to the same handler as a click, and paints the focus ring. Left off, row activation is pointer-only — which is what keeps a static table out of the tab order.</td>
+            </tr>
+            <tr>
               <td class="px-4 py-2 font-mono text-xs">
                 expandedRows
                 <span class="ml-1 inline-block px-1.5 py-0.5 rounded text-2xs font-medium bg-info-50 text-info-700">two-way</span>
@@ -270,7 +276,7 @@ import { CodeBlockComponent } from '@cdevhub/ngx-tw/code-block';
             <tr>
               <td class="px-4 py-2 font-mono text-xs">rowClicked</td>
               <td class="px-4 py-2 font-mono text-xs text-fg-muted">EventEmitter&lt;TwRowClickEvent&lt;T&gt;&gt;</td>
-              <td class="px-4 py-2 text-fg-muted">Fires when a row is clicked; suppressed when the click originated inside an interactive descendant.</td>
+              <td class="px-4 py-2 text-fg-muted">Fires when a row is activated; suppressed when the click originated inside an interactive descendant. With <code class="font-mono">[clickableRows]="true"</code> Enter / Space on a focused row also fires it, and the payload's <code class="font-mono">event</code> is then a <code class="font-mono">KeyboardEvent</code>.</td>
             </tr>
             <tr>
               <td class="px-4 py-2 font-mono text-xs">expansionChange</td>
@@ -562,6 +568,7 @@ interface TwTableLabels {
   expandRowLabel: string;
   collapseRowLabel: string;
   selectAllLabel: string;           // 'Select all rows'
+  selectionColumnLabel: string;     // 'Selection' — visually hidden header text
   selectRowLabel: string;           // 'Select row {index}'
 }
 

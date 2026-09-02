@@ -111,7 +111,8 @@ import { CodeBlockComponent } from '@cdevhub/ngx-tw/code-block';
         <li>Rich content via <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">TemplateRef&lt;void&gt;</code></li>
         <li>Programmatic control through <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">show()</code>, <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">hide()</code>, and <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">toggle()</code> via <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">exportAs: twTooltip</code></li>
         <li>ARIA-describedby integration with CDK <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">AriaDescriber</code></li>
-        <li><code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">Escape</code> key dismissal and automatic detach on ancestor scroll</li>
+        <li><code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">Escape</code> key dismissal from anywhere on the page, and automatic detach on ancestor scroll</li>
+        <li>WCAG 2.1 SC 1.4.13 compliant — the panel is hoverable, so the pointer can move onto it to read or copy the text, and it stays up until the pointer leaves or <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">Escape</code> is pressed</li>
         <li>Touch support with long-press to show</li>
       </ul>
     </section>

@@ -643,18 +643,25 @@ describe('PaginatorComponent — accessibility', () => {
     expect(active.getAttribute('aria-label')).toBe('Page 1, current page');
   });
 
-  it('marks ellipsis items with aria-label and hides the glyph from AT', async () => {
+  it('names ellipsis items with visually-hidden text and hides the glyph from AT', async () => {
     host.totalItems.set(1000);
     host.page.set(50);
     fixture.detectChanges();
     await fixture.whenStable();
-    const ellipses = fixture.nativeElement.querySelectorAll(
-      '[aria-label="More pages"]',
+    const srLabels: HTMLElement[] = Array.from(
+      fixture.nativeElement.querySelectorAll('.sr-only'),
     );
-    expect(ellipses.length).toBeGreaterThan(0);
-    const hidden = ellipses[0].querySelector('[aria-hidden="true"]');
-    expect(hidden).toBeTruthy();
+    const ellipsisLabels = srLabels.filter((el) => el.textContent?.trim() === 'More pages');
+    expect(ellipsisLabels.length).toBeGreaterThan(0);
+
+    const ellipsis = ellipsisLabels[0].parentElement!;
+    // The glyph itself stays out of the accessibility tree; only the sr-only
+    // text names the gap.
+    expect(ellipsis.querySelector('[aria-hidden="true"]')).toBeTruthy();
+    // A span has no role, so ARIA prohibits naming it with aria-label.
+    expect(ellipsis.hasAttribute('aria-label')).toBe(false);
   });
+
 
   it('moves focus with ArrowRight / ArrowLeft', async () => {
     const pages = queryPageButtons(fixture);
@@ -787,6 +794,22 @@ describe('PaginatorComponent — link mode', () => {
     expect(first.getAttribute('href')).toBeNull();
   });
 
+  it('keeps a link role on href-less nav anchors so their name survives', () => {
+    // An <a> without href exposes no role, and ARIA prohibits aria-label /
+    // aria-disabled on a roleless generic (axe: aria-prohibited-attr) — the
+    // name would be silently dropped. Restoring role="link" keeps both.
+    const first = queryNavButton(fixture, 'first') as HTMLAnchorElement;
+    const prev = queryNavButton(fixture, 'prev') as HTMLAnchorElement;
+    expect(first.getAttribute('role')).toBe('link');
+    expect(first.getAttribute('aria-label')).toBe('First page');
+    expect(prev.getAttribute('role')).toBe('link');
+
+    // Enabled anchors keep their native link role — no redundant attribute.
+    const next = queryNavButton(fixture, 'next') as HTMLAnchorElement;
+    expect(next.getAttribute('href')).toBe('/list?page=2');
+    expect(next.hasAttribute('role')).toBe(false);
+  });
+
   it('still emits pageChange when a link is clicked', async () => {
     const pages = queryPageButtons(fixture) as HTMLAnchorElement[];
     const pageTwo = pages.find((p) => p.textContent?.trim() === '2');
@@ -838,6 +861,17 @@ describe('PaginatorComponent — labels', () => {
     const pages = queryPageButtons(fixture);
     const two = pages.find((b) => b.textContent?.trim() === '2');
     expect(two?.getAttribute('aria-label')).toBe('Navigate to page 2');
+  });
+
+  it('localises the ellipsis name rendered as visually-hidden text', () => {
+    host.totalItems.set(1000);
+    host.page.set(50);
+    host.labels.set({ ellipsis: 'Plus de pages' });
+    fixture.detectChanges();
+    const texts = Array.from(
+      fixture.nativeElement.querySelectorAll('.sr-only') as NodeListOf<HTMLElement>,
+    ).map((el) => el.textContent?.trim());
+    expect(texts).toContain('Plus de pages');
   });
 });
 

@@ -327,7 +327,7 @@ export class CheckboxComponent
   /** Optional name attribute, applied to the hidden native `<input type="checkbox">` so native form submission includes the control. */
   readonly name = input<string | undefined>(undefined);
 
-  /** Id on the host element. Auto-generated as `tw-checkbox-N` when not provided. Used by the form-field's `<label for>` attribute. */
+  /** Id on the host element. Auto-generated as `tw-checkbox-N` when not provided. Anchors the derived label/description ids; the accessible name inside a `<tw-form-field>` comes from `aria-labelledby`, not from the field's `<label for>` (the host is a custom element, which `for` cannot target). */
   readonly idInput = input<string | undefined>(undefined, { alias: 'id' });
 
   /** Accessible name when no visible label is provided. Mirrored to `aria-label`. Defaults to `undefined`. */
@@ -367,6 +367,7 @@ export class CheckboxComponent
   private readonly _ngControlRev = signal(0);
   private readonly _formSubmitRev = signal(0);
   private readonly describedByIdsSignal = signal<readonly string[]>([]);
+  private readonly labelledByIdsSignal = signal<readonly string[]>([]);
 
   private readonly uid = nextId++;
   /** @internal Fallback id used when the consumer does not set `[id]`. */
@@ -427,6 +428,15 @@ export class CheckboxComponent
   });
 
   readonly effectiveAriaLabelledby = computed(() => {
+    // A wrapping `<tw-form-field>` pushes the projected `<label twLabel>` id (plus
+    // any consumer `aria-labelledby`) through `setLabelledByIds`. Those ids win:
+    // the host is `<tw-checkbox role="checkbox">`, a custom element that is not a
+    // labelable form control, so the field's `<label for>` resolves to nothing and
+    // this attribute is the ONLY route from the visible label to the control.
+    // Without it the checkbox's own label span is empty in that arrangement — the
+    // visible text lives in the form-field — and the control has no name at all.
+    const pushed = this.labelledByIdsSignal();
+    if (pushed.length) return pushed.join(' ');
     const external = this.ariaLabelledby();
     if (external) return external;
     if (this.ariaLabel()) return undefined;
@@ -486,6 +496,11 @@ export class CheckboxComponent
 
   /** @internal */
   readonly userAriaDescribedBy: Signal<string | undefined> = computed(() => this.ariaDescribedby());
+
+  /** @internal Consumer-supplied `aria-labelledby`, surfaced so the wrapping form-field merges it into the ids it pushes back rather than replacing it. */
+  override readonly userAriaLabelledby: Signal<string | undefined> = computed(() =>
+    this.ariaLabelledby(),
+  );
 
   private readonly variantResult = computed(() =>
     checkboxVariants({
@@ -583,6 +598,11 @@ export class CheckboxComponent
   /** @internal Called by the form-field once it has computed the merged describedby ids. */
   setDescribedByIds(ids: string[]): void {
     this.describedByIdsSignal.set([...ids]);
+  }
+
+  /** @internal Receives the merged `aria-labelledby` ids from the wrapping form-field. Required because the host is a custom element rather than a labelable control, so the field's `<label for>` never reaches it. */
+  override setLabelledByIds(ids: string[]): void {
+    this.labelledByIdsSignal.set([...ids]);
   }
 
   /** @internal Called when the form-field container is clicked — focus the host without toggling. */

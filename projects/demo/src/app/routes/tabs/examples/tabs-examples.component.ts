@@ -258,11 +258,20 @@ const MAILBOXES = [
         <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">[closable]="true"</code>
         on a
         <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">tw-tab</code>
-        to render a dismiss button inside its trigger. The component emits the tab's value
+        to render a dismiss control inside its trigger. The component emits the tab's value
         through the
         <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">(closed)</code>
         output — the parent is responsible for actually removing it from the backing collection.
         If the active tab is closed, selection moves to the nearest enabled sibling.
+      </p>
+      <p class="text-sm text-fg-muted leading-relaxed max-w-2xl mb-4">
+        The dismiss control is pointer-only by design: a focusable element inside a
+        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">role="tab"</code>
+        is nested interactive content, which assistive technology cannot navigate. The
+        keyboard gesture is the WAI-ARIA-recommended
+        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">Delete</code>
+        key on the focused tab, advertised to screen readers through
+        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">aria-keyshortcuts</code>.
       </p>
       <div class="rounded-lg border border-border p-6 bg-surface-raised mb-4">
         <tw-tabs [(value)]="closableTab" (closed)="closeTab($event)">
@@ -272,7 +281,7 @@ const MAILBOXES = [
           @for (tab of closableTabs(); track tab) {
             <tw-tab [value]="tab" [label]="tab | titlecase" [closable]="true">
               <p class="text-sm text-fg">{{ tab | titlecase }} pane content.</p>
-              <p class="text-sm text-fg-muted mt-1">Click the × in the trigger to close this tab.</p>
+              <p class="text-sm text-fg-muted mt-1">Click the × in the trigger, or press Delete while the tab has focus, to close this tab.</p>
             </tw-tab>
           }
         </tw-tabs>

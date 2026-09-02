@@ -131,12 +131,31 @@ const treeVariants = tv(
       content: 'flex items-center gap-1.5 min-w-0 flex-1',
     },
     variants: {
+      // Tree nodes are on the `min-h-*` list (docs/vertical-rhythm.md §2), not
+      // the pinned one: a consumer's node template may wrap onto a second line,
+      // so the row must stay free to grow. The floor lands on the control scale
+      // (24 / 32 / 36 / 44 / 48) exactly as `menu`'s rows do, and `py-*` is kept
+      // as it was — it sets the breathing room around a wrapped row, where the
+      // floor no longer binds.
+      //
+      // The row is also the pointer target: it carries `(activation)` and the
+      // `treeitem` role, and it was the *only* member of that cohort shipping no
+      // floor at all, so at `xs` it measured one `text-sm` line box — 20px,
+      // under the WCAG 2.2 SC 2.5.8 24px minimum. The floor fixes the rhythm
+      // gap and the target-size defect with one value.
+      //
+      // Resting heights the floor binds against (text-sm line box = 20px):
+      //   xs → py-0   (0)  + 20 = 20 → 24 (`min-h-6`)
+      //   sm → py-0.5 (4)  + 20 = 24 → 32 (`min-h-8`)
+      //   md → py-1   (8)  + 20 = 28 → 36 (`min-h-9`)
+      //   lg → py-1.5 (12) + 20 = 32 → 44 (`min-h-11`)
+      //   xl → py-2   (16) + 20 = 36 → 48 (`min-h-12`)
       size: {
-        xs: { content: 'py-0' },
-        sm: { content: 'py-0.5' },
-        md: { content: 'py-1' },
-        lg: { content: 'py-1.5' },
-        xl: { content: 'py-2' },
+        xs: { node: 'min-h-6', content: 'py-0' },
+        sm: { node: 'min-h-8', content: 'py-0.5' },
+        md: { node: 'min-h-9', content: 'py-1' },
+        lg: { node: 'min-h-11', content: 'py-1.5' },
+        xl: { node: 'min-h-12', content: 'py-2' },
       },
       selected: {
         true: { node: 'bg-primary-50 text-primary-700 hover:bg-primary-50' },

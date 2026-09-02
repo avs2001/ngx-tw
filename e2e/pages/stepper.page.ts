@@ -20,8 +20,8 @@ export type StepperSectionName =
 /**
  * Page Object Model for the stepper component's examples route. Thin by
  * design: a `goto()`, one locator per `<section class="mb-10">`, and small
- * helpers for step headers (the CDK `role="tab"` buttons exposed by the
- * stepper's tablist).
+ * helpers for step headers (the `cdkStepHeader` buttons — `role="tab"` in a
+ * horizontal stepper, disclosure buttons in a vertical one).
  */
 export class StepperPage {
   readonly main: Locator;
@@ -56,12 +56,20 @@ export class StepperPage {
     await expect(this.page.getByRole('heading', { level: 1 })).toBeVisible();
   }
 
-  /** All step header buttons (role="tab") inside the given section. */
+  /**
+   * All step header buttons inside the given section. Anchored on
+   * `cdkStepHeader`, not on a role: horizontal headers are `role="tab"`,
+   * vertical headers are disclosure buttons (see `tablist` below).
+   */
   stepHeaders(section: Locator): Locator {
-    return section.locator('button[role="tab"]');
+    return section.locator('button[cdkStepHeader]');
   }
 
-  /** Tablist (role="tablist") inside a section — `aria-orientation` reflects horizontal/vertical. */
+  /**
+   * Tablist inside a section. Present for horizontal steppers only — a
+   * vertical stepper renders its panel inline inside the strip, which a
+   * tablist may not own, so it drops the role entirely.
+   */
   tablist(section: Locator): Locator {
     return section.locator('[role="tablist"]').first();
   }

@@ -334,10 +334,11 @@ class InviteToastComponent {
           <div class="border-t border-border-muted pt-5">
             <p class="text-xs font-semibold text-fg uppercase tracking-wide mb-3">Timing</p>
             <div>
-              <label class="block text-xs font-medium text-fg-muted mb-1">
+              <label for="toast-play-duration" class="block text-xs font-medium text-fg-muted mb-1">
                 Duration: {{ playDuration() === 0 ? 'pinned' : playDuration() + 'ms' }}
               </label>
               <input
+                id="toast-play-duration"
                 type="range" min="0" max="10000" step="500"
                 [value]="playDuration()"
                 (input)="playDuration.set($any($event.target).valueAsNumber)"

@@ -86,7 +86,7 @@ const PRODUCTS: readonly Product[] = PRODUCT_NAMES.map((name, i) => ({
         @for (t of types; track t) {
           <div>
             <p class="text-xs font-medium text-fg-muted mb-2 uppercase tracking-wide">{{ t }}</p>
-            <tw-paginator [type]="t" [totalItems]="100" [(page)]="typePage[t]" />
+            <tw-paginator [type]="t" [totalItems]="100" [(page)]="typePage[t]" [aria-label]="'Type example: ' + t" />
           </div>
         }
       </div>
@@ -110,6 +110,7 @@ const PRODUCTS: readonly Product[] = PRODUCT_NAMES.map((name, i) => ({
           <div>
             <p class="text-xs font-medium text-fg-muted mb-2 uppercase tracking-wide">{{ l }}</p>
             <tw-paginator
+              [aria-label]="'Layout example: ' + l"
               [layout]="l"
               [totalItems]="250"
               [(page)]="layoutPage[l]"
@@ -138,7 +139,7 @@ const PRODUCTS: readonly Product[] = PRODUCT_NAMES.map((name, i) => ({
         @for (s of sizes; track s) {
           <div>
             <p class="text-xs font-medium text-fg-muted mb-2 uppercase tracking-wide">{{ s }}</p>
-            <tw-paginator [size]="s" [totalItems]="100" [(page)]="sizePage[s]" />
+            <tw-paginator [size]="s" [totalItems]="100" [(page)]="sizePage[s]" [aria-label]="'Size example: ' + s" />
           </div>
         }
       </div>
@@ -161,7 +162,7 @@ const PRODUCTS: readonly Product[] = PRODUCT_NAMES.map((name, i) => ({
         @for (c of colors; track c) {
           <div>
             <p class="text-xs font-medium text-fg-muted mb-2 uppercase tracking-wide">{{ c }}</p>
-            <tw-paginator [color]="c" [totalItems]="80" [(page)]="colorPage[c]" />
+            <tw-paginator [color]="c" [totalItems]="80" [(page)]="colorPage[c]" [aria-label]="'Color example: ' + c" />
           </div>
         }
       </div>
@@ -185,6 +186,7 @@ const PRODUCTS: readonly Product[] = PRODUCT_NAMES.map((name, i) => ({
             siblingCount = 2, boundaryCount = 1
           </p>
           <tw-paginator
+            aria-label="Ellipsis range example, wide siblings"
             [totalItems]="500"
             [siblingCount]="2"
             [boundaryCount]="1"
@@ -196,6 +198,7 @@ const PRODUCTS: readonly Product[] = PRODUCT_NAMES.map((name, i) => ({
             siblingCount = 0, boundaryCount = 2
           </p>
           <tw-paginator
+            aria-label="Ellipsis range example, tight siblings"
             [totalItems]="500"
             [siblingCount]="0"
             [boundaryCount]="2"
@@ -218,7 +221,7 @@ const PRODUCTS: readonly Product[] = PRODUCT_NAMES.map((name, i) => ({
         and final-page buttons are already visible in the numbered strip.
       </p>
       <div class="rounded-lg border border-border p-6 bg-surface-raised mb-4">
-        <tw-paginator [totalItems]="200" [showFirstLastButtons]="false" [(page)]="noFirstLastPage" />
+        <tw-paginator aria-label="First and last buttons example" [totalItems]="200" [showFirstLastButtons]="false" [(page)]="noFirstLastPage" />
       </div>
       <tw-code-block [code]="firstLastSnippet" language="html" />
     </section>
@@ -258,6 +261,7 @@ const PRODUCTS: readonly Product[] = PRODUCT_NAMES.map((name, i) => ({
         </div>
 
         <tw-paginator
+          aria-label="Product table pages"
           layout="spread"
           [totalItems]="products.length"
           [showPageSizeSelector]="true"
@@ -296,6 +300,7 @@ const PRODUCTS: readonly Product[] = PRODUCT_NAMES.map((name, i) => ({
       </p>
       <div class="rounded-lg border border-border p-6 bg-surface-raised mb-4">
         <tw-paginator
+          aria-label="Link mode example"
           [totalItems]="120"
           [page]="linkPage()"
           [linkFactory]="linkHref"
@@ -326,6 +331,7 @@ const PRODUCTS: readonly Product[] = PRODUCT_NAMES.map((name, i) => ({
       </p>
       <div class="rounded-lg border border-border p-6 bg-surface-raised mb-4 resize-x overflow-auto min-w-64 max-w-full" style="width: 100%">
         <tw-paginator
+          aria-label="Responsive collapse example"
           layout="spread"
           [totalItems]="300"
           [showPageSizeSelector]="true"
@@ -359,15 +365,15 @@ const PRODUCTS: readonly Product[] = PRODUCT_NAMES.map((name, i) => ({
       <div class="rounded-lg border border-border p-6 bg-surface-raised mb-4 space-y-6">
         <div>
           <p class="text-xs font-medium text-fg-muted mb-2 uppercase tracking-wide">Disabled (async fetch)</p>
-          <tw-paginator [totalItems]="100" [disabled]="true" [page]="3" />
+          <tw-paginator aria-label="Disabled state example" [totalItems]="100" [disabled]="true" [page]="3" />
         </div>
         <div>
           <p class="text-xs font-medium text-fg-muted mb-2 uppercase tracking-wide">Empty (default message)</p>
-          <tw-paginator [totalItems]="0" [hideOnEmpty]="false" />
+          <tw-paginator aria-label="Empty state example" [totalItems]="0" [hideOnEmpty]="false" />
         </div>
         <div>
           <p class="text-xs font-medium text-fg-muted mb-2 uppercase tracking-wide">Empty (custom template)</p>
-          <tw-paginator [totalItems]="0" [hideOnEmpty]="false">
+          <tw-paginator aria-label="Custom empty state example" [totalItems]="0" [hideOnEmpty]="false">
             <ng-template twPaginatorEmpty>
               <span class="text-sm text-fg-muted">
                 No orders match your filters — try broadening the date range.
@@ -378,9 +384,9 @@ const PRODUCTS: readonly Product[] = PRODUCT_NAMES.map((name, i) => ({
         <div>
           <p class="text-xs font-medium text-fg-muted mb-2 uppercase tracking-wide">Hide on single page</p>
           <p class="text-xs text-fg-muted mb-2 italic">5 items, 10 per page → 1 page → hidden (nothing renders below):</p>
-          <tw-paginator [totalItems]="5" [hideOnSinglePage]="true" />
+          <tw-paginator aria-label="Single page, hidden example" [totalItems]="5" [hideOnSinglePage]="true" />
           <p class="text-xs text-fg-muted mt-3 mb-2 italic">50 items → 5 pages → visible:</p>
-          <tw-paginator [totalItems]="50" [hideOnSinglePage]="true" [(page)]="hidePage" />
+          <tw-paginator aria-label="Multi page, visible example" [totalItems]="50" [hideOnSinglePage]="true" [(page)]="hidePage" />
         </div>
       </div>
       <tw-code-block [code]="statesSnippet" language="html" />
@@ -401,6 +407,7 @@ const PRODUCTS: readonly Product[] = PRODUCT_NAMES.map((name, i) => ({
       </p>
       <div class="rounded-lg border border-border p-6 bg-surface-raised mb-4">
         <tw-paginator
+          aria-label="French labels example"
           layout="spread"
           [totalItems]="150"
           [showPageSizeSelector]="true"
@@ -431,6 +438,7 @@ const PRODUCTS: readonly Product[] = PRODUCT_NAMES.map((name, i) => ({
       </p>
       <div class="rounded-lg border border-border p-6 bg-surface-raised mb-4">
         <tw-paginator
+          aria-label="Rich page info example"
           layout="spread"
           [totalItems]="250"
           [(page)]="richInfoPage"
@@ -466,6 +474,7 @@ const PRODUCTS: readonly Product[] = PRODUCT_NAMES.map((name, i) => ({
       </p>
       <div class="rounded-lg border border-border p-6 bg-surface-raised mb-4">
         <tw-paginator
+          aria-label="Custom page size selector example"
           [totalItems]="200"
           [showPageSizeSelector]="true"
           [pageSizeOptions]="[10, 25, 50, 100]"
@@ -479,7 +488,7 @@ const PRODUCTS: readonly Product[] = PRODUCT_NAMES.map((name, i) => ({
                   type="button"
                   class="inline-flex items-center justify-center rounded-md border px-2.5 py-1 text-xs font-medium transition-colors duration-normal cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500"
                   [class.bg-primary-600]="opt === ctx.pageSize"
-                  [class.text-white]="opt === ctx.pageSize"
+                  [class.text-on-primary]="opt === ctx.pageSize"
                   [class.border-primary-600]="opt === ctx.pageSize"
                   [class.text-fg-muted]="opt !== ctx.pageSize"
                   [class.border-border]="opt !== ctx.pageSize"
@@ -576,16 +585,16 @@ const PRODUCTS: readonly Product[] = PRODUCT_NAMES.map((name, i) => ({
             <p class="text-xs font-semibold text-fg uppercase tracking-wide mb-3">Range</p>
             <div class="flex flex-wrap gap-4">
               <div>
-                <label class="block text-xs font-medium text-fg-muted mb-1">Sibling count: {{ playSiblings() }}</label>
-                <input type="range" min="0" max="3" step="1" [value]="playSiblings()" (input)="playSiblings.set($any($event.target).valueAsNumber)" class="accent-primary-600" />
+                <label for="pg-play-siblings" class="block text-xs font-medium text-fg-muted mb-1">Sibling count: {{ playSiblings() }}</label>
+                <input id="pg-play-siblings" type="range" min="0" max="3" step="1" [value]="playSiblings()" (input)="playSiblings.set($any($event.target).valueAsNumber)" class="accent-primary-600" />
               </div>
               <div>
-                <label class="block text-xs font-medium text-fg-muted mb-1">Boundary count: {{ playBoundaries() }}</label>
-                <input type="range" min="0" max="3" step="1" [value]="playBoundaries()" (input)="playBoundaries.set($any($event.target).valueAsNumber)" class="accent-primary-600" />
+                <label for="pg-play-boundaries" class="block text-xs font-medium text-fg-muted mb-1">Boundary count: {{ playBoundaries() }}</label>
+                <input id="pg-play-boundaries" type="range" min="0" max="3" step="1" [value]="playBoundaries()" (input)="playBoundaries.set($any($event.target).valueAsNumber)" class="accent-primary-600" />
               </div>
               <div>
-                <label class="block text-xs font-medium text-fg-muted mb-1">Total items: {{ playTotal() }}</label>
-                <input type="range" min="0" max="500" step="10" [value]="playTotal()" (input)="playTotal.set($any($event.target).valueAsNumber)" class="accent-primary-600" />
+                <label for="pg-play-total" class="block text-xs font-medium text-fg-muted mb-1">Total items: {{ playTotal() }}</label>
+                <input id="pg-play-total" type="range" min="0" max="500" step="10" [value]="playTotal()" (input)="playTotal.set($any($event.target).valueAsNumber)" class="accent-primary-600" />
               </div>
             </div>
           </div>
@@ -641,6 +650,7 @@ const PRODUCTS: readonly Product[] = PRODUCT_NAMES.map((name, i) => ({
 
         <div class="p-6 rounded-lg bg-surface-sunken">
           <tw-paginator
+            aria-label="Playground"
             [type]="playType()"
             [layout]="playLayout()"
             [size]="playSize()"
@@ -938,7 +948,7 @@ protected onLinkPaginated(event: TwPaginatorPageChangeEvent): void {
         <button
           type="button"
           [class.bg-primary-600]="opt === ctx.pageSize"
-          [class.text-white]="opt === ctx.pageSize"
+          [class.text-on-primary]="opt === ctx.pageSize"
           (click)="ctx.setPageSize(opt)"
         >{{ opt }}</button>
       }
