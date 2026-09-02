@@ -112,10 +112,7 @@ export class CalendarHeaderComponent {
   /** Disables the next button — set by the orchestrator when `maxDate` blocks forward navigation. Defaults to `false`. */
   readonly nextDisabled: InputSignal<boolean> = input<boolean>(false);
 
-  /** When false, the period button is disabled (e.g. when already at the top view). Defaults to `true`. */
-  // TRUE-default: the period button is the calendar header's primary drill-up
-  // affordance; disabling it is reserved for the top view where there's nowhere
-  // to drill up to.
+  /** When false, the period button is disabled (e.g. when already at the top view). Defaults to `true` — the period button is the header's primary drill-up affordance; the special case is the top view, where there is nowhere to drill up to. */
   readonly canSwitchView: InputSignal<boolean> = input<boolean>(true);
 
   /** Fires on previous button click. */

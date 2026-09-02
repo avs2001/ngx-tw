@@ -29,7 +29,7 @@ import {
   `,
 })
 class TwoSidedHost {
-  readonly variant = signal<FlipCardVariant>('outlined');
+  readonly variant = signal<FlipCardVariant>('outline');
   readonly direction = signal<FlipCardDirection>('horizontal');
   readonly trigger = signal<FlipCardTrigger>('both');
   readonly disabled = signal(false);
@@ -141,7 +141,7 @@ describe('FlipCardComponent', () => {
       expect(el.textContent).toContain('Front only');
     });
 
-    it('applies outlined variant classes by default', async () => {
+    it('applies outline variant classes by default', async () => {
       await TestBed.configureTestingModule({ imports: [TwoSidedHost] })
         .compileComponents();
       const fixture = TestBed.createComponent(TwoSidedHost);
@@ -172,6 +172,35 @@ describe('FlipCardComponent', () => {
       expect(face.className).toContain('bg-transparent');
     });
 
+    // ── Deprecated variant aliases ──
+    //
+    // `'outlined'` was renamed to `'outline'` (and was also the *default*, so
+    // this rename moved the default spelling too). The old string must keep
+    // rendering byte-identical classes: `tv()` returns base classes only for
+    // an unrecognised variant value — no throw, no warning, just a silently
+    // unstyled card. String equality is the literal encoding of that promise.
+    //
+    // Non-vacuous: delete the `outlined` entry from `VARIANT_ALIASES` and the
+    // legacy string reaches `tv()` unrecognised, dropping
+    // `bg-surface border border-border` from the face — the two strings
+    // diverge and this fails.
+    it('"outlined" resolves to exactly the same classes as "outline"', async () => {
+      await TestBed.configureTestingModule({ imports: [TwoSidedHost] })
+        .compileComponents();
+      const fixture = TestBed.createComponent(TwoSidedHost);
+      fixture.componentInstance.variant.set('outline');
+      await flushBack(fixture);
+      const canonicalFace = faces(fixture)[0].className;
+      const canonicalRoot = host(fixture).className;
+
+      fixture.componentInstance.variant.set('outlined');
+      fixture.detectChanges();
+      expect(faces(fixture)[0].className).toBe(canonicalFace);
+      expect(host(fixture).className).toBe(canonicalRoot);
+      expect(faces(fixture)[0].className).toContain('bg-surface');
+      expect(faces(fixture)[0].className).toContain('border-border');
+    });
+
     it('switches axis classes when direction changes', async () => {
       await TestBed.configureTestingModule({ imports: [TwoSidedHost] })
         .compileComponents();
@@ -187,7 +216,11 @@ describe('FlipCardComponent', () => {
       expect(inner.className).toContain('tw-flip-axis-x');
     });
 
-    it('uses the standard duration-300 token (no arbitrary durations)', async () => {
+    // `duration-300` is deliberately off the codified transition scale — see
+    // the justification comment on the `inner` slot in flip-card.ts. This
+    // guards the token against a well-meaning "fix" to `duration-200`, and
+    // against an arbitrary `duration-[...]` value.
+    it('uses the off-scale duration-300 flip token (no arbitrary durations)', async () => {
       await TestBed.configureTestingModule({ imports: [TwoSidedHost] })
         .compileComponents();
       const fixture = TestBed.createComponent(TwoSidedHost);
@@ -386,7 +419,7 @@ describe('FlipCardComponent', () => {
       expect(el.getAttribute('aria-pressed')).toBe('true');
     });
 
-    it('manual mode sets role=region, no tabindex, aria-live=polite', async () => {
+    it('manual mode sets role=region, no tabindex, no aria-pressed', async () => {
       await TestBed.configureTestingModule({ imports: [TwoSidedHost] })
         .compileComponents();
       const fixture = TestBed.createComponent(TwoSidedHost);
@@ -395,7 +428,6 @@ describe('FlipCardComponent', () => {
       const el = host(fixture);
       expect(el.getAttribute('role')).toBe('region');
       expect(el.getAttribute('tabindex')).toBeNull();
-      expect(el.getAttribute('aria-live')).toBe('polite');
       expect(el.getAttribute('aria-pressed')).toBeNull();
     });
 
@@ -505,6 +537,47 @@ describe('FlipCardComponent', () => {
   });
 
   describe('LiveAnnouncer (all interactive modes)', () => {
+    // Regression guard for the double-announcement bug: manual mode used to
+    // mark the host `aria-live="polite"` *and* call `LiveAnnouncer.announce`,
+    // so a single flip reached the AT twice — once from the live region
+    // observing the `aria-hidden` face swap, once from the announcer.
+    // `LiveAnnouncer` is now the only channel, in every trigger mode.
+    //
+    // Non-vacuous against the old code: `aria-live` was bound to `ariaLive()`,
+    // which returned `'polite'` for `trigger="manual"`, so the first
+    // expectation below read `'polite'` and failed. The second half (exactly
+    // one announce per flip) held before and after — it is here to prove the
+    // surviving channel was not removed along with the region.
+    it('manual mode announces through LiveAnnouncer only — no host aria-live region', async () => {
+      const announce = vi.fn();
+      const liveAnnouncerStub = { announce, clear: vi.fn() };
+      await TestBed.configureTestingModule({
+        imports: [TwoSidedHost],
+        providers: [{ provide: LiveAnnouncer, useValue: liveAnnouncerStub }],
+      }).compileComponents();
+      const fixture = TestBed.createComponent(TwoSidedHost);
+      fixture.componentInstance.trigger.set('manual');
+      await flushBack(fixture);
+
+      expect(host(fixture).getAttribute('aria-live')).toBeNull();
+
+      fixture.componentInstance.flipped.set(true);
+      fixture.detectChanges();
+      expect(announce).toHaveBeenCalledTimes(1);
+      expect(announce).toHaveBeenLastCalledWith('Back face visible');
+    });
+
+    it('no trigger mode puts an aria-live region on the host', async () => {
+      await TestBed.configureTestingModule({ imports: [TwoSidedHost] })
+        .compileComponents();
+      const fixture = TestBed.createComponent(TwoSidedHost);
+      for (const mode of ['manual', 'click', 'hover', 'both'] as const) {
+        fixture.componentInstance.trigger.set(mode);
+        await flushBack(fixture);
+        expect(host(fixture).getAttribute('aria-live')).toBeNull();
+      }
+    });
+
     it('announces face transitions in manual mode and skips first render', async () => {
       const announce = vi.fn();
       const liveAnnouncerStub = { announce, clear: vi.fn() };

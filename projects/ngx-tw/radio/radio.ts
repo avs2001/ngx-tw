@@ -617,7 +617,7 @@ export class RadioGroupComponent<T = unknown> implements ControlValueAccessor, O
   /** Visual style of the selected indicator. `'solid'` fills the dot with the color against a colored ring; `'outline'` keeps a transparent fill with a colored ring and colored dot. Propagated to children unless a child overrides it. Defaults to `'solid'`. */
   readonly variant = input<RadioVariant>('solid');
 
-  /** Layout direction of the group. Drives `aria-orientation` and the arrow-key model. Defaults to `'vertical'`. */
+  /** Layout direction of the group. Sets `aria-orientation` and the visual axis; both arrow-key pairs navigate in either orientation, per WAI-ARIA APG. Defaults to `'vertical'`. */
   readonly orientation = input<RadioOrientation>('vertical');
 
   /** When true, disables every radio in the group and blocks keyboard interaction. Defaults to `false`. */

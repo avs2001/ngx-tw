@@ -11,7 +11,7 @@ import { CodeBlockComponent } from '@cdevhub/ngx-tw/code-block';
 import type { TwColor, TwSize } from '@cdevhub/ngx-tw/core';
 import type { CollapsibleDisplay, CollapsibleVariant } from '@cdevhub/ngx-tw/collapsible';
 
-const VARIANTS: CollapsibleVariant[] = ['default', 'bordered', 'ghost', 'filled'];
+const VARIANTS: CollapsibleVariant[] = ['default', 'outline', 'ghost', 'solid'];
 const COLORS: TwColor[] = ['primary', 'secondary', 'accent', 'neutral', 'info', 'success', 'warning', 'error'];
 const SIZES: TwSize[] = ['xs', 'sm', 'md', 'lg', 'xl'];
 
@@ -35,11 +35,11 @@ const SIZES: TwSize[] = ['xs', 'sm', 'md', 'lg', 'xl'];
         Variants change the panel's visual weight without changing its behavior. Use
         <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">default</code>
         for stacked rows separated by a single divider,
-        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">bordered</code>
+        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">outline</code>
         when each panel needs to read as its own card,
         <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">ghost</code>
         for low-emphasis disclosures inside an existing surface, and
-        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">filled</code>
+        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">solid</code>
         when you want to tint the whole panel with a semantic color.
       </p>
       <div class="rounded-lg border border-border p-6 bg-surface-raised mb-4">
@@ -62,10 +62,10 @@ const SIZES: TwSize[] = ['xs', 'sm', 'md', 'lg', 'xl'];
         The
         <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">color</code>
         input applies to the
-        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">filled</code>
+        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">solid</code>
         and
-        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">bordered</code>
-        variants — filled tints the trigger, content, and chevron; bordered only tints the
+        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">outline</code>
+        variants — solid tints the trigger, content, and chevron; outline only tints the
         outline. The
         <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">default</code>
         and
@@ -78,7 +78,7 @@ const SIZES: TwSize[] = ['xs', 'sm', 'md', 'lg', 'xl'];
             <p class="text-xs font-medium text-fg-muted mb-2 uppercase tracking-wide">Filled</p>
             <div class="space-y-2">
               @for (c of colors; track c) {
-                <tw-collapsible [display]="{ variant: 'filled', color: c }">
+                <tw-collapsible [display]="{ variant: 'solid', color: c }">
                   <button twCollapsibleTrigger>{{ c | titlecase }}</button>
                   <p>Filled variant with {{ c }} color applied.</p>
                 </tw-collapsible>
@@ -89,7 +89,7 @@ const SIZES: TwSize[] = ['xs', 'sm', 'md', 'lg', 'xl'];
             <p class="text-xs font-medium text-fg-muted mb-2 uppercase tracking-wide">Bordered</p>
             <div class="space-y-2">
               @for (c of colors; track c) {
-                <tw-collapsible [display]="{ variant: 'bordered', color: c }">
+                <tw-collapsible [display]="{ variant: 'outline', color: c }">
                   <button twCollapsibleTrigger>{{ c | titlecase }}</button>
                   <p>Bordered variant with {{ c }} color applied.</p>
                 </tw-collapsible>
@@ -115,7 +115,7 @@ const SIZES: TwSize[] = ['xs', 'sm', 'md', 'lg', 'xl'];
       <div class="rounded-lg border border-border p-6 bg-surface-raised mb-4">
         <div class="space-y-3">
           @for (s of sizes; track s) {
-            <tw-collapsible [display]="{ variant: 'bordered', size: s }">
+            <tw-collapsible [display]="{ variant: 'outline', size: s }">
               <button twCollapsibleTrigger>Size: {{ s }}</button>
               <p>Content with <strong>{{ s }}</strong> padding applied to trigger and body.</p>
             </tw-collapsible>
@@ -140,11 +140,11 @@ const SIZES: TwSize[] = ['xs', 'sm', 'md', 'lg', 'xl'];
           <div>
             <p class="text-xs font-medium text-fg-muted mb-2 uppercase tracking-wide">Disabled</p>
             <div class="space-y-2">
-              <tw-collapsible [display]="{ variant: 'bordered' }" [disabled]="true">
+              <tw-collapsible [display]="{ variant: 'outline' }" [disabled]="true">
                 <button twCollapsibleTrigger>This panel is disabled</button>
                 <p>You should never see this content.</p>
               </tw-collapsible>
-              <tw-collapsible [display]="{ variant: 'bordered' }">
+              <tw-collapsible [display]="{ variant: 'outline' }">
                 <button twCollapsibleTrigger>This panel is enabled</button>
                 <p>This one toggles normally.</p>
               </tw-collapsible>
@@ -168,7 +168,7 @@ const SIZES: TwSize[] = ['xs', 'sm', 'md', 'lg', 'xl'];
         common variation.
       </p>
       <div class="rounded-lg border border-border p-6 bg-surface-raised mb-4">
-        <tw-collapsible [display]="{ variant: 'bordered' }" [(open)]="customIconOpen">
+        <tw-collapsible [display]="{ variant: 'outline' }" [(open)]="customIconOpen">
           <button twCollapsibleTrigger>
             Custom icon collapsible
             <svg twCollapsibleIcon xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
@@ -202,15 +202,15 @@ const SIZES: TwSize[] = ['xs', 'sm', 'md', 'lg', 'xl'];
       </p>
       <div class="rounded-lg border border-border p-6 bg-surface-raised mb-4">
         <tw-collapsible-group [accordion]="true" [(value)]="accordionValue">
-          <tw-collapsible value="about" [display]="{ variant: 'filled', color: 'primary' }">
+          <tw-collapsible value="about" [display]="{ variant: 'solid', color: 'primary' }">
             <button twCollapsibleTrigger>About</button>
             <p>Learn about the project, its goals, and the team behind it.</p>
           </tw-collapsible>
-          <tw-collapsible value="features" [display]="{ variant: 'filled', color: 'primary' }">
+          <tw-collapsible value="features" [display]="{ variant: 'solid', color: 'primary' }">
             <button twCollapsibleTrigger>Features</button>
             <p>Discover all the features: semantic theming, accessibility, signal-based APIs, and more.</p>
           </tw-collapsible>
-          <tw-collapsible value="faq" [display]="{ variant: 'filled', color: 'primary' }">
+          <tw-collapsible value="faq" [display]="{ variant: 'solid', color: 'primary' }">
             <button twCollapsibleTrigger>FAQ</button>
             <p>Frequently asked questions about installation, configuration, and usage patterns.</p>
           </tw-collapsible>
@@ -234,15 +234,15 @@ const SIZES: TwSize[] = ['xs', 'sm', 'md', 'lg', 'xl'];
       </p>
       <div class="rounded-lg border border-border p-6 bg-surface-raised mb-4">
         <tw-collapsible-group [(value)]="groupValue">
-          <tw-collapsible value="html" [display]="{ variant: 'bordered' }">
+          <tw-collapsible value="html" [display]="{ variant: 'outline' }">
             <button twCollapsibleTrigger>HTML</button>
             <p>HyperText Markup Language — the standard markup language for documents on the web.</p>
           </tw-collapsible>
-          <tw-collapsible value="css" [display]="{ variant: 'bordered' }">
+          <tw-collapsible value="css" [display]="{ variant: 'outline' }">
             <button twCollapsibleTrigger>CSS</button>
             <p>Cascading Style Sheets — a style sheet language for describing presentation of a document.</p>
           </tw-collapsible>
-          <tw-collapsible value="js" [display]="{ variant: 'bordered' }">
+          <tw-collapsible value="js" [display]="{ variant: 'outline' }">
             <button twCollapsibleTrigger>JavaScript</button>
             <p>A programming language that is one of the core technologies of the World Wide Web.</p>
           </tw-collapsible>
@@ -267,14 +267,14 @@ const SIZES: TwSize[] = ['xs', 'sm', 'md', 'lg', 'xl'];
       </p>
       <div class="rounded-lg border border-border p-6 bg-surface-raised mb-4">
         <div class="space-y-2">
-          <tw-collapsible [display]="{ variant: 'bordered' }" [keepAlive]="true" [(open)]="keepAliveOpen">
+          <tw-collapsible [display]="{ variant: 'outline' }" [keepAlive]="true" [(open)]="keepAliveOpen">
             <button twCollapsibleTrigger>keepAlive = true (state preserved)</button>
             <div class="flex items-center gap-3">
               <span class="text-sm">Counter: <strong>{{ keepAliveCounter() }}</strong></span>
               <button twButton variant="soft" color="primary" size="xs" (click)="incrementKeepAlive()">Increment</button>
             </div>
           </tw-collapsible>
-          <tw-collapsible [display]="{ variant: 'bordered' }" [(open)]="destroyOpen">
+          <tw-collapsible [display]="{ variant: 'outline' }" [(open)]="destroyOpen">
             <button twCollapsibleTrigger>keepAlive = false (state reset on each open)</button>
             <div class="flex items-center gap-3">
               <span class="text-sm">Counter: <strong>{{ destroyCounter() }}</strong></span>
@@ -291,7 +291,7 @@ const SIZES: TwSize[] = ['xs', 'sm', 'md', 'lg', 'xl'];
       <h2 class="text-sm font-semibold mb-3">Playground</h2>
       <p class="text-sm text-fg-muted leading-relaxed max-w-2xl mb-4">
         Combine every input at once. Toggle
-        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">filled</code>
+        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">solid</code>
         with a non-neutral color to see the tinted variant, switch
         <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">size</code>
         to see the trigger and content padding scale together, or flip
@@ -436,7 +436,7 @@ export class CollapsibleExamples {
 
   protected readonly colorsSnippet = `<!-- Filled -->
 @for (c of colors; track c) {
-  <tw-collapsible [display]="{ variant: 'filled', color: c }">
+  <tw-collapsible [display]="{ variant: 'solid', color: c }">
     <button twCollapsibleTrigger>{{ c | titlecase }}</button>
     <p>Filled variant with {{ c }} color applied.</p>
   </tw-collapsible>
@@ -444,7 +444,7 @@ export class CollapsibleExamples {
 
 <!-- Bordered -->
 @for (c of colors; track c) {
-  <tw-collapsible [display]="{ variant: 'bordered', color: c }">
+  <tw-collapsible [display]="{ variant: 'outline', color: c }">
     <button twCollapsibleTrigger>{{ c | titlecase }}</button>
     <p>Bordered variant with {{ c }} color applied.</p>
   </tw-collapsible>
@@ -452,23 +452,23 @@ export class CollapsibleExamples {
 
   protected readonly sizesSnippet = `
 @for (s of sizes; track s) {
-  <tw-collapsible [display]="{ variant: 'bordered', size: s }">
+  <tw-collapsible [display]="{ variant: 'outline', size: s }">
     <button twCollapsibleTrigger>Size: {{ s }}</button>
     <p>Content with <strong>{{ s }}</strong> padding applied to trigger and body.</p>
   </tw-collapsible>
 }`.trim();
 
-  protected readonly statesSnippet = `<tw-collapsible [display]="{ variant: 'bordered' }" [disabled]="true">
+  protected readonly statesSnippet = `<tw-collapsible [display]="{ variant: 'outline' }" [disabled]="true">
   <button twCollapsibleTrigger>This panel is disabled</button>
   <p>You should never see this content.</p>
 </tw-collapsible>
 
-<tw-collapsible [display]="{ variant: 'bordered' }">
+<tw-collapsible [display]="{ variant: 'outline' }">
   <button twCollapsibleTrigger>This panel is enabled</button>
   <p>This one toggles normally.</p>
 </tw-collapsible>`;
 
-  protected readonly customIconSnippet = `<tw-collapsible [display]="{ variant: 'bordered' }" [(open)]="open">
+  protected readonly customIconSnippet = `<tw-collapsible [display]="{ variant: 'outline' }" [(open)]="open">
   <button twCollapsibleTrigger>
     Custom icon collapsible
     <svg twCollapsibleIcon viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
@@ -483,36 +483,36 @@ export class CollapsibleExamples {
 </tw-collapsible>`;
 
   protected readonly accordionSnippet = `<tw-collapsible-group [accordion]="true" [(value)]="active">
-  <tw-collapsible value="about" [display]="{ variant: 'filled', color: 'primary' }">
+  <tw-collapsible value="about" [display]="{ variant: 'solid', color: 'primary' }">
     <button twCollapsibleTrigger>About</button>
     <p>Learn about the project…</p>
   </tw-collapsible>
-  <tw-collapsible value="features" [display]="{ variant: 'filled', color: 'primary' }">
+  <tw-collapsible value="features" [display]="{ variant: 'solid', color: 'primary' }">
     <button twCollapsibleTrigger>Features</button>
     <p>Discover all the features…</p>
   </tw-collapsible>
-  <tw-collapsible value="faq" [display]="{ variant: 'filled', color: 'primary' }">
+  <tw-collapsible value="faq" [display]="{ variant: 'solid', color: 'primary' }">
     <button twCollapsibleTrigger>FAQ</button>
     <p>Frequently asked questions…</p>
   </tw-collapsible>
 </tw-collapsible-group>`;
 
   protected readonly independentGroupSnippet = `<tw-collapsible-group [(value)]="open">
-  <tw-collapsible value="html" [display]="{ variant: 'bordered' }">
+  <tw-collapsible value="html" [display]="{ variant: 'outline' }">
     <button twCollapsibleTrigger>HTML</button>
     <p>HyperText Markup Language…</p>
   </tw-collapsible>
-  <tw-collapsible value="css" [display]="{ variant: 'bordered' }">
+  <tw-collapsible value="css" [display]="{ variant: 'outline' }">
     <button twCollapsibleTrigger>CSS</button>
     <p>Cascading Style Sheets…</p>
   </tw-collapsible>
-  <tw-collapsible value="js" [display]="{ variant: 'bordered' }">
+  <tw-collapsible value="js" [display]="{ variant: 'outline' }">
     <button twCollapsibleTrigger>JavaScript</button>
     <p>A programming language…</p>
   </tw-collapsible>
 </tw-collapsible-group>`;
 
-  protected readonly keepAliveSnippet = `<tw-collapsible [display]="{ variant: 'bordered' }" [keepAlive]="true" [(open)]="open">
+  protected readonly keepAliveSnippet = `<tw-collapsible [display]="{ variant: 'outline' }" [keepAlive]="true" [(open)]="open">
   <button twCollapsibleTrigger>State preserved across toggles</button>
   <div class="flex items-center gap-3">
     <span>Counter: <strong>{{ counter() }}</strong></span>

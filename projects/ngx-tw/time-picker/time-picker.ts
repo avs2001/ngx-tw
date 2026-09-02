@@ -581,12 +581,10 @@ export class TimePickerComponent<D = Date>
   /** Placeholder shown in each field when empty. Defaults to `'--'`. */
   readonly placeholder = input<string | undefined>(undefined);
 
-  /** Whether to render the up/down stepper column. Defaults to `true`. Ignored at `size="xs"` on the bordered `default` variant, where the 24px control leaves no room for a stacked pair — use ↑/↓ on a field instead. */
-  // TRUE-default: pointer users expect inline up/down chevrons next to a numeric editor — without them the picker reads as a static display, and consumers must rebuild stepping for every instance.
+  /** Whether to render the up/down stepper column. Defaults to `true`. Pointer users expect inline up/down chevrons next to a numeric editor; without them the picker reads as a static display and consumers must rebuild stepping for every instance. Ignored at `size="xs"` on the bordered `default` variant, where the 24px control leaves no room for a stacked pair — use ↑/↓ on a field instead. */
   readonly showSteppers = input<boolean>(true);
 
-  /** Whether to render the clear affordance when a value is set. Defaults to `true`. */
-  // TRUE-default: matches `<tw-date-picker>` and `<tw-input>` clear behaviour; without the inline clear, every form has to wire its own reset surface for an obvious affordance.
+  /** Whether to render the clear affordance when a value is set. Defaults to `true` — it matches `<tw-date-picker>` and `<tw-input>` clear behaviour; without the inline clear every form has to wire its own reset surface for an obvious affordance. */
   readonly showClear = input<boolean>(true);
 
   /** Accessible label for the clear button. Note the name differs in meaning from the date pickers, which spell this `clearAriaLabel` and reserve `clearLabel` for the overlay action bar's visible button text. Defaults to `'Clear time'`. */

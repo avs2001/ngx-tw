@@ -55,9 +55,14 @@ test.describe('Flip Card', () => {
     const card = flip.triggerCard('manual').first();
     await expect(card).toHaveAttribute('role', 'region');
 
-    // Click on the card body should not flip it (aria-pressed is null on
-    // regions; check aria-live is set to confirm region mode is active).
-    await expect(card).toHaveAttribute('aria-live', 'polite');
+    // Click on the card body should not flip it. `aria-pressed` is null on
+    // regions, so confirm region mode via the two attributes manual mode
+    // actually owns: a named region with no tab stop. (The host used to also
+    // carry `aria-live="polite"` here; that was removed because it
+    // double-announced every flip alongside `LiveAnnouncer`.)
+    await expect(card).not.toHaveAttribute('aria-pressed', /.*/);
+    await expect(card).not.toHaveAttribute('tabindex', /.*/);
+    await expect(card).toHaveAttribute('aria-label', /.+/);
   });
 
   test('@interaction manual [(flipped)] two-way bind drives the manual card from a sibling button', async ({

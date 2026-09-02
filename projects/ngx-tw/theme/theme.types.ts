@@ -1,4 +1,10 @@
-/** The user-selectable theme. `'system'` defers to the OS `prefers-color-scheme` setting. */
+/**
+ * The user-selectable theme. `'system'` defers to the OS: `prefers-color-scheme:
+ * dark` selects `'dark'`, and `prefers-contrast: more` selects
+ * `'high-contrast'` when dark is *not* also requested — the shipped
+ * high-contrast scheme is light-based, so contrast never overrides a dark
+ * preference.
+ */
 export type TwTheme = 'light' | 'dark' | 'high-contrast' | 'system';
 
 /** The theme actually applied to the DOM after resolving `'system'` against the OS preference. */
@@ -24,7 +30,11 @@ export const TW_RESOLVED_THEMES = ['light', 'dark', 'high-contrast'] as const sa
 export interface TwThemeConfig {
   /** The default theme when no preference is stored. Defaults to `'system'`. */
   defaultTheme?: TwTheme;
-  /** localStorage key for persisting theme preference. Defaults to `'ngx-tw-theme'`. */
+  /**
+   * localStorage key for persisting an explicit theme choice. Defaults to
+   * `'ngx-tw-theme'`. Only `setTheme()` / `cycleTheme()` write it — providing
+   * the service never does.
+   */
   storageKey?: string;
   /** The HTML attribute written to the target element. Defaults to `'data-theme'`. */
   attribute?: string;
@@ -38,7 +48,7 @@ export interface TwThemeState {
   readonly theme: TwTheme;
   /** The theme actually applied to the DOM — never `'system'`. */
   readonly resolvedTheme: TwResolvedTheme;
-  /** The OS color-scheme preference detected via `prefers-color-scheme`. */
+  /** The OS appearance preference detected via `prefers-color-scheme` and `prefers-contrast`. */
   readonly systemTheme: TwResolvedTheme;
   /** True when {@link resolvedTheme} is `'dark'`. */
   readonly isDark: boolean;

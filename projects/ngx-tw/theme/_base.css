@@ -1,4 +1,17 @@
+/* `color-scheme` drives the UA's own chrome — scrollbars, native form
+   controls, the canvas behind the page. It inherits, so it has to be restated
+   at every theme boundary or a themed subtree keeps its ancestor's native
+   rendering: a `[twTheme]="'light'"` preview pane inside a dark page would
+   otherwise show dark scrollbars and dark `<select>` popups. The light and
+   high-contrast rules below are no-ops at the root (`:root` already resolves
+   `light` there) and only matter for subtrees. High-contrast is light-based —
+   see `_high-contrast.css`. */
 :root {
+  color-scheme: light;
+}
+
+[data-theme="light"],
+[data-theme="high-contrast"] {
   color-scheme: light;
 }
 

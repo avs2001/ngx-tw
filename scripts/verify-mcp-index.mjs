@@ -350,11 +350,19 @@ const SUB_ENTRIES = new Set(
   }),
 );
 
+// The `(?:\.css)?` tail is what makes the theme-asset carve-out below
+// reachable. `[\w/-]` excludes `.`, so without it
+// `@cdevhub/ngx-tw/theme/index.css` captured as `theme/index` — which is
+// neither an entry point nor `.css`-suffixed, so the carve-out never fired and
+// the check reported the library's own documented stylesheet import as an
+// unresolved path. The tail is opt-in rather than a general `.` in the class so
+// a prose sentence ending "…see @cdevhub/ngx-tw/button." still yields `button`.
 for (const entry of entryPoints) {
   for (const snippet of entry.snippets) {
-    for (const match of snippet.code.matchAll(/@cdevhub\/ngx-tw(\/[\w/-]+)?/g)) {
+    for (const match of snippet.code.matchAll(/@cdevhub\/ngx-tw(\/[\w/-]+(?:\.css)?)?/g)) {
       const path = match[1]?.slice(1);
       if (!path) continue; // the root barrel is always valid
+      // Matches `dist/ngx-tw/package.json`'s `"./theme/*.css"` export.
       if (path.startsWith('theme/') && path.endsWith('.css')) continue; // CSS asset
       if (names.has(path) || SUB_ENTRIES.has(path)) continue;
       fail('imports', `${entry.name} › ${snippet.id}: "@cdevhub/ngx-tw/${path}" is not an entry point`,
@@ -364,11 +372,25 @@ for (const entry of entryPoints) {
 }
 
 // ─── check 5 — snippet coverage (warning only) ────────────────────────────
+// Two distinct causes produce an empty `snippets` array, and they need
+// different repairs. `extractSnippets` walks the demo route directory and pulls
+// `{section}Snippet` properties out of it, so it returns `[]` both when the
+// directory is absent (route renamed, or never written) and when it is present
+// but authors its samples some other way — a raw `<pre>` block instead of a
+// `<tw-code-block>` bound to a snippet property. Reporting the first cause for
+// the second sends a maintainer hunting for a renamed route that is sitting
+// right where the message says it should be, which is how `theme` stayed open
+// across two audit passes. Mirrors `build-mcp-index.mjs`'s `demoRoutes`.
+const DEMO_ROUTES = join(repoRoot, 'projects/demo/src/app/routes');
+
 for (const entry of entryPoints) {
-  if (!entry.snippets.length) {
-    warn('snippets', `entry point "${entry.name}" has no usage snippets — ` +
-      `missing or renamed demo page at projects/demo/src/app/routes/${entry.name}`);
-  }
+  if (entry.snippets.length) continue;
+  const routeDir = `projects/demo/src/app/routes/${entry.name}`;
+  warn('snippets', `entry point "${entry.name}" has no usage snippets — ` +
+    (existsSync(join(DEMO_ROUTES, entry.name))
+      ? `demo page ${routeDir} exists but declares no \`{section}Snippet\` ` +
+        'properties bound to a `<tw-code-block>` via `[code]="…"`'
+      : `missing or renamed demo page at ${routeDir}`));
 }
 
 // ─── report ───────────────────────────────────────────────────────────────

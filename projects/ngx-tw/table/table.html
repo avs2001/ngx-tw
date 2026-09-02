@@ -244,12 +244,20 @@
       </div>
     }
 
-    <!-- Loading overlay (absolute-positioned inside scroll wrapper). -->
+    <!--
+      Loading overlay (absolute-positioned inside scroll wrapper).
+
+      Deliberately NOT a live region. The loading string is announced by
+      `LiveAnnouncer` from the effect in table.ts; carrying `role="status"`
+      (which implies `aria-live="polite"`) here as well made screen readers
+      announce the same text twice on every fetch. The visible text stays —
+      it is the sighted user's loading affordance — it just no longer
+      announces itself.
+    -->
     @if (loading()) {
       <div
         [class]="loadingOverlayClasses()"
-        role="status"
-        aria-live="polite"
+        data-tw-table-loading
         animate.enter="fade-in"
         animate.leave="fade-out"
       >

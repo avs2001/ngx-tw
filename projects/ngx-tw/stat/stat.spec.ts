@@ -34,7 +34,7 @@ class BareHost {}
   `,
 })
 class InputsHost {
-  readonly variant = signal<StatVariant>('outlined');
+  readonly variant = signal<StatVariant>('outline');
   readonly size = signal<TwSize>('md');
   readonly loading = signal(false);
 }
@@ -174,7 +174,7 @@ describe('StatComponent', () => {
       fixture.detectChanges();
     });
 
-    it('applies outlined surface classes by default', () => {
+    it('applies outline surface classes by default', () => {
       const stat = fixture.nativeElement.querySelector('tw-stat') as HTMLElement;
       expect(stat.className).toContain('border');
       expect(stat.className).toContain('bg-surface');
@@ -189,19 +189,51 @@ describe('StatComponent', () => {
       expect(stat.className).toContain('bg-surface-raised');
     });
 
-    it('applies filled surface classes when variant="filled"', () => {
-      host.variant.set('filled');
+    it('applies solid surface classes when variant="solid"', () => {
+      host.variant.set('solid');
       fixture.detectChanges();
       const stat = fixture.nativeElement.querySelector('tw-stat') as HTMLElement;
       expect(stat.className).toContain('bg-surface-muted');
     });
 
-    it('applies plain surface classes when variant="plain"', () => {
-      host.variant.set('plain');
+    it('applies ghost surface classes when variant="ghost"', () => {
+      host.variant.set('ghost');
       fixture.detectChanges();
       const stat = fixture.nativeElement.querySelector('tw-stat') as HTMLElement;
       expect(stat.className).toContain('bg-transparent');
     });
+
+    // ── Deprecated variant aliases ──
+    //
+    // `'plain'` → `'ghost'`, `'outlined'` → `'outline'`, `'filled'` → `'solid'`.
+    // Every old string must keep rendering byte-identical classes: `tv()`
+    // returns base classes only for an unrecognised variant value — no throw,
+    // no warning, just a silently unstyled tile. String equality is the literal
+    // encoding of that promise.
+    //
+    // Non-vacuous: drop any entry from `VARIANT_ALIASES` and that legacy
+    // string reaches `tv()` unrecognised, so the variant's `bg-*` / `border-*`
+    // / `rounded-lg` root classes vanish and the compared strings diverge.
+    const VARIANT_ALIAS_PAIRS = [
+      ['plain', 'ghost'],
+      ['outlined', 'outline'],
+      ['filled', 'solid'],
+    ] as const;
+
+    for (const [legacy, canonical] of VARIANT_ALIAS_PAIRS) {
+      it(`"${legacy}" resolves to exactly the same classes as "${canonical}"`, () => {
+        host.variant.set(canonical);
+        fixture.detectChanges();
+        const stat = fixture.nativeElement.querySelector('tw-stat') as HTMLElement;
+        const canonicalClasses = stat.className;
+
+        host.variant.set(legacy);
+        fixture.detectChanges();
+        expect(stat.className).toBe(canonicalClasses);
+        // Guards against both strings collapsing to the bare base classes.
+        expect(stat.className).toMatch(/\bbg-\S+/);
+      });
+    }
 
     it('changes padding when size changes', () => {
       host.size.set('xs');

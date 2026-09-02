@@ -1293,8 +1293,14 @@ export class SelectComponent<T = unknown>
     this.typeAheadBuffer += char.toLowerCase();
     const labelFn = this.optionLabel();
     const visible = this.visibleOptions();
-    const match = visible.findIndex((o) =>
-      labelFn(o.option).toLowerCase().startsWith(this.typeAheadBuffer),
+    // Disabled options are skipped, matching every other navigation path in this
+    // file (`findEnabledFrom`). Without the filter, `aria-activedescendant` could
+    // land on an option that `selectByVisibleIndex` then refuses to commit, so
+    // Enter did nothing with no feedback.
+    const match = visible.findIndex(
+      (o) =>
+        !o.disabled &&
+        labelFn(o.option).toLowerCase().startsWith(this.typeAheadBuffer),
     );
     if (match >= 0) {
       if (!this.open()) this.openPanel();

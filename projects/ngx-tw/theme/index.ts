@@ -1,6 +1,7 @@
 export { ThemeService } from './theme.service';
 export { ThemeDirective } from './theme.directive';
 export { THEME_CONFIG, provideTheme } from './theme.config';
+export { TW_THEME_BOOTSTRAP_SCRIPT } from './theme.bootstrap';
 export {
   type TwTheme,
   type TwResolvedTheme,

@@ -11,7 +11,7 @@ import { CodeBlockComponent } from '@cdevhub/ngx-tw/code-block';
 import type { TwColor, TwSize } from '@cdevhub/ngx-tw/core';
 import type { CardVariant } from '@cdevhub/ngx-tw/card';
 
-const VARIANTS: CardVariant[] = ['elevated', 'outlined', 'ghost'];
+const VARIANTS: CardVariant[] = ['elevated', 'outline', 'ghost'];
 const COLORS: TwColor[] = [
   'primary',
   'secondary',
@@ -61,7 +61,7 @@ const COLOR_SAMPLES: readonly ColorSample[] = [
         Variants change the card's visual weight without changing its semantics. Reach for
         <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">elevated</code>
         when the card should float above the page (dashboards, highlighted content),
-        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">outlined</code>
+        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">outline</code>
         when it sits in a denser layout and needs a quiet boundary (forms, settings
         panels), and
         <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">ghost</code>
@@ -95,8 +95,8 @@ const COLOR_SAMPLES: readonly ColorSample[] = [
       <p class="text-sm text-fg-muted leading-relaxed max-w-2xl mb-4">
         The
         <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">color</code>
-        input tints the outline of the
-        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">outlined</code>
+        input tints the border of the
+        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">outline</code>
         variant — it has no effect on
         <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">elevated</code>
         or
@@ -112,7 +112,7 @@ const COLOR_SAMPLES: readonly ColorSample[] = [
       <div class="rounded-lg border border-border p-6 bg-surface-raised mb-4">
         <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
           @for (sample of colorSamples; track sample.color) {
-            <tw-card variant="outlined" [color]="sample.color" size="sm">
+            <tw-card variant="outline" [color]="sample.color" size="sm">
               <div twCardHeader>{{ sample.title }}</div>
               <div twCardBody>{{ sample.body }}</div>
             </tw-card>
@@ -146,7 +146,7 @@ const COLOR_SAMPLES: readonly ColorSample[] = [
       <div class="rounded-lg border border-border p-6 bg-surface-raised mb-4">
         <div class="grid grid-cols-1 gap-3">
           @for (s of sizes; track s) {
-            <tw-card variant="outlined" [size]="s">
+            <tw-card variant="outline" [size]="s">
               <div twCardHeader>Size: {{ s }}</div>
               <div twCardBody>
                 The padding scales with the size input — header, body, and footer share the same rhythm.
@@ -265,7 +265,7 @@ const COLOR_SAMPLES: readonly ColorSample[] = [
       </p>
       <div class="rounded-lg border border-border p-6 bg-surface-raised mb-4">
         <div class="mx-auto max-w-sm">
-          <tw-card variant="outlined" class="block">
+          <tw-card variant="outline" class="block">
             <div twCardBody>
               <div class="flex items-start gap-3">
                 <div class="flex size-10 items-center justify-center rounded-full bg-primary-50 text-primary-600 text-sm font-semibold shrink-0">
@@ -289,7 +289,7 @@ const COLOR_SAMPLES: readonly ColorSample[] = [
       <h2 class="text-sm font-semibold mb-3">Playground</h2>
       <p class="text-sm text-fg-muted leading-relaxed max-w-2xl mb-4">
         Combine every input at once. Try
-        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">outlined</code>
+        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">outline</code>
         with a semantic color for a themed boundary, or switch to
         <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">ghost</code>
         and toggle the structural sections off to see how the card collapses into its
@@ -426,7 +426,7 @@ export class CardExamples {
 
   protected readonly colorsSnippet = `
 @for (sample of colorSamples; track sample.color) {
-  <tw-card variant="outlined" [color]="sample.color" size="sm">
+  <tw-card variant="outline" [color]="sample.color" size="sm">
     <div twCardHeader>{{ sample.title }}</div>
     <div twCardBody>{{ sample.body }}</div>
   </tw-card>
@@ -434,7 +434,7 @@ export class CardExamples {
 
   protected readonly sizesSnippet = `
 @for (s of sizes; track s) {
-  <tw-card variant="outlined" [size]="s">
+  <tw-card variant="outline" [size]="s">
     <div twCardHeader>Size: {{ s }}</div>
     <div twCardBody>
       The padding scales with the size input.
@@ -482,7 +482,7 @@ export class CardExamples {
   <div twCardMedia class="h-16 bg-gradient-to-r from-success-100 via-success-200 to-success-400"></div>
 </tw-card>`;
 
-  protected readonly bodyOnlySnippet = `<tw-card variant="outlined">
+  protected readonly bodyOnlySnippet = `<tw-card variant="outline">
   <div twCardBody>
     <div class="flex items-start gap-3">
       <div class="avatar">AM</div>

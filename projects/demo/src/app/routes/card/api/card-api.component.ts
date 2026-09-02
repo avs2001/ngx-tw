@@ -33,7 +33,7 @@ import { CodeBlockComponent } from '@cdevhub/ngx-tw/code-block';
               <td class="px-4 py-2 font-mono text-xs">color</td>
               <td class="px-4 py-2 font-mono text-xs text-fg-muted">TwColor</td>
               <td class="px-4 py-2 font-mono text-xs text-fg-muted">'neutral'</td>
-              <td class="px-4 py-2 text-fg-muted">Tints the outline of the <code class="font-mono">outlined</code> variant; no effect on other variants.</td>
+              <td class="px-4 py-2 text-fg-muted">Tints the border of the <code class="font-mono">outline</code> variant; no effect on other variants.</td>
             </tr>
             <tr>
               <td class="px-4 py-2 font-mono text-xs">size</td>
@@ -143,7 +143,10 @@ import { CodeBlockComponent } from '@cdevhub/ngx-tw/code-block';
   `,
 })
 export class CardApi {
-  protected readonly typesSnippet = `type CardVariant = 'elevated' | 'outlined' | 'ghost';
+  protected readonly typesSnippet = `type CardVariant = 'elevated' | 'outline' | 'ghost' | CardVariantLegacy;
+
+/** @deprecated 'outlined' is an alias for 'outline'; removed in the next major. */
+type CardVariantLegacy = 'outlined';
 
 // Shared library types used above
 type TwColor =

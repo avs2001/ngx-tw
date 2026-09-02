@@ -104,7 +104,7 @@ import { CodeBlockComponent } from '@cdevhub/ngx-tw/code-block';
       <h2 class="text-sm font-semibold mb-3">Key Features</h2>
       <ul class="list-disc list-inside text-sm text-fg-muted space-y-1.5">
         <li>Three chrome variants:
-          <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">outlined</code>,
+          <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">outline</code>,
           <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">elevated</code>,
           and
           <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">ghost</code>

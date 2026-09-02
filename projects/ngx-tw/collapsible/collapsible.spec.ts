@@ -161,7 +161,7 @@ describe('CollapsibleComponent', () => {
     });
 
     it('should render all variants without error', () => {
-      const variants: CollapsibleVariant[] = ['default', 'bordered', 'ghost', 'filled'];
+      const variants: CollapsibleVariant[] = ['default', 'outline', 'ghost', 'solid'];
       const fixture = createFixture(StandaloneHost);
       for (const variant of variants) {
         fixture.componentInstance.display.set({ variant });
@@ -184,7 +184,7 @@ describe('CollapsibleComponent', () => {
     it('should merge a partial display config with defaults', () => {
       const fixture = createFixture(StandaloneHost);
       // Pass only `variant`; `color` and `size` should keep their defaults
-      fixture.componentInstance.display.set({ variant: 'bordered' });
+      fixture.componentInstance.display.set({ variant: 'outline' });
       fixture.detectChanges();
 
       const root = fixture.nativeElement.querySelector('tw-collapsible');
@@ -222,7 +222,7 @@ describe('CollapsibleComponent', () => {
       });
     }
 
-    const borderedColors: TwColor[] = [
+    const outlineColors: TwColor[] = [
       'primary',
       'secondary',
       'accent',
@@ -232,14 +232,71 @@ describe('CollapsibleComponent', () => {
       'error',
     ];
 
-    for (const color of borderedColors) {
-      it(`should apply border-${color}-300 when variant=bordered color=${color}`, () => {
+    for (const color of outlineColors) {
+      it(`should apply border-${color}-300 when variant=outline color=${color}`, () => {
         const fixture = createFixture(StandaloneHost);
-        fixture.componentInstance.display.set({ variant: 'bordered', color });
+        fixture.componentInstance.display.set({ variant: 'outline', color });
         fixture.detectChanges();
 
         const root = fixture.nativeElement.querySelector('tw-collapsible');
         expect(root.className).toContain(`border-${color}-300`);
+      });
+    }
+
+    // ── Deprecated variant aliases ──
+    //
+    // `'bordered'` → `'outline'` and `'filled'` → `'solid'`, both arriving
+    // through the `display` config bag rather than a bare `variant` input.
+    // Each old string must keep rendering byte-identical classes on every
+    // slot it paints: `tv()` returns base classes only for an unrecognised
+    // variant value — no throw, no warning, just a silently unstyled panel.
+    // String equality is the literal encoding of that promise.
+    //
+    // Non-vacuous: drop either entry from `VARIANT_ALIASES` and the legacy
+    // string reaches `tv()` unrecognised, losing both its base variant classes
+    // and its 8- or 7-row `compoundVariants` block — the compared strings
+    // diverge and these fail.
+    //
+    // A non-neutral color is used for the outline pair because outline has no
+    // `neutral` compound row; solid does, so it is checked at both.
+    const VARIANT_ALIAS_CASES = [
+      { legacy: 'bordered', canonical: 'outline', color: 'primary' },
+      { legacy: 'filled', canonical: 'solid', color: 'primary' },
+      { legacy: 'filled', canonical: 'solid', color: 'neutral' },
+    ] as const;
+
+    for (const { legacy, canonical, color } of VARIANT_ALIAS_CASES) {
+      it(`"${legacy}" resolves to exactly the same classes as "${canonical}" (color=${color})`, () => {
+        const fixture = createFixture(StandaloneHost);
+        // Open the panel so the content slot is in the DOM too — `outline`
+        // and `solid` both paint `content`, so leaving it closed would leave
+        // one of the three affected slots unguarded. The `detectChanges()`
+        // here (rather than letting the first `read()` do it) makes the two
+        // measurements symmetric: the content wrapper carries
+        // `[animate.enter]="'collapsible-enter'"`, so entering the DOM inside
+        // the first measured read could put a transient enter class on one
+        // side of the comparison and not the other.
+        fixture.componentInstance.open.set(true);
+        fixture.detectChanges();
+        const read = (): { root: string; trigger: string; content: string } => {
+          fixture.detectChanges();
+          const root = fixture.nativeElement.querySelector('tw-collapsible');
+          const trigger = fixture.nativeElement.querySelector('[twcollapsibletrigger]');
+          const content = fixture.nativeElement.querySelector('[role="region"]');
+          return {
+            root: root.className,
+            trigger: trigger.className,
+            content: content.className,
+          };
+        };
+
+        fixture.componentInstance.display.set({ variant: canonical, color });
+        const canonicalClasses = read();
+
+        fixture.componentInstance.display.set({ variant: legacy, color });
+        expect(read()).toEqual(canonicalClasses);
+        // Guards against both sides collapsing to the bare base classes.
+        expect(canonicalClasses.root).not.toBe('block rounded-lg overflow-hidden');
       });
     }
   });

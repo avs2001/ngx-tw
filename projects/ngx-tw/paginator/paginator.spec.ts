@@ -1,6 +1,8 @@
 import { ChangeDetectionStrategy, Component, signal } from '@angular/core';
 import { type ComponentFixture, TestBed } from '@angular/core/testing';
 import { LiveAnnouncer } from '@angular/cdk/a11y';
+import { type Direction, Directionality } from '@angular/cdk/bidi';
+import { Subject } from 'rxjs';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import type { TwColor, TwSize } from '@cdevhub/ngx-tw/core';
 import {
@@ -947,5 +949,143 @@ describe('PaginatorComponent — content projection', () => {
     fixture.detectChanges();
     await fixture.whenStable();
     expect(host.pageSize()).toBe(25);
+  });
+});
+
+// ── RTL keyboard navigation ────────────────────────────────────────────
+
+describe('PaginatorComponent — RTL keyboard navigation', () => {
+  // The key manager used to be built with a hardcoded
+  // `.withHorizontalOrientation('ltr')`. CDK's ListKeyManager maps ArrowLeft to
+  // `setPreviousItemActive()` under 'ltr' and `setNextItemActive()` under 'rtl'
+  // (`_list-key-manager-chunk.mjs`), so in an RTL locale — where the controls
+  // render right-to-left — ArrowLeft stepped backwards in DOM order but
+  // *forwards* visually. These two tests are mirror images; only the RTL one
+  // could fail against the old code (it landed on page 2, not page 4).
+  //
+  // `page` is 3 of 10 so every control (first / prev / next / last) is enabled
+  // and neither direction is masked by the manager's disabled-skip.
+  const arrow = (el: HTMLElement, key: string, keyCode: number) =>
+    el.dispatchEvent(new KeyboardEvent('keydown', { key, keyCode, bubbles: true }));
+
+  const pageButton = (fixture: ComponentFixture<unknown>, label: string) =>
+    queryPageButtons(fixture).find((b) => b.textContent?.trim() === label) as HTMLElement;
+
+  /**
+   * `direction: null` provides `Directionality` as `null`, which is the ONLY
+   * way to exercise the `{ optional: true }` + `?? 'ltr'` fallback: CDK's
+   * `Directionality` is declared `@Service()` (root-provided), so simply
+   * omitting a provider still injects the real instance — which reports 'ltr'
+   * in jsdom and would make the test pass for the wrong reason.
+   */
+  async function mount(direction: Direction | null) {
+    await TestBed.configureTestingModule({
+      imports: [BasicHost],
+      providers: [
+        {
+          provide: Directionality,
+          useValue: direction
+            ? {
+                value: direction,
+                valueSignal: signal<Direction>(direction),
+                change: new Subject<Direction>(),
+              }
+            : null,
+        },
+      ],
+    }).compileComponents();
+    const fixture = TestBed.createComponent(BasicHost);
+    fixture.componentInstance.page.set(3);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    return fixture;
+  }
+
+  it('ArrowLeft moves to the PREVIOUS page control when the layout direction is ltr', async () => {
+    const fixture = await mount('ltr');
+    const three = pageButton(fixture, '3');
+    three.focus();
+    fixture.detectChanges();
+
+    arrow(three, 'ArrowLeft', 37);
+    fixture.detectChanges();
+
+    expect(document.activeElement).toBe(pageButton(fixture, '2'));
+  });
+
+  it('ArrowLeft moves to the NEXT page control when the layout direction is rtl', async () => {
+    const fixture = await mount('rtl');
+    const three = pageButton(fixture, '3');
+    three.focus();
+    fixture.detectChanges();
+
+    arrow(three, 'ArrowLeft', 37);
+    fixture.detectChanges();
+
+    // LTR would land on page 2; RTL advances instead.
+    expect(document.activeElement).toBe(pageButton(fixture, '4'));
+  });
+
+  it('ArrowRight moves to the PREVIOUS page control when the layout direction is rtl', async () => {
+    const fixture = await mount('rtl');
+    const three = pageButton(fixture, '3');
+    three.focus();
+    fixture.detectChanges();
+
+    arrow(three, 'ArrowRight', 39);
+    fixture.detectChanges();
+
+    expect(document.activeElement).toBe(pageButton(fixture, '2'));
+  });
+
+  it('falls back to ltr behaviour when Directionality resolves to null', async () => {
+    // `Directionality` is injected with `{ optional: true }` so a consumer
+    // whose injector cannot supply it still gets a working paginator rather
+    // than a DI error. See `mount()` for why the provider is `null` here and
+    // not merely absent.
+    const fixture = await mount(null);
+    const three = pageButton(fixture, '3');
+    three.focus();
+    fixture.detectChanges();
+
+    arrow(three, 'ArrowLeft', 37);
+    fixture.detectChanges();
+
+    expect(document.activeElement).toBe(pageButton(fixture, '2'));
+  });
+
+  it('rebuilds the key manager when the direction flips at runtime', async () => {
+    // `Directionality.valueSignal` is read inside the rebuild effect, so a
+    // runtime `dir` flip re-runs it without a manual subscription mirror.
+    const dir = signal<Direction>('ltr');
+    await TestBed.configureTestingModule({
+      imports: [BasicHost],
+      providers: [
+        {
+          provide: Directionality,
+          useValue: { value: 'ltr', valueSignal: dir, change: new Subject<Direction>() },
+        },
+      ],
+    }).compileComponents();
+    const fixture = TestBed.createComponent(BasicHost);
+    fixture.componentInstance.page.set(3);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    dir.set('rtl');
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    const three = pageButton(fixture, '3');
+    three.focus();
+    fixture.detectChanges();
+
+    arrow(three, 'ArrowLeft', 37);
+    fixture.detectChanges();
+
+    expect(document.activeElement).toBe(pageButton(fixture, '4'));
   });
 });

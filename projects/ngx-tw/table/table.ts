@@ -1264,6 +1264,13 @@ export class TableComponent<T = unknown> {
 
     // Loading announcement.
     //
+    // This is the *only* announcement channel for the loading state. The
+    // loading overlay in table.html carries no `role="status"` / `aria-live`
+    // on purpose — it used to, and screen readers announced the same string
+    // twice per fetch. A pre-existing live region receiving text (what
+    // `LiveAnnouncer` does) is also the reliable pattern; an `@if`-inserted
+    // region whose content arrives in the same tick is not.
+    //
     // The effect tracks `this.loading()` only; reads of labels / rows are wrapped
     // in `untracked()` so unrelated upstream signals (label updates, row mutations
     // that don't toggle loading) don't re-announce. The announcement should fire

@@ -17,7 +17,24 @@ import { LiveAnnouncer } from '@angular/cdk/a11y';
 import { tv } from 'tailwind-variants';
 
 /** Visual style of the flip card chrome. Mirrors `tw-card`. */
-export type FlipCardVariant = 'outlined' | 'elevated' | 'ghost';
+export type FlipCardVariant = 'outline' | 'elevated' | 'ghost' | FlipCardVariantLegacy;
+
+/**
+ * Legacy `variant` spellings, kept so existing templates keep compiling.
+ * @deprecated `'outlined'` is an alias for `'outline'` and renders identically.
+ * It will be removed in the next major — prefer `'outline'`.
+ */
+export type FlipCardVariantLegacy = 'outlined';
+
+/** Canonical `variant` spellings — the set `tv()` actually keys on. */
+type FlipCardVariantCanonical = Exclude<FlipCardVariant, FlipCardVariantLegacy>;
+
+/** Maps every legacy spelling onto its canonical replacement. */
+const VARIANT_ALIASES: Readonly<
+  Record<FlipCardVariantLegacy, FlipCardVariantCanonical>
+> = {
+  outlined: 'outline',
+};
 
 /** Axis of rotation for the flip animation. */
 export type FlipCardDirection = 'horizontal' | 'vertical';
@@ -32,6 +49,15 @@ const flipCardVariants = tv(
     slots: {
       root:
         'relative block rounded-lg transition-shadow duration-normal motion-reduce:transition-none tw-flip-perspective',
+      // `duration-300` sits above the codified transition scale
+      // (`duration-150` / `duration-200` / `duration-normal`), and none of
+      // those govern here: the scale is calibrated for colour and shadow
+      // shifts that travel no distance, while this is a 180° 3-D rotation of
+      // the whole card through `rotateY`/`rotateX`. At `duration-200` the
+      // faces swap before the perspective reads as depth and the flip looks
+      // like a hard cut; 300ms is the shortest step where the rotation is
+      // legible as one continuous motion. The `motion-reduce:transition-none`
+      // guard the scale requires is still applied.
       inner:
         'relative h-full w-full tw-flip-inner transition-transform duration-300 ease-in-out motion-reduce:transition-none',
       face:
@@ -41,7 +67,7 @@ const flipCardVariants = tv(
     },
     variants: {
       variant: {
-        outlined: {
+        outline: {
           face: 'bg-surface border border-border text-fg',
         },
         elevated: {
@@ -79,7 +105,7 @@ const flipCardVariants = tv(
       },
     },
     defaultVariants: {
-      variant: 'outlined',
+      variant: 'outline',
       direction: 'horizontal',
       flipped: false,
       interactive: true,
@@ -110,7 +136,6 @@ const flipCardVariants = tv(
     '[attr.role]': 'hostRole()',
     '[attr.tabindex]': 'hostTabindex()',
     '[attr.aria-pressed]': 'ariaPressed()',
-    '[attr.aria-live]': 'ariaLive()',
     '[attr.aria-disabled]': 'ariaDisabled()',
     '[attr.aria-label]': 'hostAriaLabel()',
     '(click)': 'onClick()',
@@ -142,10 +167,11 @@ const flipCardVariants = tv(
 export class FlipCardComponent {
   /**
    * Visual style of the card chrome. Mirrors `tw-card`'s variant vocabulary.
-   * Defaults to `'outlined'` (vs `tw-card`'s `'elevated'` default) so the flip
+   * Defaults to `'outline'` (vs `tw-card`'s `'elevated'` default) so the flip
    * animation reads more clearly without a baseline shadow underneath.
+   * `'outlined'` is a deprecated alias for `'outline'` and renders identically.
    */
-  readonly variant = input<FlipCardVariant>('outlined');
+  readonly variant = input<FlipCardVariant>('outline');
 
   /** Axis of rotation. `'horizontal'` rotates around the Y axis (left/right flip); `'vertical'` rotates around the X axis (top/bottom flip). Defaults to `'horizontal'`. */
   readonly direction = input<FlipCardDirection>('horizontal');
@@ -196,11 +222,6 @@ export class FlipCardComponent {
   );
 
   /** @internal */
-  readonly ariaLive = computed(() =>
-    this.trigger() === 'manual' ? 'polite' : null,
-  );
-
-  /** @internal */
   readonly ariaDisabled = computed(() =>
     this.disabled() ? 'true' : null,
   );
@@ -232,9 +253,18 @@ export class FlipCardComponent {
     !this.hasBack() || !this.flipped() ? '' : null,
   );
 
+  /** @internal Canonical variant with legacy spellings folded in. */
+  private readonly resolvedVariant = computed<FlipCardVariantCanonical>(() => {
+    const v = this.variant();
+    return (
+      (VARIANT_ALIASES as Record<string, FlipCardVariantCanonical | undefined>)[v] ??
+      (v as FlipCardVariantCanonical)
+    );
+  });
+
   private readonly variantResult = computed(() =>
     flipCardVariants({
-      variant: this.variant(),
+      variant: this.resolvedVariant(),
       direction: this.direction(),
       flipped: this.flipped(),
       interactive: this.interactive(),
@@ -276,11 +306,13 @@ export class FlipCardComponent {
         firstRun = false;
         return;
       }
-      // Announce in any mode that exposes a flippable back face. Manual mode
-      // historically owned this because it sets `aria-live='polite'` on the
-      // host; interactive modes (hover, click, both) still need an explicit
-      // `LiveAnnouncer.announce` so screen-reader users hear the transition
-      // when triggering the card via keyboard or pointer.
+      // `LiveAnnouncer` is the single announcement channel, in every trigger
+      // mode. Manual mode used to *also* mark the host `aria-live="polite"`,
+      // so the `aria-hidden` face swap was announced by the live region on
+      // top of this call — one flip, two announcements. The host region was
+      // dropped rather than this call, because it was the narrower of the
+      // two (manual mode only) and because a live region whose host also
+      // carries `role`/`aria-label` is announced inconsistently across ATs.
       if (this.hasBack()) {
         this.liveAnnouncer.announce(
           isFlipped ? 'Back face visible' : 'Front face visible',

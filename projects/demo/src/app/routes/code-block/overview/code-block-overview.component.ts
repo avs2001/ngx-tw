@@ -28,9 +28,9 @@ import { CodeBlockComponent } from '@cdevhub/ngx-tw/code-block';
     <section class="mb-10">
       <h2 class="text-sm font-semibold mb-3">Outlined Variant</h2>
       <div class="rounded-lg border border-border p-6 bg-surface-raised mb-4">
-        <tw-code-block [code]="htmlSnippet" language="HTML" variant="outlined" />
+        <tw-code-block [code]="htmlSnippet" language="HTML" variant="outline" />
       </div>
-      <tw-code-block [code]="outlinedSnippet" language="html" />
+      <tw-code-block [code]="outlineSnippet" language="html" />
     </section>
 
     <section class="mb-10">
@@ -47,8 +47,8 @@ import { CodeBlockComponent } from '@cdevhub/ngx-tw/code-block';
         </li>
         <li>
           Two visual variants:
-          <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">filled</code> and
-          <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">outlined</code>
+          <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">solid</code> and
+          <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">outline</code>
         </li>
         <li>
           Customizable header slot via
@@ -88,14 +88,14 @@ export class CodeBlockOverview {
 })
 export class MyComponent {}`;
 
-  protected readonly htmlSnippet = `<tw-code-block [code]="snippet" language="HTML" variant="outlined" />`;
+  protected readonly htmlSnippet = `<tw-code-block [code]="snippet" language="HTML" variant="outline" />`;
 
   protected readonly basicUsageSnippet = `<tw-code-block [code]="snippet" language="TypeScript" />`;
 
-  protected readonly outlinedSnippet = `<tw-code-block
+  protected readonly outlineSnippet = `<tw-code-block
   [code]="snippet"
   language="HTML"
-  variant="outlined"
+  variant="outline"
 />`;
 
   protected readonly importSnippet = `import {

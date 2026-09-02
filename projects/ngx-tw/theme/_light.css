@@ -1,0 +1,274 @@
+/* ===== Light theme (explicit opt-in) =====
+   A mechanical mirror of the light values that `_semantic.css`'s `@theme`
+   block already resolves on the root. It exists for one reason: Tailwind v4
+   emits `@theme` as `@layer theme { :root, :host { … } }`, and a
+   `<div data-theme="light">` matches neither `:root` nor `:host` — so before
+   this file a light subtree nested inside a dark or high-contrast ancestor
+   simply inherited the ancestor's tokens, and `[twTheme]="'light'"` was a
+   silent no-op. `dark` and `high-contrast` have always had element-agnostic
+   `[data-theme=…]` blocks; this is the missing third one.
+
+   Two invariants keep it safe:
+
+   1. Every declaration restates the value `_semantic.css` already sets.
+      Nothing here is new or hand-tuned, so a light-on-light page — the common
+      case, where `<html data-theme="light">` matches both this block and the
+      `@theme` `:root` rule — computes byte-identical values and no pixel
+      moves. The rationale for each value (the WCAG contrast measurements, the
+      slot semantics, why `info-solid` is -700 and not -600) lives in
+      `_semantic.css` and is deliberately NOT duplicated here. Edit
+      `_semantic.css`, then regenerate this block from it.
+
+   2. The 195 declarations below are exactly the key set that `_dark.css` and
+      `_high-contrast.css` define. The seven `@theme` tokens omitted
+      (`--color-overlay-control{,-hover}`,
+      `--shadow-table-sticky{,-cell-start,-cell-end}`,
+      `--text-2xs{,--line-height}`) are scheme-invariant by design and are
+      omitted by the dark and high-contrast blocks too. The shadow tokens are
+      safe to omit even for subtree scoping: Tailwind inlines a named
+      `--shadow-*` value into the utility, so `shadow-table-sticky` compiles
+      to `--tw-shadow: 0 1px 0 0 var(--tw-shadow-color, var(--color-border))`
+      and re-resolves `--color-border` at the use site, inside the subtree.
+
+   Import order matters: this file must come BEFORE `_high-contrast.css`,
+   whose `@media (forced-colors: active)` block names `[data-theme="light"]`
+   at the same specificity and has to win. `_dark.css`'s
+   `prefers-color-scheme` branch already excludes `[data-theme="light"]`
+   roots, so those two never fight. */
+
+[data-theme="light"] {
+  /* ===== Surface (backgrounds) ===== */
+  --color-surface: var(--color-white);
+  --color-surface-raised: var(--color-white);
+  --color-surface-overlay: var(--color-white);
+  --color-surface-sunken: var(--color-gray-50);
+  --color-surface-muted: var(--color-gray-100);
+
+  /* ===== Foreground (text/icons) ===== */
+  --color-fg: var(--color-gray-900);
+  --color-fg-muted: var(--color-gray-600);
+  --color-fg-subtle: var(--color-gray-500);
+
+  /* ===== Border ===== */
+  --color-border: var(--color-gray-500);
+  --color-border-muted: var(--color-gray-200);
+  --color-border-strong: var(--color-gray-600);
+
+  /* ===== Primary ===== */
+  --color-primary-50: var(--color-blue-50);
+  --color-primary-100: var(--color-blue-100);
+  --color-primary-200: var(--color-blue-200);
+  --color-primary-300: var(--color-blue-300);
+  --color-primary-400: var(--color-blue-400);
+  --color-primary-500: var(--color-blue-500);
+  --color-primary-600: var(--color-blue-600);
+  --color-primary-700: var(--color-blue-700);
+  --color-primary-800: var(--color-blue-800);
+  --color-primary-900: var(--color-blue-900);
+  --color-primary-950: var(--color-blue-950);
+
+  /* ===== Secondary ===== */
+  --color-secondary-50: var(--color-slate-50);
+  --color-secondary-100: var(--color-slate-100);
+  --color-secondary-200: var(--color-slate-200);
+  --color-secondary-300: var(--color-slate-300);
+  --color-secondary-400: var(--color-slate-400);
+  --color-secondary-500: var(--color-slate-500);
+  --color-secondary-600: var(--color-slate-600);
+  --color-secondary-700: var(--color-slate-700);
+  --color-secondary-800: var(--color-slate-800);
+  --color-secondary-900: var(--color-slate-900);
+  --color-secondary-950: var(--color-slate-950);
+
+  /* ===== Accent ===== */
+  --color-accent-50: var(--color-violet-50);
+  --color-accent-100: var(--color-violet-100);
+  --color-accent-200: var(--color-violet-200);
+  --color-accent-300: var(--color-violet-300);
+  --color-accent-400: var(--color-violet-400);
+  --color-accent-500: var(--color-violet-500);
+  --color-accent-600: var(--color-violet-600);
+  --color-accent-700: var(--color-violet-700);
+  --color-accent-800: var(--color-violet-800);
+  --color-accent-900: var(--color-violet-900);
+  --color-accent-950: var(--color-violet-950);
+
+  /* ===== Neutral ===== */
+  --color-neutral-50: var(--color-gray-50);
+  --color-neutral-100: var(--color-gray-100);
+  --color-neutral-200: var(--color-gray-200);
+  --color-neutral-300: var(--color-gray-300);
+  --color-neutral-400: var(--color-gray-400);
+  --color-neutral-500: var(--color-gray-500);
+  --color-neutral-600: var(--color-gray-600);
+  --color-neutral-700: var(--color-gray-700);
+  --color-neutral-800: var(--color-gray-800);
+  --color-neutral-900: var(--color-gray-900);
+  --color-neutral-950: var(--color-gray-950);
+
+  /* ===== Info ===== */
+  --color-info-50: var(--color-sky-50);
+  --color-info-100: var(--color-sky-100);
+  --color-info-200: var(--color-sky-200);
+  --color-info-300: var(--color-sky-300);
+  --color-info-400: var(--color-sky-400);
+  --color-info-500: var(--color-sky-500);
+  --color-info-600: var(--color-sky-600);
+  --color-info-700: var(--color-sky-700);
+  --color-info-800: var(--color-sky-800);
+  --color-info-900: var(--color-sky-900);
+  --color-info-950: var(--color-sky-950);
+
+  /* ===== Success ===== */
+  --color-success-50: var(--color-green-50);
+  --color-success-100: var(--color-green-100);
+  --color-success-200: var(--color-green-200);
+  --color-success-300: var(--color-green-300);
+  --color-success-400: var(--color-green-400);
+  --color-success-500: var(--color-green-500);
+  --color-success-600: var(--color-green-600);
+  --color-success-700: var(--color-green-700);
+  --color-success-800: var(--color-green-800);
+  --color-success-900: var(--color-green-900);
+  --color-success-950: var(--color-green-950);
+
+  /* ===== Warning ===== */
+  --color-warning-50: var(--color-amber-50);
+  --color-warning-100: var(--color-amber-100);
+  --color-warning-200: var(--color-amber-200);
+  --color-warning-300: var(--color-amber-300);
+  --color-warning-400: var(--color-amber-400);
+  --color-warning-500: var(--color-amber-500);
+  --color-warning-600: var(--color-amber-600);
+  --color-warning-700: var(--color-amber-700);
+  --color-warning-800: var(--color-amber-800);
+  --color-warning-900: var(--color-amber-900);
+  --color-warning-950: var(--color-amber-950);
+
+  /* ===== Error ===== */
+  --color-error-50: var(--color-red-50);
+  --color-error-100: var(--color-red-100);
+  --color-error-200: var(--color-red-200);
+  --color-error-300: var(--color-red-300);
+  --color-error-400: var(--color-red-400);
+  --color-error-500: var(--color-red-500);
+  --color-error-600: var(--color-red-600);
+  --color-error-700: var(--color-red-700);
+  --color-error-800: var(--color-red-800);
+  --color-error-900: var(--color-red-900);
+  --color-error-950: var(--color-red-950);
+
+  /* ----- Primary (blue) ----- */
+  --color-primary-soft: var(--color-primary-50);
+  --color-primary-soft-hover: var(--color-primary-100);
+  --color-primary-soft-fg: var(--color-primary-900);
+  --color-primary-soft-fg-muted: var(--color-primary-800);
+  --color-primary-solid: var(--color-primary-600);
+  --color-primary-solid-hover: var(--color-primary-700);
+  --color-primary-solid-fg: var(--color-white);
+  --color-primary-border: var(--color-primary-300);
+  --color-primary-border-strong: var(--color-primary-500);
+  --color-primary-fg: var(--color-primary-700);
+  --color-primary-icon: var(--color-primary-600);
+
+  /* ----- Secondary (slate) ----- */
+  --color-secondary-soft: var(--color-secondary-50);
+  --color-secondary-soft-hover: var(--color-secondary-100);
+  --color-secondary-soft-fg: var(--color-secondary-900);
+  --color-secondary-soft-fg-muted: var(--color-secondary-800);
+  --color-secondary-solid: var(--color-secondary-700);
+  --color-secondary-solid-hover: var(--color-secondary-800);
+  --color-secondary-solid-fg: var(--color-white);
+  --color-secondary-border: var(--color-secondary-300);
+  --color-secondary-border-strong: var(--color-secondary-500);
+  --color-secondary-fg: var(--color-secondary-700);
+  --color-secondary-icon: var(--color-secondary-600);
+
+  /* ----- Accent (violet) ----- */
+  --color-accent-soft: var(--color-accent-50);
+  --color-accent-soft-hover: var(--color-accent-100);
+  --color-accent-soft-fg: var(--color-accent-900);
+  --color-accent-soft-fg-muted: var(--color-accent-800);
+  --color-accent-solid: var(--color-accent-600);
+  --color-accent-solid-hover: var(--color-accent-700);
+  --color-accent-solid-fg: var(--color-white);
+  --color-accent-border: var(--color-accent-300);
+  --color-accent-border-strong: var(--color-accent-500);
+  --color-accent-fg: var(--color-accent-700);
+  --color-accent-icon: var(--color-accent-600);
+
+  /* ----- Neutral ----- (uses surface/fg tokens so dark mode is automatic) */
+  --color-neutral-soft: var(--color-surface-muted);
+  --color-neutral-soft-hover: var(--color-surface-sunken);
+  --color-neutral-soft-fg: var(--color-fg);
+  --color-neutral-soft-fg-muted: var(--color-fg-muted);
+  --color-neutral-solid: var(--color-fg);
+  --color-neutral-solid-hover: var(--color-gray-700);
+  --color-neutral-solid-fg: var(--color-surface);
+  --color-neutral-border: var(--color-border);
+  --color-neutral-border-strong: var(--color-border-strong);
+  --color-neutral-fg: var(--color-fg);
+  --color-neutral-icon: var(--color-fg-muted);
+
+  /* ----- Info (sky) ----- */
+  --color-info-soft: var(--color-info-50);
+  --color-info-soft-hover: var(--color-info-100);
+  --color-info-soft-fg: var(--color-info-900);
+  --color-info-soft-fg-muted: var(--color-info-800);
+  --color-info-solid: var(--color-info-700);
+  --color-info-solid-hover: var(--color-info-800);
+  --color-info-solid-fg: var(--color-white);
+  --color-info-border: var(--color-info-300);
+  --color-info-border-strong: var(--color-info-500);
+  --color-info-fg: var(--color-info-700);
+  --color-info-icon: var(--color-info-600);
+
+  /* ----- Success (green) ----- */
+  --color-success-soft: var(--color-success-50);
+  --color-success-soft-hover: var(--color-success-100);
+  --color-success-soft-fg: var(--color-success-900);
+  --color-success-soft-fg-muted: var(--color-success-800);
+  --color-success-solid: var(--color-success-700);
+  --color-success-solid-hover: var(--color-success-800);
+  --color-success-solid-fg: var(--color-white);
+  --color-success-border: var(--color-success-300);
+  --color-success-border-strong: var(--color-success-500);
+  --color-success-fg: var(--color-success-700);
+  --color-success-icon: var(--color-success-600);
+
+  /* ----- Warning (amber) ----- */
+  --color-warning-soft: var(--color-warning-50);
+  --color-warning-soft-hover: var(--color-warning-100);
+  --color-warning-soft-fg: var(--color-warning-900);
+  --color-warning-soft-fg-muted: var(--color-warning-800);
+  --color-warning-solid: var(--color-warning-500);
+  --color-warning-solid-hover: var(--color-warning-600);
+  --color-warning-solid-fg: var(--color-warning-950);
+  --color-warning-border: var(--color-warning-300);
+  --color-warning-border-strong: var(--color-warning-500);
+  --color-warning-fg: var(--color-warning-800);
+  --color-warning-icon: var(--color-warning-600);
+
+  /* ----- Error (red) ----- */
+  --color-error-soft: var(--color-error-50);
+  --color-error-soft-hover: var(--color-error-100);
+  --color-error-soft-fg: var(--color-error-900);
+  --color-error-soft-fg-muted: var(--color-error-800);
+  --color-error-solid: var(--color-error-600);
+  --color-error-solid-hover: var(--color-error-700);
+  --color-error-solid-fg: var(--color-white);
+  --color-error-border: var(--color-error-300);
+  --color-error-border-strong: var(--color-error-500);
+  --color-error-fg: var(--color-error-700);
+  --color-error-icon: var(--color-error-600);
+
+  /* ===== Legacy on-role aliases — see note in `_semantic.css` ===== */
+  --color-on-info: var(--color-info-solid-fg);
+  --color-on-success: var(--color-success-solid-fg);
+  --color-on-warning: var(--color-warning-solid-fg);
+  --color-on-error: var(--color-error-solid-fg);
+  --color-on-primary: var(--color-primary-solid-fg);
+  --color-on-secondary: var(--color-secondary-solid-fg);
+  --color-on-accent: var(--color-accent-solid-fg);
+  --color-on-neutral: var(--color-neutral-solid-fg);
+}

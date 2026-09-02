@@ -692,6 +692,57 @@ describe('SelectComponent', () => {
       expect(fixture.componentInstance.value()).toBe('banana');
       vi.useRealTimers();
     });
+
+    /**
+     * Guards CDK F-5. `applyTypeAhead` matched on label prefix with no
+     * `disabled` filter, so `aria-activedescendant` could land on a disabled
+     * option — which `selectByVisibleIndex` then refuses to commit, so Enter
+     * did nothing at all with no feedback. Every other navigation path in the
+     * component already skips disabled options via `findEnabledFrom`.
+     *
+     * The option set is shaped so the assertion proves *skipping*, not mere
+     * refusal: two options share the "ca" prefix and the FIRST is disabled.
+     * Against the old code the active descendant is `-option-1` (Cabbage) and
+     * both assertions below fail; a test that only asserted "not Cabbage"
+     * would pass trivially whenever `activeIndex` happened to be -1.
+     */
+    it('type-ahead skips a disabled option and lands on the next match', async () => {
+      @Component({
+        imports: [SelectComponent],
+        changeDetection: ChangeDetectionStrategy.OnPush,
+        template: `
+          <tw-select [options]="options" [(value)]="value" aria-label="Produce" />
+        `,
+      })
+      class TypeAheadHost {
+        readonly options: readonly TestOption[] = [
+          { label: 'Apple', value: 'apple' },
+          { label: 'Cabbage', value: 'cabbage', disabled: true },
+          { label: 'Carrot', value: 'carrot' },
+        ];
+        value = signal<string | readonly string[] | null>(null);
+      }
+
+      vi.useFakeTimers();
+      const fixture = TestBed.createComponent(TypeAheadHost);
+      fixture.detectChanges();
+      // Open first: `openOverlay()` runs `initActiveIndexOnOpen()`, which would
+      // otherwise clobber a match made by the same keystroke that opened.
+      dispatchKeyOn(getTriggerButton(fixture), 'ArrowDown');
+      await advance(fixture);
+
+      dispatchKeyOn(getTriggerButton(fixture), 'c');
+      await advance(fixture);
+      const active = getTriggerButton(fixture).getAttribute('aria-activedescendant');
+      expect(active).toContain('-option-2'); // Carrot, not Cabbage at index 1
+
+      // And the whole point: Enter now commits instead of silently doing nothing.
+      dispatchKeyOn(getTriggerButton(fixture), 'Enter');
+      vi.advanceTimersByTime(200);
+      await advance(fixture);
+      expect(fixture.componentInstance.value()).toBe('carrot');
+      vi.useRealTimers();
+    });
   });
 
   // ── Clear button ──

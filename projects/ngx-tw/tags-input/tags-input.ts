@@ -26,6 +26,7 @@ import {
   Validators,
 } from '@angular/forms';
 import { FocusMonitor, LiveAnnouncer } from '@angular/cdk/a11y';
+import { Directionality } from '@angular/cdk/bidi';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { isObservable, merge } from 'rxjs';
 import { tv } from 'tailwind-variants';
@@ -335,6 +336,13 @@ export class TagsInputComponent<T = string>
   private readonly parentFormGroup = inject(FormGroupDirective, { optional: true });
   private readonly defaultMatcher = inject(TW_ERROR_STATE_MATCHER);
   private readonly formField = inject(TW_FORM_FIELD, { optional: true });
+  /**
+   * Optional so a consumer that never imports `BidiModule` still gets a working
+   * control — chip navigation falls back to LTR when the token is absent. Read
+   * imperatively inside the keydown handlers; nothing here needs to re-render
+   * on a direction change.
+   */
+  private readonly directionality = inject(Directionality, { optional: true });
 
   private readonly textInputRef = viewChild<ElementRef<HTMLInputElement>>('textInput');
   private readonly removeButtons = viewChildren<ElementRef<HTMLButtonElement>>('removeBtn');
@@ -636,7 +644,13 @@ export class TagsInputComponent<T = string>
       }
       return;
     }
-    if (key === 'ArrowLeft') {
+    // Stepping out of the input into the last chip is a *backwards* move: the
+    // chip row is rendered before the input, so it is ArrowLeft in LTR and
+    // ArrowRight in an RTL locale, where the row lays out right-to-left. The
+    // caret test is direction-independent — `selectionStart === 0` is the
+    // logical start of the text in both directions.
+    const backKey = this.directionality?.value === 'rtl' ? 'ArrowRight' : 'ArrowLeft';
+    if (key === backKey) {
       const el = event.target as HTMLInputElement;
       const atStart = (el.selectionStart ?? 0) === 0 && (el.selectionEnd ?? 0) === 0;
       if (atStart && this.tags().length > 0) {
@@ -664,14 +678,23 @@ export class TagsInputComponent<T = string>
     const last = this.tags().length - 1;
     switch (event.key) {
       case 'ArrowLeft':
+      case 'ArrowRight': {
+        // Horizontal arrows follow the layout direction. Chips sit on a
+        // flex row that lays out right-to-left in an RTL locale, so ArrowLeft
+        // is the *forward* key there. The chip host is a custom element, not a
+        // native control, so the browser does no flipping for us. Home/End stay
+        // logical — CDK's ListKeyManager does not flip them either.
         event.preventDefault();
-        if (index > 0) this.focusChip(index - 1);
+        const rtl = this.directionality?.value === 'rtl';
+        const forward = rtl ? event.key === 'ArrowLeft' : event.key === 'ArrowRight';
+        if (forward) {
+          if (index < last) this.focusChip(index + 1);
+          else this.focusInput();
+        } else if (index > 0) {
+          this.focusChip(index - 1);
+        }
         return;
-      case 'ArrowRight':
-        event.preventDefault();
-        if (index < last) this.focusChip(index + 1);
-        else this.focusInput();
-        return;
+      }
       case 'Home':
         event.preventDefault();
         this.focusChip(0);

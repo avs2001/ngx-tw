@@ -348,6 +348,35 @@ describe('RadioGroupComponent', () => {
       expect(fixture.componentInstance.selected()).toBe('c');
     });
 
+    it('navigates with both arrow pairs regardless of [orientation]', () => {
+      // Documentation lock, not a regression guard: `orientation`'s JSDoc used
+      // to claim it "drives the arrow-key model", which it never did — it only
+      // reaches `aria-orientation` and the tv() layout variant. The behaviour
+      // below is the APG-correct one (a radiogroup accepts both arrow pairs in
+      // either layout) and is what the corrected JSDoc now promises, so it is
+      // worth pinning. This passes before and after the doc fix by design.
+      const fixture = TestBed.createComponent(GroupHost);
+      fixture.componentInstance.orientation.set('horizontal');
+      fixture.detectChanges();
+      expect(getGroup(fixture).getAttribute('aria-orientation')).toBe('horizontal');
+
+      dispatchKey(getGroup(fixture), 'ArrowDown');
+      fixture.detectChanges();
+      expect(fixture.componentInstance.selected()).toBe('b');
+
+      dispatchKey(getGroup(fixture), 'ArrowUp');
+      fixture.detectChanges();
+      expect(fixture.componentInstance.selected()).toBe('a');
+
+      dispatchKey(getGroup(fixture), 'ArrowRight');
+      fixture.detectChanges();
+      expect(fixture.componentInstance.selected()).toBe('b');
+
+      dispatchKey(getGroup(fixture), 'ArrowLeft');
+      fixture.detectChanges();
+      expect(fixture.componentInstance.selected()).toBe('a');
+    });
+
     it('should jump to first enabled on Home', () => {
       const fixture = TestBed.createComponent(GroupHost);
       fixture.componentInstance.selected.set('c');

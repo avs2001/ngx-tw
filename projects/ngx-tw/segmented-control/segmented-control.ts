@@ -22,6 +22,7 @@ import {
   NgForm,
   Validators,
 } from '@angular/forms';
+import { Directionality } from '@angular/cdk/bidi';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { merge } from 'rxjs';
 import { tv } from 'tailwind-variants';
@@ -35,7 +36,32 @@ import {
 } from '@cdevhub/ngx-tw/core';
 
 /** Visual style of the active indicator. */
-export type SegmentedControlVariant = 'surface' | 'filled' | 'outline';
+export type SegmentedControlVariant =
+  | 'surface'
+  | 'solid'
+  | 'outline'
+  | SegmentedControlVariantLegacy;
+
+/**
+ * Legacy `variant` spellings, kept so existing templates keep compiling.
+ *
+ * @deprecated `'filled'` is an alias for `'solid'`; it will be removed in the next
+ * major. Prefer `'solid'`.
+ */
+export type SegmentedControlVariantLegacy = 'filled';
+
+/** Canonical `variant` spellings — the set `tv()` actually keys on. */
+type SegmentedControlVariantCanonical = Exclude<
+  SegmentedControlVariant,
+  SegmentedControlVariantLegacy
+>;
+
+/** Maps every legacy spelling onto its canonical replacement. */
+const VARIANT_ALIASES: Readonly<
+  Record<SegmentedControlVariantLegacy, SegmentedControlVariantCanonical>
+> = {
+  filled: 'solid',
+};
 
 /** Border-radius shape of the container and options. */
 export type SegmentedControlRounded = 'pill' | 'md';
@@ -79,7 +105,7 @@ const segmentedControlVariants = tv({
     // all active styling without per-axis defaults bleeding through.
     variant: {
       surface: {},
-      filled: {},
+      solid: {},
       outline: {},
     },
     color: {
@@ -141,15 +167,15 @@ const segmentedControlVariants = tv({
     { variant: 'surface', color: 'success', active: true, class: { option: 'bg-surface shadow-sm text-success-fg' } },
     { variant: 'surface', color: 'warning', active: true, class: { option: 'bg-surface shadow-sm text-warning-fg' } },
     { variant: 'surface', color: 'error', active: true, class: { option: 'bg-surface shadow-sm text-error-fg' } },
-    // filled × color × active=true
-    { variant: 'filled', color: 'primary', active: true, class: { option: 'bg-primary-solid text-primary-solid-fg shadow-sm' } },
-    { variant: 'filled', color: 'secondary', active: true, class: { option: 'bg-secondary-solid text-secondary-solid-fg shadow-sm' } },
-    { variant: 'filled', color: 'accent', active: true, class: { option: 'bg-accent-solid text-accent-solid-fg shadow-sm' } },
-    { variant: 'filled', color: 'neutral', active: true, class: { option: 'bg-neutral-solid text-neutral-solid-fg shadow-sm' } },
-    { variant: 'filled', color: 'info', active: true, class: { option: 'bg-info-solid text-info-solid-fg shadow-sm' } },
-    { variant: 'filled', color: 'success', active: true, class: { option: 'bg-success-solid text-success-solid-fg shadow-sm' } },
-    { variant: 'filled', color: 'warning', active: true, class: { option: 'bg-warning-solid text-warning-solid-fg shadow-sm' } },
-    { variant: 'filled', color: 'error', active: true, class: { option: 'bg-error-solid text-error-solid-fg shadow-sm' } },
+    // solid × color × active=true
+    { variant: 'solid', color: 'primary', active: true, class: { option: 'bg-primary-solid text-primary-solid-fg shadow-sm' } },
+    { variant: 'solid', color: 'secondary', active: true, class: { option: 'bg-secondary-solid text-secondary-solid-fg shadow-sm' } },
+    { variant: 'solid', color: 'accent', active: true, class: { option: 'bg-accent-solid text-accent-solid-fg shadow-sm' } },
+    { variant: 'solid', color: 'neutral', active: true, class: { option: 'bg-neutral-solid text-neutral-solid-fg shadow-sm' } },
+    { variant: 'solid', color: 'info', active: true, class: { option: 'bg-info-solid text-info-solid-fg shadow-sm' } },
+    { variant: 'solid', color: 'success', active: true, class: { option: 'bg-success-solid text-success-solid-fg shadow-sm' } },
+    { variant: 'solid', color: 'warning', active: true, class: { option: 'bg-warning-solid text-warning-solid-fg shadow-sm' } },
+    { variant: 'solid', color: 'error', active: true, class: { option: 'bg-error-solid text-error-solid-fg shadow-sm' } },
     // outline × color × active=true
     { variant: 'outline', color: 'primary', active: true, class: { option: 'ring-2 ring-primary-border-strong text-primary-fg' } },
     { variant: 'outline', color: 'secondary', active: true, class: { option: 'ring-2 ring-secondary-border-strong text-secondary-fg' } },
@@ -243,7 +269,7 @@ export class SegmentedControlOptionComponent {
       size: this.parent?.size() ?? 'md',
       orientation: this.parent?.orientation() ?? 'horizontal',
       rounded: this.parent?.effectiveRounded() ?? 'pill',
-      variant: this.parent?.variant() ?? 'surface',
+      variant: this.parent?.resolvedVariant() ?? 'surface',
       color: this.parent?.color() ?? 'primary',
       active: this.isActive(),
       disabled: this.isDisabled(),
@@ -257,7 +283,7 @@ export class SegmentedControlOptionComponent {
     this.parent?.selectOption(this.value());
   }
 
-  /** Moves DOM focus to this option's element. Called by `FocusKeyManager` during arrow-key navigation. */
+  /** Moves DOM focus to this option's element. Called by the parent group's arrow-key handler, which moves focus and selection together (selection-follows-focus, as WAI-ARIA APG specifies for a radiogroup). */
   focus(): void {
     this.elementRef.nativeElement.focus();
   }
@@ -287,7 +313,7 @@ export class SegmentedControlOptionComponent {
   },
 })
 export class SegmentedControlComponent implements ControlValueAccessor, OnInit {
-  /** Controls the active indicator style. `'surface'` shows a raised white pill; `'filled'` shows a solid colored background; `'outline'` shows a colored ring border. Defaults to `'surface'`. */
+  /** Controls the active indicator style. `'surface'` shows a raised white pill; `'solid'` shows a solid colored background; `'outline'` shows a colored ring border. Defaults to `'surface'`. `'filled'` is a deprecated alias for `'solid'`. */
   readonly variant = input<SegmentedControlVariant>('surface');
 
   /** Sets the semantic color for the active option indicator. Defaults to `'primary'`. */
@@ -323,6 +349,13 @@ export class SegmentedControlComponent implements ControlValueAccessor, OnInit {
   private readonly parentForm = inject(NgForm, { optional: true });
   private readonly parentFormGroup = inject(FormGroupDirective, { optional: true });
   private readonly defaultMatcher = inject(TW_ERROR_STATE_MATCHER);
+  /**
+   * Optional so a consumer that never imports `BidiModule` still gets a working
+   * control — arrow navigation falls back to LTR when the token is absent. Read
+   * imperatively inside the keydown handler; nothing here needs to re-render on
+   * a direction change.
+   */
+  private readonly directionality = inject(Directionality, { optional: true });
 
   private onChange: (value: string | null) => void = () => {};
   private onTouched: () => void = () => {};
@@ -378,6 +411,15 @@ export class SegmentedControlComponent implements ControlValueAccessor, OnInit {
   readonly effectiveRounded = computed<SegmentedControlRounded>(() =>
     this.orientation() === 'vertical' ? 'md' : this.rounded(),
   );
+
+  /** @internal Canonical variant with legacy spellings folded in. Read by `SegmentedControlOptionComponent.classes` to resolve the option's tv() bucket. */
+  readonly resolvedVariant = computed<SegmentedControlVariantCanonical>(() => {
+    const v = this.variant();
+    return (
+      (VARIANT_ALIASES as Record<string, SegmentedControlVariantCanonical | undefined>)[v] ??
+      (v as SegmentedControlVariantCanonical)
+    );
+  });
 
   private readonly variantResult = computed(() =>
     segmentedControlVariants({
@@ -455,12 +497,26 @@ export class SegmentedControlComponent implements ControlValueAccessor, OnInit {
     const currentIdx = opts.findIndex(o => o.value() === this.activeValue());
     const startIdx = currentIdx >= 0 ? currentIdx : 0;
 
+    // Horizontal arrows follow the layout direction. The option host is a
+    // custom element carrying `role="radio"`, not a native `<input>`, so the
+    // browser's RTL arrow flipping is unavailable — without this the arrows
+    // step backwards in DOM order but forwards visually in an RTL locale.
+    // Vertical arrows are direction-independent (CDK's ListKeyManager draws the
+    // same line), and the flip applies regardless of `orientation()` because a
+    // radiogroup accepts both arrow pairs in either layout, per WAI-ARIA APG.
+    const forward: 1 | -1 = this.directionality?.value === 'rtl' ? -1 : 1;
+    const backward: 1 | -1 = forward === 1 ? -1 : 1;
+
     switch (event.key) {
       case 'ArrowRight':
+        targetIndex = this.findNextEnabledIndex(opts, startIdx, forward);
+        break;
+      case 'ArrowLeft':
+        targetIndex = this.findNextEnabledIndex(opts, startIdx, backward);
+        break;
       case 'ArrowDown':
         targetIndex = this.findNextEnabledIndex(opts, startIdx, 1);
         break;
-      case 'ArrowLeft':
       case 'ArrowUp':
         targetIndex = this.findNextEnabledIndex(opts, startIdx, -1);
         break;

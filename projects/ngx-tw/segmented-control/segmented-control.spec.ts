@@ -2,6 +2,8 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { ChangeDetectionStrategy, Component, signal } from '@angular/core';
 import { type ComponentFixture, TestBed } from '@angular/core/testing';
 import { FormControl, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
+import { type Direction, Directionality } from '@angular/cdk/bidi';
+import { Subject } from 'rxjs';
 import { form, FormField, required as requiredRule } from '@angular/forms/signals';
 import { SegmentedControlComponent, SegmentedControlOptionComponent } from './segmented-control';
 import type { SegmentedControlVariant, SegmentedControlRounded } from './segmented-control';
@@ -197,8 +199,8 @@ describe('SegmentedControl', () => {
       expect(getOptions(fixture)).toHaveLength(3);
     });
 
-    it('should render with filled variant', () => {
-      host.variant.set('filled');
+    it('should render with solid variant', () => {
+      host.variant.set('solid');
       fixture.detectChanges();
       expect(getOptions(fixture)).toHaveLength(3);
     });
@@ -210,7 +212,7 @@ describe('SegmentedControl', () => {
     });
 
     it('should render all variants across all colors', () => {
-      const variants: SegmentedControlVariant[] = ['surface', 'filled', 'outline'];
+      const variants: SegmentedControlVariant[] = ['surface', 'solid', 'outline'];
       const colors: TwColor[] = ['primary', 'secondary', 'accent', 'neutral', 'info', 'success', 'warning', 'error'];
       for (const v of variants) {
         for (const c of colors) {
@@ -233,7 +235,7 @@ describe('SegmentedControl', () => {
     });
 
     it('should update selection in filled mode', () => {
-      host.variant.set('filled');
+      host.variant.set('solid');
       fixture.detectChanges();
       const options = getOptions(fixture);
       options[1].click();
@@ -252,7 +254,7 @@ describe('SegmentedControl', () => {
         { color: 'warning', cls: 'text-warning-solid-fg' },
         { color: 'error', cls: 'text-error-solid-fg' },
       ];
-      host.variant.set('filled');
+      host.variant.set('solid');
       for (const { color, cls } of cases) {
         host.color.set(color);
         fixture.detectChanges();
@@ -551,7 +553,7 @@ describe('SegmentedControl', () => {
 
   describe('Compound variants', () => {
     it('should apply inactive option styling on non-active options regardless of variant', () => {
-      const variants: SegmentedControlVariant[] = ['surface', 'filled', 'outline'];
+      const variants: SegmentedControlVariant[] = ['surface', 'solid', 'outline'];
       for (const v of variants) {
         host.variant.set(v);
         fixture.detectChanges();
@@ -596,7 +598,7 @@ describe('SegmentedControl', () => {
       // variant block, a disabled+active option still resolves its active
       // color compound — it's now visually "faded but still selected" rather
       // than collapsed to muted styling. Locks the new behavior in.
-      host.variant.set('filled');
+      host.variant.set('solid');
       host.color.set('success');
       host.selected.set('c');
       host.optionCDisabled.set(true);
@@ -608,6 +610,51 @@ describe('SegmentedControl', () => {
       // Disabled axis adds the opacity / pointer-events layer on top.
       expect(activeDisabled.className).toContain('opacity-50');
       expect(activeDisabled.className).toContain('pointer-events-none');
+    });
+  });
+
+  // ── Deprecated variant aliases ──
+  //
+  // `'filled'` was renamed to `'solid'`. The old spelling must keep rendering
+  // byte-identical classes, because `tv()` returns *base classes only* for an
+  // unrecognised variant value — no throw, no console warning, just a silently
+  // unstyled control. String equality (not `toContain`) is the literal encoding
+  // of that promise.
+  //
+  // Non-vacuous: delete the `filled` entry from `VARIANT_ALIASES` and `'filled'`
+  // falls through to `tv()` unrecognised, dropping the whole
+  // `variant × color × active` compound row — the two strings diverge and this
+  // fails.
+  //
+  // The active option is the one under test: every `solid` compound row is
+  // keyed `active: true`, so an inactive option would compare two identical
+  // strings for the wrong reason and guard nothing.
+  describe('deprecated variant aliases', () => {
+    function activeOptionClassesFor(variant: SegmentedControlVariant, color: TwColor): string {
+      host.variant.set(variant);
+      host.color.set(color);
+      fixture.detectChanges();
+      const options = getOptions(fixture);
+      const active = options.find((o) => o.getAttribute('aria-checked') === 'true');
+      return active?.className ?? '';
+    }
+
+    it('"filled" resolves to exactly the same classes as "solid"', () => {
+      const canonical = activeOptionClassesFor('solid', 'primary');
+      const legacy = activeOptionClassesFor('filled', 'primary');
+      expect(legacy).toBe(canonical);
+      expect(legacy).not.toBe('');
+    });
+
+    it('"filled" still picks up the compound color background', () => {
+      expect(activeOptionClassesFor('filled', 'success')).toContain('bg-success-solid');
+    });
+
+    it('"filled" agrees with "solid" across every color', () => {
+      const colors: TwColor[] = ['primary', 'secondary', 'accent', 'neutral', 'info', 'success', 'warning', 'error'];
+      for (const c of colors) {
+        expect(activeOptionClassesFor('filled', c)).toBe(activeOptionClassesFor('solid', c));
+      }
     });
   });
 });
@@ -922,4 +969,90 @@ describe('SegmentedControl error state', () => {
     fixture.detectChanges();
     expect(getControl(fixture).getAttribute('aria-required')).toBe('true');
   });
+});
+
+// ── RTL keyboard navigation ────────────────────────────────────────────
+
+describe('SegmentedControl — RTL keyboard navigation', () => {
+  // The option host is a custom element carrying `role="radio"`, not a native
+  // `<input type="radio">`, so the browser does not flip the horizontal arrows
+  // for us in an RTL locale. The handler used to map ArrowRight to +1
+  // unconditionally, which stepped forwards in DOM order but *backwards*
+  // visually under `dir="rtl"`. Only the horizontal pair flips — ArrowUp /
+  // ArrowDown and Home / End are logical keys in both directions, which is the
+  // same line CDK's ListKeyManager draws.
+  async function mount(direction: Direction) {
+    await TestBed.configureTestingModule({
+      imports: [TestHost],
+      providers: [
+        {
+          provide: Directionality,
+          useValue: {
+            value: direction,
+            valueSignal: signal<Direction>(direction),
+            change: new Subject<Direction>(),
+          },
+        },
+      ],
+    }).compileComponents();
+    const fixture = TestBed.createComponent(TestHost);
+    fixture.componentInstance.selected.set('b');
+    fixture.detectChanges();
+    return fixture;
+  }
+
+  it('ArrowLeft selects the NEXT option when the layout direction is rtl', async () => {
+    const fixture = await mount('rtl');
+    dispatchKey(getControl(fixture), 'ArrowLeft');
+    fixture.detectChanges();
+    // LTR would step back to 'a'; RTL advances instead.
+    expect(fixture.componentInstance.selected()).toBe('c');
+  });
+
+  it('ArrowRight selects the PREVIOUS option when the layout direction is rtl', async () => {
+    const fixture = await mount('rtl');
+    dispatchKey(getControl(fixture), 'ArrowRight');
+    fixture.detectChanges();
+    expect(fixture.componentInstance.selected()).toBe('a');
+  });
+
+  it('leaves ArrowDown / ArrowUp direction-independent under rtl', async () => {
+    const fixture = await mount('rtl');
+    dispatchKey(getControl(fixture), 'ArrowDown');
+    fixture.detectChanges();
+    expect(fixture.componentInstance.selected()).toBe('c');
+
+    dispatchKey(getControl(fixture), 'ArrowUp');
+    fixture.detectChanges();
+    expect(fixture.componentInstance.selected()).toBe('b');
+  });
+
+  it('leaves Home / End logical under rtl', async () => {
+    const fixture = await mount('rtl');
+    dispatchKey(getControl(fixture), 'End');
+    fixture.detectChanges();
+    expect(fixture.componentInstance.selected()).toBe('c');
+
+    dispatchKey(getControl(fixture), 'Home');
+    fixture.detectChanges();
+    expect(fixture.componentInstance.selected()).toBe('a');
+  });
+
+  it('keeps the modular wrap and the disabled skip under rtl', async () => {
+    const fixture = await mount('rtl');
+    fixture.componentInstance.optionCDisabled.set(true);
+    fixture.detectChanges();
+    // Forward (ArrowLeft in RTL) from 'b' skips the disabled 'c' and wraps to 'a'.
+    dispatchKey(getControl(fixture), 'ArrowLeft');
+    fixture.detectChanges();
+    expect(fixture.componentInstance.selected()).toBe('a');
+  });
+
+  it('keeps ltr behaviour when the layout direction is ltr', async () => {
+    const fixture = await mount('ltr');
+    dispatchKey(getControl(fixture), 'ArrowLeft');
+    fixture.detectChanges();
+    expect(fixture.componentInstance.selected()).toBe('a');
+  });
+
 });

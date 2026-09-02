@@ -351,10 +351,7 @@ export class TooltipDirective {
   /** When true, tooltip never shows. Defaults to `false`. */
   readonly twTooltipDisabled = input(false);
 
-  // Arrows reinforce the visual association between the floating panel and its trigger
-  // and match every other ngx-tw overlay (popover/menu); opt-out is for compact iconic
-  // contexts only.
-  /** When true, renders an arrow pointing to the trigger. Defaults to `true`. */
+  /** When true, renders an arrow pointing to the trigger. Defaults to `true` — arrows reinforce the visual association between the floating panel and its trigger and match every other ngx-tw overlay (popover, menu); the special case is a compact iconic context. */
   readonly twTooltipArrow = input(true);
 
   /** Optional class string (space-separated) merged into the panel slot for consumer customization. Defaults to an empty string. */

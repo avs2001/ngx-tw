@@ -64,11 +64,11 @@ import { CodeBlockComponent } from '@cdevhub/ngx-tw/code-block';
       <ul class="list-disc list-inside text-sm text-fg-muted space-y-1.5">
         <li>
           Four surface variants:
-          <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">outlined</code>
+          <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">outline</code>
           (default),
           <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">elevated</code>,
-          <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">filled</code>, and
-          <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">plain</code>
+          <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">solid</code>, and
+          <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">ghost</code>
         </li>
         <li>
           Five sizes (<code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">xs</code>–<code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">xl</code>) drive padding and value typography from

@@ -62,6 +62,7 @@ import { TW_INPUT_VALUE_ACCESSOR } from '@cdevhub/ngx-tw/input';
     '[attr.aria-valuemax]': 'max() ?? null',
     '[attr.aria-valuenow]': 'value() ?? null',
     '[attr.aria-valuetext]': 'displayText() || "Empty"',
+    '[attr.aria-disabled]': 'ariaDisabled()',
     '(input)': 'onInput()',
     '(keydown)': 'onKeydown($event)',
     '(focus)': 'onFocus()',
@@ -111,6 +112,27 @@ export class NumberInputDirective implements ControlValueAccessor {
 
   /** True when the host input carries the `readonly` attribute (static / declarative, seeded after render). A runtime toggle of the bare `readonly` attribute is not reactively tracked (v2). Read by the companion stepper so its buttons disable in lock-step. */
   readonly readonly = this.readonlySig.asReadonly();
+
+  /**
+   * @internal `aria-disabled` for the host `<input>`.
+   *
+   * Derived from the CVA disabled state ALONE, deliberately not from
+   * {@link disabled}. Three reasons, in order of weight:
+   *
+   * 1. It is the only case that needs the attribute. When the element is
+   *    natively disabled (`el.disabled`, whether from a static attribute or
+   *    from the sibling `InputDirective`'s `[disabled]` binding) assistive tech
+   *    already has the state. The gap is `setDisabledState(true)` on a
+   *    standalone `input[twNumberInput]` — no sibling directive, so nothing
+   *    writes the native property and the spinbutton looked enabled.
+   * 2. `disabled` reads the non-reactive `el.disabled`. Read from a host
+   *    binding it would memoize during the host-binding phase, so its value
+   *    would depend on which of the two directives on the element runs first —
+   *    and could latch a stale `true` across a `control.enable()`.
+   * 3. `[disabled]` itself is not an option: `InputDirective` already binds it,
+   *    and this directive's `disabled` reads the very property it would write.
+   */
+  readonly ariaDisabled = computed(() => (this.cvaDisabled() ? 'true' : null));
 
   /** @internal Mobile-keyboard hint: `'numeric'` for integer-only formats, else `'decimal'`. */
   readonly inputMode = computed(() =>
@@ -222,6 +244,11 @@ export class NumberInputDirective implements ControlValueAccessor {
 
   /** @internal */
   onInput(): void {
+    // Same gate as `onKeydown` / `stepBy`. Without it a control disabled through
+    // `setDisabledState` — which does not set the native `disabled` property
+    // when `twNumberInput` is used without the sibling `twInput` — still wrote
+    // every keystroke into the form model and emitted `valueChange`.
+    if (this.disabled() || this.el.readOnly) return;
     const raw = this.el.value;
     this.displayText.set(raw);
     const parsed = this.parseValue(raw);
@@ -285,6 +312,10 @@ export class NumberInputDirective implements ControlValueAccessor {
   }
 
   private commitFromElement(): void {
+    // Blur and Enter both land here. A disabled control must not commit — the
+    // `readOnly` half is deliberately NOT gated: a readonly field still
+    // reformats its display on blur, which is existing behaviour.
+    if (this.disabled()) return;
     const raw = this.el.value;
     if (raw.trim() === '') {
       this.commitEmpty();

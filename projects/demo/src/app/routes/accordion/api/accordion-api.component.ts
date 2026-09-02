@@ -32,7 +32,7 @@ import { CodeBlockComponent } from '@cdevhub/ngx-tw/code-block';
             </tr>
             <tr>
               <td class="px-4 py-2 font-mono text-xs">variant</td>
-              <td class="px-4 py-2 font-mono text-xs text-fg-muted">'default' | 'bordered' | 'ghost'</td>
+              <td class="px-4 py-2 font-mono text-xs text-fg-muted">'default' | 'outline' | 'ghost'</td>
               <td class="px-4 py-2 font-mono text-xs text-fg-muted">'default'</td>
               <td class="px-4 py-2 text-fg-muted">Visual style of the accordion container.</td>
             </tr>
@@ -85,5 +85,8 @@ import { CodeBlockComponent } from '@cdevhub/ngx-tw/code-block';
 export class AccordionApi {
   protected readonly typesSnippet = `type AccordionType = 'single' | 'multiple';
 
-type AccordionVariant = 'default' | 'bordered' | 'ghost';`;
+type AccordionVariant = 'default' | 'outline' | 'ghost' | AccordionVariantLegacy;
+
+/** @deprecated 'bordered' is an alias for 'outline'; removed in the next major. */
+type AccordionVariantLegacy = 'bordered';`;
 }

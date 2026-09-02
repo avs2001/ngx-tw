@@ -10,7 +10,22 @@ import { tv } from 'tailwind-variants';
 import type { TwColor, TwSize } from '@cdevhub/ngx-tw/core';
 
 /** Visual style of the card container. */
-export type CardVariant = 'elevated' | 'outlined' | 'ghost';
+export type CardVariant = 'elevated' | 'outline' | 'ghost' | CardVariantLegacy;
+
+/**
+ * Legacy `variant` spellings, kept so existing templates keep compiling.
+ * @deprecated `'outlined'` is an alias for `'outline'` and renders identically.
+ * It will be removed in the next major — prefer `'outline'`.
+ */
+export type CardVariantLegacy = 'outlined';
+
+/** Canonical `variant` spellings — the set `tv()` actually keys on. */
+type CardVariantCanonical = Exclude<CardVariant, CardVariantLegacy>;
+
+/** Maps every legacy spelling onto its canonical replacement. */
+const VARIANT_ALIASES: Readonly<Record<CardVariantLegacy, CardVariantCanonical>> = {
+  outlined: 'outline',
+};
 
 const cardVariants = tv({
   slots: {
@@ -25,7 +40,7 @@ const cardVariants = tv({
       elevated: {
         root: 'bg-surface-raised shadow hover:shadow-md transition-shadow duration-normal motion-reduce:transition-none',
       },
-      outlined: {
+      outline: {
         root: 'bg-surface border border-border',
       },
       ghost: {
@@ -51,13 +66,13 @@ const cardVariants = tv({
     },
   },
   compoundVariants: [
-    { variant: 'outlined', color: 'primary', class: { root: 'border-primary-300' } },
-    { variant: 'outlined', color: 'secondary', class: { root: 'border-secondary-300' } },
-    { variant: 'outlined', color: 'accent', class: { root: 'border-accent-300' } },
-    { variant: 'outlined', color: 'info', class: { root: 'border-info-300' } },
-    { variant: 'outlined', color: 'success', class: { root: 'border-success-300' } },
-    { variant: 'outlined', color: 'warning', class: { root: 'border-warning-300' } },
-    { variant: 'outlined', color: 'error', class: { root: 'border-error-300' } },
+    { variant: 'outline', color: 'primary', class: { root: 'border-primary-300' } },
+    { variant: 'outline', color: 'secondary', class: { root: 'border-secondary-300' } },
+    { variant: 'outline', color: 'accent', class: { root: 'border-accent-300' } },
+    { variant: 'outline', color: 'info', class: { root: 'border-info-300' } },
+    { variant: 'outline', color: 'success', class: { root: 'border-success-300' } },
+    { variant: 'outline', color: 'warning', class: { root: 'border-warning-300' } },
+    { variant: 'outline', color: 'error', class: { root: 'border-error-300' } },
   ],
   defaultVariants: {
     variant: 'elevated',
@@ -77,18 +92,24 @@ const cardVariants = tv({
   template: `<ng-content />`,
 })
 export class CardComponent {
-  /** Controls the visual elevation style. Defaults to `'elevated'`. */
+  /** Controls the visual elevation style. Defaults to `'elevated'`. `'outlined'` is a deprecated alias for `'outline'` and renders identically. */
   readonly variant = input<CardVariant>('elevated');
 
-  /** Sets the semantic color for bordered regions. Only applies to `outlined` variant borders. Defaults to `'neutral'`. */
+  /** Sets the semantic color for bordered regions. Only applies to `outline` variant borders. Defaults to `'neutral'`. */
   readonly color = input<TwColor>('neutral');
 
   /** Controls padding of header, body, and footer sections. Defaults to `'md'`. */
   readonly size = input<TwSize>('md');
 
+  /** @internal Canonical variant with legacy spellings folded in. */
+  private readonly resolvedVariant = computed<CardVariantCanonical>(() => {
+    const v = this.variant();
+    return (VARIANT_ALIASES as Record<string, CardVariantCanonical | undefined>)[v] ?? (v as CardVariantCanonical);
+  });
+
   private readonly variantResult = computed(() =>
     cardVariants({
-      variant: this.variant(),
+      variant: this.resolvedVariant(),
       color: this.color(),
       size: this.size(),
     }),

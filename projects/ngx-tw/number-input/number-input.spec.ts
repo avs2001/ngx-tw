@@ -131,6 +131,31 @@ class ReadonlyAttrHost {
 })
 class StepZeroHost {}
 
+/**
+ * `twNumberInput` WITHOUT the sibling `twInput`. The selector
+ * (`input[twNumberInput]`) permits this and nothing in the directive injects
+ * `InputDirective`, but every other host in this file — and every shipped usage
+ * in the demo — pairs the two, which is why `InputDirective`'s `[disabled]`
+ * binding masked GAPS F-01 from the whole suite.
+ */
+@Component({
+  imports: [NumberInputDirective, ReactiveFormsModule],
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  template: `<input
+    twNumberInput
+    [formControl]="ctrl"
+    (valueChange)="onChange($event)"
+  />`,
+})
+class NumberInputOnlyHost {
+  readonly ctrl = new FormControl<number | null>(null);
+  readonly events: (number | null)[] = [];
+  onChange(v: number | null): void {
+    this.events.push(v);
+  }
+  readonly directive = viewChild.required(NumberInputDirective);
+}
+
 // ── Helpers ──
 
 async function create<T>(host: Type<T>): Promise<ComponentFixture<T>> {
@@ -580,6 +605,59 @@ describe('NumberInputDirective', () => {
       const before = dir.value();
       dir.increment();
       expect(dir.value()).toBe(before);
+    });
+
+    /**
+     * Guards GAPS F-01, both halves, on the ONE host shape that can expose it:
+     * `twNumberInput` without `twInput`.
+     *
+     * Why it cannot pass against the old code:
+     *  - `onInput()` had no disabled gate, so the `input` event dispatched after
+     *    `ctrl.disable()` ran `onChange(9)`. `AbstractControl.setValue` does not
+     *    check `disabled`, so `getRawValue()` became 9 — the `toBe(5)` fails.
+     *  - The same call emitted `valueChange`, so the `events` assertion fails.
+     *  - There was no `aria-disabled` host binding at all, so that assertion
+     *    fails too.
+     * Every existing disabled test in this file pairs the two directives, where
+     * `InputDirective`'s `[disabled]` binding makes the element natively
+     * disabled and no `input` event can fire — which is precisely why the suite
+     * was structurally incapable of catching this.
+     */
+    it('reflects and enforces disabled without the sibling twInput directive', async () => {
+      const fixture = await create(NumberInputOnlyHost);
+      const host = fixture.componentInstance;
+      const input = inputEl(fixture);
+
+      expect(input.getAttribute('aria-disabled')).toBeNull();
+      typeInto(input, '5');
+      fixture.detectChanges();
+      await fixture.whenStable();
+      expect(host.ctrl.value).toBe(5);
+
+      host.ctrl.disable();
+      fixture.detectChanges();
+      await fixture.whenStable();
+
+      // Nothing writes the native property in this shape — that is the premise
+      // of the bug, and the reason `aria-disabled` has to carry the state.
+      expect(input.disabled).toBe(false);
+      expect(input.getAttribute('aria-disabled')).toBe('true');
+      expect(host.directive().disabled()).toBe(true);
+
+      const eventsBefore = host.events.length;
+      typeInto(input, '9');
+      fixture.detectChanges();
+      await fixture.whenStable();
+
+      expect(host.ctrl.getRawValue()).toBe(5);
+      expect(host.events.length).toBe(eventsBefore);
+
+      // Blur must not commit the stray text either.
+      input.dispatchEvent(new Event('blur'));
+      fixture.detectChanges();
+      await fixture.whenStable();
+      expect(host.ctrl.getRawValue()).toBe(5);
+      expect(host.directive().value()).toBe(5);
     });
   });
 

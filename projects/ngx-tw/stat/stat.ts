@@ -19,7 +19,25 @@ import type { TwSize } from '@cdevhub/ngx-tw/core';
 import { SkeletonComponent } from '@cdevhub/ngx-tw/skeleton';
 
 /** Surface treatment for the stat tile. */
-export type StatVariant = 'plain' | 'outlined' | 'elevated' | 'filled';
+export type StatVariant = 'ghost' | 'outline' | 'elevated' | 'solid' | StatVariantLegacy;
+
+/**
+ * Legacy `variant` spellings, kept so existing templates keep compiling.
+ * @deprecated `'plain'` aliases `'ghost'`, `'outlined'` aliases `'outline'`
+ * and `'filled'` aliases `'solid'`. Each renders identically to its
+ * replacement and will be removed in the next major.
+ */
+export type StatVariantLegacy = 'plain' | 'outlined' | 'filled';
+
+/** Canonical `variant` spellings — the set `tv()` actually keys on. */
+type StatVariantCanonical = Exclude<StatVariant, StatVariantLegacy>;
+
+/** Maps every legacy spelling onto its canonical replacement. */
+const VARIANT_ALIASES: Readonly<Record<StatVariantLegacy, StatVariantCanonical>> = {
+  plain: 'ghost',
+  outlined: 'outline',
+  filled: 'solid',
+};
 
 /** Direction of trend conveyed by the delta indicator. */
 export type StatDeltaDirection = 'up' | 'down' | 'neutral';
@@ -68,12 +86,12 @@ const statTile = tv(
     },
     variants: {
       variant: {
-        plain: { root: 'bg-transparent' },
-        outlined: { root: 'bg-surface border border-border rounded-lg' },
+        ghost: { root: 'bg-transparent' },
+        outline: { root: 'bg-surface border border-border rounded-lg' },
         elevated: {
           root: 'bg-surface-raised border border-border rounded-lg shadow hover:shadow-md transition-shadow duration-200 motion-reduce:transition-none',
         },
-        filled: { root: 'bg-surface-muted rounded-lg' },
+        solid: { root: 'bg-surface-muted rounded-lg' },
       },
       size: {
         xs: {
@@ -122,7 +140,7 @@ const statTile = tv(
       },
     },
     defaultVariants: {
-      variant: 'outlined',
+      variant: 'outline',
       size: 'md',
     },
   },
@@ -471,8 +489,8 @@ export class StatDeltaComponent {
   `,
 })
 export class StatComponent {
-  /** Surface treatment. `'plain'` removes border and background; `'outlined'` (default) adds a border on the surface token; `'elevated'` adds shadow and uses the raised surface; `'filled'` uses the muted surface with no border. */
-  readonly variant = input<StatVariant>('outlined');
+  /** Surface treatment. `'ghost'` removes border and background; `'outline'` (default) adds a border on the surface token; `'elevated'` adds shadow and uses the raised surface; `'solid'` uses the muted surface with no border. `'plain'`, `'outlined'` and `'filled'` are deprecated aliases for `'ghost'`, `'outline'` and `'solid'` and render identically. */
+  readonly variant = input<StatVariant>('outline');
 
   /** Density scale — drives padding, internal gaps, value/label typography, and the skeleton placeholder dimensions. Defaults to `'md'`. */
   readonly size = input<TwSize>('md');
@@ -524,8 +542,17 @@ export class StatComponent {
     }
   });
 
+  /** @internal Canonical variant with legacy spellings folded in. */
+  private readonly resolvedVariant = computed<StatVariantCanonical>(() => {
+    const v = this.variant();
+    return (
+      (VARIANT_ALIASES as Record<string, StatVariantCanonical | undefined>)[v] ??
+      (v as StatVariantCanonical)
+    );
+  });
+
   private readonly variantResult = computed(() =>
-    statTile({ variant: this.variant(), size: this.size() }),
+    statTile({ variant: this.resolvedVariant(), size: this.size() }),
   );
 
   protected readonly rootClasses = computed(() => this.variantResult().root());

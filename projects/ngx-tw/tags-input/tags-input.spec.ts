@@ -4,6 +4,7 @@ import { type ComponentFixture, TestBed } from '@angular/core/testing';
 import { FormControl, FormsModule, ReactiveFormsModule } from '@angular/forms';
 import { form, FormField } from '@angular/forms/signals';
 import { FocusMonitor, LiveAnnouncer } from '@angular/cdk/a11y';
+import { type Direction, Directionality } from '@angular/cdk/bidi';
 import { Subject } from 'rxjs';
 import {
   FormFieldComponent,
@@ -387,6 +388,93 @@ describe('TagsInputComponent', () => {
       key(removeButtons(fixture)[1], 'Escape');
       fixture.detectChanges();
       expect(chipLabels(fixture)).toEqual(['a', 'b']);
+      expect(document.activeElement).toBe(input(fixture));
+    });
+  });
+
+  // ── RTL keyboard navigation ──
+
+  describe('RTL keyboard navigation', () => {
+    // Chips sit on a flex row that lays out right-to-left under `dir="rtl"`,
+    // and the chip host is a custom element rather than a native control, so
+    // the browser does no arrow flipping for us. ArrowLeft/ArrowRight used to
+    // map to previous/next unconditionally, which moved focus the wrong way in
+    // an RTL locale. Home/End stay logical — CDK's ListKeyManager does not flip
+    // them either — and so does the caret test (`selectionStart === 0` is the
+    // logical start of the text in both directions).
+    function provideRtl(): void {
+      TestBed.configureTestingModule({
+        providers: [
+          {
+            provide: Directionality,
+            useValue: {
+              value: 'rtl',
+              valueSignal: signal<Direction>('rtl'),
+              change: new Subject<Direction>(),
+            },
+          },
+        ],
+      });
+    }
+
+    it('ArrowLeft moves focus from one chip to the NEXT under rtl', () => {
+      provideRtl();
+      const fixture = mountBare(['a', 'b', 'c']);
+      key(removeButtons(fixture)[0], 'ArrowLeft');
+      fixture.detectChanges();
+      // LTR would stay put (index 0 has no previous chip); RTL advances.
+      expect(document.activeElement).toBe(removeButtons(fixture)[1]);
+    });
+
+    it('ArrowRight moves focus from one chip to the PREVIOUS under rtl', () => {
+      provideRtl();
+      const fixture = mountBare(['a', 'b', 'c']);
+      key(removeButtons(fixture)[1], 'ArrowRight');
+      fixture.detectChanges();
+      expect(document.activeElement).toBe(removeButtons(fixture)[0]);
+    });
+
+    it('ArrowLeft past the last chip returns focus to the input under rtl', () => {
+      provideRtl();
+      const fixture = mountBare(['a']);
+      key(removeButtons(fixture)[0], 'ArrowLeft');
+      fixture.detectChanges();
+      expect(document.activeElement).toBe(input(fixture));
+    });
+
+    it('ArrowRight from the start of the input focuses the last chip under rtl', () => {
+      provideRtl();
+      const fixture = mountBare(['a', 'b']);
+      const el = input(fixture);
+      el.focus();
+      el.setSelectionRange(0, 0);
+      key(el, 'ArrowRight');
+      fixture.detectChanges();
+      expect(document.activeElement).toBe(removeButtons(fixture)[1]);
+    });
+
+    it('does not step out of the input on ArrowLeft under rtl', () => {
+      provideRtl();
+      const fixture = mountBare(['a', 'b']);
+      const el = input(fixture);
+      el.focus();
+      el.setSelectionRange(0, 0);
+      key(el, 'ArrowLeft');
+      fixture.detectChanges();
+      // LTR's step-out key must not fire in RTL — the caret keeps moving inside
+      // the text field instead.
+      expect(document.activeElement).toBe(el);
+    });
+
+    it('keeps Home / End logical under rtl', () => {
+      provideRtl();
+      const fixture = mountBare(['a', 'b', 'c']);
+      key(removeButtons(fixture)[2], 'Home');
+      fixture.detectChanges();
+      expect(document.activeElement).toBe(removeButtons(fixture)[0]);
+
+      key(removeButtons(fixture)[0], 'End');
+      fixture.detectChanges();
       expect(document.activeElement).toBe(input(fixture));
     });
   });

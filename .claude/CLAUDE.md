@@ -5,7 +5,11 @@
 ## Core Principles
 
 - **Flexible and simple.** Components must be highly customizable — consumers should be able to adapt appearance and behavior to their needs. The API stays intuitive: sensible defaults, clear naming, minimal ceremony for common cases.
-- **Compose Angular CDK, don't reinvent it.** Use CDK for focus traps, keyboard navigation, overlays, ARIA, coercion, and collections. Never rewrite what CDK provides.
+- **Compose Angular CDK, don't reinvent it.** Use CDK for focus traps, keyboard navigation, overlays, ARIA, and collections. Never rewrite what CDK provides.
+
+  **Coercion is the exception, and the exception is now the rule.** This line used to name coercion as a CDK responsibility. It is stale: the library makes **49 uses of Angular's own `booleanAttribute` / `numberAttribute`** across 14 files and imports `@angular/cdk/coercion` **zero** times. The code is right and the instruction was wrong — `@angular/cdk/coercion` is redundant in v22 and must not be reintroduced. Verified 2026-09-03.
+
+  **The CDK gap in this library is drift, not absence.** Nine of ten "is a CDK package missing?" leads close clean; what is actually wrong is that four concerns CDK already owns are *also* hand-rolled, and the hand-rolled copies have diverged from the CDK-backed siblings beside them — list keyboard navigation (8 CDK-backed vs 8 hand-rolled), layout direction, announcements (`LiveAnnouncer` in 17 vs `aria-live` host regions in 9, with 2 components doing **both**), and unique DOM ids (`_IdGenerator` in 4 files vs `let nextId = 0` in 28). Before hand-rolling any of those four, read what the CDK-backed sibling does.
 - **Tailwind CSS v4 for all styling.** Components use utility classes directly. No component CSS files. No `@tailwind` directives (v4 doesn't use them). Consumers must have Tailwind v4 installed.
 - **Accessible by default.** Every component MUST pass AXE checks and meet WCAG AA. Use Angular CDK's a11y module (`LiveAnnouncer`, `FocusMonitor`, `FocusTrap`, etc.).
 
@@ -53,7 +57,9 @@ Reach for the right primitive instead of an effect:
 
 ## JSDoc Requirements
 
-All public API members must have JSDoc. Compodoc parses these to generate API tables in the demo app — missing JSDoc means empty tables.
+All public API members must have JSDoc. **`scripts/mcp/extract-api.mjs` parses these** — its `jsDocOf()` reads the TypeScript compiler's `node.jsDoc` array, it runs as part of `npm run build:lib`, and its output ships in `dist/ngx-tw/index.json` for the `@cdevhub/ngx-tw-mcp` server. JSDoc also reaches the emitted `.d.ts`, and therefore a consumer's IDE hover. Missing JSDoc means both surfaces are blank.
+
+> This rule previously said *"Compodoc parses these to generate API tables in the demo app"*. **Compodoc is not a dependency of this repo** — not in `package.json`, no config, no script; `docs/mcp-server-architecture.md:60-62` already said so in writing, and the demo's API tables are hand-authored HTML. The consequence the rule describes is real, but it runs through the MCP extractor and the `.d.ts`, not Compodoc. Citing a tool that does not exist invites a maintainer to check, find nothing, and conclude the rule is dead ceremony. Corrected 2026-09-03.
 
 Required on every `input()` (what it controls + default), `output()` (when it fires + payload), `model()` (two-way bound value + when it changes), and public methods on directives/services.
 
@@ -65,7 +71,7 @@ variant = input<ButtonVariant>('solid');
 clicked = output<MouseEvent>();
 ```
 
-Describe *purpose and behavior* in one line. Do not describe TypeScript types — Compodoc extracts those automatically.
+Describe *purpose and behavior* in one line. Do not describe TypeScript types — the extractor and the `.d.ts` carry those already.
 
 ## Library Structure
 
@@ -454,7 +460,10 @@ The library codifies five exceptions where the cap is impractical because the co
 
 | Exception | Why the surface is wide | Canonical example |
 |---|---|---|
-| **Overlay-bearing components** | CDK overlay primitives demand position, scroll strategy, backdrop, focus-trap, close-behavior, etc. | popover, menu, tooltip, dialog, command-palette, select, calendar/date-picker, time-picker |
+| **Overlay-bearing components** | CDK overlay primitives demand position, scroll strategy, backdrop, focus-trap, close-behavior, etc. | popover, menu, tooltip, dialog, command-palette, select, combobox, calendar/date-picker, date-range-picker |
+| **Segmented value editors** | One input pair per editable field (hour/minute/second/meridiem), times format, step, min/max and clear/stepper affordances | `time-picker` (24 inputs) |
+
+> `time-picker` sat in the overlay-bearing row until 2026-09-03 and does not belong there: it imports `@angular/cdk/overlay` **zero** times and renders its fields inline. Its 24 inputs are genuinely wide, but for a different reason, so it needed its own row rather than a borrowed justification. Verified by grep against the component.
 | **Form controls** | ARIA + Forms baseline (`aria-label{ledby,by}`, `name`, `label`, `description`, `required`, `disabled`, `labelPosition`, plus `color`/`size`/`variant`) is ~12 inputs minimum | `checkbox` (12+ inputs) |
 | **Structural-layout primitives** | Each input is an independent geometric or behavioural axis (axis, unit, gutter, persistence, keyboard step, RTL, label) | `split` (`SplitComponent` 8 + `SplitPaneComponent` 7) |
 | **Data primitives** | Tabular APIs have multiple orthogonal config axes (appearance, sticky, responsive, selection) that do not usefully collapse into config objects — each is independently set and independently read | `table` |
@@ -464,7 +473,7 @@ Visual primitives (avatar, icon) and decorative primitives (progress-bar) do **n
 
 ### Boolean defaults
 
-Boolean inputs default to `false`. The exception: defaults of `true` are permitted when the resting "off" state would surprise consumers and the rationale is documented **in the JSDoc block on the same input** — not in a bare `//` comment, which Compodoc cannot see and which therefore never reaches the demo's API table.
+Boolean inputs default to `false`. The exception: defaults of `true` are permitted when the resting "off" state would surprise consumers and the rationale is documented **in the JSDoc block on the same input** — not in a bare `//` comment. `jsDocOf()` reads `/** */` blocks **only**, so a `//` justification is silently dropped from the MCP index and never reaches the `.d.ts` or a consumer's IDE hover.
 
 The list below is **illustrative, not exhaustive**. It records the cases that were codified first; the library has ~30 such inputs and every one carries a justification. The rule is the JSDoc requirement, not membership of this list — do not treat an absent entry as a violation, and do not expect to update this list when adding a justified input.
 

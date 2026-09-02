@@ -1139,6 +1139,120 @@ describe('ComboboxComponent', () => {
         fixture.nativeElement.remove();
       }
     });
+
+    /**
+     * Guards SRP F-01: `closeOverlay()` used to `disconnect()` and null the
+     * `ResizeObserver`, but the `OverlayRef` is only DISPOSED on destroy — never
+     * on close — so `ensureOverlay()` early-returns on every reopen and
+     * `installResizeObserver()` was never reached again. Live trigger-width
+     * tracking was permanently dead after the first close.
+     *
+     * jsdom ships no `ResizeObserver` (verified: `typeof ResizeObserver ===
+     * 'undefined'`, jsdom 28), so `installResizeObserver()` would bail out
+     * entirely. The stub below both enables the code path and records which
+     * observers are still CONNECTED.
+     *
+     * Why this cannot pass against the old code: the assertion fires only the
+     * observers whose `disconnect()` has not been called, and asserts the pane
+     * width changed as a result. Under the old code the sole observer was
+     * disconnected inside the close timer, so after the reopen the live set is
+     * empty, nothing calls `updateOverlaySize()`, and the width stays at its
+     * pre-resize value. Firing a *disconnected* observer's callback would have
+     * made the test vacuous, which is exactly what the live-set filter avoids.
+     */
+    it('keeps tracking trigger resizes after a close/reopen cycle', async () => {
+      interface StubRecord {
+        readonly callback: () => void;
+        readonly targets: Element[];
+        disconnected: boolean;
+      }
+      const records: StubRecord[] = [];
+      const original = (globalThis as { ResizeObserver?: unknown }).ResizeObserver;
+
+      class StubResizeObserver {
+        private readonly record: StubRecord;
+        constructor(callback: () => void) {
+          this.record = { callback, targets: [], disconnected: false };
+          records.push(this.record);
+        }
+        observe(target: Element): void {
+          this.record.targets.push(target);
+        }
+        unobserve(): void {}
+        disconnect(): void {
+          this.record.disconnected = true;
+        }
+      }
+
+      (globalThis as { ResizeObserver?: unknown }).ResizeObserver =
+        StubResizeObserver;
+
+      const fixture = TestBed.createComponent(WidthHost);
+      document.body.appendChild(fixture.nativeElement);
+      try {
+        const combobox = fixture.nativeElement.querySelector('tw-combobox') as HTMLElement;
+        const triggerSurface = combobox.querySelector(':scope > div') as HTMLElement;
+        const rectFor = (width: number): DOMRect =>
+          ({
+            width,
+            height: 36,
+            top: 0,
+            left: 0,
+            right: width,
+            bottom: 36,
+            x: 0,
+            y: 0,
+            toJSON: () => ({}),
+          }) as DOMRect;
+        const surfaceRect = vi
+          .spyOn(triggerSurface, 'getBoundingClientRect')
+          .mockReturnValue(rectFor(480));
+
+        // The host opens with `open = true`, so the overlay already exists.
+        await advance(fixture);
+
+        // Close, then reopen. `ensureOverlay()` takes its early-return branch
+        // here because the OverlayRef survives the close.
+        fixture.componentInstance.open.set(false);
+        await pumpUntil(
+          fixture,
+          () => document.querySelectorAll('tw-combobox-overlay').length === 0,
+          'the panel to detach',
+        );
+        fixture.componentInstance.open.set(true);
+        await pumpUntil(
+          fixture,
+          () => document.querySelectorAll('tw-combobox-overlay').length > 0,
+          'the panel to reattach',
+        );
+
+        const pane = document.querySelector('.cdk-overlay-pane') as HTMLElement | null;
+        expect(pane).toBeTruthy();
+        expect(pane!.style.width).toBe('480px');
+
+        // Now the trigger grows. Only observers that are still connected may
+        // react — a disconnected one is dead and firing it would prove nothing.
+        surfaceRect.mockReturnValue(rectFor(640));
+        // Scoped to observers watching THIS combobox host: the stub is global,
+        // so CDK may have minted its own while it was installed.
+        const live = records.filter(
+          (r) => !r.disconnected && r.targets.includes(combobox),
+        );
+        expect(live.length).toBeGreaterThan(0);
+        for (const r of live) r.callback();
+        await advance(fixture);
+
+        expect(pane!.style.width).toBe('640px');
+      } finally {
+        vi.restoreAllMocks();
+        fixture.nativeElement.remove();
+        if (original === undefined) {
+          delete (globalThis as { ResizeObserver?: unknown }).ResizeObserver;
+        } else {
+          (globalThis as { ResizeObserver?: unknown }).ResizeObserver = original;
+        }
+      }
+    });
   });
 
   // ── Signal Forms ──

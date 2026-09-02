@@ -187,12 +187,17 @@ import { CodeBlockComponent } from '@cdevhub/ngx-tw/code-block';
   `,
 })
 export class CollapsibleApi {
-  protected readonly typesSnippet = `type CollapsibleVariant = 'default' | 'bordered' | 'ghost' | 'filled';
+  protected readonly typesSnippet = `type CollapsibleVariant =
+  | 'default' | 'outline' | 'ghost' | 'solid'
+  | CollapsibleVariantLegacy;
+
+/** @deprecated 'bordered' aliases 'outline' and 'filled' aliases 'solid'; removed in the next major. */
+type CollapsibleVariantLegacy = 'bordered' | 'filled';
 
 interface CollapsibleDisplay {
   /** Visual style of the panel container. Defaults to 'default'. */
   variant?: CollapsibleVariant;
-  /** Semantic color; applies to the bordered and filled variants. Defaults to 'neutral'. */
+  /** Semantic color; applies to the outline and solid variants. Defaults to 'neutral'. */
   color?: TwColor;
   /** Padding scale for the trigger and content sections. Defaults to 'md'. */
   size?: TwSize;

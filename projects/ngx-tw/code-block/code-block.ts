@@ -15,7 +15,26 @@ import { LiveAnnouncer } from '@angular/cdk/a11y';
 import { tv } from 'tailwind-variants';
 
 /** Visual style of the code block container. */
-export type CodeBlockVariant = 'filled' | 'outlined';
+export type CodeBlockVariant = 'solid' | 'outline' | CodeBlockVariantLegacy;
+
+/**
+ * Legacy `variant` spellings, kept so existing templates keep compiling.
+ * @deprecated `'filled'` is an alias for `'solid'` and `'outlined'` an alias
+ * for `'outline'`; both render identically to their replacements and will be
+ * removed in the next major. Prefer `'solid'` / `'outline'`.
+ */
+export type CodeBlockVariantLegacy = 'filled' | 'outlined';
+
+/** Canonical `variant` spellings — the set `tv()` actually keys on. */
+type CodeBlockVariantCanonical = Exclude<CodeBlockVariant, CodeBlockVariantLegacy>;
+
+/** Maps every legacy spelling onto its canonical replacement. */
+const VARIANT_ALIASES: Readonly<
+  Record<CodeBlockVariantLegacy, CodeBlockVariantCanonical>
+> = {
+  filled: 'solid',
+  outlined: 'outline',
+};
 
 /**
  * Localizable strings used by the code block. Provide a partial override —
@@ -65,8 +84,8 @@ const codeBlockVariants = tv({
   },
   variants: {
     variant: {
-      filled: { root: 'bg-surface-sunken border border-border-strong' },
-      outlined: { root: 'bg-transparent border border-border' },
+      solid: { root: 'bg-surface-sunken border border-border-strong' },
+      outline: { root: 'bg-transparent border border-border' },
     },
     copied: {
       true: { copyButton: 'text-success-500 hover:text-success-500' },
@@ -74,7 +93,7 @@ const codeBlockVariants = tv({
     },
   },
   defaultVariants: {
-    variant: 'filled',
+    variant: 'solid',
     copied: false,
   },
 }, {
@@ -140,8 +159,8 @@ export class CodeBlockComponent {
   /** Optional language label displayed in the header (e.g. `'TypeScript'`, `'HTML'`). */
   readonly language = input<string>();
 
-  /** Visual style of the container. Defaults to `'filled'`. */
-  readonly variant = input<CodeBlockVariant>('filled');
+  /** Visual style of the container. Defaults to `'solid'`. `'filled'` and `'outlined'` are deprecated aliases for `'solid'` and `'outline'` and render identically. */
+  readonly variant = input<CodeBlockVariant>('solid');
 
   /** When true, wraps long lines instead of horizontal scrolling. Defaults to `false`. */
   readonly wrap = input(false, { transform: booleanAttribute });
@@ -177,8 +196,17 @@ export class CodeBlockComponent {
     };
   });
 
+  /** @internal Canonical variant with legacy spellings folded in. */
+  private readonly resolvedVariant = computed<CodeBlockVariantCanonical>(() => {
+    const v = this.variant();
+    return (
+      (VARIANT_ALIASES as Record<string, CodeBlockVariantCanonical | undefined>)[v] ??
+      (v as CodeBlockVariantCanonical)
+    );
+  });
+
   private readonly variantResult = computed(() =>
-    codeBlockVariants({ variant: this.variant(), copied: this.isCopied() }),
+    codeBlockVariants({ variant: this.resolvedVariant(), copied: this.isCopied() }),
   );
 
   protected readonly rootClasses = computed(() => this.variantResult().root());

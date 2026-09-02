@@ -38,7 +38,7 @@ import { CodeBlockComponent } from '@cdevhub/ngx-tw/code-block';
             <tr>
               <td class="px-4 py-2 font-mono text-xs">variant</td>
               <td class="px-4 py-2 font-mono text-xs text-fg-muted">CodeBlockVariant</td>
-              <td class="px-4 py-2 font-mono text-xs text-fg-muted">'filled'</td>
+              <td class="px-4 py-2 font-mono text-xs text-fg-muted">'solid'</td>
               <td class="px-4 py-2 text-fg-muted">Visual style of the container.</td>
             </tr>
             <tr>
@@ -137,7 +137,10 @@ import { CodeBlockComponent } from '@cdevhub/ngx-tw/code-block';
   `,
 })
 export class CodeBlockApi {
-  protected readonly typesSnippet = `type CodeBlockVariant = 'filled' | 'outlined';
+  protected readonly typesSnippet = `type CodeBlockVariant = 'solid' | 'outline' | CodeBlockVariantLegacy;
+
+/** @deprecated 'filled' aliases 'solid' and 'outlined' aliases 'outline'; removed in the next major. */
+type CodeBlockVariantLegacy = 'filled' | 'outlined';
 
 interface CodeBlockLabels {
   /** aria-label for the copy button in its resting state. Default: 'Copy code'. */

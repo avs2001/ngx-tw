@@ -15,7 +15,7 @@ import {
 import type { TwSize } from '@cdevhub/ngx-tw/core';
 import type { StatDeltaDirection, StatDeltaVariant, StatVariant } from '@cdevhub/ngx-tw/stat';
 
-const VARIANTS: StatVariant[] = ['outlined', 'elevated', 'filled', 'plain'];
+const VARIANTS: StatVariant[] = ['outline', 'elevated', 'solid', 'ghost'];
 const SIZES: TwSize[] = ['xs', 'sm', 'md', 'lg', 'xl'];
 const DELTA_DIRECTIONS: StatDeltaDirection[] = ['up', 'down', 'neutral'];
 const DELTA_VARIANTS: StatDeltaVariant[] = ['badge', 'inline', 'icon-only'];
@@ -45,19 +45,19 @@ const DELTA_VARIANTS: StatDeltaVariant[] = ['badge', 'inline', 'icon-only'];
         The
         <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">variant</code>
         input controls the tile's surface treatment.
-        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">outlined</code>
+        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">outline</code>
         (default) carries a thin border on the page surface — the workhorse for dashboards on white.
         <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">elevated</code>
         adds shadow and uses the raised surface for tiles that should pop off the page.
-        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">filled</code>
+        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">solid</code>
         uses the muted surface with no border for dense layouts where borders would crowd.
-        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">plain</code>
+        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">ghost</code>
         strips chrome entirely for in-flow stats inside another container.
       </p>
 
       <div class="rounded-lg border border-border p-6 bg-surface-raised mb-4">
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <tw-stat variant="outlined">
+          <tw-stat variant="outline">
             <span twStatLabel>Revenue</span>
             <span twStatValue>$24,580</span>
             <tw-stat-delta direction="up" comparisonLabel="vs last week">+12.5%</tw-stat-delta>
@@ -69,13 +69,13 @@ const DELTA_VARIANTS: StatDeltaVariant[] = ['badge', 'inline', 'icon-only'];
             <tw-stat-delta direction="up" comparisonLabel="vs last week">+8.1%</tw-stat-delta>
           </tw-stat>
 
-          <tw-stat variant="filled">
+          <tw-stat variant="solid">
             <span twStatLabel>MRR</span>
             <span twStatValue>$48.2k</span>
             <tw-stat-delta direction="up" comparisonLabel="MoM">+6.0%</tw-stat-delta>
           </tw-stat>
 
-          <tw-stat variant="plain">
+          <tw-stat variant="ghost">
             <span twStatLabel>Churn</span>
             <span twStatValue>2.1%</span>
             <tw-stat-delta direction="down" inverted comparisonLabel="MoM">−0.4pp</tw-stat-delta>
@@ -87,7 +87,7 @@ const DELTA_VARIANTS: StatDeltaVariant[] = ['badge', 'inline', 'icon-only'];
 
       <p class="text-sm text-fg-muted leading-relaxed max-w-2xl mt-4">
         Notice the
-        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">plain</code>
+        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">ghost</code>
         Churn tile uses
         <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">inverted</code>
         — a falling churn rate is good news, so the down arrow paints success-colored. See the
@@ -688,7 +688,7 @@ export class StatExamples {
   protected readonly deltaVariants = DELTA_VARIANTS;
 
   // Playground state
-  protected readonly playVariant = signal<StatVariant>('outlined');
+  protected readonly playVariant = signal<StatVariant>('outline');
   protected readonly playSize = signal<TwSize>('md');
   protected readonly playLoading = signal(false);
   protected readonly playDirection = signal<StatDeltaDirection>('up');
@@ -717,7 +717,7 @@ export class StatExamples {
   // ── snippets ──
 
   protected readonly variantsSnippet = `<!-- Outlined (default) -->
-<tw-stat variant="outlined">
+<tw-stat variant="outline">
   <span twStatLabel>Revenue</span>
   <span twStatValue>$24,580</span>
   <tw-stat-delta direction="up" comparisonLabel="vs last week">+12.5%</tw-stat-delta>
@@ -731,14 +731,14 @@ export class StatExamples {
 </tw-stat>
 
 <!-- Filled -->
-<tw-stat variant="filled">
+<tw-stat variant="solid">
   <span twStatLabel>MRR</span>
   <span twStatValue>$48.2k</span>
   <tw-stat-delta direction="up" comparisonLabel="MoM">+6.0%</tw-stat-delta>
 </tw-stat>
 
 <!-- Plain (no chrome) -->
-<tw-stat variant="plain">
+<tw-stat variant="ghost">
   <span twStatLabel>Churn</span>
   <span twStatValue>2.1%</span>
   <tw-stat-delta direction="down" inverted comparisonLabel="MoM">−0.4pp</tw-stat-delta>

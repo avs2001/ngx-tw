@@ -131,8 +131,8 @@ describe('CardComponent', () => {
       expect(card.className).toContain('bg-surface-raised');
     });
 
-    it('should render outlined variant', () => {
-      fixture.componentInstance.variant.set('outlined');
+    it('should render outline variant', () => {
+      fixture.componentInstance.variant.set('outline');
       fixture.detectChanges();
       const card: HTMLElement = fixture.nativeElement.querySelector('tw-card');
       expect(card.className).toContain('border');
@@ -173,8 +173,8 @@ describe('CardComponent', () => {
     ];
 
     for (const color of TINTABLE_COLORS) {
-      it(`should apply border-${color}-300 on outlined variant`, () => {
-        fixture.componentInstance.variant.set('outlined');
+      it(`should apply border-${color}-300 on outline variant`, () => {
+        fixture.componentInstance.variant.set('outline');
         fixture.componentInstance.color.set(color);
         fixture.detectChanges();
         const card: HTMLElement = fixture.nativeElement.querySelector('tw-card');
@@ -188,7 +188,7 @@ describe('CardComponent', () => {
     }
 
     it('should not apply any color border on neutral color', () => {
-      fixture.componentInstance.variant.set('outlined');
+      fixture.componentInstance.variant.set('outline');
       fixture.componentInstance.color.set('neutral');
       fixture.detectChanges();
       const card: HTMLElement = fixture.nativeElement.querySelector('tw-card');
@@ -392,18 +392,70 @@ describe('CardComponent', () => {
       expect(card.className).toContain('bg-surface-raised');
     });
 
-    it('should resolve internal border-color conflicts via twMerge on outlined+color', async () => {
+    it('should resolve internal border-color conflicts via twMerge on outline+color', async () => {
       await TestBed.configureTestingModule({
         imports: [FullCardHost],
       }).compileComponents();
       const fixture = TestBed.createComponent(FullCardHost);
-      fixture.componentInstance.variant.set('outlined');
+      fixture.componentInstance.variant.set('outline');
       fixture.componentInstance.color.set('primary');
       fixture.detectChanges();
 
       const card: HTMLElement = fixture.nativeElement.querySelector('tw-card');
       const matches = card.className.match(/\bborder-[a-z]+-\d{3}\b/g) ?? [];
       expect(matches).toEqual(['border-primary-300']);
+    });
+  });
+
+  // ── Deprecated variant aliases ──
+  //
+  // `'outlined'` was renamed to `'outline'`. The old spelling must keep
+  // rendering byte-identical classes, because `tv()` returns *base classes
+  // only* for an unrecognised variant value — no throw, no console warning,
+  // just a silently unstyled card. String equality (not `toContain`) is the
+  // literal encoding of that promise.
+  //
+  // Non-vacuous: delete the `outlined` entry from `VARIANT_ALIASES` and
+  // `'outlined'` falls through to `tv()` unrecognised, which drops
+  // `bg-surface border border-border` and the compound `border-primary-300`
+  // row — the two strings diverge and this fails.
+  //
+  // `color` is deliberately set to a non-neutral value: card has no
+  // `neutral` compound row, so at the default color the seven-row
+  // `compoundVariants` rekey would go completely unguarded.
+  describe('deprecated variant aliases', () => {
+    let fixture: ComponentFixture<FullCardHost>;
+
+    beforeEach(async () => {
+      await TestBed.configureTestingModule({
+        imports: [FullCardHost],
+      }).compileComponents();
+      fixture = TestBed.createComponent(FullCardHost);
+      fixture.detectChanges();
+    });
+
+    function classesFor(variant: CardVariant, color: TwColor): string {
+      fixture.componentInstance.variant.set(variant);
+      fixture.componentInstance.color.set(color);
+      fixture.detectChanges();
+      const card: HTMLElement = fixture.nativeElement.querySelector('tw-card');
+      return card.className;
+    }
+
+    it('"outlined" resolves to exactly the same classes as "outline"', () => {
+      const canonical = classesFor('outline', 'primary');
+      const legacy = classesFor('outlined', 'primary');
+      expect(legacy).toBe(canonical);
+    });
+
+    it('"outlined" still picks up the compound color border', () => {
+      expect(classesFor('outlined', 'success')).toContain('border-success-300');
+    });
+
+    it('"outlined" still paints the outline surface (not bare base classes)', () => {
+      const legacy = classesFor('outlined', 'neutral');
+      expect(legacy).toContain('bg-surface');
+      expect(legacy).toContain('border-border');
     });
   });
 });

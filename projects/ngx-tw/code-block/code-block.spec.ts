@@ -45,18 +45,52 @@ describe('CodeBlockComponent', () => {
     expect(button).toBeTruthy();
   });
 
-  it('should render filled variant by default', () => {
+  it('should render solid variant by default', () => {
     const host = fixture.nativeElement;
     expect(host.className).toContain('bg-surface-sunken');
     expect(host.className).toContain('border-border-strong');
   });
 
-  it('should render outlined variant', () => {
-    fixture.componentRef.setInput('variant', 'outlined');
+  it('should render outline variant', () => {
+    fixture.componentRef.setInput('variant', 'outline');
     fixture.detectChanges();
     const host = fixture.nativeElement;
     expect(host.className).toContain('bg-transparent');
     expect(host.className).not.toContain('bg-surface-sunken');
+  });
+
+  // ===== Deprecated variant aliases =====
+  //
+  // `'filled'` → `'solid'` and `'outlined'` → `'outline'`. Both old strings
+  // must keep rendering byte-identical classes: `tv()` returns base classes
+  // only for an unrecognised variant value — no throw, no warning, just a
+  // silently unstyled block. String equality is the literal encoding of that
+  // promise.
+  //
+  // Non-vacuous: drop either entry from `VARIANT_ALIASES` and the legacy
+  // string reaches `tv()` unrecognised, so the `bg-*`/`border-*` root classes
+  // vanish and the compared strings diverge.
+
+  it('"filled" resolves to exactly the same classes as "solid"', () => {
+    fixture.componentRef.setInput('variant', 'solid');
+    fixture.detectChanges();
+    const canonical = fixture.nativeElement.className;
+
+    fixture.componentRef.setInput('variant', 'filled');
+    fixture.detectChanges();
+    expect(fixture.nativeElement.className).toBe(canonical);
+    expect(fixture.nativeElement.className).toContain('bg-surface-sunken');
+  });
+
+  it('"outlined" resolves to exactly the same classes as "outline"', () => {
+    fixture.componentRef.setInput('variant', 'outline');
+    fixture.detectChanges();
+    const canonical = fixture.nativeElement.className;
+
+    fixture.componentRef.setInput('variant', 'outlined');
+    fixture.detectChanges();
+    expect(fixture.nativeElement.className).toBe(canonical);
+    expect(fixture.nativeElement.className).toContain('bg-transparent');
   });
 
   // ===== Inputs =====

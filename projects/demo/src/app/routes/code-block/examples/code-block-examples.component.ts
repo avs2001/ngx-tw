@@ -7,7 +7,7 @@ import {
 } from '@cdevhub/ngx-tw/code-block';
 import { ButtonDirective } from '@cdevhub/ngx-tw/button';
 
-const VARIANTS: CodeBlockVariant[] = ['filled', 'outlined'];
+const VARIANTS: CodeBlockVariant[] = ['solid', 'outline'];
 
 const FRENCH_LABELS: CodeBlockLabels = {
   copy: 'Copier le code',
@@ -40,7 +40,7 @@ const FRENCH_LABELS: CodeBlockLabels = {
         <tw-code-block [code]="tsSnippet" language="TypeScript" />
         <tw-code-block [code]="cssSnippet" language="CSS" />
         <tw-code-block [code]="jsonSnippet" language="JSON" />
-        <tw-code-block [code]="htmlSnippet" language="HTML" variant="outlined" />
+        <tw-code-block [code]="htmlSnippet" language="HTML" variant="outline" />
       </div>
     </section>
 
@@ -59,7 +59,7 @@ const FRENCH_LABELS: CodeBlockLabels = {
           </span>
         </tw-code-block>
 
-        <tw-code-block [code]="cssSnippet" language="CSS" variant="outlined">
+        <tw-code-block [code]="cssSnippet" language="CSS" variant="outline">
           <span twCodeBlockHeader>
             <span class="font-mono text-xs text-fg">styles.css</span>
             <span class="px-1.5 py-0.5 rounded text-2xs font-medium uppercase tracking-wide bg-warning-soft text-warning-soft-fg-muted">
@@ -174,7 +174,7 @@ const FRENCH_LABELS: CodeBlockLabels = {
 export class CodeBlockExamples {
   protected readonly variants = VARIANTS;
   protected readonly copyCount = signal(0);
-  protected readonly playVariant = signal<CodeBlockVariant>('filled');
+  protected readonly playVariant = signal<CodeBlockVariant>('solid');
   protected readonly playWrap = signal(false);
   protected readonly playLanguage = signal('TypeScript');
   protected readonly frenchLabels = FRENCH_LABELS;

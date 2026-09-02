@@ -7,7 +7,7 @@ import { ButtonDirective } from '@cdevhub/ngx-tw/button';
 import { CodeBlockComponent } from '@cdevhub/ngx-tw/code-block';
 import type { TwColor, TwSize } from '@cdevhub/ngx-tw/core';
 
-const VARIANTS: SegmentedControlVariant[] = ['surface', 'filled', 'outline'];
+const VARIANTS: SegmentedControlVariant[] = ['surface', 'solid', 'outline'];
 const COLORS: TwColor[] = ['primary', 'secondary', 'accent', 'neutral', 'info', 'success', 'warning', 'error'];
 const SIZES: TwSize[] = ['xs', 'sm', 'md', 'lg', 'xl'];
 const ROUNDED: SegmentedControlRounded[] = ['pill', 'md'];

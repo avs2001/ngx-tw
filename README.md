@@ -16,11 +16,11 @@ local development workflow.
 | Path                           | Purpose                                                               |
 |--------------------------------|-----------------------------------------------------------------------|
 | `projects/ngx-tw/`             | The publishable library. Each component is its own secondary entry point (e.g. `@cdevhub/ngx-tw/button`). |
-| `projects/ngx-tw/theme/`       | Default semantic theme CSS — ships as an asset, not an entry point.  |
+| `projects/ngx-tw/theme/`       | Both halves of theming: the default semantic-token CSS, copied into the package as an asset (`@cdevhub/ngx-tw/theme/index.css`), **and** the `@cdevhub/ngx-tw/theme` entry point exporting the runtime API (`provideTheme`, `ThemeService`, `ThemeDirective`, `THEME_CONFIG`). |
 | `projects/ngx-tw/core/`        | Shared types (`TwColor`, `TwSize`) and utilities.                     |
 | `projects/demo/`               | Demo application with an overview / examples / API page per component.|
 | `projects/ngx-tw-mcp/`         | MCP server package (`@cdevhub/ngx-tw-mcp`) serving the library API to AI coding agents. |
-| `e2e/`                         | Playwright end-to-end harness (scaffold — specs to be filled in).     |
+| `e2e/`                         | Playwright end-to-end harness — smoke, per-component, cross-cutting (axe, theme matrix) and visual suites. |
 | `docs/`                        | Long-form notes and component specs.                                  |
 
 ## MCP server
@@ -135,7 +135,8 @@ The script will refuse to release if:
 - local `develop` is not in sync with `origin/develop`
 - the latest `ci.yml` run on develop for the current HEAD is not green
   (pass `--skip-ci-check` to override, e.g. `node scripts/release.mjs patch --skip-ci-check`)
-- local pre-flight (`lint`, `build:lib`, `test:ci`, `pack:check`) fails
+- local pre-flight (`lint`, `build:lib`, `verify:mcp-index`, `build:mcp`, `test:ci`,
+  `pack:check`, `verify:package`) fails
 - no `feat:` / `fix:` / `perf:` / breaking commits exist since the last tag
 
 ### Commit message format

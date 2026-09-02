@@ -19,6 +19,7 @@ import {
 } from '@angular/core';
 import { NgTemplateOutlet } from '@angular/common';
 import { type FocusableOption, FocusKeyManager, LiveAnnouncer } from '@angular/cdk/a11y';
+import { Directionality } from '@angular/cdk/bidi';
 import { tv } from 'tailwind-variants';
 import type { TwColor, TwSize } from '@cdevhub/ngx-tw/core';
 
@@ -517,9 +518,7 @@ export class PaginatorComponent {
   /** How many pages to always show at the start and end boundaries. Defaults to `1`. */
   readonly boundaryCount = input<number>(1);
 
-  /** When true, renders jump-to-first and jump-to-last buttons. Defaults to `true`. */
-  // TRUE-default: first/last jumps are the standard pagination affordance for
-  // any list large enough to need a paginator; opt-out is for compact paginators.
+  /** When true, renders jump-to-first and jump-to-last buttons. Defaults to `true` — first/last jumps are the standard pagination affordance for any list large enough to need a paginator; the special case is a compact paginator that opts out. */
   readonly showFirstLastButtons = input<boolean>(true);
 
   /** When true, renders the page-size selector region. Defaults to `false`. */
@@ -528,14 +527,10 @@ export class PaginatorComponent {
   /** Options for the default page-size selector. Ignored when `*twPaginatorPageSizeSelector` is projected. Defaults to `[10, 25, 50, 100]`. */
   readonly pageSizeOptions = input<readonly number[]>([10, 25, 50, 100]);
 
-  /** When true, renders the page-info text region. Defaults to `true`. */
-  // TRUE-default: showing "X–Y of Z" is the expected pagination context; opt-out
-  // is for ultra-compact paginators that fit in tight UI.
+  /** When true, renders the page-info text region. Defaults to `true` — showing "X–Y of Z" is the expected pagination context; the special case is an ultra-compact paginator in tight UI that opts out. */
   readonly showPageInfo = input<boolean>(true);
 
-  /** When true, renders nothing when `totalItems === 0`. Defaults to `true`. */
-  // TRUE-default: hiding the paginator on empty data is expected UX; opt-out is
-  // for layouts that need to reserve the paginator's vertical space.
+  /** When true, renders nothing when `totalItems === 0`. Defaults to `true` — hiding the paginator on empty data is the expected UX; the special case is a layout that opts out to reserve the paginator's vertical space. */
   readonly hideOnEmpty = input<boolean>(true);
 
   /** When true, renders nothing when `totalPages <= 1`. Defaults to `false`. */
@@ -589,6 +584,11 @@ export class PaginatorComponent {
 
   private readonly _liveAnnouncer = inject(LiveAnnouncer);
   private readonly _elementRef = inject(ElementRef<HTMLElement>);
+  /**
+   * Optional so a consumer that never imports `BidiModule` still gets a working
+   * paginator — the key manager falls back to `'ltr'` when the token is absent.
+   */
+  private readonly _directionality = inject(Directionality, { optional: true });
 
   // ── View children ──
 
@@ -873,21 +873,34 @@ export class PaginatorComponent {
     });
 
     // Rebuild the FocusKeyManager whenever the focusable set changes (e.g. the
-    // numbered page list re-renders when total or current page shifts). No
-    // `.withWrap()` — paginators should NOT loop from page 1 ArrowLeft to the
-    // last page; that would be disorienting. Mirrors `accordion.ts` and the S12
-    // tabs/tab-nav migration. The `disabled` getter on `PaginatorFocusableDirective`
-    // resolves the `isDisabled()` signal so the manager skips disabled controls.
+    // numbered page list re-renders when total or current page shifts) or the
+    // app flips `dir` at runtime. No `.withWrap()` — paginators should NOT loop
+    // from page 1 ArrowLeft to the last page; that would be disorienting, and
+    // this is a deliberate divergence from `tabs`/`tab-nav`, which do wrap.
+    //
+    // The orientation is fed from the live layout direction rather than a
+    // hardcoded `'ltr'`: CDK's ListKeyManager maps ArrowLeft to
+    // `setPreviousItemActive()` under `'ltr'` and `setNextItemActive()` under
+    // `'rtl'`, so pinning `'ltr'` inverts ArrowLeft/ArrowRight in RTL locales —
+    // the arrow steps backwards in DOM order but forwards visually.
+    // `Directionality.valueSignal` is read directly (CDK 22+) so this effect
+    // re-runs on a direction change without a manual subscription mirror; that
+    // is the same behaviour `tab-nav` gets from its `Directionality.change`
+    // subscription, with less boilerplate.
+    //
+    // The `disabled` getter on `PaginatorFocusableDirective` resolves the
+    // `isDisabled()` signal so the manager skips disabled controls.
     // `onCleanup` fires both on rebuild AND on component destroy, so no separate
     // `_destroyRef.onDestroy` is needed.
     effect((onCleanup) => {
       const items = this.focusableItems();
+      const direction = this._directionality?.valueSignal() ?? 'ltr';
       if (items.length === 0) {
         this._keyManager = null;
         return;
       }
       const manager = new FocusKeyManager(items)
-        .withHorizontalOrientation('ltr')
+        .withHorizontalOrientation(direction)
         .withHomeAndEnd();
       this._keyManager = manager;
 

@@ -371,7 +371,10 @@ describe('TableComponent — empty / loading / error', () => {
     await fixture.whenStable();
     fixture.detectChanges();
 
-    const overlay = fixture.nativeElement.querySelector('[role="status"]');
+    // Selected by the `data-tw-table-loading` hook rather than `[role="status"]`:
+    // the overlay is deliberately not a live region (see the duplicate-
+    // announcement spec below).
+    const overlay = fixture.nativeElement.querySelector('[data-tw-table-loading]');
     expect(overlay).toBeTruthy();
     expect((overlay as HTMLElement).textContent).toContain(DEFAULT_TABLE_LABELS.loading);
   });
@@ -718,6 +721,58 @@ describe('TableComponent — accessibility', () => {
     );
     expect(announced).toBe(true);
   });
+
+  it('announces the loading state through exactly one channel', async () => {
+    // Regression guard. The loading overlay used to carry `role="status"` —
+    // which implies `aria-live="polite"` — while the effect in table.ts fired
+    // `LiveAnnouncer.announce(labels.loading)` with the same string in the same
+    // tick, so a screen reader read "Loading…" twice on every fetch.
+    //
+    // The DOM half below is the discriminating assertion: the LiveAnnouncer
+    // half passes identically before and after the fix.
+    await TestBed.configureTestingModule({ imports: [StateHost] }).compileComponents();
+    const announcer = TestBed.inject(LiveAnnouncer);
+    const spy = vi.spyOn(announcer, 'announce');
+
+    const fixture = TestBed.createComponent(StateHost);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    spy.mockClear();
+
+    fixture.componentInstance.loading.set(true);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    // Channel 1 — LiveAnnouncer, exactly once per loading transition.
+    const loadingCalls = spy.mock.calls.filter(
+      (call) => typeof call[0] === 'string' && call[0].includes(DEFAULT_TABLE_LABELS.loading),
+    );
+    expect(loadingCalls).toHaveLength(1);
+
+    // Channel 2 — must not exist. The overlay keeps its visible text (it is the
+    // sighted user's loading affordance) but is no longer a live region.
+    const overlay = fixture.nativeElement.querySelector(
+      '[data-tw-table-loading]',
+    ) as HTMLElement;
+    expect(overlay).toBeTruthy();
+    expect(overlay.textContent).toContain(DEFAULT_TABLE_LABELS.loading);
+    expect(overlay.getAttribute('role')).toBeNull();
+    expect(overlay.hasAttribute('aria-live')).toBe(false);
+
+    // Nothing else in the rendered table wraps that text in a live region
+    // either — `role="status"` and `role="alert"` both imply one.
+    const liveRegions: HTMLElement[] = Array.from(
+      fixture.nativeElement.querySelectorAll(
+        '[aria-live], [role="status"], [role="alert"]',
+      ),
+    );
+    const duplicates = liveRegions.filter((el) =>
+      (el.textContent ?? '').includes(DEFAULT_TABLE_LABELS.loading),
+    );
+    expect(duplicates).toHaveLength(0);
+  });
 });
 
 describe('TableComponent — selection API', () => {
@@ -970,7 +1025,7 @@ describe('TableComponent — loading overlay tokens', () => {
     fixture.detectChanges();
 
     const overlay = fixture.nativeElement.querySelector(
-      '[role="status"][aria-live="polite"]',
+      '[data-tw-table-loading]',
     ) as HTMLElement;
     expect(overlay).toBeTruthy();
     expect(overlay.className).toContain('backdrop-blur-sm');
