@@ -48,6 +48,7 @@ import type {
           [id]="searchInputId()"
           [attr.aria-label]="'Search'"
           [attr.aria-controls]="listboxId()"
+          [attr.aria-activedescendant]="activeDescendantId()"
           [value]="search()"
           class="w-full px-3 py-1.5 rounded-md border border-border bg-surface text-fg placeholder:text-fg-subtle focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500 transition-colors duration-normal motion-reduce:transition-none text-sm"
           placeholder="Search…"
@@ -159,6 +160,15 @@ export class SelectOverlayComponent<T = unknown> {
   readonly search = signal('');
   /** @internal */
   readonly activeIndex = signal(-1);
+  /**
+   * @internal Id of the active option, mirrored from the parent select.
+   *
+   * In searchable mode DOM focus sits on this panel's search input, so
+   * `aria-activedescendant` has to live there — an implicit `searchbox`
+   * allows it (inherited from `textbox`). The trigger drops the attribute for
+   * as long as the panel is open.
+   */
+  readonly activeDescendantId = signal<string | null>(null);
   /** @internal */
   readonly renderedRows = signal<readonly SelectRenderedRow<T>[]>([]);
   /** @internal */

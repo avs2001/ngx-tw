@@ -103,6 +103,12 @@
                 (change)="toggleMasterSelection($event)"
                 [aria-label]="resolvedLabels().selectAllLabel"
               />
+            } @else {
+              <!-- Without the master checkbox this header cell would be
+                   literally empty, which axe reports as `empty-table-header`
+                   and which leaves the column unnamed in a screen reader's
+                   table summary. -->
+              <span class="sr-only">{{ resolvedLabels().selectionColumnLabel }}</span>
             }
           </th>
           <td
@@ -132,6 +138,12 @@
              `dataIndex` undefined. Reading just one gives `undefined` in the
              other mode — which shipped as `rowClicked` emitting
              `index: undefined` for every table without row expansion. -->
+        <!-- `tabindex` / `(keydown)` / the focus ring are all gated on
+             `clickableRows`. A static table must not put every row in the tab
+             order, and Angular gives no way to ask whether `(rowClicked)` has a
+             subscriber — so the consumer declares it. Deliberately NO `role`
+             override: a `<tr>` is a `row`, and retagging it `button` breaks the
+             table's structural role contract for its own cells. -->
         <tr
           cdk-row
           *cdkRowDef="
@@ -140,7 +152,10 @@
             let di = dataIndex;
             columns: visibleColumnNames()
           "
+          [class]="dataRowClasses()"
           (click)="handleRowClick(row, di ?? i, $event)"
+          (keydown)="handleRowKeydown(row, di ?? i, $event)"
+          [attr.tabindex]="rowTabIndex()"
           [attr.aria-selected]="rowAriaSelected(row)"
         ></tr>
         @if (hasFooterRow()) {

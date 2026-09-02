@@ -205,7 +205,12 @@ class ObservableHost {
   imports: [TableComponent, ColumnComponent, CellDefDirective],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <tw-table [data]="data()" aria-label="Click host" (rowClicked)="onRowClick($event)">
+    <tw-table
+      [data]="data()"
+      [clickableRows]="clickable()"
+      aria-label="Click host"
+      (rowClicked)="onRowClick($event)"
+    >
       <tw-column name="id" headerLabel="ID">
         <ng-template twCellDef let-row>
           <button type="button" class="row-action">Action {{ $any(row).id }}</button>
@@ -216,6 +221,7 @@ class ObservableHost {
 })
 class RowClickHost {
   data = signal<Row[]>(SAMPLE_ROWS);
+  clickable = signal(false);
   events: TwRowClickEvent<Row>[] = [];
   onRowClick(e: TwRowClickEvent<Row>): void {
     this.events.push(e);
@@ -233,6 +239,7 @@ class RowClickHost {
     <tw-table
       [data]="data()"
       [multiTemplateRows]="true"
+      [clickableRows]="clickable()"
       [(expandedRows)]="expanded"
       aria-label="Multi-template click host"
       (rowClicked)="onRowClick($event)"
@@ -248,6 +255,7 @@ class RowClickHost {
 })
 class MultiTemplateRowClickHost {
   data = signal<Row[]>(SAMPLE_ROWS);
+  clickable = signal(false);
   expanded = signal<ReadonlySet<Row>>(new Set());
   events: TwRowClickEvent<Row>[] = [];
   onRowClick(e: TwRowClickEvent<Row>): void {
@@ -267,6 +275,19 @@ async function settle(fixture: ComponentFixture<unknown>): Promise<void> {
 /** Dispatches a real bubbling click, the way a user's pointer would. */
 function clickElement(el: HTMLElement): void {
   el.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
+}
+
+/**
+ * Dispatches a real bubbling keydown from `el`, and returns the event so a
+ * caller can assert on `defaultPrevented`. Dispatching from the element the
+ * user would have focused is load-bearing: the row handler distinguishes a
+ * keystroke aimed at the row from one aimed at a control inside it purely by
+ * `event.target`, so calling the handler directly would prove nothing.
+ */
+function pressKey(el: HTMLElement, key: string): KeyboardEvent {
+  const event = new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true });
+  el.dispatchEvent(event);
+  return event;
 }
 
 // ── Tests ─────────────────────────────────────────────────────────────
@@ -507,6 +528,102 @@ describe('TableComponent — row click', () => {
   });
 });
 
+describe('TableComponent — clickableRows keyboard activation', () => {
+  let fixture: ComponentFixture<RowClickHost>;
+
+  beforeEach(async () => {
+    await TestBed.configureTestingModule({ imports: [RowClickHost] }).compileComponents();
+    fixture = TestBed.createComponent(RowClickHost);
+    await settle(fixture);
+  });
+
+  function rows(): HTMLElement[] {
+    return Array.from(fixture.nativeElement.querySelectorAll('tbody tr')) as HTMLElement[];
+  }
+
+  async function enableClickableRows(): Promise<void> {
+    fixture.componentInstance.clickable.set(true);
+    await settle(fixture);
+  }
+
+  it('leaves rows out of the tab order by default', () => {
+    for (const row of rows()) {
+      expect(row.hasAttribute('tabindex')).toBe(false);
+    }
+  });
+
+  it('ignores Enter on a row while clickableRows is false', async () => {
+    pressKey(rows()[1], 'Enter');
+    await settle(fixture);
+    expect(fixture.componentInstance.events).toEqual([]);
+  });
+
+  it('puts every row in the tab order once clickableRows is set', async () => {
+    await enableClickableRows();
+    const all = rows();
+    expect(all.length).toBe(SAMPLE_ROWS.length);
+    for (const row of all) {
+      expect(row.getAttribute('tabindex')).toBe('0');
+    }
+  });
+
+  it('gives clickable rows a visible focus indicator', async () => {
+    await enableClickableRows();
+    expect(rows()[0].className).toContain('focus-visible:outline-primary-500');
+  });
+
+  it('does not keep the tab order after clickableRows is turned back off', async () => {
+    await enableClickableRows();
+    fixture.componentInstance.clickable.set(false);
+    await settle(fixture);
+    expect(rows()[0].hasAttribute('tabindex')).toBe(false);
+  });
+
+  it('emits rowClicked with the row and index on Enter', async () => {
+    await enableClickableRows();
+    // Row 2 on purpose — a row-0 assertion passes even when the index is
+    // hard-coded or dropped.
+    pressKey(rows()[2], 'Enter');
+    await settle(fixture);
+
+    const { events } = fixture.componentInstance;
+    expect(events.length).toBe(1);
+    expect(events[0].row).toBe(SAMPLE_ROWS[2]);
+    expect(events[0].index).toBe(2);
+  });
+
+  it('emits rowClicked on Space and cancels the page scroll', async () => {
+    await enableClickableRows();
+    const event = pressKey(rows()[1], ' ');
+    await settle(fixture);
+
+    expect(fixture.componentInstance.events.length).toBe(1);
+    expect(fixture.componentInstance.events[0].row).toBe(SAMPLE_ROWS[1]);
+    expect(event.defaultPrevented).toBe(true);
+  });
+
+  it('ignores keys other than Enter and Space', async () => {
+    await enableClickableRows();
+    pressKey(rows()[1], 'a');
+    pressKey(rows()[1], 'ArrowDown');
+    await settle(fixture);
+    expect(fixture.componentInstance.events).toEqual([]);
+  });
+
+  it('does not fire when Enter is pressed on a control inside the row', async () => {
+    await enableClickableRows();
+    const button = fixture.nativeElement.querySelector(
+      'tbody tr button.row-action',
+    ) as HTMLElement;
+    expect(button).toBeTruthy();
+
+    pressKey(button, 'Enter');
+    await settle(fixture);
+
+    expect(fixture.componentInstance.events).toEqual([]);
+  });
+});
+
 describe('TableComponent — row click with multiTemplateRows', () => {
   let fixture: ComponentFixture<MultiTemplateRowClickHost>;
 
@@ -545,6 +662,27 @@ describe('TableComponent — row click with multiTemplateRows', () => {
     expect(events.length).toBe(1);
     expect(events[0].row).toBe(SAMPLE_ROWS[2]);
     // dataIndex is 2; renderIndex is 3 because of the expansion row above it.
+    expect(events[0].index).toBe(2);
+  });
+
+  it('emits the data index on Enter too, not the render index', async () => {
+    const table = fixture.debugElement.children[0].componentInstance as TableComponent<Row>;
+    fixture.componentInstance.clickable.set(true);
+    table.expand(SAMPLE_ROWS[0]);
+    await settle(fixture);
+
+    const allRows = Array.from(
+      fixture.nativeElement.querySelectorAll('tbody tr'),
+    ) as HTMLElement[];
+    expect(allRows.length).toBe(SAMPLE_ROWS.length + 1);
+    const dataRows = allRows.filter((tr) => tr.querySelector('td[data-column="id"]'));
+
+    pressKey(dataRows[2], 'Enter');
+    await settle(fixture);
+
+    const { events } = fixture.componentInstance;
+    expect(events.length).toBe(1);
+    expect(events[0].row).toBe(SAMPLE_ROWS[2]);
     expect(events[0].index).toBe(2);
   });
 });
@@ -1392,6 +1530,27 @@ describe('TableComponent — dev-mode guards', () => {
       expect(header).toBeNull();
       // Per-row selection is unaffected.
       expect(fixture.nativeElement.querySelector('tbody tw-checkbox')).not.toBeNull();
+    });
+
+    it('still names the selection column when the master checkbox is omitted', async () => {
+      // Without the checkbox the header cell would be empty, which axe reports
+      // as `empty-table-header` and which leaves the column anonymous in a
+      // screen reader's table summary.
+      const fixture = TestBed.createComponent(AsyncSelectionHost);
+      fixture.detectChanges();
+      await fixture.whenStable();
+
+      const headerCells = Array.from(
+        fixture.nativeElement.querySelectorAll('thead th'),
+      ) as HTMLElement[];
+      for (const cell of headerCells) {
+        expect(cell.textContent?.trim()).not.toBe('');
+      }
+      expect(
+        headerCells.some(
+          (cell) => cell.textContent?.trim() === DEFAULT_TABLE_LABELS.selectionColumnLabel,
+        ),
+      ).toBe(true);
     });
   });
 

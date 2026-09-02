@@ -82,7 +82,7 @@ export class CalendarPage {
 
   /** All enabled day cells in the calendar's first grid. */
   enabledDays(calendar: Locator): Locator {
-    return calendar.locator('[role="grid"] button:not([disabled])');
+    return calendar.locator('[role="grid"] button:not([aria-disabled="true"])');
   }
 
   /** The cell carrying `tabindex=0` — the active descendant. */

@@ -56,8 +56,8 @@ import { CodeBlockComponent } from '@cdevhub/ngx-tw/code-block';
             <tr>
               <td class="px-4 py-2 font-mono text-xs">twTooltipHideDelay</td>
               <td class="px-4 py-2 font-mono text-xs text-fg-muted">number</td>
-              <td class="px-4 py-2 font-mono text-xs text-fg-muted">0</td>
-              <td class="px-4 py-2 text-fg-muted">Milliseconds to wait before hiding after trigger ends. Defaults to <code class="font-mono">0</code>.</td>
+              <td class="px-4 py-2 font-mono text-xs text-fg-muted">150</td>
+              <td class="px-4 py-2 text-fg-muted">Milliseconds to wait before hiding after the trigger is left. Defaults to <code class="font-mono">150</code> — the grace period that lets the pointer reach the tooltip (WCAG 2.1 SC 1.4.13).</td>
             </tr>
             <tr>
               <td class="px-4 py-2 font-mono text-xs">twTooltipDisabled</td>

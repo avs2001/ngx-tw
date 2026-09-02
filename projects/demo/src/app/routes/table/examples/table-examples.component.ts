@@ -246,6 +246,11 @@ const STATE_MODES: readonly StateMode[] = ['data', 'loading', 'empty', 'error'];
             <ng-template twCellDef let-row>{{ asOrder(row).updatedAt }}</ng-template>
           </tw-column>
           <tw-column name="actions" headerLabel="" [display]="{ sticky: 'end', width: '100px' }">
+            <!-- An action column still needs a name: a header cell with no
+                 text is an axe empty-table-header failure and leaves the
+                 column anonymous in a screen reader's table summary. The
+                 sr-only class keeps the cell visually blank. -->
+            <ng-template twHeaderCellDef><span class="sr-only">Actions</span></ng-template>
             <ng-template twCellDef>
               <button twButton variant="ghost" color="primary" size="xs">View</button>
             </ng-template>
@@ -278,6 +283,9 @@ const STATE_MODES: readonly StateMode[] = ['data', 'loading', 'empty', 'error'];
           aria-label="Expandable orders"
         >
           <tw-column name="toggle" headerLabel="" [display]="{ width: '44px' }">
+            <!-- Same reason as the sticky demo's actions column: an empty
+                 header cell fails the axe empty-table-header rule. -->
+            <ng-template twHeaderCellDef><span class="sr-only">Expand</span></ng-template>
             <ng-template twCellDef let-row>
               <button
                 twButton variant="ghost" color="neutral" size="xs"
@@ -996,6 +1004,8 @@ export class TableExamples {
   </tw-column>
   <!-- middle columns scroll horizontally -->
   <tw-column name="actions" headerLabel="" [display]="{ sticky: 'end', width: '100px' }">
+    <!-- Name the column for screen readers; sr-only keeps the cell blank. -->
+    <ng-template twHeaderCellDef><span class="sr-only">Actions</span></ng-template>
     <ng-template twCellDef>
       <button twButton variant="ghost" color="primary" size="xs">View</button>
     </ng-template>
@@ -1009,6 +1019,7 @@ export class TableExamples {
   aria-label="Expandable orders"
 >
   <tw-column name="toggle" headerLabel="" [display]="{ width: '44px' }">
+    <ng-template twHeaderCellDef><span class="sr-only">Expand</span></ng-template>
     <ng-template twCellDef let-row>
       <button
         twButton variant="ghost" color="neutral" size="xs"

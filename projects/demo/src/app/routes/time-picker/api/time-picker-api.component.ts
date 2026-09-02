@@ -27,7 +27,7 @@ import { CodeBlockComponent } from '@cdevhub/ngx-tw/code-block';
               <td class="px-4 py-2 font-mono text-xs">id</td>
               <td class="px-4 py-2 font-mono text-xs text-fg-muted">string | undefined</td>
               <td class="px-4 py-2 font-mono text-xs text-fg-muted">auto</td>
-              <td class="px-4 py-2 text-fg-muted">Id on the host element; used by <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">&lt;label for&gt;</code> inside a form-field.</td>
+              <td class="px-4 py-2 text-fg-muted">Id on the host element. Inside a form-field the accessible name arrives as <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">aria-labelledby</code> on the inner fields group — <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">&lt;label for&gt;</code> cannot target a custom element.</td>
             </tr>
             <tr>
               <td class="px-4 py-2 font-mono text-xs">disabled</td>

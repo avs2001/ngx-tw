@@ -15,9 +15,17 @@ export type SortSectionName =
 
 /**
  * POM for the sort directive's examples route. Sort headers render as
- * `<th tw-sort-header>` / `<span tw-sort-header>` / `<button tw-sort-header>`
- * — the directive applies `role="button"` (when not disabled) and
- * `aria-sort` reflects state.
+ * `<th tw-sort-header>` / `<span tw-sort-header>` / `<button tw-sort-header>`.
+ *
+ * `aria-sort` is emitted ONLY when the host is genuinely a header cell (a
+ * `<th>`, or an element with `role="columnheader"`/`"rowheader"`). On a
+ * `<span>` or `<button>` host the attribute is invalid ARIA and axe flags it,
+ * so assert sort state from the owning `<th>` — or, on those hosts, from
+ * `aria-describedby` and the rendered arrow rather than from `aria-sort`.
+ *
+ * The directive no longer imposes `role="button"` on a host that is already a
+ * control; a `<button tw-sort-header>` keeps its own role and carries the
+ * focus ring itself.
  */
 export class SortPage {
   readonly main: Locator;

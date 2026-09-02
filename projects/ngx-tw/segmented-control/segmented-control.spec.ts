@@ -373,6 +373,41 @@ describe('SegmentedControl', () => {
       fixture.detectChanges();
       expect(host.selected()).toBe('b');
     });
+
+    it('should select the option that has focus with Space', () => {
+      const options = getOptions(fixture);
+      dispatchKey(options[1], ' ');
+      fixture.detectChanges();
+      expect(host.selected()).toBe('b');
+      expect(options[1].getAttribute('aria-checked')).toBe('true');
+    });
+
+    it('should select the option that has focus with Enter', () => {
+      const options = getOptions(fixture);
+      dispatchKey(options[2], 'Enter');
+      fixture.detectChanges();
+      expect(host.selected()).toBe('c');
+      expect(options[2].getAttribute('aria-checked')).toBe('true');
+    });
+
+    it('should not select a disabled option with Space', () => {
+      host.optionCDisabled.set(true);
+      fixture.detectChanges();
+      const options = getOptions(fixture);
+      dispatchKey(options[2], ' ');
+      fixture.detectChanges();
+      expect(host.selected()).toBe('a');
+      expect(options[2].getAttribute('aria-checked')).toBe('false');
+    });
+
+    it('should not select any option with Space when the group is disabled', () => {
+      host.disabled.set(true);
+      fixture.detectChanges();
+      const options = getOptions(fixture);
+      dispatchKey(options[1], ' ');
+      fixture.detectChanges();
+      expect(host.selected()).toBe('a');
+    });
   });
 
   // ── Accessibility ──
@@ -438,6 +473,39 @@ describe('SegmentedControl', () => {
       fixture.detectChanges();
       expect(options[0].getAttribute('tabindex')).toBe('-1');
       expect(options[1].getAttribute('tabindex')).toBe('0');
+    });
+
+    // Tab-order recovery (SC 2.1.1). Every one of these used to leave the
+    // control with zero tab stops, making it unreachable by keyboard.
+    it('should keep a tab stop when the value matches no option', () => {
+      host.selected.set('nope');
+      fixture.detectChanges();
+      const options = getOptions(fixture);
+      expect(options[0].getAttribute('tabindex')).toBe('0');
+      expect(options.filter(o => o.getAttribute('tabindex') === '0')).toHaveLength(1);
+    });
+
+    it('should keep a tab stop when the value is an empty string', () => {
+      host.selected.set('');
+      fixture.detectChanges();
+      const options = getOptions(fixture);
+      expect(options[0].getAttribute('tabindex')).toBe('0');
+    });
+
+    it('should keep a tab stop when the value is null', () => {
+      host.selected.set(null);
+      fixture.detectChanges();
+      const options = getOptions(fixture);
+      expect(options[0].getAttribute('tabindex')).toBe('0');
+    });
+
+    it('should move the tab stop to the first enabled option when the active option is disabled', () => {
+      host.selected.set('c');
+      host.optionCDisabled.set(true);
+      fixture.detectChanges();
+      const options = getOptions(fixture);
+      expect(options[2].getAttribute('tabindex')).toBe('-1');
+      expect(options[0].getAttribute('tabindex')).toBe('0');
     });
   });
 

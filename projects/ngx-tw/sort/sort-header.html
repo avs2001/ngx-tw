@@ -1,8 +1,16 @@
+<!--
+  The container is the interactive control (role=button + tabindex) unless the
+  consumer already mounted the header on one - a button, an anchor, or an
+  element carrying a static button/link role. Nesting a second widget inside
+  such a host is an axe nested-interactive failure and leaves assistive tech
+  with two competing activation targets, so controlRole and controlTabIndex
+  both resolve to null there and the host keeps the focus ring instead.
+-->
 <div
   #container
   [class]="containerClasses()"
-  [attr.role]="isDisabled() ? null : 'button'"
-  [attr.tabindex]="isDisabled() ? null : 0"
+  [attr.role]="controlRole()"
+  [attr.tabindex]="controlTabIndex()"
 >
   @if (arrowPosition() === 'before' && renderArrow()) {
     <ng-container *ngTemplateOutlet="arrow" />

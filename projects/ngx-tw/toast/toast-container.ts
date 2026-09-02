@@ -86,12 +86,32 @@ const SWIPE_MAX_OPACITY_FADE = 0.6;
   },
   template: `
     @for (entry of orderedEntries(); track entry.ref.id) {
-      <!-- Toast entry wrapper; the projected <tw-toast> is the focusable affordance.
-           This element only forwards pointer/focus events so the container can
-           pause auto-dismiss while the user is interacting. -->
-      <!-- eslint-disable-next-line @angular-eslint/template/interactive-supports-focus -->
+      <!--
+        Toast entry wrapper. Owns the keyboard and pointer contract for one toast.
+
+        Focus policy (SC 2.2.1 Timing Adjustable, SC 2.1.1 Keyboard):
+
+        - tabindex="0" makes the wrapper itself a tab stop. Auto-dismiss pauses on
+          focus-within, so without this a toast whose only affordances are opted
+          out (dismissible false, no action) has nothing focusable at all and a
+          keyboard-only user can never stop its 5s clock. Radix Toast puts the tab
+          stop on the toast root for the same reason.
+        - No focus trap. A toast is not modal; trapping would strand a user who
+          never asked for it.
+        - No autofocus. Moving focus on open would yank the caret out of whatever
+          the user was doing, which is worse than the delay it saves.
+        - No summon hotkey. Deliberately deferred: a document-level key would have
+          to pick one of six position containers, and the region landmark already
+          gives screen-reader users a direct route in.
+        - Escape dismisses the focused toast; the browser returns focus to the
+          document flow position on its own once the element is removed.
+
+        Pointer and focus events are forwarded to the ref so the container can
+        pause the auto-dismiss timer while the user is reading or interacting.
+      -->
       <div
-        class="pointer-events-auto w-full max-w-sm"
+        class="pointer-events-auto w-full max-w-sm rounded-lg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500"
+        tabindex="0"
         [attr.data-toast-id]="entry.ref.id"
         [style.transform]="entry.ref.swipeTransform() || null"
         [style.opacity]="entry.ref.swipeOpacity() ?? null"

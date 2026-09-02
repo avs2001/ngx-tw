@@ -232,6 +232,31 @@ describe('TabsComponent', () => {
       const panel = fixture.nativeElement.querySelector('[role="tabpanel"]:not([hidden])');
       expect(panel.getAttribute('tabindex')).toBe('0');
     });
+
+    // Tab-order recovery (SC 2.1.1). A `value` matching no tab used to leave
+    // every trigger at tabindex="-1", so the whole tablist silently dropped
+    // out of the tab order and could not be reached by keyboard at all.
+    it('should keep exactly one tab stop when value matches no tab', () => {
+      fixture.componentInstance.activeTab.set('does-not-exist');
+      fixture.detectChanges();
+
+      const triggers: HTMLElement[] = Array.from(
+        fixture.nativeElement.querySelectorAll('[role="tab"]'),
+      );
+      expect(triggers.filter(t => t.getAttribute('tabindex') === '0')).toHaveLength(1);
+      expect(triggers[0].getAttribute('tabindex')).toBe('0');
+      expect(triggers[0].getAttribute('aria-selected')).toBe('false');
+    });
+
+    it('should keep a tab stop when value is cleared to an empty string', () => {
+      fixture.componentInstance.activeTab.set('');
+      fixture.detectChanges();
+
+      const triggers: HTMLElement[] = Array.from(
+        fixture.nativeElement.querySelectorAll('[role="tab"]'),
+      );
+      expect(triggers[0].getAttribute('tabindex')).toBe('0');
+    });
   });
 
   describe('tab selection via click', () => {
@@ -395,6 +420,17 @@ describe('TabsComponent', () => {
       expect(fixture.componentInstance.activeTab()).toBe('enabled');
       expect(triggers[1].getAttribute('aria-selected')).toBe('false');
     });
+
+    it('should move the tab stop to the first enabled tab when the active tab is disabled', () => {
+      fixture.componentInstance.activeTab.set('disabled');
+      fixture.detectChanges();
+
+      const triggers: HTMLElement[] = Array.from(
+        fixture.nativeElement.querySelectorAll('[role="tab"]'),
+      );
+      expect(triggers[1].getAttribute('tabindex')).toBe('-1');
+      expect(triggers[0].getAttribute('tabindex')).toBe('0');
+    });
   });
 
   describe('closable tabs', () => {
@@ -408,32 +444,42 @@ describe('TabsComponent', () => {
       fixture.detectChanges();
     });
 
-    it('should render a close button on closable tab', () => {
-      const closeBtn = fixture.nativeElement.querySelector('[aria-label="Close Closable"]');
-      expect(closeBtn).toBeTruthy();
+    it('should render a close affordance on closable tab', () => {
+      const closeControl = fixture.nativeElement.querySelector('[data-tw-tab-close]');
+      expect(closeControl).toBeTruthy();
     });
 
-    it('should emit closed output when close button is clicked', () => {
-      const closeBtn: HTMLElement = fixture.nativeElement.querySelector('[aria-label="Close Closable"]');
-      closeBtn.click();
+    it('should emit closed output when the close affordance is clicked', () => {
+      const closeControl: HTMLElement = fixture.nativeElement.querySelector('[data-tw-tab-close]');
+      closeControl.click();
       fixture.detectChanges();
 
       expect(fixture.componentInstance.closedValue()).toBe('closable');
     });
 
-    it('should not render close button on non-closable tab', () => {
+    it('should not render a close affordance on non-closable tab', () => {
       const triggers = fixture.nativeElement.querySelectorAll('[role="tab"]');
       const normalTrigger = triggers[1];
-      const closeBtn = normalTrigger.querySelector('[aria-label]');
-      expect(closeBtn).toBeNull();
+      expect(normalTrigger.querySelector('[data-tw-tab-close]')).toBeNull();
     });
 
-    it('should render the close affordance as a native <button> (keyboard-focusable)', () => {
-      const closeBtn = fixture.nativeElement.querySelector('[aria-label="Close Closable"]');
-      expect(closeBtn.tagName).toBe('BUTTON');
-      expect(closeBtn.getAttribute('type')).toBe('button');
-      // No tabindex="-1" — keyboard users must be able to reach it.
-      expect(closeBtn.getAttribute('tabindex')).not.toBe('-1');
+    it('should keep the close affordance out of the tab order and the a11y tree', () => {
+      // A focusable descendant of `role="tab"` fails axe's nested-interactive
+      // rule, so the close control is pointer-only: not a button, not
+      // focusable, hidden from assistive tech. Delete on the tab is the
+      // keyboard path.
+      const trigger: HTMLElement = fixture.nativeElement.querySelector('[role="tab"]');
+      const closeControl = trigger.querySelector('[data-tw-tab-close]');
+      expect(closeControl?.tagName).toBe('SPAN');
+      expect(closeControl?.getAttribute('aria-hidden')).toBe('true');
+      expect(closeControl?.hasAttribute('tabindex')).toBe(false);
+      expect(trigger.querySelectorAll('button, [tabindex]')).toHaveLength(0);
+    });
+
+    it('should advertise the Delete shortcut on a closable tab only', () => {
+      const triggers = fixture.nativeElement.querySelectorAll('[role="tab"]');
+      expect(triggers[0].getAttribute('aria-keyshortcuts')).toBe('Delete');
+      expect(triggers[1].getAttribute('aria-keyshortcuts')).toBeNull();
     });
 
     it('should emit closed output when Delete is pressed on the parent tab', () => {

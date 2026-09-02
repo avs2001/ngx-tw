@@ -209,6 +209,22 @@ import { CodeBlockComponent } from '@cdevhub/ngx-tw/code-block';
           </tbody>
         </table>
       </div>
+
+      <h3 class="text-sm font-semibold mt-6 mb-2">Host attributes</h3>
+      <p class="mb-3 max-w-2xl text-sm text-fg-muted">
+        <code class="font-mono">aria-sort</code> is emitted <strong>only</strong> when the host is
+        genuinely a header cell &mdash; a <code class="font-mono">&lt;th&gt;</code>, or an element
+        with <code class="font-mono">role="columnheader"</code> /
+        <code class="font-mono">"rowheader"</code>. ARIA does not permit it anywhere else, so on a
+        <code class="font-mono">&lt;span&gt;</code> or <code class="font-mono">&lt;button&gt;</code>
+        host it is deliberately absent.
+      </p>
+      <p class="mb-3 max-w-2xl text-sm text-fg-muted">
+        <code class="font-mono">data-sort-direction</code> carries the same value
+        (<code class="font-mono">ascending</code> / <code class="font-mono">descending</code> /
+        <code class="font-mono">none</code>) on <em>every</em> host shape. Use it to style on sort
+        state, and to assert sort state in tests, without depending on the arrow's utility classes.
+      </p>
     </section>
 
     <!-- Types -->

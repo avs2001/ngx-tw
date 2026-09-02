@@ -50,8 +50,10 @@ const tabsLayoutVariants = tv(
       panel: 'min-w-0 flex-1',
       scrollButton:
         'inline-flex items-center justify-center shrink-0 cursor-pointer transition-colors duration-normal motion-reduce:transition-none disabled:opacity-30 disabled:cursor-default hover:bg-surface-muted',
+      // No focus-visible ring: the close control is pointer-only by design
+      // (see the ARIA note in tabs.html), so a focus style would be dead code.
       closeButton:
-        'inline-flex items-center justify-center rounded-md cursor-pointer transition-colors duration-normal motion-reduce:transition-none hover:bg-surface-muted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500',
+        'inline-flex items-center justify-center rounded-md cursor-pointer transition-colors duration-normal motion-reduce:transition-none hover:bg-surface-muted',
     },
     variants: {
       variant: {
@@ -179,7 +181,7 @@ export class TabComponent {
   /** When true, the tab cannot be selected and is skipped by keyboard navigation. Defaults to false. */
   readonly disabled = input(false);
 
-  /** When true, a close button is rendered in the tab trigger. Defaults to false. */
+  /** When true, a dismiss control is rendered in the tab trigger. The control is pointer-only; the keyboard gesture is Delete on the focused tab. Defaults to false. */
   readonly closable = input(false);
 
   /** When true, the tab panel content is only instantiated when the tab becomes active for the first time. Defaults to false. */
@@ -206,13 +208,18 @@ export class TabComponent {
 export class TabTriggerElementDirective implements FocusableOption {
   readonly elementRef = inject(ElementRef<HTMLElement>);
 
-  /** Whether this trigger is the active tab. Drives `tabindex` so only the active trigger is in the tab order. Defaults to `false`. */
-  readonly isActive = input(false);
+  /**
+   * Whether this trigger owns the tablist's single tab stop. Drives
+   * `tabindex`. Normally the active tab, but the parent falls back to the
+   * first enabled tab when `value` matches nothing, so the tablist is never
+   * left with zero tab stops. Defaults to `false`.
+   */
+  readonly isFocusStop = input(false);
 
   /** Whether this trigger is disabled. Read by `FocusKeyManager` so disabled triggers are skipped during arrow navigation. Defaults to `false`. */
   readonly isDisabled = input(false);
 
-  readonly tabIndex = computed(() => this.isActive() ? 0 : -1);
+  readonly tabIndex = computed(() => this.isFocusStop() ? 0 : -1);
 
   /** Moves DOM focus to the trigger element. Called by `FocusKeyManager` during arrow-key navigation. */
   focus(): void {
@@ -262,7 +269,7 @@ export class TabsComponent implements AfterViewInit {
   /** The value of the currently active tab. Two-way bound. Updates when the user selects a tab. Defaults to an empty string. */
   readonly value = model<string>('');
 
-  /** Fires when a closable tab's close button is clicked. Payload is the tab's value. */
+  /** Fires when a closable tab is dismissed, either by clicking its close control or by pressing Delete while the tab has focus. Payload is the tab's value. */
   readonly closed = output<string>();
 
   private readonly destroyRef = inject(DestroyRef);
@@ -359,6 +366,29 @@ export class TabsComponent implements AfterViewInit {
   /** Whether the tab with the given value is the currently active one. */
   isTabActive(tabValue: string): boolean {
     return this.activeValue() === tabValue;
+  }
+
+  /**
+   * @internal Value of the tab that owns the tablist's single tab stop.
+   *
+   * The active tab whenever it exists and is enabled. When `value` matches no
+   * tab — a stale id, a value cleared after init, or an active tab that is
+   * disabled — the first enabled tab takes the tab stop instead (standard
+   * roving-tabindex recovery). Without the fallback every trigger renders
+   * `tabindex="-1"` and the whole tablist silently leaves the tab order
+   * (WCAG SC 2.1.1).
+   */
+  readonly focusStopValue = computed<string | null>(() => {
+    const tabs = this.tabs();
+    const active = this.activeValue();
+    const activeTab = tabs.find(t => t.value() === active && !t.disabled());
+    if (activeTab) return activeTab.value();
+    return tabs.find(t => !t.disabled())?.value() ?? null;
+  });
+
+  /** Whether the tab with the given value owns the tablist's single tab stop. */
+  isTabFocusStop(tabValue: string): boolean {
+    return this.focusStopValue() === tabValue;
   }
 
   /** Whether a tab's panel content should be in the DOM. Always true for eager tabs; for lazy tabs, true only once the tab has been activated at least once. */
@@ -464,8 +494,10 @@ export class TabsComponent implements AfterViewInit {
       return;
     }
 
-    // Delete on a closable tab dismisses it (APG-recommended). Keyboard users
-    // who don't want to traverse to the close button can dismiss inline.
+    // Delete on a closable tab dismisses it (APG-recommended). This is the
+    // ONLY keyboard path: the close control cannot be focusable without
+    // failing axe's nested-interactive rule, so `aria-keyshortcuts="Delete"`
+    // on the trigger advertises this gesture to assistive tech.
     if (event.key === 'Delete' && focusedIdx >= 0) {
       const tab = this.tabs()[focusedIdx];
       if (tab.closable() && !tab.disabled()) {
@@ -571,9 +603,12 @@ export class TabsComponent implements AfterViewInit {
       // all this needs; the keydown handler still uses `setActiveItem`, where
       // moving focus is the point.
       untracked(() => {
-        const activeVal = this.activeValue();
+        // Seeded from the DOM tab stop, not from `activeValue()`: when `value`
+        // matches no tab the tab stop falls back to the first enabled tab, and
+        // seeding the manager with -1 there would desynchronise the two.
+        const stopValue = this.focusStopValue();
         const tabs = this.tabs();
-        const idx = tabs.findIndex(t => t.value() === activeVal);
+        const idx = tabs.findIndex(t => t.value() === stopValue);
         if (idx >= 0) {
           manager.updateActiveItem(idx);
         }

@@ -18,6 +18,7 @@ import {
   Overlay,
   type OverlayRef,
 } from '@angular/cdk/overlay';
+import { ESCAPE, hasModifierKey } from '@angular/cdk/keycodes';
 import { ComponentPortal } from '@angular/cdk/portal';
 import { AriaDescriber } from '@angular/cdk/a11y';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
@@ -47,7 +48,12 @@ type ArrowDirection = 'top' | 'bottom' | 'left' | 'right';
 const tooltipVariants = tv(
   {
     slots: {
-      wrapper: 'relative pointer-events-none',
+      // No `pointer-events-none`: WCAG 2.1 SC 1.4.13 requires hover content to
+      // be *hoverable* — the pointer must be able to travel from the trigger
+      // onto the tooltip without dismissing it. The directive re-arms the hide
+      // timer on the panel's own `mouseleave`, so the panel is only pointer-
+      // opaque for as long as the user is actually pointing at it.
+      wrapper: 'relative',
       panel: 'rounded-md shadow-md',
       arrow: 'absolute size-2 rotate-45',
     },
@@ -333,12 +339,14 @@ export class TooltipDirective {
   readonly twTooltipShowDelay = input(200);
 
   /**
-   * Milliseconds to wait before hiding after trigger ends. Defaults to `0`
-   * (immediate dismiss). The asymmetry with `twTooltipShowDelay` is
-   * intentional — show is gated to filter noise, hide is instant so the
-   * tooltip never lingers over content the user has moved on from.
+   * Milliseconds to wait before hiding after the trigger is left. Defaults to
+   * `150` — a grace period, not a lingering delay: WCAG 2.1 SC 1.4.13 requires
+   * the tooltip to be hoverable, and the panel sits 8px clear of its trigger,
+   * so the pointer needs a window in which to cross that gap. Hovering the
+   * panel itself cancels the pending hide entirely. Set `0` to opt out (the
+   * tooltip is then dismissible by Escape but not reachable by pointer).
    */
-  readonly twTooltipHideDelay = input(0);
+  readonly twTooltipHideDelay = input(150);
 
   /** When true, tooltip never shows. Defaults to `false`. */
   readonly twTooltipDisabled = input(false);
@@ -371,6 +379,8 @@ export class TooltipDirective {
   private tooltipInstance: TooltipOverlayComponent | null = null;
   private showTimer: ReturnType<typeof setTimeout> | null = null;
   private hideTimer: ReturnType<typeof setTimeout> | null = null;
+  /** Removes the panel's hover listeners. Set in `createOverlay`, invoked from `disposeOverlay`. */
+  private overlayHoverCleanup: (() => void) | null = null;
   /** Last description string handed to `AriaDescriber.describe` — required so the symmetrical `removeDescription` call passes the same key. */
   private _describedBy: string | null = null;
   /** True when the trigger's `aria-describedby` was set directly to the overlay id (TemplateRef fallback path); used by `removeAriaDescription` to choose the symmetrical teardown. */
@@ -498,6 +508,40 @@ export class TooltipDirective {
           this.tooltipInstance.arrowDirection.set(dir);
         }
       });
+
+    // SC 1.4.13 "Dismissible": Escape must dismiss the tooltip wherever focus
+    // currently is, not only when the trigger itself has it — a tooltip shown
+    // by hover while focus sits in an unrelated field was previously
+    // undismissable without moving the pointer. CDK's OverlayKeyboardDispatcher
+    // listens on `body` and forwards keydowns to the top-most attached overlay
+    // with subscribers, which is this tooltip whenever it is showing. The
+    // trigger's own `(keydown.escape)` binding stays as the direct path; the
+    // second `detach()` is a no-op.
+    this.overlayRef
+      .keydownEvents()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((event) => {
+        if (event.keyCode === ESCAPE && !hasModifierKey(event)) {
+          this.detach();
+        }
+      });
+
+    // SC 1.4.13 "Hoverable" / "Persistent": entering the panel cancels the
+    // pending hide so the tooltip survives the trip across the 8px offset;
+    // leaving it re-arms the hide exactly as leaving the trigger does. Wired
+    // on the overlay element rather than the portal component because this
+    // element outlives every attach/detach cycle of a given overlayRef, so the
+    // listeners are added once and removed once.
+    const panel = this.overlayRef.overlayElement;
+    const onEnter = () => this.clearTimers();
+    const onLeave = () => this.hide();
+    panel.addEventListener('mouseenter', onEnter);
+    panel.addEventListener('mouseleave', onLeave);
+    this.overlayHoverCleanup = () => {
+      panel.removeEventListener('mouseenter', onEnter);
+      panel.removeEventListener('mouseleave', onLeave);
+      this.overlayHoverCleanup = null;
+    };
   }
 
   private updateTooltip(): void {
@@ -583,6 +627,7 @@ export class TooltipDirective {
   }
 
   private disposeOverlay(): void {
+    this.overlayHoverCleanup?.();
     if (this.overlayRef) {
       this.overlayRef.dispose();
       this.overlayRef = null;

@@ -200,11 +200,49 @@ export abstract class CalendarViewBase<D> {
   /** Subclass implements view-specific keyboard navigation. */
   abstract onKeyNav(event: { direction: string; cell: CalendarCell<D> }): void;
 
+  /**
+   * `compareValue` of the cell that owns the roving tabindex, resolved against
+   * the cells actually rendered right now.
+   *
+   * `focusedCellValue` is written only by `focusCell()` and nothing ever resets
+   * it, so it goes stale the moment the displayed period changes by any route
+   * that does not itself call `focusCell()` — the header's prev/next buttons,
+   * a programmatic `activeDate` assignment, a view switch. A stale value
+   * matches no rendered cell, `isActiveCell` then answered `false` for every
+   * one of them, and the grid left the tab order entirely: zero cells with
+   * `tabindex="0"`, nothing to Tab into, keyboard users locked out (SC 2.1.1).
+   *
+   * Resolving here rather than resetting the signal keeps this a pure read —
+   * no effect, no write, no cycle — and the three fallbacks guarantee the
+   * invariant the defect broke: a non-empty grid always has exactly one
+   * tabbable cell.
+   */
+  protected readonly rovingCellValue: Signal<number | null> = computed(() => {
+    const grid = this.cells();
+    const focused = this.focusedCellValue();
+    if (focused !== null && this.gridHasValue(grid, focused)) return focused;
+    const active = this.getActiveCompareValue();
+    if (this.gridHasValue(grid, active)) return active;
+    // Neither anchor is on screen. Rather than strand the grid, hand the cursor
+    // to the first selectable cell — or, if every cell is disabled, the first
+    // cell, which is still focusable now that cells use `aria-disabled`.
+    for (const row of grid) {
+      const enabled = row.find((c) => c.enabled);
+      if (enabled) return enabled.compareValue;
+    }
+    for (const row of grid) {
+      if (row.length > 0) return row[0].compareValue;
+    }
+    return null;
+  });
+
+  private gridHasValue(grid: CalendarCell<D>[][], value: number): boolean {
+    return grid.some((row) => row.some((c) => c.compareValue === value));
+  }
+
   /** Returns `true` when the cell owns the roving cursor. */
   isActiveCell(cell: CalendarCell<D>): boolean {
-    const focused = this.focusedCellValue();
-    if (focused !== null) return cell.compareValue === focused;
-    return this.getActiveCompareValue() === cell.compareValue;
+    return cell.compareValue === this.rovingCellValue();
   }
 
   /** Compare value of the currently active date (subclass-specific). */
@@ -218,7 +256,11 @@ export abstract class CalendarViewBase<D> {
 
   /** Focuses the cell that currently owns the roving cursor. */
   focusActiveCell(): void {
-    const target = this.focusedCellValue() ?? this.getActiveCompareValue();
+    // Read through `rovingCellValue` so a stale `focusedCellValue` cannot aim
+    // focus at a cell that is no longer rendered — the same staleness that used
+    // to empty the tab order also made this a silent no-op.
+    const target = this.rovingCellValue();
+    if (target === null) return;
     this.focusCell(target);
   }
 }

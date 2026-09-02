@@ -16,6 +16,7 @@ export const AXE_TAGS = [
   'wcag2aa',
   'wcag21a',
   'wcag21aa',
+  'wcag22aa',
   'best-practice',
 ] as const;
 
@@ -49,6 +50,45 @@ export async function runAxe(page: Page, options: RunAxeOptions = {}): Promise<A
     builder = builder.exclude(selector);
   }
   return await builder.analyze();
+}
+
+/**
+ * Rules a given page is allowed to still fail, by rule id.
+ *
+ * This replaces a component-wide skip. Excluding a whole component hides every
+ * rule it does NOT violate as well as the ones it does — so a component on the
+ * old list could regress on `button-name` and the sweep stayed green, and the
+ * `wcag22aa` target-size rules this suite now scans were invisible for all 12
+ * backlogged components at once.
+ *
+ * An entry is a debt with a name. Fixing a component means deleting its rule
+ * ids one at a time, and every rule NOT listed is enforced on that page from
+ * the first day.
+ */
+export type RuleBacklog = ReadonlyMap<string, ReadonlySet<string>>;
+
+/**
+ * Splits violations into the ones this page still owes and the ones that are
+ * regressions.
+ *
+ * `unexpected` is what the test asserts on. `staleAllowances` is what the page
+ * was permitted to fail but did not — a backlog entry that no longer
+ * corresponds to a real violation, which should be deleted so the list cannot
+ * rot into permanent permission.
+ */
+export function partitionViolations(
+  violations: AxeResults['violations'],
+  allowed: ReadonlySet<string> | undefined,
+): {
+  readonly unexpected: AxeResults['violations'];
+  readonly staleAllowances: readonly string[];
+} {
+  const allowedIds = allowed ?? new Set<string>();
+  const seen = new Set(violations.map(v => v.id));
+  return {
+    unexpected: violations.filter(v => !allowedIds.has(v.id)),
+    staleAllowances: [...allowedIds].filter(id => !seen.has(id)).sort(),
+  };
 }
 
 /**

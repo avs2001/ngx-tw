@@ -759,13 +759,42 @@ describe('FormFieldComponent', () => {
       await fixture.whenStable();
     });
 
-    it('applies opacity-50 and pointer-events-none when control.disabled() is true', async () => {
+    it('dims the control row and blocks pointer interaction when control.disabled() is true', async () => {
       fixture.componentInstance.fake().disabled.set(true);
       fixture.detectChanges();
       await fixture.whenStable();
       const host: HTMLElement = fixture.nativeElement.querySelector('tw-form-field');
-      expect(host.className).toContain('opacity-50');
+      // The wash is on the control row; the pointer block stays on the host so
+      // clicks on the subscript row cannot reach `onContainerClick`.
+      expect(controlWrapper(fixture).className).toContain('opacity-50');
       expect(host.className).toContain('pointer-events-none');
+    });
+
+    // SC 1.4.3 regression guard. The wash used to sit on the host, which meant
+    // it composited the subscript row too: `text-fg-muted` (7.56:1 at rest)
+    // measured 2.34:1 in light and 3.92:1 in dark once halved. A hint describes
+    // the control rather than being part of it, so it does not inherit 1.4.3's
+    // inactive-component exemption — and no foreground token can survive 50%
+    // alpha anyway (pure black at 50% over white is 3.95:1). Asserting on the
+    // utility is deliberate here: the utility IS the contrast behaviour, and
+    // jsdom computes no styles to observe instead.
+    it('does not dim the host, so hint text keeps full contrast while disabled', async () => {
+      fixture.componentInstance.fake().disabled.set(true);
+      fixture.detectChanges();
+      await fixture.whenStable();
+
+      const host: HTMLElement = fixture.nativeElement.querySelector('tw-form-field');
+      expect(host.className).not.toContain('opacity-50');
+
+      const hint = fixture.nativeElement.querySelector('[twHint]') as HTMLElement;
+      expect(hint).toBeTruthy();
+      for (
+        let el: HTMLElement | null = hint;
+        el && el !== host.parentElement;
+        el = el.parentElement
+      ) {
+        expect(el.className).not.toContain('opacity-50');
+      }
     });
   });
 

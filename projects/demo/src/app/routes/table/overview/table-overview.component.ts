@@ -82,7 +82,7 @@ const TEAM: readonly TeamMember[] = [
             </tr>
             <tr>
               <td class="px-4 py-2 font-mono text-xs">Row click</td>
-              <td class="px-4 py-2 text-fg-muted"><code class="font-mono">(rowClicked)</code> is suppressed when the click originated inside an interactive descendant (button, link, input).</td>
+              <td class="px-4 py-2 text-fg-muted"><code class="font-mono">(rowClicked)</code> is suppressed when the click originated inside an interactive descendant (button, link, input). Set <code class="font-mono">[clickableRows]="true"</code> alongside it so rows are reachable by keyboard: each row enters the tab order, Enter / Space activate it, and it gets a focus ring. Without the flag, row activation is pointer-only — which is what keeps a static table out of the tab order.</td>
             </tr>
             <tr>
               <td class="px-4 py-2 font-mono text-xs">Row expansion</td>

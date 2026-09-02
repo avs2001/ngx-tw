@@ -78,8 +78,9 @@ test.describe('Theme matrix', () => {
     //   - `/components/button/examples` (dark): solid `${color}` swatches.
     //     Tracked under `button` in `examples.spec.ts` backlog.
     //   - `/components/dialog/examples` (dark): same dark-mode shift.
-    // Re-enable once those backlog items land.
-    test.fixme(`@theme @a11y ${theme}: axe color-contrast passes on sampled pages`, async ({
+    // Re-enabled 2026-09-02: the settle wait below removed the phantom
+    // failures, leaving one real surface, which is excluded by selector.
+    test(`@theme @a11y ${theme}: axe color-contrast passes on sampled pages`, async ({
       page,
       context,
     }) => {
@@ -88,9 +89,23 @@ test.describe('Theme matrix', () => {
       for (const url of SAMPLED_PAGES) {
         await page.goto(url);
         await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
+        // axe samples computed colour at the instant it runs, and the demo
+        // shell fades its chrome in. Without this the scan reads
+        // mid-transition colours: the sibling sweep reported contrast
+        // failures on 49 of 52 components before it settled, and 6 after.
+        await page.waitForTimeout(1200);
 
         const builder = new AxeBuilder({ page })
           .exclude('[data-compodoc]')
+          // The form-field HINT text is the one surface still failing, and it
+          // fails in all three themes at 12px: #a4aab2 on #ffffff is 2.34:1
+          // against a 4.5:1 requirement. Excluded by selector rather than
+          // leaving this whole sweep `fixme`'d, so the other ~57 nodes per
+          // page across light / dark / high-contrast are actually enforced.
+          // Tracked as the `form-field` / `input` / `textarea` / `time-picker`
+          // color-contrast cluster in examples.spec.ts's A11Y_BACKLOG; delete
+          // this exclusion when that lands.
+          .exclude('[id^="tw-form-field-hint"]')
           .withRules(['color-contrast']);
         const results = await builder.analyze();
         expect(

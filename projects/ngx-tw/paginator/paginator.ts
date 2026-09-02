@@ -538,7 +538,16 @@ export class PaginatorComponent {
   /** When provided, buttons render as anchor links using the returned `href`. Defaults to `undefined` (renders as buttons). */
   readonly linkFactory = input<((page: number) => string) | undefined>(undefined);
 
-  /** Overrides `labels.ariaLabel` for the root `<nav>` element. Bound as `aria-label`. Defaults to `undefined` (the resolved `labels.ariaLabel` is used). */
+  /**
+   * Overrides `labels.ariaLabel` for the root `<nav>` element. Bound as `aria-label`.
+   * Defaults to `undefined` (the resolved `labels.ariaLabel` is used).
+   *
+   * The host renders as a `navigation` landmark, so a page showing more than one
+   * paginator (the common "controls above and below a table" shape) MUST give each
+   * one a distinct name here — two landmarks of the same role sharing an accessible
+   * name are indistinguishable to a screen-reader landmark list (axe:
+   * `landmark-unique`).
+   */
   readonly customAriaLabel = input<string | undefined>(undefined, {
     alias: 'aria-label',
   });

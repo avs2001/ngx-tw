@@ -841,6 +841,35 @@ describe('ComboboxComponent', () => {
       clearBtn.dispatchEvent(event);
       expect(event.defaultPrevented).toBe(true);
     });
+
+    // SC 2.1.1. The button shipped with `tabindex="-1"`, so the only way to
+    // clear a committed value was the mouse. Tabbability is the whole fix —
+    // a native <button> already turns Enter/Space into the click handler that
+    // the mouse path uses.
+
+    it('puts the clear button in the tab order with an accessible name', () => {
+      const fixture = TestBed.createComponent(BasicHost);
+      fixture.componentInstance.inputValue.set('Apple');
+      fixture.detectChanges();
+      const clearBtn = fixture.nativeElement.querySelector('button[aria-label="Clear"]') as HTMLButtonElement;
+      expect(clearBtn.tabIndex).toBe(0);
+      expect(clearBtn.hasAttribute('tabindex')).toBe(false);
+      expect(clearBtn.getAttribute('aria-label')).toBe('Clear');
+    });
+
+    // SC 2.4.3. Clearing unmounts the button, so focus has to be handed back
+    // to the input or it falls to <body>.
+    it('returns focus to the input after clearing', async () => {
+      const fixture = TestBed.createComponent(BasicHost);
+      fixture.componentInstance.value.set('apple');
+      fixture.componentInstance.inputValue.set('Apple');
+      fixture.detectChanges();
+      const clearBtn = fixture.nativeElement.querySelector('button[aria-label="Clear"]') as HTMLButtonElement;
+      clearBtn.focus();
+      clearBtn.click();
+      await advance(fixture);
+      expect(document.activeElement).toBe(getInput(fixture));
+    });
   });
 
   // ── Async writeValue race ──

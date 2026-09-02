@@ -19,15 +19,24 @@ test.describe('Table', () => {
     const t = new TablePage(page);
     await t.goto();
 
-    const header = t.sortableSection.locator('[tw-sort-header][id="customer"]');
-    await expect(header).toHaveAttribute('aria-sort', 'none');
+    // `aria-sort` belongs on the <th role="columnheader">, not on the
+    // [tw-sort-header] host inside it — the host here is a <span>, and
+    // `aria-sort` on a roleless span is an axe `aria-allowed-attr` violation.
+    // Click the host (it owns the handler); assert on the cell (it owns state).
+    const host = t.sortableSection.locator('[tw-sort-header][id="customer"]');
+    const cell = t.sortableSection.locator('thead th[data-column="customer"]');
 
-    await header.click();
-    await expect(header).toHaveAttribute('aria-sort', 'ascending');
-    await header.click();
-    await expect(header).toHaveAttribute('aria-sort', 'descending');
-    await header.click();
-    await expect(header).toHaveAttribute('aria-sort', 'none');
+    // Unsorted renders NO attribute rather than 'none': `col.ariaSort()`
+    // returns null when inactive, and the sibling test at ~:175 asserts that
+    // absence — do not "fix" this by emitting 'none'.
+    await expect(cell).not.toHaveAttribute('aria-sort', /.+/);
+
+    await host.click();
+    await expect(cell).toHaveAttribute('aria-sort', 'ascending');
+    await host.click();
+    await expect(cell).toHaveAttribute('aria-sort', 'descending');
+    await host.click();
+    await expect(cell).not.toHaveAttribute('aria-sort', /.+/);
   });
 
   test('@interaction sticky header stays at the top while the body scrolls', async ({ page }) => {

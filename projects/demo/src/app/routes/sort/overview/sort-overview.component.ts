@@ -38,30 +38,59 @@ const ROWS: readonly Row[] = [
         components make any element (a <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">&lt;th&gt;</code>,
         <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">&lt;div&gt;</code>,
         or <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">&lt;button&gt;</code>)
-        a clickable sort trigger with a rotating arrow and correct
+        a clickable sort trigger with a rotating arrow, and puts
         <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">aria-sort</code>
-        semantics. The consumer owns the data sort — the directive just emits events.
+        on the header cell when there is one. The consumer owns the data sort — the
+        directive just emits events.
       </p>
     </section>
 
     <section class="mb-10">
       <h2 class="text-sm font-semibold mb-3">Accessibility</h2>
       <p class="text-sm text-fg-muted leading-relaxed max-w-2xl mb-4">
-        Each header host exposes
         <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">aria-sort</code>
         (<code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">'ascending' | 'descending' | 'none'</code>)
-        so screen readers announce the current sort state. The inner container — not
-        the host — takes
+        is emitted <strong>only</strong> when the host is a header cell — a
+        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">&lt;th&gt;</code>,
+        or an element carrying
+        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">role="columnheader"</code>
+        /
+        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">role="rowheader"</code>.
+        Those are the only two roles the attribute is valid on; on a
+        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">&lt;span&gt;</code>
+        or
+        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">&lt;button&gt;</code>
+        it is an
+        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">aria-allowed-attr</code>
+        violation that assistive tech ignores, so it is left off. Inside a
+        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">tw-table</code>
+        the generated
+        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">&lt;th&gt;</code>
+        carries the state instead.
+      </p>
+      <p class="text-sm text-fg-muted leading-relaxed max-w-2xl mb-4">
+        The interactive element follows the same rule. On a
+        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">&lt;th&gt;</code>
+        or a plain
+        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">&lt;span&gt;</code>
+        the inner container — not the host — takes
         <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">role="button"</code>
         and
         <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">tabindex="0"</code>,
-        which avoids an NVDA bug where a focusable
+        which keeps the header cell a
+        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">columnheader</code>
+        and avoids an NVDA bug where a focusable
         <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">&lt;th&gt;</code>
-        breaks table keyboard navigation. CDK
+        breaks table keyboard navigation. When you mount the header on a control
+        yourself —
+        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">&lt;button tw-sort-header&gt;</code>
+        — the host <em>is</em> the control: the container stays inert and the focus
+        ring moves to the host, so no widget is nested inside another. CDK
         <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">AriaDescriber</code>
         wires the
         <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">sortActionDescription</code>
-        so assistive tech announces the sort action alongside the header text.
+        onto whichever of the two is the control, so assistive tech announces the
+        sort action alongside the header text. Enter and Space activate either shape.
       </p>
 
       <div class="overflow-x-auto border border-border rounded-lg">
@@ -136,7 +165,7 @@ const ROWS: readonly Row[] = [
         <li>5 sizes (<code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">xs</code>–<code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">xl</code>) and 8 semantic colors</li>
         <li>Arrow position: <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">'before'</code> or <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">'after'</code> the label</li>
         <li>Custom arrow icon via <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">[twSortHeaderIcon]</code> content projection</li>
-        <li>Full ARIA: <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">aria-sort</code>, <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">role="button"</code>, <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">AriaDescriber</code>-backed sort description</li>
+        <li>Host-aware ARIA: <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">aria-sort</code> on header-cell hosts only, one non-nested <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">role="button"</code> control, <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">AriaDescriber</code>-backed sort description</li>
         <li>Keyboard activation via Enter and Space</li>
         <li>Per-header and directive-level <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">disabled</code></li>
         <li>Dev-mode errors on missing parent directive or duplicate header ids</li>

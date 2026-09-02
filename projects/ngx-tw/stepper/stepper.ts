@@ -360,6 +360,40 @@ export class StepperComponent extends CdkStepper implements AfterViewInit {
     return super.orientation;
   }
 
+  // ── ARIA shape ──
+  //
+  // Horizontal renders the WAI-ARIA tabs pattern (tablist / tab / tabpanel,
+  // with the panel outside the strip). Vertical renders the panel INSIDE the
+  // strip, and a tablist may own nothing but tabs — axe fails that with
+  // "Element has children which are not allowed: [role=tabpanel]" — so the
+  // vertical strip is exposed as a stack of disclosure buttons instead
+  // (plain button + aria-expanded, panel as a named group).
+
+  /** @internal Whether the header strip is exposed as a WAI-ARIA tablist. True for horizontal orientation only. */
+  readonly usesTabPattern = computed(() => this._orientationSignal() === 'horizontal');
+
+  /** @internal Whether a step renders its panel inline beneath its own header (vertical orientation, selected step, step has content). */
+  hasInlinePanel(step: StepComponent, index: number): boolean {
+    return (
+      this._orientationSignal() === 'vertical' &&
+      this._selectedIndexSignal() === index &&
+      !!step.content
+    );
+  }
+
+  /**
+   * @internal Id the step header's `aria-controls` points at, or `null`.
+   *
+   * Vertical headers only claim control of a panel that is actually in the
+   * DOM: an `aria-expanded="true"` button pointing at a missing id is an
+   * invalid reference, whereas the collapsed steps simply carry no
+   * `aria-controls` at all.
+   */
+  controlledPanelId(step: StepComponent, index: number): string | null {
+    if (this.usesTabPattern()) return this._getStepContentId(index);
+    return this.hasInlinePanel(step, index) ? this._getStepContentId(index) : null;
+  }
+
   private readonly _variantResult = computed(() =>
     stepperVariants({
       variant: this.variant(),

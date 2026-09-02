@@ -97,16 +97,26 @@ describe('CalendarCellComponent', () => {
   });
 
   describe('selected state', () => {
-    it('sets aria-selected="true" on the inner button when cell.isSelected is true', () => {
+    // `aria-selected` lives on the `role="gridcell"` host, not the inner
+    // <button> — a button's implicit role does not support the attribute, so a
+    // binding there exposes nothing at all (SC 4.1.2).
+    it('sets aria-selected="true" on the gridcell host when cell.isSelected is true', () => {
       const fixture = TestBed.createComponent(CellHost);
       fixture.componentInstance.cell.set(buildCell({ isSelected: true }));
       fixture.detectChanges();
-      expect(getButton(fixture).getAttribute('aria-selected')).toBe('true');
+      expect(getHost(fixture).getAttribute('aria-selected')).toBe('true');
     });
 
-    it('omits aria-selected when the cell is not selected', () => {
+    it('omits aria-selected on the gridcell host when the cell is not selected', () => {
       const fixture = TestBed.createComponent(CellHost);
       fixture.componentInstance.cell.set(buildCell({ isSelected: false }));
+      fixture.detectChanges();
+      expect(getHost(fixture).getAttribute('aria-selected')).toBeNull();
+    });
+
+    it('does not put aria-selected on the inner button', () => {
+      const fixture = TestBed.createComponent(CellHost);
+      fixture.componentInstance.cell.set(buildCell({ isSelected: true }));
       fixture.detectChanges();
       expect(getButton(fixture).getAttribute('aria-selected')).toBeNull();
     });
@@ -120,11 +130,28 @@ describe('CalendarCellComponent', () => {
       expect(getButton(fixture).getAttribute('aria-disabled')).toBe('true');
     });
 
-    it('disables the inner button element when the cell is not enabled', () => {
+    // Regression guard for SC 2.1.1. A natively disabled button cannot take DOM
+    // focus, which made `focusButton()` a no-op on bounded dates and left the
+    // roving `tabindex` pointing at a cell the browser refused to focus.
+    it('does not set the native disabled attribute on a not-enabled cell', () => {
       const fixture = TestBed.createComponent(CellHost);
       fixture.componentInstance.cell.set(buildCell({ enabled: false }));
       fixture.detectChanges();
-      expect(getButton(fixture).disabled).toBe(true);
+      const button = getButton(fixture);
+      expect(button.hasAttribute('disabled')).toBe(false);
+      expect(button.disabled).toBe(false);
+    });
+
+    it('lets a disabled cell still receive DOM focus', () => {
+      const fixture = TestBed.createComponent(CellHost);
+      fixture.componentInstance.cell.set(buildCell({ enabled: false }));
+      fixture.componentInstance.tabindex.set(0);
+      fixture.detectChanges();
+
+      const button = getButton(fixture);
+      button.focus();
+
+      expect(document.activeElement).toBe(button);
     });
 
     it('does not emit `selected` when a disabled cell is clicked', () => {
@@ -133,13 +160,25 @@ describe('CalendarCellComponent', () => {
       host.cell.set(buildCell({ enabled: false }));
       fixture.detectChanges();
 
-      // Disabled buttons swallow click events natively, but explicitly call
-      // the click handler regardless to assert the guard inside `onClick`.
+      // The button is clickable now that it is only `aria-disabled`, so this
+      // asserts the guard inside `onClick` rather than a native side effect.
       const button = getButton(fixture);
       button.click();
       fixture.detectChanges();
 
       expect(host.selectedSpy).not.toHaveBeenCalled();
+    });
+
+    it('does not emit `previewed` when a disabled cell is hovered', () => {
+      const fixture = TestBed.createComponent(CellHost);
+      const host = fixture.componentInstance;
+      host.cell.set(buildCell({ enabled: false }));
+      fixture.detectChanges();
+
+      getButton(fixture).dispatchEvent(new MouseEvent('mouseenter', { bubbles: true }));
+      fixture.detectChanges();
+
+      expect(host.previewedSpy).not.toHaveBeenCalled();
     });
   });
 

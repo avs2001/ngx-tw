@@ -31,12 +31,25 @@ test.describe('Stepper', () => {
     await expect(tablist).toHaveAttribute('aria-orientation', 'horizontal');
   });
 
-  test('@a11y vertical orientation flips aria-orientation', async ({ page }) => {
+  test('@a11y vertical orientation exposes disclosure buttons, not a tablist', async ({
+    page,
+  }) => {
     const stepper = new StepperPage(page);
     await stepper.goto();
 
-    const tablist = stepper.tablist(stepper.verticalSection);
-    await expect(tablist).toHaveAttribute('aria-orientation', 'vertical');
+    // The vertical panel renders inline inside the header strip, and a
+    // tablist may own nothing but tabs (axe: "Element has children which are
+    // not allowed: [role=tabpanel]"). The vertical stepper therefore drops
+    // the tab roles for disclosure semantics.
+    await expect(stepper.tablist(stepper.verticalSection)).toHaveCount(0);
+
+    const headers = stepper.verticalSection.locator('tw-stepper button[cdkStepHeader]');
+    await expect(headers.first()).toHaveAttribute('aria-expanded', 'true');
+    await expect(headers.nth(1)).toHaveAttribute('aria-expanded', 'false');
+
+    await headers.nth(1).click();
+    await expect(headers.nth(1)).toHaveAttribute('aria-expanded', 'true');
+    await expect(headers.first()).toHaveAttribute('aria-expanded', 'false');
   });
 
   test('@interaction linear mode blocks Next until stepControl is valid', async ({ page }) => {

@@ -71,6 +71,14 @@ const FULL_AGREEMENT_ROWS = [
   // it measured correctly at every size, which is why an isolated slot reading
   // never caught it. This row is the regression gate for that.
   { label: 'Pinned next to floored', edgeTolerance: 0.5 },
+  // The two ways to line a labelled field up with bare controls, both
+  // measured. `items-start` works because the field's label floats INSIDE its
+  // shell, so the shell is at the top of the wrapper and the reserved
+  // subscript row hangs below; `subscriptSizing="dynamic"` collapses that row
+  // so the wrapper becomes its shell and any align mode agrees. Gated so the
+  // guidance in docs/vertical-rhythm.md §7.2 cannot drift from the components.
+  { label: 'Labelled field next to a bare control · start', edgeTolerance: 0.5 },
+  { label: 'Labelled field · subscriptSizing=dynamic · centred', edgeTolerance: 0.5 },
   { label: 'Inherited font · text-xs parent', edgeTolerance: 0.5 },
   { label: 'Inherited font · text-base parent', edgeTolerance: 0.5 },
 ] as const;

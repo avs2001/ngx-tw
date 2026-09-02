@@ -192,6 +192,18 @@ export interface TwTableLabels {
   collapseRowLabel: string;
   /** Accessible label for the master "select all" checkbox in the leading selection column. */
   selectAllLabel: string;
+  /**
+   * Accessible name for the leading selection column's header cell, used when no master checkbox
+   * can be rendered (non-array data sources). Without it the `<th>` is literally empty, which is an
+   * axe `empty-table-header` failure and leaves the column unnamed in a screen reader's table
+   * summary. Rendered visually hidden.
+   *
+   * Optional on purpose: added after the interface shipped, so a required
+   * member would be a compile break for any consumer annotating a complete
+   * `TwTableLabels` literal — in exchange for a label that already has a
+   * sensible default. The component merges against `DEFAULT_TABLE_LABELS`.
+   */
+  selectionColumnLabel?: string;
   /** Accessible label template for each per-row selection checkbox. Variable: `{index}` (1-based). */
   selectRowLabel: string;
 }
@@ -207,6 +219,7 @@ export const DEFAULT_TABLE_LABELS: Readonly<TwTableLabels> = {
   expandRowLabel: 'Expand row',
   collapseRowLabel: 'Collapse row',
   selectAllLabel: 'Select all rows',
+  selectionColumnLabel: 'Selection',
   selectRowLabel: 'Select row {index}',
 };
 
@@ -294,8 +307,11 @@ export interface TwRowClickEvent<T> {
   row: T;
   /** Zero-based index in the rendered data. */
   index: number;
-  /** The original DOM event. */
-  event: MouseEvent;
+  /**
+   * The original DOM event. A `MouseEvent` for pointer activation, or a `KeyboardEvent` when the
+   * row was activated with Enter / Space (only possible when `clickableRows` is `true`).
+   */
+  event: MouseEvent | KeyboardEvent;
 }
 
 /** Payload emitted by `selectionChange`. */
@@ -360,6 +376,7 @@ const tableVariants = tv(
       paginationSlot: 'empty:hidden border-t border-border px-2 py-2',
       expansionRow: 'bg-surface-sunken',
       expansionCell: 'p-0',
+      dataRow: '',
       // The leading `_selection` column hosts checkboxes only — override the standard
       // text alignment + padding so the control stays centered in a narrow column.
       selectionHeader: 'w-12 text-center align-middle',
@@ -431,6 +448,17 @@ const tableVariants = tv(
         true: { table: '[&>tbody]:opacity-60 [&>tbody]:pointer-events-none' },
         false: {},
       },
+      // Data rows only become a keyboard target when the consumer opts in via
+      // `clickableRows`. A static table must not put every row in the tab
+      // order, so the affordance and the focus ring are gated on the same flag
+      // that adds `tabindex` and the keydown handler.
+      clickableRows: {
+        true: {
+          dataRow:
+            'cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500',
+        },
+        false: {},
+      },
     },
     compoundVariants: [
       {
@@ -454,6 +482,7 @@ const tableVariants = tv(
       stickyHeader: false,
       stickyFooter: false,
       loading: false,
+      clickableRows: false,
     },
   },
   { twMerge: true },
@@ -865,6 +894,14 @@ export class TableComponent<T = unknown> {
   /** Whether multiple row templates may render per data object. Required for `*twRowExpansion` and advanced `*twRowDef [when]` usage. Defaults to `false`. */
   readonly multiTemplateRows = input<boolean>(false);
 
+  /**
+   * Whether data rows are activatable. Set this whenever you bind `(rowClicked)` — it is what puts
+   * each row in the tab order, wires Enter / Space to the same handler as a click, and paints the
+   * focus ring. Left `false`, `(rowClicked)` stays pointer-only, which keeps a static table out of
+   * the tab order. Defaults to `false`.
+   */
+  readonly clickableRows = input<boolean>(false);
+
   /** Overrides for user-facing strings. Unset keys fall back to the English defaults. Defaults to `{}`. */
   readonly labels = input<Partial<TwTableLabels>>({});
 
@@ -978,11 +1015,21 @@ export class TableComponent<T = unknown> {
   /** @internal Whether the error overlay should render. */
   readonly shouldRenderErrorOverlay = computed(() => this.error() !== null);
 
-  /** @internal Resolved table labels (defaults merged with input overrides). */
-  readonly resolvedLabels = computed<TwTableLabels>(() => ({
-    ...DEFAULT_TABLE_LABELS,
-    ...this.labels(),
-  }));
+  /**
+   * @internal Resolved table labels (defaults merged with input overrides).
+   *
+   * Explicitly-undefined keys are dropped before merging: a plain spread lets
+   * `{ selectionColumnLabel: undefined }` overwrite the default with undefined,
+   * which renders an empty `sr-only` span and reinstates the
+   * `empty-table-header` failure the label exists to prevent. `Required<>`
+   * then guarantees the template a string for every label.
+   */
+  readonly resolvedLabels = computed<Required<TwTableLabels>>(() => {
+    const overrides = Object.fromEntries(
+      Object.entries(this.labels() ?? {}).filter(([, value]) => value !== undefined),
+    );
+    return { ...DEFAULT_TABLE_LABELS, ...overrides } as Required<TwTableLabels>;
+  });
 
   /** @internal Computed error message for the default error overlay. Empty when no error is set. */
   readonly errorMessage = computed(() => {
@@ -1040,6 +1087,7 @@ export class TableComponent<T = unknown> {
       stickyHeader: stickyCfg.header,
       stickyFooter: stickyCfg.footer,
       loading: this.loading(),
+      clickableRows: this.clickableRows(),
     });
   });
 
@@ -1078,6 +1126,7 @@ export class TableComponent<T = unknown> {
   readonly errorMessageClasses = computed(() => this._variantResult().errorMessage());
   readonly footerSlotClasses = computed(() => this._variantResult().footerSlot());
   readonly paginationSlotClasses = computed(() => this._variantResult().paginationSlot());
+  readonly dataRowClasses = computed(() => this._variantResult().dataRow());
   readonly expansionRowClasses = computed(() => this._variantResult().expansionRow());
   readonly expansionCellClasses = computed(() => this._variantResult().expansionCell());
   readonly selectionHeaderClasses = computed(() => {
@@ -1253,6 +1302,26 @@ export class TableComponent<T = unknown> {
     }
     this.rowClicked.emit({ row, index, event });
   }
+
+  /**
+   * @internal Keyboard counterpart to `handleRowClick`. Only reachable when `clickableRows` is
+   * `true`, because that is the only state in which the `<tr>` carries `tabindex`.
+   *
+   * The `target !== currentTarget` guard is what keeps Enter on a button *inside* a cell from also
+   * activating the row: that keystroke's target is the button, and its own click already bubbles
+   * into `handleRowClick`, which suppresses it. Reusing the `composedPath()` walk here would let
+   * the row fire a second time.
+   */
+  handleRowKeydown(row: T, index: number, event: KeyboardEvent): void {
+    if (!this.clickableRows()) return;
+    if (event.target !== event.currentTarget) return;
+    if (event.key !== 'Enter' && event.key !== ' ') return;
+    event.preventDefault();
+    this.rowClicked.emit({ row, index, event });
+  }
+
+  /** @internal `tabindex` for a data row — present only while rows are activatable. */
+  readonly rowTabIndex = computed(() => (this.clickableRows() ? 0 : null));
 
   /** @internal Whether a row is currently expanded. */
   isRowExpanded(row: T): boolean {

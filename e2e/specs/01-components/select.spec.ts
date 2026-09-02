@@ -79,11 +79,23 @@ test.describe('Select', () => {
     const trigger = select.triggerIn(select.groupedSection, 'Country');
     await select.openVia(trigger);
 
+    // This select is `searchable`, so opening moves DOM focus into the
+    // overlay's search input — and `aria-activedescendant` MUST live on the
+    // element that holds focus, or arrow navigation is silent to assistive
+    // tech. It used to stay on the trigger, which is the SC 4.1.2 defect the
+    // September audit recorded; asserting it there would re-encode the bug.
+    const owner = select.searchInput;
+    await expect(owner).toBeFocused();
     await expect(
       trigger,
+      'a searchable trigger must NOT keep aria-activedescendant once focus leaves it',
+    ).not.toHaveAttribute('aria-activedescendant', /\S/);
+
+    await expect(
+      owner,
       'aria-activedescendant should be set on first open',
     ).toHaveAttribute('aria-activedescendant', /\S/);
-    const activeId = await trigger.getAttribute('aria-activedescendant');
+    const activeId = await owner.getAttribute('aria-activedescendant');
 
     const active = page.locator(`#${activeId}`);
     // Source picks the first enabled option in DOM order. The overlay
@@ -135,7 +147,10 @@ test.describe('Select', () => {
 
     // Type "j" — only "Japan" starts with that letter in the country list.
     await page.keyboard.press('j');
-    const activeId = await trigger.getAttribute('aria-activedescendant');
+    // This select is `searchable`, so focus (and therefore
+    // `aria-activedescendant`) lives on the overlay's search input, not the
+    // trigger. Reading it from the trigger yields `#null`.
+    const activeId = await select.searchInput.getAttribute('aria-activedescendant');
     const active = page.locator(`#${activeId!}`);
     await expect(active).toContainText('Japan');
 

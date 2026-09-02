@@ -35,12 +35,25 @@ import {
 
 let nextSplitId = 0;
 
+/**
+ * WCAG 2.2 SC 2.5.8 (Target Size Minimum) floor, in CSS px. A gutter thinner
+ * than this pads itself out to the floor with transparent padding — see
+ * `_gutterHitPad`.
+ */
+const TARGET_SIZE_MIN_PX = 24;
+
 const splitVariants = tv(
   {
     slots: {
       root: 'flex h-full w-full',
+      // `relative` and `bg-clip-content` are load-bearing for the SC 2.5.8 hit
+      // area (see `_gutterHitPad`): the element's border box is padded out to
+      // 24px so the pointer target meets the floor, `bg-clip-content` keeps the
+      // paint inside the `gutterSize`-thick content box, and `relative` puts
+      // the gutter in the positioned-descendant paint phase so its overhang
+      // wins hit-testing over the adjacent panes' in-flow content.
       gutter:
-        'shrink-0 bg-border transition-colors duration-normal motion-reduce:transition-none hover:bg-border-strong focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500',
+        'relative shrink-0 bg-border bg-clip-content transition-colors duration-normal motion-reduce:transition-none hover:bg-border-strong focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500',
     },
     variants: {
       direction: {
@@ -94,9 +107,17 @@ const splitVariants = tv(
         [attr.tabindex]="disabled() ? -1 : 0"
         [class]="_gutterClass()"
         [style.order]="i * 2 + 1"
-        [style.flex-basis.px]="gutterSize()"
-        [style.min-width.px]="direction() === 'horizontal' ? gutterSize() : 0"
-        [style.min-height.px]="direction() === 'vertical' ? gutterSize() : 0"
+        [style.flex-basis.px]="_gutterBoxPx()"
+        [style.min-width.px]="direction() === 'horizontal' ? _gutterBoxPx() : 0"
+        [style.min-height.px]="direction() === 'vertical' ? _gutterBoxPx() : 0"
+        [style.padding-left.px]="_gutterHitPadX()"
+        [style.padding-right.px]="_gutterHitPadX()"
+        [style.padding-top.px]="_gutterHitPadY()"
+        [style.padding-bottom.px]="_gutterHitPadY()"
+        [style.margin-left.px]="-_gutterHitPadX()"
+        [style.margin-right.px]="-_gutterHitPadX()"
+        [style.margin-top.px]="-_gutterHitPadY()"
+        [style.margin-bottom.px]="-_gutterHitPadY()"
         (pointerdown)="_onGutterPointerDown($event, i)"
         (keydown)="_onGutterKeydown($event, i)"
       ></div>
@@ -110,7 +131,7 @@ export class SplitComponent {
   /** How sizes are expressed and reported. A single unit governs the whole container. Defaults to `'percent'`. */
   readonly unit = input<SplitUnit>('percent');
 
-  /** Thickness of each gutter in pixels, perpendicular to the split axis. Defaults to `6`. */
+  /** Painted thickness of each gutter in pixels, perpendicular to the split axis, and the space it takes from the panes. The pointer target is padded out to a 24px minimum independently of this value (WCAG 2.2 SC 2.5.8), so a thin gutter stays thin without becoming hard to grab. Defaults to `6`. */
   readonly gutterSize = input(6);
 
   /** When true, all resize interactions are disabled. Gutters are not focusable and do not respond to input. Defaults to `false`. */
@@ -198,6 +219,41 @@ export class SplitComponent {
 
   readonly _rootClass = computed(() => this._classes().root());
   readonly _gutterClass = computed(() => this._classes().gutter());
+
+  /**
+   * @internal
+   * Transparent padding added to each side of the gutter so its pointer target
+   * reaches the WCAG 2.2 SC 2.5.8 24x24 floor while the painted line stays
+   * `gutterSize` thick (the default gutter is 6px — a quarter of the floor).
+   *
+   * The padding is cancelled by an equal negative margin on the same side, so
+   * the gutter's *layout* footprint is still exactly `gutterSize` and the
+   * `availableSpace()` math is untouched; only its border box — which is what
+   * receives the pointer and what a target-size audit measures — grows. The
+   * overhang reaches `_gutterHitPad` px into each neighbouring pane and takes
+   * pointer events there (including over a pane's own scrollbar, if it has
+   * one); that is the accepted cost of the technique and mirrors how VS Code
+   * and every other thin-sash implementation reaches the floor.
+   *
+   * Zero once `gutterSize` is 24 or more — a gutter that already clears the
+   * floor needs no padding and no overhang.
+   */
+  readonly _gutterHitPad = computed(() =>
+    Math.max(0, (TARGET_SIZE_MIN_PX - this.gutterSize()) / 2),
+  );
+
+  /** @internal Horizontal half of `_gutterHitPad` — non-zero only for a horizontal split, where the gutter is thin across the X axis. Physical (not logical) properties: the padding is symmetric, so RTL needs no separate handling. */
+  readonly _gutterHitPadX = computed(() =>
+    this.direction() === 'horizontal' ? this._gutterHitPad() : 0,
+  );
+
+  /** @internal Vertical half of `_gutterHitPad` — non-zero only for a vertical split. */
+  readonly _gutterHitPadY = computed(() =>
+    this.direction() === 'vertical' ? this._gutterHitPad() : 0,
+  );
+
+  /** @internal Gutter border-box thickness: `gutterSize` plus the SC 2.5.8 hit padding on both sides, i.e. `max(gutterSize, 24)`. The negative margins give back the padding, so the *layout* footprint stays `gutterSize`. */
+  readonly _gutterBoxPx = computed(() => this.gutterSize() + this._gutterHitPad() * 2);
 
   /** Indices `0..panes.length - 2` representing the gutter between pane[i] and pane[i+1]. */
   readonly _gutterIndices = computed(() => {

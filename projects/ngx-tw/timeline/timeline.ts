@@ -48,18 +48,31 @@ export interface TwTimelineScrollLabels {
   scrollPrevious: string;
   /** Accessible label for the next-scroll chevron. Used as `aria-label`. Defaults to `'Scroll to next events'`. */
   scrollNext: string;
+  /**
+   * Accessible label for the horizontal scroll viewport, which is a
+   * keyboard-focusable scrollable region. Defaults to `'Timeline events'`.
+   *
+   * Optional on purpose. This field was added after the interface shipped, and
+   * a required member would break any consumer who annotated a complete
+   * literal (`const labels: TwTimelineScrollLabels = { scrollPrevious, scrollNext }`)
+   * — a compile error in exchange for a label that already has a sensible
+   * default. The component merges against
+   * `DEFAULT_TW_TIMELINE_SCROLL_LABELS`, so omitting it is fully supported.
+   */
+  scrollRegion?: string;
 }
 
 /** Default English labels used when `TW_TIMELINE_SCROLL_LABELS` is not provided. */
 export const DEFAULT_TW_TIMELINE_SCROLL_LABELS: TwTimelineScrollLabels = {
   scrollPrevious: 'Scroll to previous events',
   scrollNext: 'Scroll to next events',
+  scrollRegion: 'Timeline events',
 };
 
 /**
  * Injection token carrying localisable `aria-label` strings for the timeline's
- * horizontal-overflow chevron buttons. The container uses these labels exclusively
- * on the prev/next buttons; they do not affect any other rendered text.
+ * horizontal-overflow affordances — the prev/next chevron buttons and the
+ * scrollable viewport between them. They do not affect any other rendered text.
  *
  * Provide via `provideTwTimelineScrollLabels({ ... })` at the root or feature level.
  * If both keys are present they override the English defaults; if only one is present
@@ -468,10 +481,14 @@ function resolveConnectorClasses(
 // to clientWidth, the overflow check fails permanently, and the chevrons
 // never enable. The per-density min-w-* on each item still establishes the
 // floor.
+// The viewport carries `tabindex="0"` so keyboard-only users can reach and
+// arrow-scroll it (axe: scrollable-region-focusable), which makes it a
+// focusable element and therefore obliges it to carry the canonical focus ring.
 const HORIZONTAL_VIEWPORT_CLASSES =
   'tw-scrollbar-none grid grid-flow-col auto-cols-max ' +
   '[grid-template-rows:minmax(0,1fr)_auto] ' +
-  'overflow-x-auto scroll-smooth motion-reduce:scroll-auto w-full';
+  'overflow-x-auto scroll-smooth motion-reduce:scroll-auto w-full ' +
+  'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500';
 
 // ── Chevron button class string ──
 // Shared by both overflow chevron buttons. Positioned absolutely against the
@@ -547,10 +564,18 @@ export class TimelineOppositeDirective {}
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [NgTemplateOutlet],
   host: {
-    role: 'list',
+    // The `list` role lives on the host only in vertical orientation, where the
+    // projected `tw-timeline-item` elements (role="listitem") are its direct
+    // children. In horizontal orientation the host also owns the two scroll
+    // chevrons, which are not `listitem`s — a `list` here would own children its
+    // role forbids (axe: aria-required-children). The role moves to the scroll
+    // viewport instead, which does contain exactly the items.
+    //
+    // `aria-orientation` is deliberately absent: `list` does not support it
+    // (axe: aria-allowed-attr), and the axis is a purely visual decision that
+    // carries no meaning for assistive tech.
+    '[attr.role]': 'orientation() === "horizontal" ? null : "list"',
     '[class]': 'rootClasses()',
-    '[attr.aria-orientation]':
-      'orientation() === "horizontal" ? "horizontal" : null',
   },
   // The projected items live inside a single `<ng-template #itemsTpl>` and are
   // outletted into either the horizontal viewport or the vertical pass-through.
@@ -587,6 +612,9 @@ export class TimelineOppositeDirective {}
       </button>
       <div
         #scrollViewport
+        role="list"
+        tabindex="0"
+        [attr.aria-label]="scrollLabels().scrollRegion"
         [class]="horizontalViewportClasses"
         (scroll)="_onScroll()"
       >
@@ -678,10 +706,17 @@ export class TimelineComponent {
   readonly _canScrollNext = signal(false);
 
   /** @internal Resolved label record. Falls back to English defaults for any missing key. */
-  readonly scrollLabels = computed<TwTimelineScrollLabels>(() => ({
-    ...DEFAULT_TW_TIMELINE_SCROLL_LABELS,
-    ...(this._scrollLabelsOverride ?? {}),
-  }));
+  readonly scrollLabels = computed<Required<TwTimelineScrollLabels>>(() => {
+    // Drop explicitly-undefined keys before merging. A plain spread would let
+    // `{ scrollRegion: undefined }` overwrite the default with undefined,
+    // which reaches the template as a null `aria-label` and silently strips
+    // the scroll region's accessible name. `Required<>` then guarantees the
+    // template a string for every label.
+    const override = Object.fromEntries(
+      Object.entries(this._scrollLabelsOverride ?? {}).filter(([, v]) => v !== undefined),
+    );
+    return { ...DEFAULT_TW_TIMELINE_SCROLL_LABELS, ...override } as Required<TwTimelineScrollLabels>;
+  });
 
   /** @internal True when the prev button should be aria-hidden + visually suppressed. */
   readonly _prevButtonHidden = computed(() => {

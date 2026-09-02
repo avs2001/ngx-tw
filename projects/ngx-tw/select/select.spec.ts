@@ -255,6 +255,16 @@ class AriaRefHost {
   describedby = 'sel-ext-desc';
 }
 
+/** `variant="naked"` with NO wrapping `tw-form-field` — nothing else owns the focus ring. */
+@Component({
+  imports: [SelectComponent],
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  template: `<tw-select [options]="options" variant="naked" aria-label="Naked" />`,
+})
+class NakedHost {
+  options = OPTIONS;
+}
+
 // ── Helpers ───────────────────────────────────────────────────────
 
 function getSelectHost(fixture: ComponentFixture<unknown>): HTMLElement {
@@ -265,8 +275,16 @@ function getTriggerButton(fixture: ComponentFixture<unknown>): HTMLButtonElement
   return fixture.nativeElement.querySelector('tw-select button[role="combobox"]')!;
 }
 
+function getClearControl(fixture: ComponentFixture<unknown>): HTMLElement {
+  return fixture.nativeElement.querySelector('[aria-label="Clear selection"]')!;
+}
+
 function getOverlayPanel(): HTMLElement | null {
   return document.querySelector('.cdk-overlay-pane tw-select-overlay');
+}
+
+function getSearchInput(): HTMLInputElement | null {
+  return document.querySelector('.cdk-overlay-pane input[type="search"]');
 }
 
 function getOptions(): HTMLElement[] {
@@ -713,6 +731,71 @@ describe('SelectComponent', () => {
       const clearBtn = fixture.nativeElement.querySelector('[aria-label="Clear selection"]');
       expect(clearBtn).toBeFalsy();
     });
+
+    // SC 2.1.1. The clear control shipped with `tabindex="-1"`, which made its
+    // own `(keydown)` handler and focus ring unreachable dead code: there was
+    // no keyboard path at all to un-set a single-select value.
+
+    it('puts the clear control in the tab order with an accessible name', async () => {
+      const fixture = TestBed.createComponent(BasicHost);
+      fixture.componentInstance.value.set('apple');
+      await advance(fixture);
+      const clearBtn = getClearControl(fixture);
+      expect(clearBtn.tabIndex).toBe(0);
+      expect(clearBtn.getAttribute('role')).toBe('button');
+      expect(clearBtn.getAttribute('aria-label')).toBe('Clear selection');
+    });
+
+    it('clears the selection from the keyboard with Enter', async () => {
+      const fixture = TestBed.createComponent(BasicHost);
+      fixture.componentInstance.value.set('apple');
+      await advance(fixture);
+      dispatchKeyOn(getClearControl(fixture), 'Enter');
+      await advance(fixture);
+      expect(fixture.componentInstance.value()).toBeNull();
+    });
+
+    it('clears the selection from the keyboard with Space', async () => {
+      const fixture = TestBed.createComponent(BasicHost);
+      fixture.componentInstance.value.set('apple');
+      await advance(fixture);
+      dispatchKeyOn(getClearControl(fixture), ' ');
+      await advance(fixture);
+      expect(fixture.componentInstance.value()).toBeNull();
+    });
+
+    it('does not open the panel when the clear control is activated', async () => {
+      const fixture = TestBed.createComponent(BasicHost);
+      fixture.componentInstance.value.set('apple');
+      await advance(fixture);
+      dispatchKeyOn(getClearControl(fixture), 'Enter');
+      await advance(fixture);
+      expect(getOverlayPanel()).toBeFalsy();
+    });
+
+    // SC 2.4.3. Clearing unmounts the control the user was standing on, so
+    // without an explicit hand-back focus falls to <body> and the next Tab
+    // restarts from the top of the document.
+
+    it('returns focus to the trigger after a keyboard clear', async () => {
+      const fixture = TestBed.createComponent(BasicHost);
+      fixture.componentInstance.value.set('apple');
+      await advance(fixture);
+      const clearBtn = getClearControl(fixture);
+      clearBtn.focus();
+      dispatchKeyOn(clearBtn, 'Enter');
+      await advance(fixture);
+      expect(document.activeElement).toBe(getTriggerButton(fixture));
+    });
+
+    it('returns focus to the trigger after a mouse clear', async () => {
+      const fixture = TestBed.createComponent(BasicHost);
+      fixture.componentInstance.value.set('apple');
+      await advance(fixture);
+      getClearControl(fixture).click();
+      await advance(fixture);
+      expect(document.activeElement).toBe(getTriggerButton(fixture));
+    });
   });
 
   // ── Searchable ──
@@ -931,6 +1014,62 @@ describe('SelectComponent', () => {
       const trigger = getTriggerButton(fixture);
       expect(trigger.getAttribute('aria-labelledby')).toBe('sel-ext-label');
       expect(trigger.getAttribute('aria-describedby')).toBe('sel-ext-desc');
+    });
+
+    // SC 4.1.2. `aria-activedescendant` is only honoured on the element that
+    // holds DOM focus. Non-searchable panels keep focus on the trigger, so it
+    // belongs there; searchable panels move focus into the overlay's search
+    // input, so it has to move with it or arrow navigation is silent to AT.
+
+    it('keeps aria-activedescendant on the trigger when not searchable', async () => {
+      const fixture = TestBed.createComponent(BasicHost);
+      await advance(fixture);
+      const trigger = getTriggerButton(fixture);
+      trigger.click();
+      await advance(fixture);
+      dispatchKeyOn(trigger, 'ArrowDown');
+      await advance(fixture);
+
+      const activeId = trigger.getAttribute('aria-activedescendant');
+      expect(activeId).toBeTruthy();
+      expect(document.getElementById(activeId!)?.getAttribute('role')).toBe('option');
+    });
+
+    it('moves aria-activedescendant to the search input while a searchable panel is open', async () => {
+      const fixture = TestBed.createComponent(BasicHost);
+      fixture.componentInstance.searchable.set(true);
+      await advance(fixture);
+      const trigger = getTriggerButton(fixture);
+      trigger.click();
+      await advance(fixture);
+
+      const searchInput = getSearchInput()!;
+      expect(searchInput).toBeTruthy();
+      dispatchKeyOn(searchInput, 'ArrowDown');
+      await advance(fixture);
+
+      // The attribute must be on the focused element and NOWHERE else — a
+      // stale copy on the blurred trigger is the defect this pins.
+      expect(trigger.hasAttribute('aria-activedescendant')).toBe(false);
+      const activeId = searchInput.getAttribute('aria-activedescendant');
+      expect(activeId).toBeTruthy();
+      expect(document.getElementById(activeId!)?.getAttribute('role')).toBe('option');
+    });
+
+    // SC 2.4.7. `variant="naked"` exists so a wrapping `tw-form-field` can own
+    // the box, including the focus ring. Used standalone there is no wrapper,
+    // so the trigger has to draw its own or the whole composite has no visible
+    // focus indicator anywhere. Asserting the `focus-visible:` utility is the
+    // exception CLAUDE.md's testing section grants for focus indicators —
+    // there is no rendered outline to measure in a unit environment.
+
+    it('gives a standalone naked trigger a focus-visible indicator', () => {
+      const fixture = TestBed.createComponent(NakedHost);
+      fixture.detectChanges();
+      const trigger = getTriggerButton(fixture);
+      expect(trigger.getAttribute('data-variant')).toBe('naked');
+      expect(trigger.className).toContain('focus-visible:outline-2');
+      expect(trigger.className).not.toContain('focus-visible:outline-none');
     });
   });
 

@@ -187,8 +187,33 @@ function blurTrigger(fixture: ComponentFixture<unknown>): void {
 function pressEscape(fixture: ComponentFixture<unknown>): void {
   const button = getTrigger(fixture);
   button.dispatchEvent(
-    new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }),
+    new KeyboardEvent('keydown', { key: 'Escape', keyCode: 27, bubbles: true }),
   );
+}
+
+/**
+ * Escape pressed with focus anywhere *but* the trigger. Routed through
+ * `document.body`, which is where CDK's OverlayKeyboardDispatcher listens —
+ * dispatching on the trigger would exercise the directive's host binding
+ * instead and prove nothing about SC 1.4.13 dismissibility.
+ */
+function pressEscapeAwayFromTrigger(): void {
+  document.body.dispatchEvent(
+    new KeyboardEvent('keydown', { key: 'Escape', keyCode: 27, bubbles: true }),
+  );
+}
+
+/** The overlay pane — the element the directive wires its hover listeners onto. */
+function getTooltipPane(): HTMLElement | null {
+  return document.querySelector('.tw-tooltip-panel');
+}
+
+function hoverTooltip(): void {
+  getTooltipPane()!.dispatchEvent(new MouseEvent('mouseenter'));
+}
+
+function leaveTooltip(): void {
+  getTooltipPane()!.dispatchEvent(new MouseEvent('mouseleave'));
 }
 
 // ── Tests ──
@@ -241,8 +266,11 @@ describe('TooltipDirective', () => {
       fixture.detectChanges();
       expect(getOverlayTooltip()).toBeTruthy();
 
+      // The default hide delay is 150ms — the SC 1.4.13 grace period in which
+      // the pointer may travel onto the tooltip. Nothing enters it here, so the
+      // overlay tears down when the delay elapses.
       leaveTrigger(fixture);
-      vi.advanceTimersByTime(0);
+      vi.advanceTimersByTime(150);
       fixture.detectChanges();
       expect(getOverlayTooltip()).toBeNull();
     });
@@ -508,6 +536,68 @@ describe('TooltipDirective', () => {
     });
   });
 
+  // WCAG 2.1 SC 1.4.13 (Content on Hover or Focus). Three obligations, one
+  // test each: dismissible without moving the pointer, hoverable, and
+  // persistent until dismissed or the trigger is left.
+  describe('hover content (SC 1.4.13)', () => {
+    function showBasicTooltip(): ComponentFixture<BasicTooltipHost> {
+      const fixture = TestBed.configureTestingModule({
+        imports: [BasicTooltipHost, OverlayModule],
+      }).createComponent(BasicTooltipHost);
+      fixture.detectChanges();
+      hoverTrigger(fixture);
+      vi.advanceTimersByTime(200);
+      fixture.detectChanges();
+      expect(getOverlayTooltip()).toBeTruthy();
+      return fixture;
+    }
+
+    it('dismisses on Escape while focus is elsewhere on the page', () => {
+      const fixture = showBasicTooltip();
+
+      pressEscapeAwayFromTrigger();
+      fixture.detectChanges();
+
+      expect(getOverlayTooltip()).toBeNull();
+    });
+
+    it('stays visible when the pointer moves off the trigger onto the tooltip', () => {
+      const fixture = showBasicTooltip();
+
+      // Leaving the trigger arms the 150ms grace period…
+      leaveTrigger(fixture);
+      vi.advanceTimersByTime(100);
+      fixture.detectChanges();
+      expect(getOverlayTooltip()).toBeTruthy();
+
+      // …and reaching the panel inside it cancels the pending hide outright.
+      hoverTooltip();
+      vi.advanceTimersByTime(5000);
+      fixture.detectChanges();
+      expect(getOverlayTooltip()).toBeTruthy();
+    });
+
+    it('hides once the pointer leaves the tooltip itself', () => {
+      const fixture = showBasicTooltip();
+      leaveTrigger(fixture);
+      hoverTooltip();
+      vi.advanceTimersByTime(1000);
+      fixture.detectChanges();
+      expect(getOverlayTooltip()).toBeTruthy();
+
+      leaveTooltip();
+      vi.advanceTimersByTime(150);
+      fixture.detectChanges();
+      expect(getOverlayTooltip()).toBeNull();
+    });
+
+    // The third leg of SC 1.4.13 — that the panel is pointer-reachable at all
+    // (no `pointer-events: none` on the wrapper) — has no jsdom-observable
+    // surface: jsdom applies no stylesheet and performs no hit-testing, so the
+    // `mouseenter` above fires either way. `e2e/specs/01-components/tooltip.spec.ts`
+    // is where that leg can be exercised against a real layout.
+  });
+
   describe('focus', () => {
     it('should show tooltip on focusin', () => {
       const fixture = TestBed.configureTestingModule({
@@ -534,7 +624,7 @@ describe('TooltipDirective', () => {
       expect(getOverlayTooltip()).toBeTruthy();
 
       blurTrigger(fixture);
-      vi.advanceTimersByTime(0);
+      vi.advanceTimersByTime(150);
       fixture.detectChanges();
       expect(getOverlayTooltip()).toBeNull();
     });
@@ -590,7 +680,7 @@ describe('TooltipDirective', () => {
       expect(getTrigger(fixture).hasAttribute('aria-describedby')).toBe(true);
 
       leaveTrigger(fixture);
-      vi.advanceTimersByTime(0);
+      vi.advanceTimersByTime(150);
       fixture.detectChanges();
       expect(getTrigger(fixture).hasAttribute('aria-describedby')).toBe(false);
     });

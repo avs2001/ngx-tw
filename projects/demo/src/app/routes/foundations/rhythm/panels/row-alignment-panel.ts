@@ -214,19 +214,52 @@ import type { RhythmSettings } from '../rhythm-settings';
       </app-rhythm-row>
 
       <app-rhythm-row
-        label="Labelled field next to a bare control · end"
-        align="end"
-        note="The same row aligned on its bottom edge — the arrangement a consumer reaches for
-              when one field carries a label. The subscript row is reserved but empty at rest,
-              so the shell still does not reach the row's bottom edge. Compare the bottom
-              spread here with the centred row above: neither mode lines the shell up, which is
-              the finding."
+        label="Labelled field next to a bare control · start"
+        align="start"
+        note="The same row, aligned on the start edge — and this is the fix. The field's label
+              floats INSIDE its shell, so the shell sits at the top of the wrapper and the
+              reserved subscript row hangs below it. Aligning on start therefore lines the shells
+              up exactly, with the subscript space hanging harmlessly under the row. items-baseline
+              resolves identically here."
         [unit]="settings().unit"
         [rowUnit]="settings().rowUnit"
         [gridOn]="settings().gridOn"
       >
         <tw-form-field
           [size]="settings().size"
+          class="w-48"
+          data-rg-item="Form field"
+          data-rg-control-selector=":scope > div"
+        >
+          <label twLabel>Search</label>
+          <input twInput placeholder="Wrapped" />
+        </tw-form-field>
+        <button twButton [size]="settings().size" data-rg-item="Button">Apply</button>
+        <tw-select
+          [options]="fruits"
+          [size]="settings().size"
+          placeholder="Select"
+          aria-label="Select"
+          class="w-36"
+          data-rg-item="Select"
+        />
+      </app-rhythm-row>
+
+      <app-rhythm-row
+        label="Labelled field · subscriptSizing=dynamic · centred"
+        align="center"
+        note="The other fix, and the one to reach for in a filter bar. subscriptSizing='dynamic'
+              collapses the hint/error row when nothing is projected into it, so the wrapper
+              becomes exactly its shell and every align mode agrees — including items-center.
+              The cost is that the row shifts down when a validation message first appears, which
+              is precisely what the default 'fixed' reserve exists to prevent."
+        [unit]="settings().unit"
+        [rowUnit]="settings().rowUnit"
+        [gridOn]="settings().gridOn"
+      >
+        <tw-form-field
+          [size]="settings().size"
+          subscriptSizing="dynamic"
           class="w-48"
           data-rg-item="Form field"
           data-rg-control-selector=":scope > div"

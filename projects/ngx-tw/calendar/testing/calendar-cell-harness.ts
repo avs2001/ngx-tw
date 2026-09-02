@@ -39,10 +39,10 @@ export class CalendarCellHarness extends ComponentHarness {
     return btn.getAttribute('aria-label');
   }
 
-  /** Whether the cell carries `aria-selected="true"`. */
+  /** Whether the cell carries `aria-selected="true"`. Read from the `role="gridcell"` host, which is the element that carries selection state — a `<button>`'s implicit role does not support `aria-selected`. */
   async isSelected(): Promise<boolean> {
-    const btn = await this.button();
-    return (await btn.getAttribute('aria-selected')) === 'true';
+    const host = await this.host();
+    return (await host.getAttribute('aria-selected')) === 'true';
   }
 
   /** Whether the cell is disabled — true if the button has `disabled` or carries `aria-disabled="true"`. */

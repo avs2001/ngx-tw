@@ -528,13 +528,15 @@ describe('CalendarComponent', () => {
       calendar.writeValue(new Date(2026, 3, 15));
       fixture.detectChanges();
 
-      const selectedButtons = Array.from(
-        fixture.nativeElement.querySelectorAll('tw-calendar-cell button'),
-      ).filter(
-        (b) => (b as HTMLButtonElement).getAttribute('aria-selected') === 'true',
-      ) as HTMLButtonElement[];
-      expect(selectedButtons.length).toBeGreaterThan(0);
-      expect(selectedButtons.some((b) => b.textContent?.trim() === '15')).toBe(true);
+      // `aria-selected` sits on the `role="gridcell"` host, not the inner
+      // <button> — a button's implicit role does not support the attribute.
+      const selectedCells = Array.from(
+        fixture.nativeElement.querySelectorAll(
+          'tw-calendar-cell[aria-selected="true"]',
+        ),
+      ) as HTMLElement[];
+      expect(selectedCells.length).toBeGreaterThan(0);
+      expect(selectedCells.some((c) => c.textContent?.trim() === '15')).toBe(true);
     });
 
     it('user click invokes the registered onChange callback with the new value', () => {

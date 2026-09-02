@@ -24,13 +24,20 @@ import { CodeBlockComponent } from '@cdevhub/ngx-tw/code-block';
     <section class="mb-10">
       <h2 class="text-sm font-semibold mb-3">Accessibility</h2>
       <p class="text-sm text-fg-muted leading-relaxed max-w-2xl mb-4">
-        The header strip uses the ARIA Tabs pattern: a
+        A horizontal stepper uses the ARIA Tabs pattern: a
         <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">role="tablist"</code>
         container with
         <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">role="tab"</code>
         headers and a
         <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">role="tabpanel"</code>
-        content region. The currently selected step also carries
+        content region below the strip. A vertical stepper renders each panel inline
+        under its own header, which a tablist may not own, so it is exposed as a stack of
+        disclosure buttons instead: plain buttons carrying
+        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">aria-expanded</code>
+        with the open panel as a labelled
+        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">role="group"</code>.
+        Arrow-key navigation and the roving tab stop are identical in both. The currently
+        selected step also carries
         <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">aria-current="step"</code>
         so assistive tech reads it as a wizard step rather than a plain tab. Step
         changes are announced through CDK

@@ -21,6 +21,7 @@ import {
   type Signal,
   TemplateRef,
   untracked,
+  viewChild,
   ViewContainerRef,
 } from '@angular/core';
 import { NgTemplateOutlet } from '@angular/common';
@@ -172,8 +173,13 @@ const selectVariants = tv(
       valueText: 'flex-1 min-w-0 text-left truncate',
       placeholderText: 'flex-1 min-w-0 text-left truncate text-fg-subtle',
       chevron: 'shrink-0 text-fg-muted transition-transform duration-normal motion-reduce:transition-none',
+      // `size-6` (24px) is the WCAG 2.2 SC 2.5.8 target-size floor and the `xs`
+      // step of the square-interactive scale. It does NOT scale with `size`:
+      // the clear sits inside the trigger, whose smallest pinned height is
+      // 24px (`xs` -> `h-6`), so any larger step would overflow the smallest
+      // trigger. The floor is what the success criterion asks for.
       clearButton:
-        'inline-flex items-center justify-center shrink-0 rounded-md text-fg-muted hover:text-fg hover:bg-surface-muted transition-colors duration-normal motion-reduce:transition-none size-5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500',
+        'inline-flex items-center justify-center shrink-0 rounded-md text-fg-muted hover:text-fg hover:bg-surface-muted transition-colors duration-normal motion-reduce:transition-none size-6 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500',
     },
     variants: {
       // Trigger height is PINNED (docs/vertical-rhythm.md §1-3): the box is
@@ -198,10 +204,27 @@ const selectVariants = tv(
         // releases the pinned height (declared after `size`, so twMerge keeps
         // it — same ordering `p-0` already relies on) so the trigger
         // contributes only its line box and the field's own rhythm governs.
+        //
+        // The focus ring is NOT declared here — it depends on whether a
+        // form-field is actually present. See `fieldOwnsFocusRing` below.
         naked: {
-          trigger:
-            'bg-transparent border-0 rounded-none p-0 h-auto focus-visible:outline-none',
+          trigger: 'bg-transparent border-0 rounded-none p-0 h-auto',
         },
+      },
+      // Whether an ancestor `tw-form-field` draws the focus ring for us. Only
+      // the `naked` variant reads it, via the compound variants below: inside
+      // a field the control wrapper owns the ring, so the trigger suppresses
+      // its own; used standalone there is no wrapper, so the trigger has to
+      // draw the canonical ring itself or the composite has no focus
+      // indicator at all (WCAG 2.2 SC 2.4.7).
+      //
+      // This cannot be expressed by adding `focus-visible:outline-none` to
+      // `naked` and overriding it later: `outline-none` (outline-style) and
+      // `outline-2` (outline-width) sit in different tailwind-merge conflict
+      // groups, so both survive the merge and `outline-style: none` wins.
+      fieldOwnsFocusRing: {
+        true: {},
+        false: {},
       },
       open: {
         true: { chevron: 'rotate-180' },
@@ -232,6 +255,19 @@ const selectVariants = tv(
       { variant: 'default', focused: true, color: 'success', class: { trigger: 'border-success-500' } },
       { variant: 'default', focused: true, color: 'warning', class: { trigger: 'border-warning-500' } },
       { variant: 'default', focused: true, color: 'error', class: { trigger: 'border-error-500' } },
+      {
+        variant: 'naked',
+        fieldOwnsFocusRing: true,
+        class: { trigger: 'focus-visible:outline-none' },
+      },
+      {
+        variant: 'naked',
+        fieldOwnsFocusRing: false,
+        class: {
+          trigger:
+            'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500',
+        },
+      },
     ],
     defaultVariants: {
       size: 'md',
@@ -240,6 +276,7 @@ const selectVariants = tv(
       disabled: false,
       focused: false,
       color: 'primary',
+      fieldOwnsFocusRing: false,
     },
   },
   { twMerge: true },
@@ -382,7 +419,7 @@ function defaultOptionGroup(o: unknown): string | undefined {
       [attr.aria-haspopup]="'listbox'"
       [attr.aria-expanded]="open() ? 'true' : 'false'"
       [attr.aria-controls]="listboxId"
-      [attr.aria-activedescendant]="activeDescendantId() || null"
+      [attr.aria-activedescendant]="triggerActiveDescendantId()"
       [attr.aria-autocomplete]="searchable() ? 'list' : 'none'"
       [attr.aria-label]="ariaLabel() || null"
       [attr.aria-labelledby]="labelledBy() || null"
@@ -410,7 +447,7 @@ function defaultOptionGroup(o: unknown): string | undefined {
       @if (showClearButton()) {
         <span
           role="button"
-          tabindex="-1"
+          tabindex="0"
           [class]="clearButtonClasses()"
           [attr.aria-label]="'Clear selection'"
           (click)="onClearClick($event)"
@@ -568,6 +605,11 @@ export class SelectComponent<T = unknown>
   /** @internal */
   readonly footerTemplateChild = contentChild(SelectFooterTemplateDirective);
 
+  // ── View queries ──
+
+  /** @internal The combobox trigger — focus target after the clear control unmounts. */
+  private readonly triggerButtonRef = viewChild<ElementRef<HTMLButtonElement>>('triggerButton');
+
   // ── Injected deps ──
 
   private readonly overlayService = inject(Overlay);
@@ -720,6 +762,20 @@ export class SelectComponent<T = unknown>
     return this.optionId(idx);
   });
 
+  /**
+   * @internal `aria-activedescendant` for the trigger button.
+   *
+   * Null while a searchable panel is open: `openOverlay()` moves DOM focus to
+   * the overlay's search input, and `aria-activedescendant` is only honoured
+   * on the element that actually holds focus. Leaving it on the blurred
+   * trigger made arrow-key navigation silent to assistive tech. The overlay's
+   * search input carries it instead in that mode.
+   */
+  readonly triggerActiveDescendantId = computed(() => {
+    if (this.searchable() && this.open()) return null;
+    return this.activeDescendantId();
+  });
+
   /** @internal */
   readonly describedBy = computed(() => {
     const extra = this.describedByIdsSignal();
@@ -755,6 +811,7 @@ export class SelectComponent<T = unknown>
       disabled: this.isDisabled(),
       focused: this.focusedSignal(),
       color: this.color(),
+      fieldOwnsFocusRing: !!this.formField,
     }),
   );
 
@@ -890,6 +947,7 @@ export class SelectComponent<T = unknown>
       const emptyMessage = this.emptyMessage();
       const search = this.search();
       const activeIndex = this.activeIndex();
+      const activeDescendantId = this.activeDescendantId();
       const renderedRows = this.renderedRows();
       const visibleOptions = this.visibleOptions();
       const optionTemplate = this.optionTemplateChild();
@@ -910,6 +968,7 @@ export class SelectComponent<T = unknown>
         instance.emptyMessage.set(emptyMessage);
         instance.search.set(search);
         instance.activeIndex.set(activeIndex);
+        instance.activeDescendantId.set(activeDescendantId);
         instance.renderedRows.set(renderedRows);
         instance.visibleOptions.set(visibleOptions);
         instance.optionTemplate.set(optionTemplate);
@@ -1063,6 +1122,7 @@ export class SelectComponent<T = unknown>
     event.stopPropagation();
     event.preventDefault();
     this.clear();
+    this.focusTrigger();
   }
 
   /** @internal */
@@ -1071,7 +1131,25 @@ export class SelectComponent<T = unknown>
       event.preventDefault();
       event.stopPropagation();
       this.clear();
+      this.focusTrigger();
     }
+  }
+
+  /**
+   * Clearing removes the clear control from the DOM (`showClearButton()` goes
+   * false), so whatever had focus is destroyed under the user. Hand focus back
+   * to the trigger rather than letting it fall to `<body>` (SC 2.4.3).
+   *
+   * The disabled guard is not redundant. `[disabled]` on a native button makes
+   * `.focus()` a silent no-op (the same trap `calendar-cell` hit), and today
+   * the only reason the path cannot be reached is that `showClearButton()`
+   * happens to include `!isDisabled()`. That is ordering, not a guarantee: a
+   * `setDisabledState(true)` landing between the keydown and this call would
+   * drop focus to `<body>` with nothing to show for it.
+   */
+  private focusTrigger(): void {
+    if (this.isDisabled()) return;
+    this.triggerButtonRef()?.nativeElement.focus();
   }
 
   /** @internal */

@@ -79,6 +79,21 @@ class MinMaxHost {}
   imports: [SplitComponent, SplitPaneComponent],
   changeDetection: ChangeDetectionStrategy.Eager,
   template: `
+    <tw-split [direction]="direction" [gutterSize]="gutterSize">
+      <tw-split-pane>A</tw-split-pane>
+      <tw-split-pane>B</tw-split-pane>
+    </tw-split>
+  `,
+})
+class GutterGeometryHost {
+  direction: 'horizontal' | 'vertical' = 'horizontal';
+  gutterSize = 6;
+}
+
+@Component({
+  imports: [SplitComponent, SplitPaneComponent],
+  changeDetection: ChangeDetectionStrategy.Eager,
+  template: `
     <tw-split unit="pixel">
       <tw-split-pane [defaultSize]="300">A</tw-split-pane>
       <tw-split-pane [defaultSize]="200">B</tw-split-pane>
@@ -1023,6 +1038,86 @@ describe('SplitComponent (Phase 1 scaffold)', () => {
       fixture.detectChanges();
       const sep = fixture.nativeElement.querySelector('[role="separator"]') as HTMLElement;
       expect(sep.getAttribute('tabindex')).toBe('0');
+    });
+  });
+
+  // WCAG 2.2 SC 2.5.8 wants a 24x24 pointer target; the default gutter paints
+  // 6px, and the spacing exception is unavailable because the panes sit flush
+  // against it. The gutter therefore pads its own border box out to 24px and
+  // hands the padding straight back with equal negative margins: the target
+  // measures 24px, the paint (clipped to the content box) stays 6px, and the
+  // panes still only give up `gutterSize` px between them, so none of the
+  // `availableSpace()` arithmetic moves. jsdom has no layout, so these assert
+  // the geometry the browser is handed rather than a measured box.
+  describe('gutter hit target (SC 2.5.8)', () => {
+    async function renderGutter(
+      configure: (host: GutterGeometryHost) => void = () => undefined,
+    ): Promise<HTMLElement> {
+      const fixture = TestBed.createComponent(GutterGeometryHost);
+      configure(fixture.componentInstance);
+      fixture.detectChanges();
+      await fixture.whenStable();
+      fixture.detectChanges();
+      return fixture.nativeElement.querySelector('[role="separator"]') as HTMLElement;
+    }
+
+    it('pads a 6px horizontal gutter out to a 24px target across the split axis', async () => {
+      const sep = await renderGutter();
+      expect(sep.style.flexBasis).toBe('24px');
+      expect(sep.style.minWidth).toBe('24px');
+      expect(sep.style.paddingLeft).toBe('9px');
+      expect(sep.style.paddingRight).toBe('9px');
+      // Nothing is added across the long axis — the gutter already spans it.
+      expect(sep.style.paddingTop).toBe('0px');
+      expect(sep.style.paddingBottom).toBe('0px');
+    });
+
+    it('gives the padding back so the gutter still occupies gutterSize px', async () => {
+      const sep = await renderGutter();
+      const footprint =
+        parseFloat(sep.style.flexBasis) +
+        parseFloat(sep.style.marginLeft) +
+        parseFloat(sep.style.marginRight);
+      expect(footprint).toBe(6);
+    });
+
+    it('pads across the vertical axis for a vertical split', async () => {
+      const sep = await renderGutter((host) => (host.direction = 'vertical'));
+      expect(sep.style.flexBasis).toBe('24px');
+      expect(sep.style.minHeight).toBe('24px');
+      expect(sep.style.paddingTop).toBe('9px');
+      expect(sep.style.paddingBottom).toBe('9px');
+      expect(sep.style.paddingLeft).toBe('0px');
+      const footprint =
+        parseFloat(sep.style.flexBasis) +
+        parseFloat(sep.style.marginTop) +
+        parseFloat(sep.style.marginBottom);
+      expect(footprint).toBe(6);
+    });
+
+    it('leaves a gutter that already clears the floor unpadded', async () => {
+      const sep = await renderGutter((host) => (host.gutterSize = 32));
+      expect(sep.style.flexBasis).toBe('32px');
+      expect(sep.style.paddingLeft).toBe('0px');
+      expect(sep.style.marginLeft).toBe('0px');
+    });
+
+    it('still starts a resize from a pointerdown on the padded gutter', async () => {
+      const fixture = TestBed.createComponent(GutterGeometryHost);
+      fixture.detectChanges();
+      await fixture.whenStable();
+      fixture.detectChanges();
+      const split = fixture.debugElement.query(
+        (e) => e.componentInstance instanceof SplitComponent,
+      ).componentInstance as SplitComponent;
+      const spy = vi.fn();
+      split.resizeStart.subscribe(spy);
+      const sep = fixture.nativeElement.querySelector('[role="separator"]') as HTMLElement;
+      sep.setPointerCapture = vi.fn();
+      sep.dispatchEvent(
+        new PointerEvent('pointerdown', { bubbles: true, button: 0, pointerId: 1 }),
+      );
+      expect(spy).toHaveBeenCalledTimes(1);
     });
   });
 

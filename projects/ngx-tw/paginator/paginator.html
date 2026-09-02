@@ -81,6 +81,7 @@
               data-tw-paginator-nav="first"
               [class]="navButtonClasses()"
               [attr.href]="firstDisabled ? null : hrefFor(1)"
+              [attr.role]="firstDisabled ? 'link' : null"
               [attr.aria-disabled]="firstDisabled ? 'true' : null"
               [attr.tabindex]="firstDisabled ? -1 : 0"
               [attr.aria-label]="resolvedLabels().first"
@@ -150,6 +151,7 @@
             data-tw-paginator-nav="prev"
             [class]="navButtonClasses()"
             [attr.href]="prevDisabled ? null : hrefFor(prevTarget)"
+            [attr.role]="prevDisabled ? 'link' : null"
             [attr.aria-disabled]="prevDisabled ? 'true' : null"
             [attr.tabindex]="prevDisabled ? -1 : 0"
             [attr.aria-label]="resolvedLabels().previous"
@@ -213,11 +215,16 @@
           <div [class]="pageListClasses()">
             @for (item of range(); track $index) {
               @if (item === 'ellipsis-left' || item === 'ellipsis-right') {
-                <span
-                  [class]="ellipsisClasses()"
-                  [attr.aria-label]="resolvedLabels().ellipsis"
-                >
+                <!--
+                  The gap marker carries its name as visually-hidden text rather
+                  than an aria-label. A span has no role, and ARIA prohibits a
+                  name on a roleless generic element (axe: aria-prohibited-attr),
+                  so the label was being dropped by assistive tech anyway. The
+                  sr-only child is real text content, which every AT exposes.
+                -->
+                <span [class]="ellipsisClasses()">
                   <span aria-hidden="true">&hellip;</span>
+                  <span class="sr-only">{{ resolvedLabels().ellipsis }}</span>
                 </span>
               } @else {
                 @let pageNumber = item;
@@ -230,6 +237,7 @@
                     data-tw-paginator-nav="page"
                     [class]="pageButtonClasses(isActive)"
                     [attr.href]="pageDisabled ? null : hrefFor(pageNumber)"
+                    [attr.role]="pageDisabled ? 'link' : null"
                     [attr.aria-disabled]="pageDisabled ? 'true' : null"
                     [attr.tabindex]="pageDisabled ? -1 : 0"
                     [attr.aria-current]="isActive ? 'page' : null"
@@ -272,6 +280,7 @@
             data-tw-paginator-nav="next"
             [class]="navButtonClasses()"
             [attr.href]="nextDisabled ? null : hrefFor(nextTargetPage)"
+            [attr.role]="nextDisabled ? 'link' : null"
             [attr.aria-disabled]="nextDisabled ? 'true' : null"
             [attr.tabindex]="nextDisabled ? -1 : 0"
             [attr.aria-label]="resolvedLabels().next"
@@ -340,6 +349,7 @@
               data-tw-paginator-nav="last"
               [class]="navButtonClasses()"
               [attr.href]="lastDisabled ? null : hrefFor(totalPages())"
+              [attr.role]="lastDisabled ? 'link' : null"
               [attr.aria-disabled]="lastDisabled ? 'true' : null"
               [attr.tabindex]="lastDisabled ? -1 : 0"
               [attr.aria-label]="resolvedLabels().last"

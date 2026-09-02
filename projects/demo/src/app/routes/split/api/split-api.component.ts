@@ -39,7 +39,7 @@ import { CodeBlockComponent } from '@cdevhub/ngx-tw/code-block';
               <td class="px-4 py-2 font-mono text-xs">gutterSize</td>
               <td class="px-4 py-2 font-mono text-xs text-fg-muted">number</td>
               <td class="px-4 py-2 font-mono text-xs text-fg-muted">6</td>
-              <td class="px-4 py-2 text-fg-muted">Thickness of each gutter in pixels.</td>
+              <td class="px-4 py-2 text-fg-muted">Painted thickness of each gutter in pixels, and the space it takes from the panes. The grab area is padded out to 24px independently (WCAG 2.2 SC 2.5.8), so a thin gutter stays easy to hit.</td>
             </tr>
             <tr>
               <td class="px-4 py-2 font-mono text-xs">disabled</td>

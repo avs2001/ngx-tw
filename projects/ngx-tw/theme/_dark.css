@@ -23,10 +23,13 @@
   --color-fg-muted: var(--color-gray-300);
   --color-fg-subtle: var(--color-gray-400);
 
-  /* ===== Border ===== */
-  --color-border: var(--color-gray-600);
+  /* ===== Border =====
+     Same SC 1.4.11 rule as light — see the note in `_semantic.css`. gray-600
+     measured 2.66:1 against the dark surface and failed; `border-muted` stays
+     decorative and unchanged. */
+  --color-border: var(--color-gray-500);
   --color-border-muted: var(--color-gray-700);
-  --color-border-strong: var(--color-gray-500);
+  --color-border-strong: var(--color-gray-400);
 
   /* ===== Primary ===== */
   --color-primary-50: var(--color-blue-950);
@@ -284,10 +287,13 @@
     --color-fg-muted: var(--color-gray-300);
     --color-fg-subtle: var(--color-gray-400);
 
-    /* ===== Border ===== */
-    --color-border: var(--color-gray-600);
+    /* ===== Border =====
+       Must stay in lock-step with the `[data-theme="dark"]` block above; the
+       two are hand-duplicated and a token that drifts between them renders
+       differently for a user on system-dark than for one who chose dark. */
+    --color-border: var(--color-gray-500);
     --color-border-muted: var(--color-gray-700);
-    --color-border-strong: var(--color-gray-500);
+    --color-border-strong: var(--color-gray-400);
 
     /* ===== Primary ===== */
     --color-primary-50: var(--color-blue-950);

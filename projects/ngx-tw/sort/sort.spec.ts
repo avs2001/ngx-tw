@@ -53,6 +53,45 @@ class SortHost {
   }
 }
 
+/**
+ * `<th>` hosts. This is the only shape in which `aria-sort` is legal, so it is
+ * the shape that asserts the attribute; every other host asserts its absence.
+ */
+@Component({
+  imports: [SortDirective, SortHeaderComponent],
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  template: `
+    <table>
+      <thead>
+        <tr twSort [(twSortActive)]="active" [(twSortDirection)]="direction">
+          <th tw-sort-header id="name">Name</th>
+          <th tw-sort-header id="age">Age</th>
+        </tr>
+      </thead>
+    </table>
+  `,
+})
+class SortTableHost {
+  active = signal<string | null>(null);
+  direction = signal<SortDirection>(null);
+}
+
+/** `<button>` hosts — the host is already the control, so nothing may nest inside it. */
+@Component({
+  imports: [SortDirective, SortHeaderComponent],
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  template: `
+    <div twSort [(twSortActive)]="active" [(twSortDirection)]="direction">
+      <button tw-sort-header id="name" type="button">Name</button>
+      <button tw-sort-header id="age" type="button">Age</button>
+    </div>
+  `,
+})
+class SortButtonHost {
+  active = signal<string | null>(null);
+  direction = signal<SortDirection>(null);
+}
+
 function getHeader(fixture: ComponentFixture<SortHost>, id: string): HTMLElement {
   return fixture.nativeElement.querySelector(
     `[tw-sort-header][id="${id}"]`,
@@ -314,29 +353,20 @@ describe('SortHeaderComponent', () => {
     expect(nameHeader.textContent?.trim()).toContain('Name');
   });
 
-  it('aria-sort is "none" when inactive', () => {
-    const nameHeader = getHeader(fixture, 'name');
-    expect(nameHeader.getAttribute('aria-sort')).toBe('none');
+  // `aria-sort` is only valid on a `columnheader` / `rowheader`. A `<span>`
+  // host is neither, so the attribute must be absent entirely — emitting it
+  // there is an axe `aria-allowed-attr` failure and assistive tech ignores it.
+  // The `<th>`-hosted equivalents live in the "header-cell host" block below.
+  it('does not emit aria-sort on a non-header-cell host when inactive', () => {
+    expect(getHeader(fixture, 'name').hasAttribute('aria-sort')).toBe(false);
   });
 
-  it('aria-sort reflects direction when active', () => {
+  it('does not emit aria-sort on a non-header-cell host when active', () => {
     const nameContainer = getContainer(getHeader(fixture, 'name'));
     nameContainer.click();
     fixture.detectChanges();
-    expect(getHeader(fixture, 'name').getAttribute('aria-sort')).toBe('ascending');
-
-    nameContainer.click();
-    fixture.detectChanges();
-    expect(getHeader(fixture, 'name').getAttribute('aria-sort')).toBe('descending');
-  });
-
-  it('only the active header shows non-none aria-sort', () => {
-    const nameContainer = getContainer(getHeader(fixture, 'name'));
-    nameContainer.click();
-    fixture.detectChanges();
-    expect(getHeader(fixture, 'name').getAttribute('aria-sort')).toBe('ascending');
-    expect(getHeader(fixture, 'age').getAttribute('aria-sort')).toBe('none');
-    expect(getHeader(fixture, 'score').getAttribute('aria-sort')).toBe('none');
+    expect(host.active()).toBe('name');
+    expect(getHeader(fixture, 'name').hasAttribute('aria-sort')).toBe(false);
   });
 
   it('inner container has role=button and tabindex=0 when enabled', () => {
@@ -511,5 +541,132 @@ describe('SortHeaderComponent', () => {
       const f = TestBed.createComponent(OrphanHost);
       f.detectChanges();
     }).toThrowError(/must be placed within a parent element with the twSort directive/);
+  });
+});
+
+describe('SortHeaderComponent — header-cell host', () => {
+  let fixture: ComponentFixture<SortTableHost>;
+
+  beforeEach(async () => {
+    TestBed.resetTestingModule();
+    await TestBed.configureTestingModule({ imports: [SortTableHost] }).compileComponents();
+    fixture = TestBed.createComponent(SortTableHost);
+    fixture.detectChanges();
+  });
+
+  function th(id: string): HTMLElement {
+    return fixture.nativeElement.querySelector(
+      `[tw-sort-header][id="${id}"]`,
+    ) as HTMLElement;
+  }
+
+  it('emits aria-sort="none" on a <th> host when inactive', () => {
+    expect(th('name').getAttribute('aria-sort')).toBe('none');
+    expect(th('age').getAttribute('aria-sort')).toBe('none');
+  });
+
+  it('reflects the direction in the <th> aria-sort as the cycle advances', () => {
+    const container = getContainer(th('name'));
+    container.click();
+    fixture.detectChanges();
+    expect(th('name').getAttribute('aria-sort')).toBe('ascending');
+
+    container.click();
+    fixture.detectChanges();
+    expect(th('name').getAttribute('aria-sort')).toBe('descending');
+  });
+
+  it('only the active header leaves aria-sort non-none', () => {
+    getContainer(th('name')).click();
+    fixture.detectChanges();
+    expect(th('name').getAttribute('aria-sort')).toBe('ascending');
+    expect(th('age').getAttribute('aria-sort')).toBe('none');
+  });
+
+  it('keeps the control on the inner container, not the <th> itself', () => {
+    // A <th> must stay a `columnheader` for `aria-sort` to be legal, so the
+    // button lives inside it (the APG sortable-table shape).
+    expect(th('name').hasAttribute('role')).toBe(false);
+    expect(th('name').hasAttribute('tabindex')).toBe(false);
+    const container = getContainer(th('name'));
+    expect(container.getAttribute('role')).toBe('button');
+    expect(container.getAttribute('tabindex')).toBe('0');
+  });
+
+  it('emits aria-sort on an explicit role="columnheader" host', async () => {
+    @Component({
+      imports: [SortDirective, SortHeaderComponent],
+      template: `
+        <div twSort>
+          <div role="columnheader" tw-sort-header id="a">A</div>
+        </div>
+      `,
+    })
+    class RoleHost {}
+
+    TestBed.resetTestingModule();
+    await TestBed.configureTestingModule({ imports: [RoleHost] }).compileComponents();
+    const f = TestBed.createComponent(RoleHost);
+    f.detectChanges();
+    const header = f.nativeElement.querySelector('[tw-sort-header]') as HTMLElement;
+    expect(header.getAttribute('aria-sort')).toBe('none');
+  });
+});
+
+describe('SortHeaderComponent — interactive host', () => {
+  let fixture: ComponentFixture<SortButtonHost>;
+
+  beforeEach(async () => {
+    TestBed.resetTestingModule();
+    await TestBed.configureTestingModule({ imports: [SortButtonHost] }).compileComponents();
+    fixture = TestBed.createComponent(SortButtonHost);
+    fixture.detectChanges();
+  });
+
+  function button(id: string): HTMLElement {
+    return fixture.nativeElement.querySelector(
+      `button[tw-sort-header][id="${id}"]`,
+    ) as HTMLElement;
+  }
+
+  it('does not nest a second widget inside a <button> host', () => {
+    // axe `nested-interactive`: a focusable/role-bearing descendant of a
+    // control leaves assistive tech with two competing activation targets.
+    const el = button('name');
+    expect(el.querySelector('[role="button"]')).toBeNull();
+    expect(el.querySelector('[tabindex]')).toBeNull();
+  });
+
+  it('does not emit aria-sort on a <button> host', () => {
+    getContainer(button('name')).click();
+    fixture.detectChanges();
+    expect(fixture.componentInstance.active()).toBe('name');
+    expect(button('name').hasAttribute('aria-sort')).toBe(false);
+  });
+
+  it('still sorts on click', () => {
+    button('name').click();
+    fixture.detectChanges();
+    expect(fixture.componentInstance.active()).toBe('name');
+    expect(fixture.componentInstance.direction()).toBe('asc');
+  });
+
+  it('still sorts on Enter and Space from the host', () => {
+    const el = button('name');
+    el.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+    fixture.detectChanges();
+    expect(fixture.componentInstance.direction()).toBe('asc');
+
+    el.dispatchEvent(new KeyboardEvent('keydown', { key: ' ', bubbles: true }));
+    fixture.detectChanges();
+    expect(fixture.componentInstance.direction()).toBe('desc');
+  });
+
+  it('moves the focus ring onto the host, which is the element that takes focus', () => {
+    expect(button('name').className).toContain('focus-visible:outline-primary-500');
+  });
+
+  it('describes the host via AriaDescriber so the description reaches the control', () => {
+    expect(button('name').hasAttribute('aria-describedby')).toBe(true);
   });
 });

@@ -240,24 +240,40 @@ Two measured caveats, both recorded rather than hidden:
   regression gate for the `select`-at-27px bug class (§6), which only a shared row with a varied
   font strut can see.
 
-### 7.2 The rule that matters for consumers
+### 7.2 Aligning a labelled field against bare controls
 
-> **`tw-form-field` does not box-match a bare control, and no `align-items` value fixes that.**
+A `tw-form-field` does not box-match a bare control: at `md` its shell is 36px — exactly on the
+scale, agreeing with every neighbour — while its **outer box is 60px**. The extra 24px is the
+reserved subscript (hint/error) row.
 
-A form field reserves a label row above its shell and a subscript row below it. At `md` its shell
-is 36px — exactly on the scale, agreeing with every neighbour — while its **outer box is 60px**.
-So in a row mixing form fields with bare controls:
+**Where that 24px sits is the whole answer.** The field's label floats *inside* the shell, so the
+shell is at the TOP of the wrapper and the subscript row hangs below it. Measured, at `md`:
 
-| Mode | What happens |
-|---|---|
-| `items-center` | centres the 60px *wrapper*, putting its shell **12px** above its neighbours |
-| `items-end` | aligns the wrapper's bottom, and the reserved-but-empty subscript row keeps the shell **24px** off |
-| `items-start` | aligns the label row against the neighbours' shells |
+| mode | shell top spread | outer spread | |
+|---|---:|---:|---|
+| `items-center` | **12px** | 24px | the wrapper is centred, so the shell rides 12px high |
+| `items-end` | **24px** | 24px | worst — aligns the empty subscript row to the row's bottom |
+| `items-stretch` | 0px | 24px | tops agree, but `select` stretches to 60px |
+| **`items-start`** | **0px** | 24px | shells line up exactly; subscript space hangs below the row |
+| **`items-baseline`** | **0px** | 24px | resolves identically here |
 
-This is not a library defect — the control spread is 0px in every one of those modes. It is a
-composition rule, and it has one correct answer:
+So there are two clean fixes, and which one you want depends on whether the field will ever show a
+validation message:
 
-**Do not mix wrapped and bare controls in the same row.** Either wrap every control in a
-`tw-form-field` (the label row then aligns across the row, and the shells align beneath it), or
-use none and put the labels somewhere else. A filter bar with one labelled field among bare ones
-is the arrangement that cannot be rescued by an alignment property.
+1. **`items-start` on the row.** Keeps the default `subscriptSizing="fixed"`, so the row does not
+   move when an error appears. The row is 24px taller than its controls, with the reserved space
+   below. This is the right default for a form.
+2. **`subscriptSizing="dynamic"` on the field.** Collapses the hint/error row while it is empty, so
+   the wrapper *becomes* its shell — outer spread 0px, and **every** align mode agrees, including
+   `items-center`. The right choice for a filter bar or toolbar, where no validation message is
+   expected. The cost is a layout shift the first time one appears.
+
+> **Corrected 2026-09-02.** This section previously claimed that "no `align-items` value fixes
+> this" and told consumers not to mix wrapped and bare controls in one row. That was inferred from
+> the `items-center` and `items-end` readings without measuring the other three, and it is wrong:
+> `items-start` fixes it exactly, and `subscriptSizing="dynamic"` fixes it in any mode. The
+> mistaken advice came from assuming a label row sits *above* the shell; it does not, because the
+> label floats inside it.
+
+All five modes are rendered and measured live in the "Row alignment" section of
+`/foundations/rhythm`, so the table above cannot drift from the components.

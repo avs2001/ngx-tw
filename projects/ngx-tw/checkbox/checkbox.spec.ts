@@ -912,6 +912,63 @@ describe('CheckboxComponent inside tw-form-field', () => {
     fixture.detectChanges();
     expect(getCheckbox(fixture).getAttribute('aria-required')).toBe('true');
   });
+
+  // SC 4.1.2 regression guard. `<tw-checkbox>` is a custom element, so the
+  // field's `<label for>` resolves to nothing — `aria-labelledby` is the ONLY
+  // route from the visible label to the control. Before `setLabelledByIds` was
+  // overridden this pointed at the checkbox's own label span, which is empty in
+  // this arrangement, leaving the control with no accessible name at all.
+  it('should point aria-labelledby at the projected form-field label', () => {
+    const fixture = TestBed.createComponent(FormFieldHost);
+    fixture.detectChanges();
+    const label = fixture.nativeElement.querySelector('label[twLabel]') as HTMLLabelElement;
+    const labelledBy = getCheckbox(fixture).getAttribute('aria-labelledby') ?? '';
+    expect(labelledBy.split(' ')).toContain(label.id);
+  });
+
+  it('should resolve aria-labelledby to the visible label text', () => {
+    const fixture = TestBed.createComponent(FormFieldHost);
+    fixture.detectChanges();
+    const ids = (getCheckbox(fixture).getAttribute('aria-labelledby') ?? '').split(' ');
+    const name = ids
+      .map((id) => fixture.nativeElement.querySelector(`#${id}`)?.textContent?.trim() ?? '')
+      .join(' ')
+      .trim();
+    expect(name).toBe('Accept terms');
+  });
+});
+
+// ── form-field interop: consumer aria-labelledby ─────────────────
+
+@Component({
+  imports: [CheckboxComponent, FormFieldComponent, LabelDirective],
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  template: `
+    <span id="external-note">and the addendum</span>
+    <tw-form-field>
+      <label twLabel>Accept terms</label>
+      <tw-checkbox aria-labelledby="external-note" />
+    </tw-form-field>
+  `,
+})
+class FormFieldExternalLabelHost {}
+
+describe('CheckboxComponent inside tw-form-field with a consumer aria-labelledby', () => {
+  beforeEach(() => {
+    TestBed.configureTestingModule({});
+  });
+
+  // The form-field merges `userAriaLabelledby` into the ids it pushes down, so
+  // a consumer reference must survive alongside the projected label rather than
+  // being replaced by it.
+  it('should keep both the projected label id and the consumer-supplied id', () => {
+    const fixture = TestBed.createComponent(FormFieldExternalLabelHost);
+    fixture.detectChanges();
+    const label = fixture.nativeElement.querySelector('label[twLabel]') as HTMLLabelElement;
+    const ids = (getCheckbox(fixture).getAttribute('aria-labelledby') ?? '').split(' ');
+    expect(ids).toContain(label.id);
+    expect(ids).toContain('external-note');
+  });
 });
 
 // ── ErrorStateMatcher / errorState ───────────────────────────────

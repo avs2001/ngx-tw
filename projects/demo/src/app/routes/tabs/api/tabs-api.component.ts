@@ -93,7 +93,7 @@ import { CodeBlockComponent } from '@cdevhub/ngx-tw/code-block';
             <tr>
               <td class="px-4 py-2 font-mono text-xs">closed</td>
               <td class="px-4 py-2 font-mono text-xs text-fg-muted">EventEmitter&lt;string&gt;</td>
-              <td class="px-4 py-2 text-fg-muted">Fires when a closable tab's close button is clicked; payload is the tab's value.</td>
+              <td class="px-4 py-2 text-fg-muted">Fires when a closable tab is dismissed, by clicking its close control or pressing Delete on the tab; payload is the tab's value.</td>
             </tr>
           </tbody>
         </table>
@@ -139,7 +139,7 @@ import { CodeBlockComponent } from '@cdevhub/ngx-tw/code-block';
               <td class="px-4 py-2 font-mono text-xs">closable</td>
               <td class="px-4 py-2 font-mono text-xs text-fg-muted">boolean</td>
               <td class="px-4 py-2 font-mono text-xs text-fg-muted">false</td>
-              <td class="px-4 py-2 text-fg-muted">When true, a close button is rendered inside the tab trigger.</td>
+              <td class="px-4 py-2 text-fg-muted">When true, a pointer-only dismiss control is rendered inside the tab trigger; the keyboard gesture is Delete on the focused tab.</td>
             </tr>
             <tr>
               <td class="px-4 py-2 font-mono text-xs">lazy</td>
