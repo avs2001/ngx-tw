@@ -126,10 +126,21 @@
           cdk-header-row
           *cdkHeaderRowDef="visibleColumnNames(); sticky: stickyHeader()"
         ></tr>
+        <!-- Both index context variables are captured on purpose. CDK's
+             `CdkTable` sets `dataIndex` ONLY when `multiTemplateDataRows` is
+             enabled (row expansion); otherwise it sets `index` and leaves
+             `dataIndex` undefined. Reading just one gives `undefined` in the
+             other mode — which shipped as `rowClicked` emitting
+             `index: undefined` for every table without row expansion. -->
         <tr
           cdk-row
-          *cdkRowDef="let row; let i = dataIndex; columns: visibleColumnNames()"
-          (click)="handleRowClick(row, i, $event)"
+          *cdkRowDef="
+            let row;
+            let i = index;
+            let di = dataIndex;
+            columns: visibleColumnNames()
+          "
+          (click)="handleRowClick(row, di ?? i, $event)"
           [attr.aria-selected]="rowAriaSelected(row)"
         ></tr>
         @if (hasFooterRow()) {

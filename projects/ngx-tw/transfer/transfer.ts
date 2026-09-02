@@ -556,7 +556,7 @@ export class TransferComponent<T = unknown, K = unknown>
   /** Reserved for control identification (e.g. analytics, future native-submission parity). The transfer has no single native value element, so it is not currently reflected to the DOM. Defaults to `undefined`. */
   readonly name = input<string | undefined>(undefined);
 
-  /** Id on the host element. Auto-generated as `tw-transfer-N` when unset. Used by the form-field's `<label for>` association. */
+  /** Id on the host element. Auto-generated as `tw-transfer-N` when unset. Used by the form-field's `<label for>` association. Alias: `id`. */
   readonly idInput = input<string | undefined>(undefined, { alias: 'id' });
 
   /** Accessible name applied to the control when no visible label is wired. Mirrored to `aria-label`. Defaults to `undefined`. */
@@ -565,7 +565,7 @@ export class TransferComponent<T = unknown, K = unknown>
   /** ID of an external element that labels the control. Mirrored to `aria-labelledby`. Defaults to `undefined`. */
   readonly ariaLabelledby = input<string | undefined>(undefined, { alias: 'aria-labelledby' });
 
-  /** ID of an external element that describes the control. The form-field merges its hint / error ids alongside. Defaults to `undefined`. */
+  /** ID of an external element that describes the control. The form-field merges its hint / error ids alongside. Defaults to `undefined`. Alias: `aria-describedby`. */
   readonly ariaDescribedby = input<string | undefined>(undefined, { alias: 'aria-describedby' });
 
   /** Per-instance override of the {@link ErrorStateMatcher}. When omitted, uses the `TW_ERROR_STATE_MATCHER` token's value. Defaults to `undefined`. */

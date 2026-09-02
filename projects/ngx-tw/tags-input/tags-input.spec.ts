@@ -455,14 +455,19 @@ describe('TagsInputComponent', () => {
       expect(input(fixture).getAttribute('tabindex')).toBe('-1');
     });
 
-    it('sets aria-invalid when the bound control is in an error state', () => {
+    // `aria-invalid` lives on the inner text input, never on the `role="group"`
+    // host — ARIA 1.2 does not allow it there and axe flags it as critical.
+    // The negative assertion is the load-bearing half: it is what stops the
+    // disallowed host attribute from being reintroduced.
+    it('sets aria-invalid on the inner input, not on the group host', () => {
       const fixture = mount(ReactiveHost);
       const host = fixture.nativeElement.querySelector('tw-tags-input') as HTMLElement;
       fixture.componentInstance.control.setValidators(() => ({ required: true }));
       fixture.componentInstance.control.updateValueAndValidity();
       fixture.componentInstance.control.markAsTouched();
       fixture.detectChanges();
-      expect(host.getAttribute('aria-invalid')).toBe('true');
+      expect(input(fixture).getAttribute('aria-invalid')).toBe('true');
+      expect(host.hasAttribute('aria-invalid')).toBe(false);
     });
   });
 

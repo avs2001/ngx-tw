@@ -12,7 +12,7 @@ import {
 import { CdkTextareaAutosize } from '@angular/cdk/text-field';
 import { tv } from 'tailwind-variants';
 import type { TwSize } from '@cdevhub/ngx-tw/core';
-import { TW_FORM_FIELD_CONTROL } from '@cdevhub/ngx-tw/form-field';
+import { TW_FORM_FIELD, TW_FORM_FIELD_CONTROL } from '@cdevhub/ngx-tw/form-field';
 import { InputDirective } from '@cdevhub/ngx-tw/input';
 
 /**
@@ -33,9 +33,33 @@ const textareaVariants = tv(
         vertical: 'resize-y',
         both: 'resize',
       },
+      // Control-height floor from `docs/vertical-rhythm.md`. A floor, not a
+      // pinned height — a textarea has to grow with its content — so the
+      // vertical padding on the shared size scale is retained alongside it.
+      //
+      // It lives here rather than on `inputVariants`' size scale because it
+      // must be droppable, via the `'none'` value:
+      //
+      // - Under `autosize`, `CdkTextareaAutosize` owns the height. It caches
+      //   its line height from the `clientHeight` of a `cloneNode()`d textarea
+      //   and clears only the clone's *inline* min-height, so a `min-h-*`
+      //   class would survive onto the clone, inflate the cached line height,
+      //   and leave the real field too short for its own text. CDK's own
+      //   `minRows` inline min-height is the floor in that mode.
+      // - Inside a `<tw-form-field>`, the wrapper's control row owns the
+      //   height (the control is stripped to `p-0 border-0`).
+      heightFloor: {
+        none: '',
+        xs: 'min-h-6',
+        sm: 'min-h-8',
+        md: 'min-h-9',
+        lg: 'min-h-11',
+        xl: 'min-h-12',
+      },
     },
     defaultVariants: {
       resize: 'vertical',
+      heightFloor: 'none',
     },
   },
   { twMerge: true },
@@ -95,6 +119,11 @@ export class TextareaDirective extends InputDirective {
     optional: true,
   });
 
+  // Re-injected here (the base directive keeps its own reference private) so
+  // `textareaClasses()` can drop the control-height floor when the wrapper owns
+  // the row height.
+  private readonly parentFormField = inject(TW_FORM_FIELD, { optional: true });
+
   // @internal Re-declares the `size` input inherited from `InputDirective` so
   // it lands on this directive's own `ɵdir` input metadata. ng-packagr emits
   // `ɵdir` with only the child's directly declared inputs, so without this the
@@ -110,7 +139,7 @@ export class TextareaDirective extends InputDirective {
   // the same resolution sees the member, so `@ts-expect-error` would itself
   // flag as unused. `@ts-ignore` suppresses whichever error fires and is
   // a no-op when neither does.
-  /** Density of a standalone textarea. Maps to the inline-padding + font scale (`xs` … `xl`). Ignored inside a `<tw-form-field>` — the wrapper's `size` carries density. Defaults to `'md'`. */
+  /** Density of a standalone textarea. Maps to the inline-padding + font scale (`xs` … `xl`) and to a `min-h-*` floor on the control-height scale (24/32/36/44/48px) — a floor, not a fixed height, because a textarea must grow with its content. The floor is dropped while `autosize` is on (CDK owns the height then; `minRows` is the floor). Ignored inside a `<tw-form-field>` — the wrapper's `size` carries density. Defaults to `'md'`. */
   // TS4113 (CI) vs TS4114 (local) divergence means neither directive matches
   // both, so we intentionally pick `@ts-ignore` over `@ts-expect-error`; see
   // the longer comment above for the full reasoning.
@@ -145,14 +174,18 @@ export class TextareaDirective extends InputDirective {
   /** Current value length, updates on every `input` event. Wire `<span twHint align="end">{{ ta.valueLength() }} / {{ ta.maxLength() }}</span>` for a character counter. */
   readonly valueLength: Signal<number> = computed(() => this.value()?.length ?? 0);
 
-  /** @internal Textarea-specific Tailwind classes (resize axis). Combined with the inherited `classes()` in the host `[class]` binding. */
-  readonly textareaClasses = computed(() =>
+  /** @internal Textarea-specific Tailwind classes (resize axis + control-height floor). Combined with the inherited `classes()` in the host `[class]` binding — the two strings never emit conflicting utilities, so concatenating them needs no cross-config merge. */
+  readonly textareaClasses = computed(() => {
+    // Drop the floor whenever something else owns the height — see the
+    // `heightFloor` variant.
+    const heightFloor =
+      this.autosize() || this.parentFormField ? 'none' : this.size();
     // Short-circuit the resize/autosize conflict deterministically — don't
     // rely on tv variant emission order or twMerge "last wins" semantics.
-    this.autosize()
-      ? textareaVariants({ resize: 'none' })
-      : textareaVariants({ resize: this.resize() }),
-  );
+    return this.autosize()
+      ? textareaVariants({ resize: 'none', heightFloor })
+      : textareaVariants({ resize: this.resize(), heightFloor });
+  });
 
   constructor() {
     super();

@@ -832,21 +832,29 @@ describe('FormFieldComponent', () => {
       fixture.detectChanges();
     });
 
-    const outlinePaddings: [TwSize, string, string][] = [
-      ['xs', 'px-2', 'py-1'],
-      ['sm', 'px-3', 'py-1.5'],
-      ['md', 'px-3', 'py-2'],
-      ['lg', 'px-4', 'py-2.5'],
-      ['xl', 'px-5', 'py-3'],
+    // Horizontal padding plus the control-height floor. The floor is the load-
+    // bearing half: it is what makes a wrapped control the same height as the
+    // same control standalone (see `docs/vertical-rhythm.md`). Vertical padding
+    // is deliberately NOT asserted — it sits a half-step below the nominal
+    // scale purely so the floor binds, and pinning it here would freeze an
+    // implementation detail. The rendered height itself is enforced end-to-end
+    // by `e2e/specs/02-cross-cutting/vertical-rhythm.spec.ts`, which jsdom
+    // cannot do because it performs no layout.
+    const outlineSizing: [TwSize, string, string][] = [
+      ['xs', 'px-2', 'min-h-6'],
+      ['sm', 'px-3', 'min-h-8'],
+      ['md', 'px-3', 'min-h-9'],
+      ['lg', 'px-4', 'min-h-11'],
+      ['xl', 'px-5', 'min-h-12'],
     ];
-    for (const [size, px, py] of outlinePaddings) {
-      it(`applies ${px} ${py} on the outline control wrapper for size="${size}"`, async () => {
+    for (const [size, px, minH] of outlineSizing) {
+      it(`applies ${px} and the ${minH} control-height floor for size="${size}"`, async () => {
         fixture.componentInstance.size.set(size);
         fixture.detectChanges();
         await fixture.whenStable();
-        const wrapper = controlWrapper(fixture);
-        expect(wrapper.className).toContain(px);
-        expect(wrapper.className).toContain(py);
+        const classes = controlWrapper(fixture).className.split(/\s+/);
+        expect(classes).toContain(px);
+        expect(classes).toContain(minH);
       });
     }
 
@@ -867,6 +875,45 @@ describe('FormFieldComponent', () => {
         expect(wrapper.className).toContain(px);
         expect(wrapper.className).toContain(pt);
         expect(wrapper.className).toContain(pb);
+      });
+    }
+
+    // Regression: the `size` variants used to be empty and the nested control
+    // strips its own `text-*`, so the control row inherited the ambient 16px
+    // line box at every size — the size axis did nothing vertically.
+    const controlRowFonts: [TwSize, string][] = [
+      ['xs', 'text-xs'],
+      ['sm', 'text-sm'],
+      ['md', 'text-sm'],
+      ['lg', 'text-base'],
+      ['xl', 'text-base'],
+    ];
+    for (const [size, fontClass] of controlRowFonts) {
+      it(`applies ${fontClass} on the control wrapper for size="${size}"`, async () => {
+        fixture.componentInstance.size.set(size);
+        fixture.detectChanges();
+        await fixture.whenStable();
+        expect(controlWrapper(fixture).className.split(/\s+/)).toContain(fontClass);
+      });
+    }
+
+    // A floor, not a pinned height — the row has to grow for a textarea or any
+    // other multi-line control the consumer projects.
+    const controlRowFloors: [TwSize, string][] = [
+      ['xs', 'min-h-6'],
+      ['sm', 'min-h-8'],
+      ['md', 'min-h-9'],
+      ['lg', 'min-h-11'],
+      ['xl', 'min-h-12'],
+    ];
+    for (const [size, floorClass] of controlRowFloors) {
+      it(`applies ${floorClass} on the control wrapper for size="${size}"`, async () => {
+        fixture.componentInstance.size.set(size);
+        fixture.detectChanges();
+        await fixture.whenStable();
+        const tokens = controlWrapper(fixture).className.split(/\s+/);
+        expect(tokens).toContain(floorClass);
+        expect(tokens.filter((t) => /^h-/.test(t))).toEqual([]);
       });
     }
 

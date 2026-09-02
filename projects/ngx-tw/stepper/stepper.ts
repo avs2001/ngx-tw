@@ -510,6 +510,7 @@ export class StepperComponent extends CdkStepper implements AfterViewInit {
     this.syncFocusIndex();
   }
 
+  /** @internal Selects a step from a header click. Ignored when `headerInteractive` is false or the step is not navigable. */
   onHeaderClick(step: StepComponent, index: number): void {
     if (!this.headerInteractive()) return;
     if (!step.isNavigable()) return;

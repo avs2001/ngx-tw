@@ -137,12 +137,28 @@ const formFieldVariants = tv({
         infix: 'items-end',
       },
     },
+    // Density of the control row. Two things ride this axis:
+    //
+    // 1. The font scale, on `controlWrapper` rather than `infix`. A nested
+    //    control strips its own `text-*` (see `inputVariants`' `inFormField`
+    //    branch), so without this the row inherited the ambient 16px/24px line
+    //    box at every size and the size axis did nothing vertically. It sits on
+    //    `controlWrapper` so the prefix and suffix adornments scale with the
+    //    control instead of driving the row taller than the control it wraps;
+    //    the `label` slot sets its own `text-*` per (size, labelFloated) and so
+    //    is unaffected.
+    // 2. The `min-h-*` floor from the control-height scale
+    //    (`docs/vertical-rhythm.md`). A floor rather than a pinned height
+    //    because a form-field wraps arbitrary consumer controls — a textarea,
+    //    a wrapping tag list — and must be free to grow. The vertical padding
+    //    is deliberately retained for the same reason: it is the only vertical
+    //    breathing room a nested `p-0` control has.
     size: {
-      xs: {},
-      sm: {},
-      md: {},
-      lg: {},
-      xl: {},
+      xs: { controlWrapper: 'min-h-6 text-xs' },
+      sm: { controlWrapper: 'min-h-8 text-sm' },
+      md: { controlWrapper: 'min-h-9 text-sm' },
+      lg: { controlWrapper: 'min-h-11 text-base' },
+      xl: { controlWrapper: 'min-h-12 text-base' },
     },
     color: {
       primary: {},
@@ -181,11 +197,19 @@ const formFieldVariants = tv({
   },
   compoundVariants: [
     // ── Padding × (appearance, size) ──
-    { appearance: 'outline', size: 'xs', class: { controlWrapper: 'px-2 py-1' } },
-    { appearance: 'outline', size: 'sm', class: { controlWrapper: 'px-3 py-1.5' } },
-    { appearance: 'outline', size: 'md', class: { controlWrapper: 'px-3 py-2' } },
-    { appearance: 'outline', size: 'lg', class: { controlWrapper: 'px-4 py-2.5' } },
-    { appearance: 'outline', size: 'xl', class: { controlWrapper: 'px-5 py-3' } },
+    // Vertical padding sits one half-step below the inline-padding scale so the
+    // `min-h-*` floor on the control row actually BINDS at rest. With the
+    // nominal padding the natural height (padding + line box + 2px border)
+    // lands 2px above the floor at every size, leaving the floor inert and a
+    // wrapped control 2px taller than the same control standalone. The padding
+    // still governs the multi-line case (textarea), where the row grows past
+    // the floor. `filled` is deliberately NOT shifted — its asymmetric
+    // `pt-*`/`pb-*` reserves room for the floating label and is taller by design.
+    { appearance: 'outline', size: 'xs', class: { controlWrapper: 'px-2 py-0.5' } },
+    { appearance: 'outline', size: 'sm', class: { controlWrapper: 'px-3 py-1' } },
+    { appearance: 'outline', size: 'md', class: { controlWrapper: 'px-3 py-1.5' } },
+    { appearance: 'outline', size: 'lg', class: { controlWrapper: 'px-4 py-2' } },
+    { appearance: 'outline', size: 'xl', class: { controlWrapper: 'px-5 py-2.5' } },
     { appearance: 'filled', size: 'xs', class: { controlWrapper: 'px-2 pt-5 pb-1' } },
     { appearance: 'filled', size: 'sm', class: { controlWrapper: 'px-3 pt-5 pb-1.5' } },
     { appearance: 'filled', size: 'md', class: { controlWrapper: 'px-3 pt-6 pb-2' } },
@@ -442,7 +466,7 @@ export class FormFieldComponent implements AfterContentInit, TwFormFieldParent {
   /** Visual appearance of the field container. `'outline'` draws a full border around the control; `'filled'` uses a filled surface with a bottom border. Defaults to `'outline'`. */
   readonly appearance = input<FormFieldAppearance>('outline');
 
-  /** Density of the field container. Maps to the inline-padding scale (`px-2 py-1` xs … `px-5 py-3` xl) and the floating-label font scale. Defaults to `'md'`. */
+  /** Density of the field container. Maps to the inline-padding scale (`px-2 py-1` xs … `px-5 py-3` xl), the control-row font scale (`text-xs` xs, `text-sm` sm/md, `text-base` lg/xl — inherited by the nested control and by prefix/suffix adornments), the label font scale, and a `min-h-*` floor on the control row from the control-height scale (24/32/36/44/48px). The floor is a minimum, not a fixed height: the row grows for a textarea or any other multi-line control. Defaults to `'md'`. */
   readonly size = input<TwSize>('md');
 
   /** Floating label behavior. `'auto'` floats when focused or non-empty; `'always'` stays floated; `'never'` disables floating entirely (the label wrapper is not rendered and the wrapped control's placeholder is always visible). Defaults to `'auto'`. */

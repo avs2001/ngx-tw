@@ -13,6 +13,7 @@
 export const COMPONENTS = [
   'accordion',
   'alert',
+  'aspect-ratio',
   'avatar',
   'badge',
   'breadcrumbs',
@@ -29,12 +30,14 @@ export const COMPONENTS = [
   'date-range-picker',
   'dialog',
   'empty-state',
+  'file-upload',
   'flip-card',
   'form-field',
   'icon',
   'input',
   'item',
   'menu',
+  'number-input',
   'paginator',
   'popover',
   'progress-bar',
@@ -54,12 +57,14 @@ export const COMPONENTS = [
   'tab-nav',
   'table',
   'tabs',
+  'tags-input',
   'textarea',
   'time-picker',
   'timeline',
   'toast',
   'tooltip',
   'transfer',
+  'tree',
 ] as const;
 
 export const SERVICES = ['theme'] as const;

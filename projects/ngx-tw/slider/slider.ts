@@ -453,13 +453,13 @@ export class SliderComponent implements ControlValueAccessor, OnInit {
   /** Optional form name attribute. Purely informational — the component does not render a native input. */
   readonly name = input<string | undefined>(undefined);
 
-  /** Accessible name for the single-value thumb when no visible label is provided. */
+  /** Accessible name for the single-value thumb when no visible label is provided. Defaults to `undefined`. Alias: `aria-label`. */
   readonly ariaLabel = input<string | undefined>(undefined, { alias: 'aria-label' });
 
-  /** ID of an external element labelling the single-value thumb. */
+  /** ID of an external element labelling the single-value thumb. Defaults to `undefined`. Alias: `aria-labelledby`. */
   readonly ariaLabelledby = input<string | undefined>(undefined, { alias: 'aria-labelledby' });
 
-  /** ID of an external element describing the slider. */
+  /** ID of an external element describing the slider. Defaults to `undefined`. Alias: `aria-describedby`. */
   readonly ariaDescribedby = input<string | undefined>(undefined, { alias: 'aria-describedby' });
 
   /** Accessible name for the start (lower) thumb in range mode. Defaults to `"Minimum"`. */
@@ -468,7 +468,7 @@ export class SliderComponent implements ControlValueAccessor, OnInit {
   /** Accessible name for the end (upper) thumb in range mode. Defaults to `"Maximum"`. */
   readonly ariaLabelEnd = input<string>('Maximum');
 
-  /** Two-way bound slider value. A `number` for single mode, or `[start, end]` for range mode. Updates on every interaction. */
+  /** Two-way bound slider value. A `number` for single mode, or `[start, end]` for range mode. Updates on every interaction. Defaults to `0`. */
   readonly value = model<SliderValue>(0);
 
   /** Fires continuously while the user drags or holds a key. Payload matches the current `value`. Template event name is `input` — the TS-side identifier is `valueInput` to avoid shadowing the imported `input` factory. */

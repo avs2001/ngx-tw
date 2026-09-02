@@ -229,16 +229,16 @@ export class SwitchComponent implements ControlValueAccessor, OnInit {
   /** Optional name attribute, mirrored to the host for form association. */
   readonly name = input<string | undefined>(undefined);
 
-  /** Accessible name when no visible label is provided. Mirrored to `aria-label`. */
+  /** Accessible name when no visible label is provided. Mirrored to `aria-label`. Defaults to `undefined`. */
   readonly ariaLabel = input<string | undefined>(undefined, { alias: 'aria-label' });
 
-  /** ID of an external element that labels the switch. Mirrored to `aria-labelledby`. */
+  /** ID of an external element that labels the switch. Mirrored to `aria-labelledby`. Defaults to `undefined`. */
   readonly ariaLabelledby = input<string | undefined>(undefined, { alias: 'aria-labelledby' });
 
-  /** ID of an external element that describes the switch. Mirrored to `aria-describedby`. */
+  /** ID of an external element that describes the switch. Mirrored to `aria-describedby`. Defaults to `undefined`. */
   readonly ariaDescribedby = input<string | undefined>(undefined, { alias: 'aria-describedby' });
 
-  /** Two-way bound checked state. Updates when the user toggles via click or Space. */
+  /** Two-way bound checked state. Updates when the user toggles via click or Space. Defaults to `false`. */
   readonly checked = model(false);
 
   /** Per-instance override of the {@link ErrorStateMatcher}. When omitted, the switch uses the `TW_ERROR_STATE_MATCHER` token's value. */

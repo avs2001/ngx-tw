@@ -70,7 +70,7 @@ const SIZES: TwSize[] = ['xs', 'sm', 'md', 'lg', 'xl'];
               [color]="c"
               [(ngModel)]="colorValues[c]"
               [placeholder]="c + '…'"
-              [attr.aria-label]="'Color ' + c"
+              [aria-label]="'Color ' + c"
             />
           }
         </div>
@@ -98,7 +98,7 @@ const SIZES: TwSize[] = ['xs', 'sm', 'md', 'lg', 'xl'];
                 [size]="s"
                 [(ngModel)]="sizeValues[s]"
                 placeholder="Add a tag…"
-                [attr.aria-label]="'Size ' + s"
+                [aria-label]="'Size ' + s"
                 class="flex-1"
               />
             </div>
@@ -527,7 +527,7 @@ export class TagsInputExamples {
     [color]="c"
     [(ngModel)]="colorValues[c]"
     [placeholder]="c + '…'"
-    [attr.aria-label]="'Color ' + c"
+    [aria-label]="'Color ' + c"
   />
 }`.trim();
 
@@ -537,7 +537,7 @@ export class TagsInputExamples {
     [size]="s"
     [(ngModel)]="sizeValues[s]"
     placeholder="Add a tag…"
-    [attr.aria-label]="'Size ' + s"
+    [aria-label]="'Size ' + s"
   />
 }`.trim();
 

@@ -157,6 +157,17 @@ const timelineVariants = tv(
         // column and stretches through this padding to touch the next item's
         // marker — items butt against each other with no container `gap-*` so
         // the line stays continuous.
+        //
+        // `item: gap-*` is NOT that vertical separation — it is the gutter
+        // between the marker column and the body (a column gap in vertical
+        // orientation, the subgrid row gap in horizontal). It runs past
+        // CLAUDE.md's `gap-3` ceiling because that scale governs spacing
+        // *inside* an element (icon↔label, button groups) against a fixed
+        // ~16–20px glyph, whereas this gutter is measured against a marker
+        // column that itself scales `w-6`→`w-12`. Held at `gap-3`, an `xl`
+        // 48px bubble sits 12px from its text — the body reads as welded to
+        // the marker and every step above `md` becomes visually identical.
+        // The gutter therefore tracks the column: 12/16/20/24/32px.
         xs: { item: 'gap-3', body: 'text-xs gap-1 pb-3', timestamp: 'text-2xs', number: 'text-2xs' },
         sm: { item: 'gap-4', body: 'text-sm gap-1 pb-4', timestamp: 'text-xs', number: 'text-xs' },
         md: { item: 'gap-5', body: 'text-sm gap-1.5 pb-6', timestamp: 'text-xs', number: 'text-xs' },
@@ -222,6 +233,17 @@ const timelineVariants = tv(
       { marker: 'circle', size: 'xs', class: { marker: 'size-6' } },
       { marker: 'circle', size: 'sm', class: { marker: 'size-7' } },
       { marker: 'circle', size: 'md', class: { marker: 'size-8' } },
+      // `size-10` / `size-12` sit above the glyph scale's `size-10` ceiling and
+      // outside the square-interactive scale (which stops at `size-9`), and
+      // neither scale governs here: the circle marker is a *container* — it
+      // wraps a projected `[twTimelineMarker]` icon/avatar or the auto-number —
+      // and the item host is never focusable, so it is not a hit target either.
+      // A container has to out-measure its contents: `<tw-icon size="lg">` is
+      // `size-6` (24px) and `size="xl"` is `size-8` (32px), so capping the bubble
+      // at the `size-9` (36px) hit-target ceiling would leave a 6px rim at `lg`
+      // and a 2px rim at `xl` — the glyph reads as cropped and the ring/border
+      // states have nowhere to render. `size-10` / `size-12` hold a constant 8px
+      // inset at both steps instead.
       { marker: 'circle', size: 'lg', class: { marker: 'size-10' } },
       { marker: 'circle', size: 'xl', class: { marker: 'size-12' } },
 
@@ -1063,7 +1085,10 @@ export class TimelineItemComponent implements AfterContentInit {
   private readonly markerSideSizeClass = computed(() => {
     if (this.timeline.orientation() === 'horizontal') return '';
     // Pin the column to the marker's own width so siblings stay aligned even
-    // when items render slightly different bubble content.
+    // when items render slightly different bubble content. These mirror the
+    // circle-marker diameters one-for-one (`size-6`…`size-12` above) — the
+    // `w-10`/`w-12` steps are off-scale for the same reason the bubbles are,
+    // and diverging here would knock every marker off the connector's axis.
     switch (this.timeline.size()) {
       case 'xs':
         return 'w-6';

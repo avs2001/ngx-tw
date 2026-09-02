@@ -70,12 +70,19 @@ const collapsibleVariants = tv({
         root: '',
       },
     },
+    // The trigger takes a `min-h-*` floor rather than a pinned height (see
+    // `docs/vertical-rhythm.md`): a collapsible header is a single-line control
+    // at rest, but a long title must be free to wrap. Vertical padding sits one
+    // half-step below the inline-padding scale so the floor actually binds — at
+    // the nominal padding the natural height lands 2px above it at every size,
+    // leaving a closed collapsible 38px against a 36px button beside it.
+    // `content` padding is unchanged: it is container padding, not control height.
     size: {
-      xs: { trigger: 'px-2 py-1 text-xs', content: 'p-2' },
-      sm: { trigger: 'px-3 py-1.5 text-sm', content: 'p-3' },
-      md: { trigger: 'px-4 py-2 text-sm', content: 'p-4' },
-      lg: { trigger: 'px-5 py-2.5 text-base', content: 'p-6' },
-      xl: { trigger: 'px-6 py-3 text-base', content: 'p-8' },
+      xs: { trigger: 'px-2 py-0.5 text-xs min-h-6', content: 'p-2' },
+      sm: { trigger: 'px-3 py-1 text-sm min-h-8', content: 'p-3' },
+      md: { trigger: 'px-4 py-1.5 text-sm min-h-9', content: 'p-4' },
+      lg: { trigger: 'px-5 py-2 text-base min-h-11', content: 'p-6' },
+      xl: { trigger: 'px-6 py-2.5 text-base min-h-12', content: 'p-8' },
     },
     color: {
       primary: {},
@@ -194,10 +201,12 @@ export class CollapsibleTriggerDirective implements FocusableOption {
     return this.collapsible.open() ? `${base} rotate-180` : base;
   });
 
+  /** @internal Toggles the parent collapsible when the trigger is clicked. */
   onClick(): void {
     this.collapsible.toggle();
   }
 
+  /** @internal Toggles on Enter/Space and delegates arrow-key navigation to the enclosing group. */
   onKeydown(event: KeyboardEvent): void {
     if (event.key === 'Enter' || event.key === ' ') {
       event.preventDefault();
@@ -212,6 +221,7 @@ export class CollapsibleTriggerDirective implements FocusableOption {
     }
   }
 
+  /** Moves DOM focus to the trigger element. Called by `FocusKeyManager` during arrow-key navigation. */
   focus(): void {
     this.elementRef.nativeElement.focus();
   }
@@ -253,7 +263,7 @@ export class CollapsibleTriggerDirective implements FocusableOption {
   `,
 })
 export class CollapsibleComponent {
-  /** Unique identifier for this panel. Required when used inside a group. */
+  /** Unique identifier for this panel. Required when used inside a group. Defaults to an empty string. */
   readonly value = input<string>('');
 
   /** Bundles decorative axes: `variant`, `color`, `size`. Accepts a partial; unset keys fall back to the defaults (`{ variant: 'default', color: 'neutral', size: 'md' }`). */

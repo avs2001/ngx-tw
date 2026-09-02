@@ -49,8 +49,15 @@ const sortHeaderVariants = tv(
   {
     slots: {
       host: 'group select-none',
+      // `align-top` is load-bearing, not cosmetic. The container is an
+      // inline-level box inside the host block, so without it the host's line
+      // box is `strut ∪ baseline-aligned container` — at `xs` the strut's
+      // descent hangs 2px below the 24px control, and the row measures 26px.
+      // `vertical-align: top` flushes the box to the line-box top, making the
+      // host exactly the pinned height at every size. Inert at sm–xl, where the
+      // control already exceeds the strut.
       container:
-        'inline-flex items-center gap-1.5 cursor-pointer rounded-md font-medium text-fg transition-colors duration-normal motion-reduce:transition-none hover:bg-surface-muted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500',
+        'inline-flex align-top items-center gap-1.5 cursor-pointer rounded-md font-medium text-fg transition-colors duration-normal motion-reduce:transition-none hover:bg-surface-muted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500',
       label: 'min-w-0',
       arrow:
         'inline-flex shrink-0 items-center justify-center transition-opacity duration-normal motion-reduce:transition-none',
@@ -59,26 +66,30 @@ const sortHeaderVariants = tv(
     },
     variants: {
       size: {
+        // Heights are pinned to the control scale (docs/vertical-rhythm.md):
+        // 24 / 32 / 36 / 44 / 48. Vertical padding is deleted deliberately —
+        // `items-center` on the container does the centring, and leaving `py-*`
+        // alive would fight the pinned height under `box-sizing: border-box`.
         xs: {
-          container: 'px-2 py-1 text-xs',
+          container: 'px-2 text-xs h-6',
           // `size-3.5` half-step: only icon size aligning with text-xs without
           // dominating it; codified per CLAUDE.md.
           arrowIcon: 'size-3.5',
         },
         sm: {
-          container: 'px-2.5 py-1.5 text-sm',
+          container: 'px-2.5 text-sm h-8',
           arrowIcon: 'size-4',
         },
         md: {
-          container: 'px-3 py-2 text-sm',
+          container: 'px-3 text-sm h-9',
           arrowIcon: 'size-4',
         },
         lg: {
-          container: 'px-4 py-2.5 text-base',
+          container: 'px-4 text-base h-11',
           arrowIcon: 'size-5',
         },
         xl: {
-          container: 'px-5 py-3 text-base',
+          container: 'px-5 text-base h-12',
           arrowIcon: 'size-5',
         },
       },

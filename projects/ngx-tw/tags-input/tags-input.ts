@@ -113,12 +113,24 @@ const tagsInputVariants = tv(
       },
     },
     compoundVariants: [
-      // Standalone density × size — inline padding scale (mirrors combobox trigger).
-      { inFormField: false, size: 'xs', class: { root: 'px-2 py-1' } },
-      { inFormField: false, size: 'sm', class: { root: 'px-3 py-1.5' } },
-      { inFormField: false, size: 'md', class: { root: 'px-4 py-2' } },
-      { inFormField: false, size: 'lg', class: { root: 'px-5 py-2.5' } },
-      { inFormField: false, size: 'xl', class: { root: 'px-6 py-3' } },
+      // Standalone density × size — inline padding scale (mirrors combobox trigger)
+      // plus the control-height FLOOR. Per docs/vertical-rhythm.md §2 the chip
+      // strip is a `min-h` control, not a pinned one: chips wrap, so `py-*` stays
+      // exactly as it is and `min-h-*` only guarantees the box never sits below
+      // the control scale. Standalone-only, alongside the padding: inside a
+      // `tw-form-field` the root drops its border and padding and the field owns
+      // the box, so a floor here would stack on top of the field's own padding.
+      // Vertical padding sits one half-step below the inline-padding scale so the
+      // `min-h-*` floor actually BINDS at rest. With the nominal padding the
+      // natural height (padding + line box + 2px border) lands 2px ABOVE the
+      // floor at every size, leaving the floor inert and the control off the
+      // grid — the exact defect the rhythm system exists to remove. The padding
+      // still governs the multi-line case, where the box grows past the floor.
+      { inFormField: false, size: 'xs', class: { root: 'px-2 py-0.5 min-h-6' } },
+      { inFormField: false, size: 'sm', class: { root: 'px-3 py-1 min-h-8' } },
+      { inFormField: false, size: 'md', class: { root: 'px-4 py-1.5 min-h-9' } },
+      { inFormField: false, size: 'lg', class: { root: 'px-5 py-2 min-h-11' } },
+      { inFormField: false, size: 'xl', class: { root: 'px-6 py-2.5 min-h-12' } },
       // Standalone error state — colored border + focus ring.
       {
         inFormField: false,
@@ -218,7 +230,11 @@ let nextId = 0;
     '[attr.aria-labelledby]': 'resolvedLabelledBy() || null',
     '[attr.aria-describedby]': 'resolvedDescribedBy() || null',
     '[attr.aria-disabled]': 'disabled() || null',
-    '[attr.aria-invalid]': 'errorState() || null',
+    // NOTE: no `aria-invalid` here. ARIA 1.2 does not allow it on
+    // `role="group"` (axe: critical `aria-allowed-attr`). The inner
+    // `<input type="text">` already carries it — that is the control with the
+    // value. Latent rather than observed: it only fires once a consumer puts
+    // the control into an error state.
     '[attr.data-focused]': 'focused() || null',
   },
 })
@@ -238,7 +254,7 @@ export class TagsInputComponent<T = string>
   /** Marks the control as required. Mirrored to the input's `aria-required`. Also inferred from `Validators.required` on a bound control. Defaults to `false`. */
   readonly requiredInput = input(false, { alias: 'required' });
 
-  /** Placeholder shown in the text input only while there are no chips and the input is empty. */
+  /** Placeholder shown in the text input only while there are no chips and the input is empty. Defaults to `undefined`. */
   readonly placeholder = input<string | undefined>(undefined);
 
   /** Keys that commit the in-progress text as a tag. Each entry is a `KeyboardEvent.key` value (`'Enter'`) or a single separator character (`','`). Single-character separators also split pasted text. Defaults to `['Enter', ',']`. */
@@ -264,19 +280,19 @@ export class TagsInputComponent<T = string>
   /** Equality comparator used for dedup when `allowDuplicates` is false. Defaults to `Object.is` (reference / value identity). String tags dedupe case-sensitively by default; pass `(a, b) => a.toLowerCase() === b.toLowerCase()` for case-insensitive dedup. */
   readonly compareWith = input<TwTagCompareFn<T>>((a: T, b: T) => Object.is(a, b));
 
-  /** Applied to the text input for labeling and identification only; does not submit the tag array via native (non-Angular) form posting. */
+  /** Applied to the text input for labeling and identification only; does not submit the tag array via native (non-Angular) form posting. Defaults to `undefined`. */
   readonly name = input<string | undefined>(undefined);
 
   /** Id on the host element. Auto-generated as `tw-tags-input-N` when not provided. Used by the form-field's `<label for>` association. */
   readonly idInput = input<string | undefined>(undefined, { alias: 'id' });
 
-  /** Accessible name applied to the control when no visible label is wired. Mirrored to `aria-label`. */
+  /** Accessible name applied to the control when no visible label is wired. Mirrored to `aria-label`. Defaults to `undefined`. */
   readonly ariaLabel = input<string | undefined>(undefined, { alias: 'aria-label' });
 
-  /** ID of an external element that labels the control. Mirrored to `aria-labelledby`. */
+  /** ID of an external element that labels the control. Mirrored to `aria-labelledby`. Defaults to `undefined`. */
   readonly ariaLabelledby = input<string | undefined>(undefined, { alias: 'aria-labelledby' });
 
-  /** ID of an external element that describes the control. Form-field merges its hint / error ids alongside. */
+  /** ID of an external element that describes the control. Form-field merges its hint / error ids alongside. Defaults to `undefined`. Alias: `aria-describedby`. */
   readonly ariaDescribedby = input<string | undefined>(undefined, { alias: 'aria-describedby' });
 
   /** Per-instance override of the {@link ErrorStateMatcher}. When omitted, uses the `TW_ERROR_STATE_MATCHER` token's value. */

@@ -4,6 +4,7 @@ import { OverlayModule } from '@angular/cdk/overlay';
 import { LiveAnnouncer } from '@angular/cdk/a11y';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { provideToast, ToastService } from './toast';
+import { ToastActionDirective, ToastComponent } from './toast-component';
 import { TW_TOAST_DATA, TW_TOAST_REF } from './toast-config';
 import type { ToastTemplateContext } from './toast-config';
 import type { ToastRef } from './toast-ref';
@@ -479,6 +480,68 @@ describe('ToastService', () => {
       expect(panel.textContent).not.toContain('loading…');
       expect(panel.className).toContain('bg-success-soft');
     });
+  });
+});
+
+// ── ToastComponent outputs, bound the way a consumer binds them ──
+//
+// `ToastComponent` is exported for consumers composing their own toast body
+// inside a TemplateRef / component passed to `show()`. Those consumers bind
+// `(actionClicked)` and `(dismissed)` themselves, so both must fire from the
+// right control and only from that control — the plausible regression is the
+// two adjacent click handlers being crossed or collapsed into one.
+
+@Component({
+  imports: [ToastComponent, ToastActionDirective],
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  template: `
+    <tw-toast severity="info" (actionClicked)="actionSpy()" (dismissed)="dismissSpy()">
+      Saved
+      <button twToastAction data-testid="action">Undo</button>
+    </tw-toast>
+  `,
+})
+class ToastOutputsHost {
+  readonly actionSpy = vi.fn();
+  readonly dismissSpy = vi.fn();
+}
+
+describe('ToastComponent outputs', () => {
+  it('emits actionClicked — and not dismissed — when a [twToastAction] button is clicked', () => {
+    TestBed.resetTestingModule();
+    TestBed.configureTestingModule({ imports: [ToastOutputsHost] });
+    const fixture = TestBed.createComponent(ToastOutputsHost);
+    fixture.detectChanges();
+
+    const action = fixture.nativeElement.querySelector(
+      'tw-toast [data-testid="action"]',
+    ) as HTMLButtonElement | null;
+    expect(action).not.toBeNull();
+    expect(action!.textContent?.trim()).toBe('Undo');
+
+    action!.click();
+    fixture.detectChanges();
+
+    expect(fixture.componentInstance.actionSpy).toHaveBeenCalledTimes(1);
+    expect(fixture.componentInstance.dismissSpy).not.toHaveBeenCalled();
+  });
+
+  it('emits dismissed — and not actionClicked — when the built-in close button is clicked', () => {
+    TestBed.resetTestingModule();
+    TestBed.configureTestingModule({ imports: [ToastOutputsHost] });
+    const fixture = TestBed.createComponent(ToastOutputsHost);
+    fixture.detectChanges();
+
+    const close = fixture.nativeElement.querySelector(
+      'tw-toast button[aria-label="Dismiss"]',
+    ) as HTMLButtonElement | null;
+    expect(close).not.toBeNull();
+
+    close!.click();
+    fixture.detectChanges();
+
+    expect(fixture.componentInstance.dismissSpy).toHaveBeenCalledTimes(1);
+    expect(fixture.componentInstance.actionSpy).not.toHaveBeenCalled();
   });
 });
 

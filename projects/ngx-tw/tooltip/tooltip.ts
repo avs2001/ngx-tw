@@ -349,7 +349,7 @@ export class TooltipDirective {
   /** When true, renders an arrow pointing to the trigger. Defaults to `true`. */
   readonly twTooltipArrow = input(true);
 
-  /** Optional class string (space-separated) merged into the panel slot for consumer customization. */
+  /** Optional class string (space-separated) merged into the panel slot for consumer customization. Defaults to an empty string. */
   readonly twTooltipPanelClass = input<string>('');
 
   /** Fires when the tooltip becomes visible. */

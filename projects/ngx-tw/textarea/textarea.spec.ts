@@ -197,20 +197,56 @@ describe('TextareaDirective', () => {
     });
 
     it.each([
-      ['xs', 'px-2', 'py-1', 'text-xs'],
-      ['sm', 'px-3', 'py-1.5', 'text-sm'],
-      ['md', 'px-4', 'py-2', 'text-sm'],
-      ['lg', 'px-5', 'py-2.5', 'text-base'],
-      ['xl', 'px-6', 'py-3', 'text-base'],
+      ['xs', 'px-2', 'py-1', 'text-xs', 'min-h-6'],
+      ['sm', 'px-3', 'py-1.5', 'text-sm', 'min-h-8'],
+      ['md', 'px-4', 'py-2', 'text-sm', 'min-h-9'],
+      ['lg', 'px-5', 'py-2.5', 'text-base', 'min-h-11'],
+      ['xl', 'px-6', 'py-3', 'text-base', 'min-h-12'],
     ] as const)(
-      'maps size="%s" to %s %s %s (inherited from InputDirective)',
-      (size, px, py, font) => {
+      'maps size="%s" to %s %s %s %s (padding inherited from InputDirective)',
+      (size, px, py, font, minHeight) => {
         fixture.componentInstance.size.set(size);
         fixture.detectChanges();
-        const cls = textareaEl(fixture).className;
-        expect(cls).toContain(px);
-        expect(cls).toContain(py);
-        expect(cls).toContain(font);
+        const tokens = textareaEl(fixture).className.split(/\s+/);
+        expect(tokens).toContain(px);
+        expect(tokens).toContain(py);
+        expect(tokens).toContain(font);
+        expect(tokens).toContain(minHeight);
+      },
+    );
+
+    // A textarea is multi-line by definition: it takes a `min-h-*` floor, never
+    // a pinned `h-*`, which would stop it growing with its content. Token match
+    // rather than substring — `min-h-9` contains `h-9`.
+    it.each(['xs', 'sm', 'md', 'lg', 'xl'] as const)(
+      'never pins the height at size="%s"',
+      (size) => {
+        fixture.componentInstance.size.set(size);
+        fixture.detectChanges();
+        const tokens = textareaEl(fixture).className.split(/\s+/);
+        expect(tokens.filter((t) => /^h-/.test(t))).toEqual([]);
+      },
+    );
+
+    // CdkTextareaAutosize caches its line height from the `clientHeight` of a
+    // cloned textarea and clears only the clone's *inline* min-height, so a
+    // `min-h-*` class would survive onto the clone and inflate the cache.
+    it.each([
+      ['xs', 'px-2'],
+      ['sm', 'px-3'],
+      ['md', 'px-4'],
+      ['lg', 'px-5'],
+      ['xl', 'px-6'],
+    ] as const)(
+      'drops the height floor at size="%s" when autosize owns the height',
+      (size, px) => {
+        fixture.componentInstance.size.set(size);
+        fixture.componentInstance.autosize.set(true);
+        fixture.detectChanges();
+        const tokens = textareaEl(fixture).className.split(/\s+/);
+        expect(tokens.filter((t) => /^min-h-/.test(t))).toEqual([]);
+        // The density half of the size axis survives.
+        expect(tokens).toContain(px);
       },
     );
   });
@@ -227,6 +263,18 @@ describe('TextareaDirective', () => {
       expect(cls).toContain('p-0');
       expect(cls).toContain('border-0');
       expect(cls).not.toContain('rounded-md');
+    });
+
+    // The wrapper's control row owns the height when the textarea is nested.
+    it('emits no height floor when wrapped', async () => {
+      await TestBed.configureTestingModule({
+        imports: [InFormFieldHost],
+      }).compileComponents();
+      const ff = TestBed.createComponent(InFormFieldHost);
+      ff.detectChanges();
+      await ff.whenStable();
+      const tokens = textareaEl(ff).className.split(/\s+/);
+      expect(tokens.filter((t) => /^(min-)?h-/.test(t))).toEqual([]);
     });
   });
 

@@ -80,6 +80,23 @@ const inputVariants = tv(
         false:
           'rounded-md border border-border transition-[color,border-color,box-shadow] duration-normal motion-reduce:transition-none hover:border-border-strong focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500',
       },
+      // Height strategy for the standalone (`inFormField: false`) size scale —
+      // see `docs/vertical-rhythm.md`. Driven by the host tag, not an input.
+      //
+      // `false` (a single-line `<input>`) pins the border-box height
+      // (`h-6` … `h-12`) and deletes the vertical padding, so padding and
+      // height cannot fight. Browsers centre an `<input>`'s text natively, so
+      // no flex box is needed.
+      //
+      // `true` (a `<textarea>`) is multi-line by definition: the vertical
+      // padding is retained and no height utility is emitted here. The
+      // control-scale `min-h-*` floor is applied by `TextareaDirective`
+      // instead, because it has to be droppable while CDK autosize owns the
+      // height — see the `heightFloor` variant in `textarea.ts`.
+      multiline: {
+        true: '',
+        false: '',
+      },
       size: {
         xs: '',
         sm: '',
@@ -97,12 +114,20 @@ const inputVariants = tv(
       },
     },
     compoundVariants: [
-      // Standalone density × size — inline padding + font scale.
-      { inFormField: false, size: 'xs', class: 'px-2 py-1 text-xs' },
-      { inFormField: false, size: 'sm', class: 'px-3 py-1.5 text-sm' },
-      { inFormField: false, size: 'md', class: 'px-4 py-2 text-sm' },
-      { inFormField: false, size: 'lg', class: 'px-5 py-2.5 text-base' },
-      { inFormField: false, size: 'xl', class: 'px-6 py-3 text-base' },
+      // Standalone density × size — single-line: horizontal padding, font
+      // scale, and the pinned control height (no vertical padding).
+      { inFormField: false, multiline: false, size: 'xs', class: 'px-2 text-xs h-6' },
+      { inFormField: false, multiline: false, size: 'sm', class: 'px-3 text-sm h-8' },
+      { inFormField: false, multiline: false, size: 'md', class: 'px-4 text-sm h-9' },
+      { inFormField: false, multiline: false, size: 'lg', class: 'px-5 text-base h-11' },
+      { inFormField: false, multiline: false, size: 'xl', class: 'px-6 text-base h-12' },
+      // Standalone density × size — multi-line: vertical padding is kept so the
+      // box can grow; the height floor is applied by `TextareaDirective`.
+      { inFormField: false, multiline: true, size: 'xs', class: 'px-2 py-1 text-xs' },
+      { inFormField: false, multiline: true, size: 'sm', class: 'px-3 py-1.5 text-sm' },
+      { inFormField: false, multiline: true, size: 'md', class: 'px-4 py-2 text-sm' },
+      { inFormField: false, multiline: true, size: 'lg', class: 'px-5 py-2.5 text-base' },
+      { inFormField: false, multiline: true, size: 'xl', class: 'px-6 py-3 text-base' },
       // Standalone error state — colored border and focus ring.
       {
         inFormField: false,
@@ -112,6 +137,7 @@ const inputVariants = tv(
     ],
     defaultVariants: {
       inFormField: false,
+      multiline: false,
       size: 'md',
       errorState: false,
       disabled: false,
@@ -197,7 +223,7 @@ export class InputDirective
   /** Native HTML input `type`. Defaults to `'text'`. Dev-mode throws on unsupported values (`checkbox`, `radio`, `submit`, etc.) — use the dedicated component instead. Ignored on `<textarea>`. */
   readonly type = input<string>('text');
 
-  /** Density of a standalone field. Maps to the inline-padding scale (`px-2 py-1` xs … `px-6 py-3` xl) and font scale (`text-xs` xs, `text-sm` sm/md, `text-base` lg/xl). Ignored inside a `<tw-form-field>` — the wrapper's `size` carries density. Defaults to `'md'`. */
+  /** Density of a standalone field. Maps to the pinned control-height scale (24/32/36/44/48px, `h-6` xs … `h-12` xl), the horizontal-padding scale (`px-2` xs … `px-6` xl), and the font scale (`text-xs` xs, `text-sm` sm/md, `text-base` lg/xl). On a `<textarea>` the height becomes a `min-h-*` floor and the vertical padding is retained. Ignored inside a `<tw-form-field>` — the wrapper's `size` carries density. Defaults to `'md'`. */
   readonly size = input<TwSize>('md');
 
   /** Disables the control. Also reflects `ngControl.disabled` when the element is bound to a reactive form. Defaults to `false`. */
@@ -293,6 +319,7 @@ export class InputDirective
   readonly classes = computed(() =>
     inputVariants({
       inFormField: !!this.formField,
+      multiline: this._isTextarea,
       size: this.size(),
       errorState: this.errorState(),
       disabled: this.disabled(),

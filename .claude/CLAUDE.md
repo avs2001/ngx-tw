@@ -69,11 +69,11 @@ Describe *purpose and behavior* in one line. Do not describe TypeScript types �
 
 ## Library Structure
 
-- Library lives at `projects/ngx-tw/`. Each component is its own directory under `projects/ngx-tw/src/lib/` (e.g., `button/`, `badge/`).
+- Library lives at `projects/ngx-tw/`. Each component is its own directory directly under it (e.g., `projects/ngx-tw/button/`, `projects/ngx-tw/badge/`). There is no `src/lib/` — `projects/ngx-tw/src/` holds only `public-api.ts`.
 - **Selectors.** Prefix `tw`. Element selectors for components (`tw-button`, `tw-card`); attribute selectors for directives (`twBadge`, `twTooltip`).
 - **Naming.** Angular v22 style guide: bare names, no type suffixes — `button.ts`, `badge.ts`, `button.spec.ts`.
 - **Secondary entry points.** Every component directory is its own entry point. Consumers import per-component: `import { ButtonComponent } from '@cdevhub/ngx-tw/button'`. Each directory needs its own `ng-package.json` with `{ "lib": { "entryFile": "index.ts" } }` and an `index.ts` re-exporting the public API.
-- **Class naming.** Angular CLI conventions — `ButtonComponent`, `BadgeDirective`, `TooltipDirective`. **Never** apply a `Tw*` prefix to component or directive class identifiers — the package scope (`@cdevhub/ngx-tw/button`) provides namespacing, and Angular CLI reserves bare names for component classes. Selectors are unaffected: element selectors keep the `tw-` prefix (`tw-button`); attribute selectors keep the `tw` camelCase prefix (`twBadge`). Shared **types** are the only identifiers that carry a `Tw` prefix (`TwColor`, `TwSize`) because they are hand-authored and appear in consumer code with no other namespace cue. Codified exception: the `TwSplit*` family (`TwSplit`, `TwSplitPane`, `TwSplitGutter`, `TwSplitPaneHeader`) is scheduled for rename in a future PR — do not introduce new violators.
+- **Class naming.** Angular CLI conventions — `ButtonComponent`, `BadgeDirective`, `TooltipDirective`. **Never** apply a `Tw*` prefix to component or directive class identifiers — the package scope (`@cdevhub/ngx-tw/button`) provides namespacing, and Angular CLI reserves bare names for component classes. Selectors are unaffected: element selectors keep the `tw-` prefix (`tw-button`); attribute selectors keep the `tw` camelCase prefix (`twBadge`). Shared **types** are the only identifiers that carry a `Tw` prefix (`TwColor`, `TwSize`) because they are hand-authored and appear in consumer code with no other namespace cue. The `TwSplit*` family has since been renamed (`SplitComponent`, `SplitPaneComponent`, `SplitGutterDirective`, `SplitPaneHeaderDirective`); no component or directive class carries a `Tw` prefix today. The remaining `Tw*` classes — `TwDialog`, `TwDialogRef`, `TwDialogConfig`, `TwDateRange` — are a service, a ref, a config and a value type, none of which this rule covers.
 - Shared code (e.g., `types.ts`) lives in a `core/` secondary entry point (`@cdevhub/ngx-tw/core`).
 - Root `public-api.ts` re-exports all entry points for convenience; consumers are encouraged to use direct imports for tree-shaking.
 - `projects/ngx-tw/theme/` ships **both** the default theme CSS (semantic-token → Tailwind palette mapping, copied as a CSS asset via the root `ng-package.json` `assets` glob and consumed by direct file path) **and** a secondary entry point `@cdevhub/ngx-tw/theme` exporting the runtime theming API (`provideTheme`, `ThemeService`, `ThemeDirective`, `THEME_CONFIG`). The TS entry is re-exported from the root barrel like every other entry point.
@@ -422,7 +422,7 @@ The library codifies five exceptions where the cap is impractical because the co
 |---|---|---|
 | **Overlay-bearing components** | CDK overlay primitives demand position, scroll strategy, backdrop, focus-trap, close-behavior, etc. | popover, menu, tooltip, dialog, command-palette, select, calendar/date-picker, time-picker |
 | **Form controls** | ARIA + Forms baseline (`aria-label{ledby,by}`, `name`, `label`, `description`, `required`, `disabled`, `labelPosition`, plus `color`/`size`/`variant`) is ~12 inputs minimum | `checkbox` (12+ inputs) |
-| **Structural-layout primitives** | Each input is an independent geometric or behavioural axis (axis, unit, gutter, persistence, keyboard step, RTL, label) | `split` (`SplitComponent` 10 + `SplitPaneComponent` 8) |
+| **Structural-layout primitives** | Each input is an independent geometric or behavioural axis (axis, unit, gutter, persistence, keyboard step, RTL, label) | `split` (`SplitComponent` 8 + `SplitPaneComponent` 7) |
 | **Data primitives** | Tabular APIs have multiple orthogonal config axes (appearance, sticky, responsive, selection) | `table` — temporary; PR8 reshapes into config objects, after which this exception no longer applies |
 | **Navigation primitives** | Pagination demands many independent semantic axes (boundary/sibling counts, layout, type, page-size selector, first/last jump buttons, responsive collapse, link-mode factory, custom labels for i18n) that cannot meaningfully be flattened into config objects. Material's `MatPaginator` carries a comparable surface. | `paginator` (~20 inputs) |
 
@@ -435,7 +435,6 @@ Boolean inputs default to `false`. The exception: defaults of `true` are permitt
 - `spinner.track = input(true)` — without the track ring the spinner reads as a partial arc, not a loading indicator
 - `accordion.collapsible = input(true)` — accordions are collapsible by definition; opt-out only
 - `calendar.bordered = input(true)` — embedded calendar reads as bordered; the borderless variant is the special case
-- `calendar.showAdjacentMonths = input(true)` — month grid expects the leading/trailing days to render
 - *(calendar range-behavior knobs `allowSingleDayRange` / `persistPartialRange` previously codified here are now per-field defaults inside `RangeBehaviorConfig`; the rationale lives on the interface JSDoc in `projects/ngx-tw/core/types.ts`)*
 - `commandPalette.closeOnSelect = input(true)` — a command palette is a fire-and-dismiss surface; the "run many" launcher is the special case
 - `commandPalette.closeOnEscape = input(true)` — Escape is the universal dismiss key for modal surfaces; non-dismissible palettes are the special case
@@ -462,7 +461,7 @@ Tests use **Vitest** (default in Angular v22 via `@angular/build:unit-test`). No
 
 ### Running tests locally
 
-Tests resolve `@cdevhub/ngx-tw/*` via the `tsconfig.json` path alias, which points at `./dist/ngx-tw/*` — **not** raw source. This is the configuration Angular's own docs recommend for libraries. Components in the library use `templateUrl`/`styleUrls`, which ng-packagr inlines during the library build; the Vitest runner does NOT resolve those side files on its own (upstream bug [angular-cli #32055](https://github.com/angular/angular-cli/issues/32055), closed not-planned).
+Tests resolve `@cdevhub/ngx-tw/*` via the `tsconfig.json` path alias, which points at `./dist/ngx-tw/*` — **not** raw source. This is the configuration Angular's own docs recommend for libraries. Eight components use `templateUrl`, which ng-packagr inlines during the library build (there are no `styleUrls` anywhere — the Styling section forbids component CSS files); the Vitest runner does NOT resolve those side files on its own (upstream bug [angular-cli #32055](https://github.com/angular/angular-cli/issues/32055), closed not-planned).
 
 Practical consequences:
 
@@ -470,6 +469,14 @@ Practical consequences:
 - A stale `dist/ngx-tw/` runs tests against old compiled output. Edits to `.ts` source are NOT picked up until you rebuild.
 - Local workflow: run `npm run watch:lib` in one terminal alongside `npm test` in another. The watch task rebuilds `dist/` on every source change so Vitest sees the latest output.
 - CI handles this via `unit-test` depending on `build-lib` and downloading the `ngx-tw-dist` artifact before running `npm run test:ci` (see `.github/workflows/ci.yml`).
+- **`npm test` runs BOTH projects** — `ng test ngx-tw && ng test demo`. The `demo` project holds one
+  load-bearing spec: `projects/demo/src/app/app.routes.spec.ts`, a drift guard that fails the build
+  when a `components/<slug>` route exists in `app.routes.ts` but is missing from `e2e/support/routes.ts`.
+  Every data-driven Playwright sweep (smoke, axe, visual) iterates that constant, so a slug missing
+  from it means the component has **zero** e2e coverage while the suite still reports green. The
+  demo target was historically excluded from `npm test`, so the guard never ran and five components
+  (`aspect-ratio`, `file-upload`, `number-input`, `tags-input`, `tree`) went uncovered. Do not narrow
+  these scripts back to the library alone.
 
 ### What every spec must cover
 

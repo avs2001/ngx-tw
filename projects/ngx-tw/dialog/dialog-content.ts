@@ -179,7 +179,7 @@ export class DialogActionsDirective {
   },
 })
 export class DialogCloseDirective {
-  /** Value passed to `afterClosed()` when the button is clicked. */
+  /** Value passed to `afterClosed()` when the button is clicked. Defaults to `undefined`. */
   readonly twDialogClose = input<unknown>(undefined);
 
   /** Native button `type`. Defaults to `'button'` to avoid accidental form submission. */

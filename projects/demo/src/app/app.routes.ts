@@ -223,6 +223,11 @@ export const routes: Routes = [
         loadChildren: () => import('./routes/split/split.routes').then(m => m.SPLIT_ROUTES),
       },
       {
+        path: 'foundations/rhythm',
+        loadChildren: () =>
+          import('./routes/foundations/rhythm/rhythm.routes').then(m => m.RHYTHM_ROUTES),
+      },
+      {
         path: 'services/theme',
         loadChildren: () => import('./routes/theme/theme.routes').then(m => m.THEME_ROUTES),
       },

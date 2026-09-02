@@ -25,7 +25,12 @@ import { ToastRef } from './toast-ref';
 // and the toast components back into the eager chunk. See `toast-renderer.ts`.
 import type { ToastRenderer } from './toast-renderer';
 
-interface PromiseMessages<T> {
+/**
+ * The three messages {@link ToastService.promise} shows as a promise settles.
+ * `success` and `error` may be functions, receiving the resolved value or the
+ * rejection reason so the message can quote it.
+ */
+export interface PromiseMessages<T> {
   loading: string;
   success: string | ((value: T) => string);
   error: string | ((err: unknown) => string);

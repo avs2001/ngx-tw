@@ -91,10 +91,10 @@ export class AccordionComponent extends CollapsibleGroupComponent {
   /** In `'single'` mode, whether re-clicking the open panel closes it. Defaults to `true` — accordions are collapsible by definition; opt-out only. */
   readonly collapsible = input(true, { transform: booleanAttribute });
 
-  /** Accessible name for the accordion. Use when surrounding context doesn't make the purpose obvious. */
+  /** Accessible name for the accordion. Use when surrounding context doesn't make the purpose obvious. Defaults to `undefined`. Alias: `aria-label`. */
   readonly ariaLabel = input<string | undefined>(undefined, { alias: 'aria-label' });
 
-  /** ID(s) of element(s) that label the accordion. Use instead of `aria-label` when a visible heading is available. */
+  /** ID(s) of element(s) that label the accordion. Use instead of `aria-label` when a visible heading is available. Defaults to `undefined`. Alias: `aria-labelledby`. */
   readonly ariaLabelledby = input<string | undefined>(undefined, { alias: 'aria-labelledby' });
 
   // ── Inherited-binding overrides ──

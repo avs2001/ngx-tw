@@ -189,29 +189,36 @@ describe('CollapsibleComponent', () => {
 
       const root = fixture.nativeElement.querySelector('tw-collapsible');
       expect(root.className).toContain('border');
-      // Default size `md` -> trigger has `px-4 py-2`
+      // Default size `md` -> trigger has `px-4` and the `min-h-9` height floor
       const trigger = fixture.nativeElement.querySelector('[twcollapsibletrigger]');
-      expect(trigger.className).toContain('px-4');
-      expect(trigger.className).toContain('py-2');
+      const classes = trigger.className.split(/\s+/);
+      expect(classes).toContain('px-4');
+      expect(classes).toContain('min-h-9');
     });
 
-    const sizePaddingMap: Record<TwSize, { x: string; y: string }> = {
-      xs: { x: 'px-2', y: 'py-1' },
-      sm: { x: 'px-3', y: 'py-1.5' },
-      md: { x: 'px-4', y: 'py-2' },
-      lg: { x: 'px-5', y: 'py-2.5' },
-      xl: { x: 'px-6', y: 'py-3' },
+    // Horizontal padding plus the control-height floor. Vertical padding is
+    // deliberately not asserted — it sits a half-step below the nominal scale
+    // only so the floor binds, and the rendered height is enforced end-to-end
+    // by `e2e/specs/02-cross-cutting/vertical-rhythm.spec.ts` (jsdom performs
+    // no layout, so a unit test cannot measure it). See `docs/vertical-rhythm.md`.
+    const sizeMap: Record<TwSize, { x: string; minH: string }> = {
+      xs: { x: 'px-2', minH: 'min-h-6' },
+      sm: { x: 'px-3', minH: 'min-h-8' },
+      md: { x: 'px-4', minH: 'min-h-9' },
+      lg: { x: 'px-5', minH: 'min-h-11' },
+      xl: { x: 'px-6', minH: 'min-h-12' },
     };
 
-    for (const [size, padding] of Object.entries(sizePaddingMap) as [TwSize, { x: string; y: string }][]) {
-      it(`should apply ${padding.x} ${padding.y} when size is ${size}`, () => {
+    for (const [size, expected] of Object.entries(sizeMap) as [TwSize, { x: string; minH: string }][]) {
+      it(`should apply ${expected.x} and the ${expected.minH} floor when size is ${size}`, () => {
         const fixture = createFixture(StandaloneHost);
         fixture.componentInstance.display.set({ size });
         fixture.detectChanges();
 
         const trigger = fixture.nativeElement.querySelector('[twcollapsibletrigger]');
-        expect(trigger.className).toContain(padding.x);
-        expect(trigger.className).toContain(padding.y);
+        const classes = trigger.className.split(/\s+/);
+        expect(classes).toContain(expected.x);
+        expect(classes).toContain(expected.minH);
       });
     }
 

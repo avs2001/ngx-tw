@@ -159,8 +159,16 @@ const selectVariants = tv(
   {
     slots: {
       root: 'relative inline-block w-full',
+      // `flex`, NOT `inline-flex`. An inline-level trigger inside the block
+      // `root` generates a line box, so the host's height became
+      // `max(strutAscent, triggerAscent) + triggerDescent` — taller than the
+      // trigger itself whenever the consumer's inherited strut out-ascends it.
+      // That is what made `xs` measure an odd 27px (26px trigger + a
+      // font-metric-dependent fraction) while combobox, whose trigger is
+      // block-level `flex`, measured a clean 26. A block-level trigger removes
+      // the line box entirely, so the host height equals the pinned height.
       trigger:
-        'w-full inline-flex items-center gap-2 text-fg cursor-pointer transition-[color,border-color,background-color,box-shadow] duration-normal motion-reduce:transition-none',
+        'w-full flex items-center gap-2 text-fg cursor-pointer transition-[color,border-color,background-color,box-shadow] duration-normal motion-reduce:transition-none',
       valueText: 'flex-1 min-w-0 text-left truncate',
       placeholderText: 'flex-1 min-w-0 text-left truncate text-fg-subtle',
       chevron: 'shrink-0 text-fg-muted transition-transform duration-normal motion-reduce:transition-none',
@@ -168,23 +176,31 @@ const selectVariants = tv(
         'inline-flex items-center justify-center shrink-0 rounded-md text-fg-muted hover:text-fg hover:bg-surface-muted transition-colors duration-normal motion-reduce:transition-none size-5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500',
     },
     variants: {
+      // Trigger height is PINNED (docs/vertical-rhythm.md §1-3): the box is
+      // always one line, so it declares its border-box height and carries no
+      // vertical padding. Horizontal padding and the font size are unchanged.
       size: {
         // xs density: chevron uses `size-3.5` (14px) — half-step that lines up
         // with text-xs inside the compact trigger.
-        xs: { trigger: 'px-2 py-1 text-xs', chevron: 'size-3.5' },
-        sm: { trigger: 'px-3 py-1.5 text-sm', chevron: 'size-4' },
-        md: { trigger: 'px-4 py-2 text-sm', chevron: 'size-4' },
-        lg: { trigger: 'px-5 py-2.5 text-base', chevron: 'size-5' },
-        xl: { trigger: 'px-6 py-3 text-base', chevron: 'size-5' },
+        xs: { trigger: 'px-2 text-xs h-6', chevron: 'size-3.5' },
+        sm: { trigger: 'px-3 text-sm h-8', chevron: 'size-4' },
+        md: { trigger: 'px-4 text-sm h-9', chevron: 'size-4' },
+        lg: { trigger: 'px-5 text-base h-11', chevron: 'size-5' },
+        xl: { trigger: 'px-6 text-base h-12', chevron: 'size-5' },
       },
       variant: {
         default: {
           trigger:
             'border border-border bg-surface rounded-md hover:border-border-strong focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500',
         },
+        // `naked` = wrapped in a `tw-form-field`, which owns the box: its
+        // controlWrapper draws the border and the vertical padding. `h-auto`
+        // releases the pinned height (declared after `size`, so twMerge keeps
+        // it — same ordering `p-0` already relies on) so the trigger
+        // contributes only its line box and the field's own rhythm governs.
         naked: {
           trigger:
-            'bg-transparent border-0 rounded-none p-0 focus-visible:outline-none',
+            'bg-transparent border-0 rounded-none p-0 h-auto focus-visible:outline-none',
         },
       },
       open: {
@@ -438,10 +454,10 @@ export class SelectComponent<T = unknown>
   /** Array of options to render in the panel. Accepts either `TwSelectOption<T>` objects or arbitrary records read via the accessor inputs. Defaults to an empty array. */
   readonly options = input<readonly unknown[]>([]);
 
-  /** Accessor returning the visible label for an option. Override when passing arbitrary objects. */
+  /** Accessor returning the visible label for an option. Override when passing arbitrary objects. Defaults to reading `.label`, falling back to `String(.value)`. */
   readonly optionLabel = input<(option: unknown) => string>(defaultOptionLabel);
 
-  /** Accessor returning the value for an option. The result is what `value` / `valueChange` emit. */
+  /** Accessor returning the value for an option. The result is what `value` / `valueChange` emit. Defaults to reading `.value`. */
   readonly optionValue = input<(option: unknown) => T>(
     defaultOptionValue as (option: unknown) => T,
   );
@@ -449,7 +465,7 @@ export class SelectComponent<T = unknown>
   /** Accessor returning the disabled state for an option. Defaults to reading `.disabled`. */
   readonly optionDisabled = input<(option: unknown) => boolean>(defaultOptionDisabled);
 
-  /** Accessor returning the group name for an option. Options sharing a group render under a labelled `role="group"` region. */
+  /** Accessor returning the group name for an option. Options sharing a group render under a labelled `role="group"` region. Defaults to reading `.group`. */
   readonly optionGroup = input<(option: unknown) => string | undefined>(defaultOptionGroup);
 
   /** When true, enables multi-selection. The `value` model becomes a `T[]` and the panel renders checkable options. Defaults to `false`. */
@@ -466,10 +482,10 @@ export class SelectComponent<T = unknown>
     },
   );
 
-  /** Placeholder text shown in the trigger when no value is selected. */
+  /** Placeholder text shown in the trigger when no value is selected. Defaults to `undefined`. */
   readonly placeholder = input<string | undefined>(undefined);
 
-  /** When true, the trigger cannot be activated and the panel cannot open. Defaults to `false`. */
+  /** When true, the trigger cannot be activated and the panel cannot open. Defaults to `false`. Alias: `disabled`. */
   readonly disabledInput = input<boolean>(false, { alias: 'disabled' });
 
   /** When true, exposes `aria-required="true"` on the trigger. Defaults to `false`. */
@@ -487,7 +503,7 @@ export class SelectComponent<T = unknown>
   /** Overlay panel width. `'trigger'` matches the trigger's measured width; `'auto'` lets content decide; a number is applied as pixels; a string is passed through as a CSS length. Defaults to `'trigger'`. */
   readonly panelWidth = input<'trigger' | 'auto' | number | string>('trigger');
 
-  /** Extra class(es) applied to the overlay panel element. */
+  /** Extra class(es) applied to the overlay panel element. Defaults to an empty string. */
   readonly panelClass = input<string | readonly string[]>('');
 
   /** Maximum height of the listbox scroll region in pixels. Defaults to `256`. */
@@ -502,16 +518,16 @@ export class SelectComponent<T = unknown>
   /** Pixel distance between trigger and panel. Defaults to `4`. */
   readonly offset = input(4);
 
-  /** Fallback message rendered when the filter yields no options and no `*twSelectEmpty` template is provided. */
+  /** Fallback message rendered when the filter yields no options and no `*twSelectEmpty` template is provided. Defaults to `'No results'`. */
   readonly emptyMessage = input('No results');
 
-  /** Accessible name for the combobox trigger. */
+  /** Accessible name for the combobox trigger. Defaults to `undefined`. Alias: `aria-label`. */
   readonly ariaLabel = input<string | undefined>(undefined, { alias: 'aria-label' });
 
-  /** ID of an external element that labels the combobox. */
+  /** ID of an external element that labels the combobox. Defaults to `undefined`. Alias: `aria-labelledby`. */
   readonly ariaLabelledby = input<string | undefined>(undefined, { alias: 'aria-labelledby' });
 
-  /** ID of an external element that describes the combobox. */
+  /** ID of an external element that describes the combobox. Defaults to `undefined`. Alias: `aria-describedby`. */
   readonly ariaDescribedby = input<string | undefined>(undefined, { alias: 'aria-describedby' });
 
   /** Per-instance override of the {@link ErrorStateMatcher}. When omitted, the select uses the `TW_ERROR_STATE_MATCHER` token's value. */
@@ -522,10 +538,10 @@ export class SelectComponent<T = unknown>
 
   // ── Models (two-way) ──
 
-  /** Two-way bound selected value(s). Single-select: `T | null`. Multi-select: `T[]`. */
+  /** Two-way bound selected value(s). Single-select: `T | null`. Multi-select: `T[]`. Defaults to `null`. */
   readonly value = model<T | readonly T[] | null>(null);
 
-  /** Two-way bound open state of the panel. */
+  /** Two-way bound open state of the panel. Defaults to `false`. */
   readonly open = model(false);
 
   // ── Outputs ──

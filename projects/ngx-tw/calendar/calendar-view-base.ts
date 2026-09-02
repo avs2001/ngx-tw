@@ -37,43 +37,43 @@ export abstract class CalendarViewBase<D> {
   /** The date that anchors the grid being rendered. */
   readonly activeDate: InputSignal<D> = input.required<D>();
 
-  /** Current selection — scalar, array (multi), or range. */
+  /** Current selection — scalar, array (multi), or range. Defaults to `null` (nothing selected). */
   readonly selected: InputSignal<D | D[] | DateRange<D> | null> =
     input<D | D[] | DateRange<D> | null>(null);
 
-  /** Minimum selectable date. */
+  /** Minimum selectable date. Defaults to `null` (no lower bound). */
   readonly minDate: InputSignal<D | null> = input<D | null>(null);
-  /** Maximum selectable date. */
+  /** Maximum selectable date. Defaults to `null` (no upper bound). */
   readonly maxDate: InputSignal<D | null> = input<D | null>(null);
 
-  /** Per-date predicate — return `false` to disable. */
+  /** Per-date predicate — return `false` to disable. Defaults to `null` (every date passes). */
   readonly dateFilter: InputSignal<DateFilterFn<D> | null> = input<DateFilterFn<D> | null>(null);
 
-  /** Explicitly disabled dates — array (compared via `adapter.sameDate`) or predicate (returns `true` for disabled). */
+  /** Explicitly disabled dates — array (compared via `adapter.sameDate`) or predicate (returns `true` for disabled). Defaults to `null` (none). */
   readonly disabledDates: InputSignal<DisabledDates<D> | null> =
     input<DisabledDates<D> | null>(null);
 
-  /** Days of the week to disable (0=Sun … 6=Sat). Empty array = no day-of-week disabling. */
+  /** Days of the week to disable (0=Sun … 6=Sat). Defaults to `[]` — no day-of-week disabling. */
   readonly disabledDaysOfWeek: InputSignal<readonly number[]> = input<readonly number[]>([]);
 
-  /** Per-cell class override. */
+  /** Per-cell class override — returns extra classes appended to the cell button. Defaults to `null` (no extra classes). */
   readonly dateClass: InputSignal<DateClassFn<D> | null> = input<DateClassFn<D> | null>(null);
 
-  /** Hover-preview start (set while user is mid-range pick). */
+  /** Hover-preview start (set while user is mid-range pick). Defaults to `null` (no preview). */
   readonly previewStart: InputSignal<D | null> = input<D | null>(null);
-  /** Hover-preview end. */
+  /** Hover-preview end. Defaults to `null` (no preview). */
   readonly previewEnd: InputSignal<D | null> = input<D | null>(null);
 
-  /** Phase 6 — date that briefly flashes as invalid (rejected commit). Cleared by the orchestrator. */
+  /** Phase 6 — date that briefly flashes as invalid (rejected commit). Cleared by the orchestrator. Defaults to `null` (no flash). */
   readonly invalidFlashDate: InputSignal<D | null> = input<D | null>(null);
 
-  /** `true` when the parent calendar allows more than one cell to be selected at once. Drives `aria-multiselectable` on the grid host. */
+  /** `true` when the parent calendar allows more than one cell to be selected at once. Drives `aria-multiselectable` on the grid host. Defaults to `false`. */
   readonly multiSelectable: InputSignal<boolean> = input<boolean>(false);
 
-  /** `true` when the parent calendar is in read-only mode. Drives `aria-readonly` on the grid host. */
+  /** `true` when the parent calendar is in read-only mode. Drives `aria-readonly` on the grid host. Defaults to `false`. */
   readonly readonlyGrid: InputSignal<boolean> = input<boolean>(false);
 
-  /** Optional cell-content override. */
+  /** Optional cell-content override, rendered inside each cell button with `{ $implicit: CalendarCell<D> }`. Defaults to `null` (the cell renders its own display value). */
   readonly cellTemplate: InputSignal<TemplateRef<{ $implicit: CalendarCell<D> }> | null> =
     input<TemplateRef<{ $implicit: CalendarCell<D> }> | null>(null);
 

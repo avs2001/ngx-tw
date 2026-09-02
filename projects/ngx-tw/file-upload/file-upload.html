@@ -10,6 +10,7 @@
   [multiple]="multiple()"
   [disabled]="disabled()"
   [required]="required()"
+  [attr.aria-invalid]="errorState() || null"
   (change)="onNativeChange($event)"
 />
 

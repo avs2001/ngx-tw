@@ -593,7 +593,7 @@ export class TreeComponent<T = unknown> {
 export class TreeNodeToggleDirective<T = unknown> {
   private readonly tree = inject(TreeComponent<T>);
 
-  /** The node whose expansion this control toggles. */
+  /** The node whose expansion this control toggles. Alias: `twTreeNodeToggle`. */
   readonly node = input.required<T>({ alias: 'twTreeNodeToggle' });
 
   /** @internal Toggles the node and stops the click from bubbling to row activation. */

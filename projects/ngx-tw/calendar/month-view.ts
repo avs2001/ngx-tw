@@ -78,10 +78,10 @@ export class MonthViewComponent<D> extends CalendarViewBase<D> {
   protected readonly cellComponents: Signal<readonly CalendarCellComponent<D>[]> =
     viewChildren<CalendarCellComponent<D>>(CalendarCellComponent);
 
-  /** Override first day of week (0=Sun, 1=Mon). */
+  /** Override first day of week (0=Sun, 1=Mon). Defaults to `0` (Sunday). */
   readonly firstDayOfWeek: InputSignal<number> = input<number>(0);
 
-  /** Index within a multi-month row (0=left, 1+=right) — used by the orchestrator to disambiguate focus. */
+  /** Index within a multi-month row (0=left, 1+=right) — used by the orchestrator to disambiguate focus. Defaults to `0`. */
   readonly gridIndex: InputSignal<number> = input<number>(0);
 
   readonly weekdayHeaders: Signal<WeekdayHeader[]> = computed(() =>

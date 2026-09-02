@@ -34,12 +34,17 @@ const buttonVariants = tv({
       warning: '',
       error: '',
     },
+    // Pinned control heights — see `docs/vertical-rhythm.md`. Vertical padding
+    // is deliberately absent: the height is declared, not derived. The
+    // `outline` variant's 1px border sits *inside* the pinned box under
+    // Preflight's global `box-sizing: border-box`, so outline and solid now
+    // measure identically at every size (they used to differ by 2px).
     size: {
-      xs: 'px-2 py-1 text-xs',
-      sm: 'px-3 py-1.5 text-sm',
-      md: 'px-4 py-2 text-sm',
-      lg: 'px-5 py-2.5 text-base',
-      xl: 'px-6 py-3 text-base',
+      xs: 'px-2 text-xs h-6',
+      sm: 'px-3 text-sm h-8',
+      md: 'px-4 text-sm h-9',
+      lg: 'px-5 text-base h-11',
+      xl: 'px-6 text-base h-12',
     },
     disabled: {
       true: 'opacity-50 pointer-events-none',
@@ -112,12 +117,18 @@ const buttonVariants = tv({
     { variant: 'soft', color: 'error', class: 'bg-error-50 text-error-800 hover:bg-error-100' },
     { variant: 'link', color: 'error', class: 'text-error-700' },
 
-    // ===== Link variant: strip padding =====
-    { variant: 'link', size: 'xs', class: 'px-0 py-0' },
-    { variant: 'link', size: 'sm', class: 'px-0 py-0' },
-    { variant: 'link', size: 'md', class: 'px-0 py-0' },
-    { variant: 'link', size: 'lg', class: 'px-0 py-0' },
-    { variant: 'link', size: 'xl', class: 'px-0 py-0' },
+    // ===== Link variant: strip padding, and opt out of the pinned height =====
+    // `link` has no box — no border, no fill — so it is not part of the
+    // form-row cohort in `docs/vertical-rhythm.md` and must stay text-shaped:
+    // pinning it to `h-9` would blow out the line box of any paragraph it sits
+    // in. `h-auto` collapses the size variant's `h-*` via twMerge (same group,
+    // compoundVariants apply last), leaving the height equal to the line box —
+    // exactly what `py-0` produced before this migration.
+    { variant: 'link', size: 'xs', class: 'px-0 h-auto' },
+    { variant: 'link', size: 'sm', class: 'px-0 h-auto' },
+    { variant: 'link', size: 'md', class: 'px-0 h-auto' },
+    { variant: 'link', size: 'lg', class: 'px-0 h-auto' },
+    { variant: 'link', size: 'xl', class: 'px-0 h-auto' },
   ],
   defaultVariants: {
     variant: 'solid',
@@ -211,6 +222,7 @@ export class ButtonDirective implements OnInit {
     });
   }
 
+  /** @internal Swallows clicks while the button is disabled or loading, so neither navigation nor consumer handlers run. */
   handleClick(event: MouseEvent): void {
     if (this.disabled() || this.loading()) {
       event.preventDefault();

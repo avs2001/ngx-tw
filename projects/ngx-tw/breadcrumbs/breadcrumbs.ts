@@ -92,45 +92,66 @@ const breadcrumbs = tv(
         'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500 cursor-pointer',
     },
     variants: {
+      // A breadcrumb row is inline text navigation, so its box is a `min-h-*`
+      // floor rather than a pinned height (docs/vertical-rhythm.md §2) — the
+      // trail must stay free to wrap onto a second line in a narrow container.
+      // The floor lands on the control scale (24 / 32 / 36 / 44 / 48) for two
+      // reasons:
+      //   1. The font ramp cannot separate all five steps on its own —
+      //      `text-lg` is forbidden by CLAUDE.md, so `sm`/`md` both resolve to
+      //      `text-sm` and `lg`/`xl` both to `text-base`. Without the floor,
+      //      two of the five size steps are visually dead.
+      //   2. `overflowTrigger` is a square button (24 / 28 / 32 / 36 / 36) that
+      //      is taller than the bare text line box at every size, so a trail
+      //      that collapses would jump in height the moment the ellipsis
+      //      appears. With the floor at or above the trigger square at every
+      //      size, the row height no longer depends on whether it renders.
+      // The `lg`/`xl` trigger saturation at `size-9` is the codified CLAUDE.md
+      // note — deliberately left alone.
       size: {
         xs: {
           list: 'gap-1',
+          item: 'min-h-6',
           link: 'text-xs',
           current: 'text-xs',
           disabled: 'text-xs',
-          separator: 'text-xs',
+          separator: 'min-h-6 text-xs',
           overflowTrigger: 'size-6 text-xs',
         },
         sm: {
           list: 'gap-1',
+          item: 'min-h-8',
           link: 'text-sm',
           current: 'text-sm',
           disabled: 'text-sm',
-          separator: 'text-sm',
+          separator: 'min-h-8 text-sm',
           overflowTrigger: 'size-7 text-sm',
         },
         md: {
           list: 'gap-1.5',
+          item: 'min-h-9',
           link: 'text-sm',
           current: 'text-sm',
           disabled: 'text-sm',
-          separator: 'text-sm',
+          separator: 'min-h-9 text-sm',
           overflowTrigger: 'size-8 text-sm',
         },
         lg: {
           list: 'gap-2',
+          item: 'min-h-11',
           link: 'text-base',
           current: 'text-base',
           disabled: 'text-base',
-          separator: 'text-base',
+          separator: 'min-h-11 text-base',
           overflowTrigger: 'size-9 text-base',
         },
         xl: {
           list: 'gap-2',
+          item: 'min-h-12',
           link: 'text-base',
           current: 'text-base',
           disabled: 'text-base',
-          separator: 'text-base',
+          separator: 'min-h-12 text-base',
           overflowTrigger: 'size-9 text-base',
         },
       },

@@ -35,16 +35,29 @@ const itemVariants = tv(
       trailing: 'flex shrink-0',
     },
     variants: {
+      // `tw-item` is on the `min-h-*` list (docs/vertical-rhythm.md §2), not the
+      // pinned one: a title + description is a two-line stack, so the box must
+      // stay free to grow. `py-*` is therefore kept exactly as it is.
+      //
+      // The three-step `ItemSize` axis maps onto the control scale by its own
+      // single-line natural height, so each floor binds at the size it belongs
+      // to rather than being decorative:
+      //   sm → 32 (`min-h-8`)  — py-1.5 (12) + text-sm line box (20)
+      //   md → 36 (`min-h-9`)  — py-2   (16) + text-sm line box (20)
+      //   lg → 48 (`min-h-12`) — py-3   (24) + text-base line box (24)
+      // The scale's 24px (`xs`) step sits below `tw-item`'s densest row and its
+      // 44px (`lg`) step sits below the section-header line box, so both are
+      // skipped: `lg` takes the 48px step it already measures.
       size: {
         sm: {
-          root: 'gap-2 py-1.5',
+          root: 'gap-2 py-1.5 min-h-8',
           content: 'gap-0',
           title: 'text-sm truncate',
           description: 'text-xs truncate',
           trailing: 'gap-1.5',
         },
         md: {
-          root: 'gap-3 py-2',
+          root: 'gap-3 py-2 min-h-9',
           leading: 'mt-0.5',
           content: 'gap-1',
           title: 'text-sm',
@@ -52,7 +65,7 @@ const itemVariants = tv(
           trailing: 'gap-2',
         },
         lg: {
-          root: 'gap-3 py-3',
+          root: 'gap-3 py-3 min-h-12',
           leading: 'mt-0.5',
           content: 'gap-1',
           title: 'text-base font-semibold',
@@ -180,11 +193,13 @@ export class ItemComponent implements OnInit {
     });
   }
 
+  /** @internal Emits `selected` on click when the item is interactive and enabled. */
   onActivate(event: Event): void {
     if (!this.interactive() || this.disabled()) return;
     this.selected.emit(event);
   }
 
+  /** @internal Emits `selected` on Enter/Space when the item is interactive and enabled. */
   onKeydown(event: KeyboardEvent): void {
     if (!this.interactive() || this.disabled()) return;
     if (event.key === 'Enter' || event.key === ' ') {

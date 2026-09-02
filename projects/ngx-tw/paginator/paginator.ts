@@ -276,42 +276,50 @@ const paginatorVariants = tv(
       icon: 'size-4 shrink-0',
     },
     variants: {
+      // Heights are pinned to the control scale (docs/vertical-rhythm.md):
+      // 24 / 32 / 36 / 44 / 48. Vertical padding is deleted deliberately — the
+      // buttons centre via `inline-flex items-center justify-center` and the
+      // native `<select>` centres its own text, so any surviving `py-*` would
+      // only fight the pinned height under `box-sizing: border-box`. `min-w-*`
+      // tracks the height so number buttons stay square until the digits
+      // widen them. `ellipsis` moves in lockstep or the numbered row
+      // reintroduces a height divergence inside the component.
       size: {
         xs: {
-          navButton: 'px-2 py-1 text-xs min-w-7 h-7',
-          pageButton: 'px-2 py-1 text-xs min-w-7 h-7',
-          pageSizeSelect: 'px-2 py-1 text-xs',
-          ellipsis: 'min-w-7 h-7 text-xs',
+          navButton: 'px-2 text-xs min-w-6 h-6',
+          pageButton: 'px-2 text-xs min-w-6 h-6',
+          pageSizeSelect: 'px-2 text-xs h-6',
+          ellipsis: 'min-w-6 h-6 text-xs',
           // `size-3.5` (14px) half-step: neither size-3 nor size-4 aligns with
-          // text-xs glyph metrics inside a 28px nav button.
+          // text-xs glyph metrics inside a 24px nav button.
           icon: 'size-3.5',
         },
         sm: {
-          navButton: 'px-2.5 py-1.5 text-sm min-w-8 h-8',
-          pageButton: 'px-2.5 py-1.5 text-sm min-w-8 h-8',
-          pageSizeSelect: 'px-2.5 py-1.5 text-sm',
+          navButton: 'px-2.5 text-sm min-w-8 h-8',
+          pageButton: 'px-2.5 text-sm min-w-8 h-8',
+          pageSizeSelect: 'px-2.5 text-sm h-8',
           ellipsis: 'min-w-8 h-8 text-sm',
           icon: 'size-4',
         },
         md: {
-          navButton: 'px-3 py-2 text-sm min-w-9 h-9',
-          pageButton: 'px-3 py-2 text-sm min-w-9 h-9',
-          pageSizeSelect: 'px-3 py-2 text-sm',
+          navButton: 'px-3 text-sm min-w-9 h-9',
+          pageButton: 'px-3 text-sm min-w-9 h-9',
+          pageSizeSelect: 'px-3 text-sm h-9',
           ellipsis: 'min-w-9 h-9 text-sm',
           icon: 'size-4',
         },
         lg: {
-          navButton: 'px-4 py-2.5 text-base min-w-10 h-10',
-          pageButton: 'px-4 py-2.5 text-base min-w-10 h-10',
-          pageSizeSelect: 'px-4 py-2.5 text-base',
-          ellipsis: 'min-w-10 h-10 text-base',
+          navButton: 'px-4 text-base min-w-11 h-11',
+          pageButton: 'px-4 text-base min-w-11 h-11',
+          pageSizeSelect: 'px-4 text-base h-11',
+          ellipsis: 'min-w-11 h-11 text-base',
           icon: 'size-5',
         },
         xl: {
-          navButton: 'px-5 py-3 text-base min-w-11 h-11',
-          pageButton: 'px-5 py-3 text-base min-w-11 h-11',
-          pageSizeSelect: 'px-5 py-3 text-base',
-          ellipsis: 'min-w-11 h-11 text-base',
+          navButton: 'px-5 text-base min-w-12 h-12',
+          pageButton: 'px-5 text-base min-w-12 h-12',
+          pageSizeSelect: 'px-5 text-base h-12',
+          ellipsis: 'min-w-12 h-12 text-base',
           icon: 'size-5',
         },
       },
@@ -430,7 +438,7 @@ export class PaginatorPageSizeSelectorDirective {
 export class PaginatorFocusableDirective implements FocusableOption {
   readonly elementRef = inject(ElementRef<HTMLElement>);
 
-  /** When true, the element is skipped by `FocusKeyManager` roving focus. */
+  /** When true, the element is skipped by `FocusKeyManager` roving focus. Defaults to `false`. */
   readonly isDisabled = input(false);
 
   focus(): void {
@@ -470,10 +478,10 @@ export class PaginatorComponent {
   /** Total number of items across all pages. Defaults to `0`. */
   readonly totalItems = input<number>(0);
 
-  /** Items per page. Two-way bindable via `[(pageSize)]`. Defaults to `10`. */
+  /** Items per page. Two-way bindable via `[(pageSize)]`; writes back when the user picks a different size in the page-size selector. Defaults to `10`. */
   readonly pageSize = model<number>(10);
 
-  /** 1-based current page. Two-way bindable via `[(page)]`. Clamped internally. Defaults to `1`. */
+  /** 1-based current page. Two-way bindable via `[(page)]`; writes back when the user navigates, and whenever the value is clamped into the valid `1…totalPages` range. Defaults to `1`. */
   readonly page = model<number>(1);
 
   /** Rendering type. Defaults to `'numbered'`. */
@@ -530,7 +538,7 @@ export class PaginatorComponent {
   /** When provided, buttons render as anchor links using the returned `href`. Defaults to `undefined` (renders as buttons). */
   readonly linkFactory = input<((page: number) => string) | undefined>(undefined);
 
-  /** Overrides `labels.ariaLabel` for the root `<nav>` element. */
+  /** Overrides `labels.ariaLabel` for the root `<nav>` element. Bound as `aria-label`. Defaults to `undefined` (the resolved `labels.ariaLabel` is used). */
   readonly customAriaLabel = input<string | undefined>(undefined, {
     alias: 'aria-label',
   });

@@ -83,7 +83,7 @@ let nextPanelId = 0;
   },
 })
 export class TabNavPanel {
-  /** Unique id for this panel. Referenced by the active link's `aria-controls`. Auto-generated when not provided. */
+  /** Unique id for this panel. Referenced by the active link's `aria-controls`. Defaults to an auto-generated `tw-tab-nav-panel-N` id. */
   readonly id = input(`tw-tab-nav-panel-${nextPanelId++}`);
 
   /** @internal Id of the active link — set by the associated TabNavComponent. */
@@ -122,10 +122,10 @@ export class TabNavComponent {
   /** Additional classes merged onto the `<nav>` host. Useful for layout tweaks or borders that the default tv() config does not cover. */
   readonly navClass = input<string>('');
 
-  /** Additional classes merged onto every tab link. Applied after base/active/disabled classes so consumer styles always win the cascade. */
+  /** Additional classes merged onto every tab link. Applied after base/active/disabled classes so consumer styles always win the cascade. Defaults to an empty string. */
   readonly linkClass = input<string>('');
 
-  /** Optional label overrides for screen-reader announcements. Only used in the ARIA tabs pattern (i.e. when a panel is associated). */
+  /** Optional label overrides for screen-reader announcements. Only used in the ARIA tabs pattern (i.e. when a panel is associated). Defaults to an empty object — every field falls back to its own default. */
   readonly labels = input<TabNavLabels>({});
 
   /** @internal Tab links discovered via content projection. */
@@ -322,7 +322,7 @@ export class TabLinkDirective {
   /** When true, the link is visually disabled and cannot be activated by click or keyboard. Defaults to `false`. */
   readonly disabled = input(false);
 
-  /** Unique id for this link. Referenced by the panel's `aria-labelledby` when the link is active. Auto-generated when not provided. */
+  /** Unique id for this link. Referenced by the panel's `aria-labelledby` when the link is active. Defaults to an auto-generated `tw-tab-link-N` id. */
   readonly linkId = input(`tw-tab-link-${nextLinkId++}`);
 
   /**

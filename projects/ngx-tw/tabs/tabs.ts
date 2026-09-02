@@ -173,7 +173,7 @@ export class TabComponent {
   /** Unique identifier for this tab. Used to match the active tab value. */
   readonly value = input.required<string>();
 
-  /** Plain text label shown in the trigger. Ignored when a custom trigger template is provided. */
+  /** Plain text label shown in the trigger. Ignored when a custom trigger template is provided. Defaults to an empty string. */
   readonly label = input('');
 
   /** When true, the tab cannot be selected and is skipped by keyboard navigation. Defaults to false. */
@@ -206,11 +206,15 @@ export class TabComponent {
 export class TabTriggerElementDirective implements FocusableOption {
   readonly elementRef = inject(ElementRef<HTMLElement>);
 
+  /** Whether this trigger is the active tab. Drives `tabindex` so only the active trigger is in the tab order. Defaults to `false`. */
   readonly isActive = input(false);
+
+  /** Whether this trigger is disabled. Read by `FocusKeyManager` so disabled triggers are skipped during arrow navigation. Defaults to `false`. */
   readonly isDisabled = input(false);
 
   readonly tabIndex = computed(() => this.isActive() ? 0 : -1);
 
+  /** Moves DOM focus to the trigger element. Called by `FocusKeyManager` during arrow-key navigation. */
   focus(): void {
     this.elementRef.nativeElement.focus();
   }
@@ -255,7 +259,7 @@ export class TabsComponent implements AfterViewInit {
   /** When true, tab triggers stretch to fill the available width equally. Defaults to false. */
   readonly fitted = input(false);
 
-  /** The value of the currently active tab. Two-way bound. Updates when the user selects a tab. */
+  /** The value of the currently active tab. Two-way bound. Updates when the user selects a tab. Defaults to an empty string. */
   readonly value = model<string>('');
 
   /** Fires when a closable tab's close button is clicked. Payload is the tab's value. */
@@ -340,20 +344,24 @@ export class TabsComponent implements AfterViewInit {
   }
 
   // ── ID generation ──
+  /** Builds the DOM id for a tab trigger, used by the panel's `aria-labelledby`. */
   getTabId(tabValue: string): string {
     return `${this.componentId}-tab-${tabValue}`;
   }
 
+  /** Builds the DOM id for a tab panel, used by the trigger's `aria-controls`. */
   getPanelId(tabValue: string): string {
     return `${this.componentId}-panel-${tabValue}`;
   }
 
   // ── Tab visibility ──
 
+  /** Whether the tab with the given value is the currently active one. */
   isTabActive(tabValue: string): boolean {
     return this.activeValue() === tabValue;
   }
 
+  /** Whether a tab's panel content should be in the DOM. Always true for eager tabs; for lazy tabs, true only once the tab has been activated at least once. */
   shouldRenderPanel(tab: TabComponent): boolean {
     const value = tab.value();
     if (!tab.lazy()) {
@@ -365,6 +373,7 @@ export class TabsComponent implements AfterViewInit {
 
   // ── Selection ──
 
+  /** Activates a tab, updating the two-way bound `value`, marking it rendered for lazy panels, and announcing the change via `LiveAnnouncer`. Ignored when the tab is disabled. */
   selectTab(tab: TabComponent): void {
     if (tab.disabled()) return;
     const val = tab.value();
@@ -386,6 +395,7 @@ export class TabsComponent implements AfterViewInit {
     );
   }
 
+  /** Closes a closable tab, emitting `closed` with its value and moving activation to the nearest enabled sibling when the closed tab was active. */
   closeTab(tab: TabComponent, event: Event): void {
     event.stopPropagation();
     if (event instanceof KeyboardEvent) {
@@ -477,6 +487,7 @@ export class TabsComponent implements AfterViewInit {
 
   // ── Scrolling ──
 
+  /** Smoothly scrolls the tablist back toward its start by one step, along the current orientation's axis. */
   scrollStart(): void {
     const el = this.tablistInnerRef()?.nativeElement;
     if (!el) return;
@@ -488,6 +499,7 @@ export class TabsComponent implements AfterViewInit {
     }
   }
 
+  /** Smoothly scrolls the tablist forward toward its end by one step, along the current orientation's axis. */
   scrollEnd(): void {
     const el = this.tablistInnerRef()?.nativeElement;
     if (!el) return;
