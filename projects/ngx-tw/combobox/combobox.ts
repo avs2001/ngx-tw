@@ -41,7 +41,11 @@ import {
   type TwFormSubmitted,
   type TwSize,
 } from '@cdevhub/ngx-tw/core';
-import { Overlay, type OverlayRef } from '@angular/cdk/overlay';
+import {
+  type FlexibleConnectedPositionStrategy,
+  Overlay,
+  type OverlayRef,
+} from '@angular/cdk/overlay';
 import { ComponentPortal } from '@angular/cdk/portal';
 import { Platform } from '@angular/cdk/platform';
 import { FocusMonitor, LiveAnnouncer } from '@angular/cdk/a11y';
@@ -542,6 +546,15 @@ export class ComboboxComponent<T = unknown>
   private onTouched: () => void = () => {};
 
   private overlayRef: OverlayRef | null = null;
+  /**
+   * The live position strategy. Held as a field so every open can re-apply
+   * `offset` onto it — see `refreshPositionConfig`.
+   */
+  private positionStrategy: FlexibleConnectedPositionStrategy | null = null;
+  /** The `offset` value currently baked into `positionStrategy`. */
+  private appliedOffset: number | null = null;
+  /** The `scrollStrategy` name currently installed on `overlayRef`. */
+  private appliedScrollStrategy: 'reposition' | 'close' | 'block' | null = null;
   private closeTimer: ReturnType<typeof setTimeout> | null = null;
   private queryDebounceTimer: ReturnType<typeof setTimeout> | null = null;
   private announceTimer: ReturnType<typeof setTimeout> | null = null;
@@ -905,6 +918,7 @@ export class ComboboxComponent<T = unknown>
       this.resizeObserver = null;
       this.overlayRef?.dispose();
       this.overlayRef = null;
+      this.positionStrategy = null;
       this.overlayInstance = null;
     });
   }
@@ -1303,6 +1317,10 @@ export class ComboboxComponent<T = unknown>
   private openOverlay(): void {
     this.ensureOverlay();
     this.attachOverlayComponent();
+    // After `attachOverlayComponent`, deliberately: CDK only wires a swapped
+    // scroll strategy into the overlay when the ref is attached. See
+    // `applyScrollStrategy`.
+    this.applyScrollStrategy();
     this.subscribePerOpen();
     // Reset active to first enabled when opening.
     this.activeIndex.set(this.firstEnabledIndex());
@@ -1350,26 +1368,72 @@ export class ComboboxComponent<T = unknown>
 
   private ensureOverlay(): void {
     if (this.overlayRef) {
+      // The OverlayRef deliberately survives a close (closing only detaches), so
+      // anything read at creation time would otherwise be frozen for the whole
+      // component lifetime. Re-apply the input-driven bits on every open.
+      this.refreshPositionConfig();
       this.updateOverlaySize();
       return;
     }
+    this.appliedOffset = this.offset();
     const positionStrategy = this.overlayService
       .position()
       .flexibleConnectedTo(this.triggerSurfaceRef()?.nativeElement ?? this.elementRef.nativeElement)
-      .withPositions(buildSelectLikePositions(this.offset()))
+      .withPositions(buildSelectLikePositions(this.appliedOffset))
       .withFlexibleDimensions(false)
       .withPush(false)
       .withViewportMargin(8);
+    this.positionStrategy = positionStrategy;
+    this.appliedScrollStrategy = this.scrollStrategy();
 
     this.overlayRef = this.overlayService.create({
       positionStrategy,
-      scrollStrategy: resolveSelectScrollStrategy(this.scrollStrategy(), this.overlayService),
+      scrollStrategy: resolveSelectScrollStrategy(this.appliedScrollStrategy, this.overlayService),
       hasBackdrop: true,
       backdropClass: 'cdk-overlay-transparent-backdrop',
       panelClass: 'tw-combobox-panel',
     });
     this.installResizeObserver();
     this.updateOverlaySize();
+  }
+
+  /** Pushes the current `offset` onto the live position strategy. */
+  private refreshPositionConfig(): void {
+    const offset = this.offset();
+    if (!this.positionStrategy || offset === this.appliedOffset) return;
+    this.appliedOffset = offset;
+    this.positionStrategy.withPositions(buildSelectLikePositions(offset));
+    // `withPositions` only stores the list. The open path calls this while the
+    // ref is still detached, so the following `attach()` applies it; the guard
+    // covers a future caller that runs while the panel is up.
+    if (this.overlayRef?.hasAttached()) this.overlayRef.updatePosition();
+  }
+
+  /**
+   * Swaps in a new CDK scroll strategy when `scrollStrategy` changed since the
+   * last open.
+   *
+   * **Must be called while the overlay is attached.**
+   * `OverlayRef.updateScrollStrategy` only calls `attach()`/`enable()` on the
+   * new strategy when `hasAttached()` is true; swapped in while detached, the
+   * strategy would never receive its `OverlayRef` and the subsequent
+   * `OverlayRef.attach()` would call bare `enable()` on it — leaving
+   * `CloseScrollStrategy`/`RepositionScrollStrategy` to throw on the first
+   * scroll event.
+   */
+  private applyScrollStrategy(): void {
+    const name = this.scrollStrategy();
+    // The `hasAttached` half of the guard is the safety net for that rule: if a
+    // caller ever runs this while detached we skip the swap (and leave
+    // `appliedScrollStrategy` stale, so the next open retries) rather than
+    // installing a strategy CDK will never hand an OverlayRef to.
+    if (!this.overlayRef?.hasAttached() || name === this.appliedScrollStrategy) {
+      return;
+    }
+    this.appliedScrollStrategy = name;
+    this.overlayRef.updateScrollStrategy(
+      resolveSelectScrollStrategy(name, this.overlayService),
+    );
   }
 
   private installResizeObserver(): void {

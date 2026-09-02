@@ -84,10 +84,25 @@ export class TimePickerIntl {
  *   }),
  * ]
  * ```
+ *
+ * Keys explicitly set to `undefined` are dropped before merging. Root
+ * `tsconfig.json` does not set `exactOptionalPropertyTypes`, so
+ * `provideTimePickerIntl({ hoursLabel: bundle['time.hours'] })` type-checks
+ * even when the lookup misses — and a plain `Object.assign` would then copy
+ * that `undefined` over a field `TimePickerIntl` types as `string`. Because
+ * this is a bootstrap-level provider, one missing key broke *every*
+ * time-picker in the app: `focusedFieldLabel()` calls `.toLowerCase()` on the
+ * field labels to build the stepper aria-labels, so the picker threw on first
+ * render. Filtering here makes a missing key fall back to the English default.
  */
 export function provideTimePickerIntl(custom: Partial<TimePickerIntl>): Provider {
   return {
     provide: TimePickerIntl,
-    useFactory: () => Object.assign(new TimePickerIntl(), custom),
+    useFactory: () => {
+      const overrides = Object.fromEntries(
+        Object.entries(custom ?? {}).filter(([, value]) => value !== undefined),
+      );
+      return Object.assign(new TimePickerIntl(), overrides);
+    },
   };
 }

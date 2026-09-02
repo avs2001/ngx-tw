@@ -826,3 +826,313 @@ re-run a red suite until it goes green, which is how a real failure gets waved t
 `workflow_dispatch`. FIX-3's analysis says none of the 20 chromium baselines covers a menu glyph,
 avatar status dot or carousel dot, so no shift is expected — but that is an expectation, not a
 measurement, and the Linux job is the only thing that can confirm it.
+
+---
+
+# Pass 5 — 2026-09-03, SRP · CDK adoption · theme system · public API · defects
+
+Scope set by the maintainer: a full-library audit through the `angular-developer` v22 lens, plus
+consistency, CSS/token and theme system, SRP, CDK adoption, public API, and defect/gap hunting.
+
+Method: five parallel read-only audit agents (SRP/decomposition, CDK adoption **gaps**, theme
+system, public API/consistency, defects/coverage), then six fix agents partitioned **by file
+ownership**, then a second wave of three for findings that arrived after the first wave launched.
+Pass 4's `Register:` discipline was reused verbatim — every finding had to declare
+`not in register` / `extends X` / `contradicts X`, and findings without one were discarded.
+Two lenses had **never been audited before**: SRP, and "what CDK are we *missing*" as opposed to
+"is our CDK usage correct".
+
+Full reports: `scratchpad/pass5-{srp,cdk,theme,api,gaps}.md`, with re-runnable measurement scripts
+beside them (`bool.mjs`, `fixme.mjs`, `fixme3.mjs`, `inputs2.mjs`) — the first pass to publish its
+scripts, which is what finally settled the untested-inputs dispute below.
+
+## The pass's real lesson: the specification drifts faster than the source
+
+Three passes running, a *rule's stated rationale* has been the defect rather than the code it
+governs. This pass found three more, all in `.claude/CLAUDE.md`:
+
+1. **"Compodoc parses these to generate API tables"** — justifying the JSDoc rule in three places.
+   **Compodoc is not a dependency of this repo**: not in `package.json`, no config, no script.
+   `docs/mcp-server-architecture.md:60-62` already said so in writing, and the demo's API tables
+   are hand-authored HTML. The consequence the rule describes is real, but it runs through
+   `scripts/mcp/extract-api.mjs:63` (`jsDocOf()` reads the compiler's `node.jsDoc` array — `/** */`
+   blocks only, runs inside `npm run build:lib`, ships in `dist/ngx-tw/index.json`) and through the
+   emitted `.d.ts` into a consumer's IDE hover. **[measured]**
+2. **"Use CDK for … coercion"** — the library makes **49 uses** of Angular's own
+   `booleanAttribute` / `numberAttribute` across 14 files and imports `@angular/cdk/coercion`
+   **zero** times. The code was right; the instruction was stale. **[measured]**
+3. **`time-picker` filed under "Overlay-bearing components"** in the input-cap exception table —
+   it imports `@angular/cdk/overlay` **zero** times and renders inline. Its 24 inputs are genuinely
+   wide, for a different reason, so it now has its own row rather than a borrowed justification.
+   **[measured]**
+
+Why this keeps happening is worth naming: a wrong rationale is invisible to every gate. Tests,
+lint, `verify:package` and `verify:mcp-index` all check the *code*. Nothing checks whether the
+reason a rule gives for itself is true — and a rule that cites a tool nobody can find is one
+maintainer-check away from being abandoned wholesale.
+
+## Tier 1 — fixed and verified in this pass
+
+| # | Finding | Evidence |
+|---|---|---|
+| P5-1 | **`[twTheme]="'light'"` was a no-op inside any dark or high-contrast ancestor.** `_dark.css:13` and `_high-contrast.css:1` are element-agnostic `[data-theme=…]` rules that cascade into a subtree; `light` existed only in `_semantic.css`'s `@theme` block, which Tailwind v4 emits as `@layer theme { :root, :host }` — no subtree element matches either. The only `[data-theme="light"]` selector in the theme CSS was inside `@media (forced-colors: active)`. **The demo's own three-pane showcase demonstrated the bug**: switch the page to dark and the "light" pane stayed dark. `ThemeService.applyToElement()` carried the identical hole while its JSDoc promised subtree scoping, and `theme.meta.ts` advertised it into the MCP index. | **[verified]** → fixed with `theme/_light.css`, **195 declarations, all 195 string-equal to `_semantic.css`** (pixel-neutrality) and key-identical to the dark/HC blocks |
+| P5-2 | **`provideTheme()` registered `ThemeService` but never constructed it.** No `provideEnvironmentInitializer`/`APP_INITIALIZER`, so the service was built on first `inject()` — and everything that applies the theme lives in its constructor effect. A consumer whose toggle sits in a lazily-loaded route got **no `data-theme` at all** until that chunk loaded. Masked completely: the demo injects it in the eagerly-loaded root layout, and every spec called `TestBed.inject` explicitly, so the un-injected path had zero coverage. | **[verified]** |
+| P5-3 | **`defaultTheme` was a one-shot.** The constructor effect persisted to `localStorage` on first load with no user action, so changing `defaultTheme` in a later release left returning users pinned to the old value forever. Persist moved into `setTheme()`. Landing P5-2 without this would have made it strictly worse — the initializer now runs on *every* boot. | **[verified]** |
+| P5-4 | **`'system'` could never resolve to `high-contrast`** — `prefers-contrast` appeared zero times in the repo. Now observed live. Resolution **(b)**: high-contrast only when contrast is requested and the OS is not dark, because the only HC scheme is light-based and (a) would move dark+contrast users onto a white surface. A dark HC ramp is recorded as the follow-up. One listener across both `MediaQueryList`s so a colour-scheme tick cannot clobber the contrast decision. | **[measured]** |
+| P5-5 | **No flash-free path for a persisted theme disagreeing with the OS.** `TW_THEME_BOOTSTRAP_SCRIPT` now ships, built from `DEFAULT_TW_THEME_CONFIG` so its storage key and attribute cannot drift from `THEME_CONFIG`. | **[verified]** |
+| P5-6 | **`combobox` panel resize tracking died permanently after the first close.** `closeOverlay()` disconnected and nulled the `ResizeObserver`; `ensureOverlay()` early-returns whenever `overlayRef` exists, and the ref is only ever *detached*, never disposed — so `installResizeObserver()` was never reached again. `select`, the file this was copied from, does **not** disconnect on close, which is why it was unaffected. The copies had drifted twice (see P5-7). | **[verified]** by the orchestrator against source, not taken on report |
+| P5-7 | `combobox` registered backdrop/Escape teardown on `destroyRef` rather than per-open, accumulating one subscription per open on a reused `OverlayRef`. Replaced with a `perOpenSubs` aggregate mirroring `select`. | **[verified]** |
+| P5-8 | **`paginator` inverted arrow keys in RTL.** `paginator.ts:890` pinned `withHorizontalOrientation('ltr')` as a literal and imported `@angular/cdk/bidi` zero times; CDK's `_list-key-manager-chunk.mjs:138-141` makes ArrowLeft unconditionally `setPreviousItemActive()`, which in an RTL page moves focus visually **rightward**. The library already knew: `tab-nav.ts:144` documents this exact bug class in prose *while fixing it*, and `paginator`'s own comment claimed to mirror that migration. **A missed sibling of commit `5dccfc1`.** Now reads `Directionality.valueSignal()` (CDK 22) inside the existing rebuild effect. | **[verified]** by the orchestrator against source + installed CDK |
+| P5-9 | `segmented-control` and `tags-input` hand-rolled horizontal arrow navigation with zero `Directionality`, on custom `role` hosts that get **no native browser RTL fallback**. Minimal direction-aware fix in both. | **[verified]** |
+| P5-10 | **`tw-table` and `flip-card` each announced the same string twice** — a `LiveAnnouncer` call *and* an `aria-live` host region. `flip-card`'s own comment stated the contradiction. | **[verified]** |
+| P5-11 | **`select`'s type-ahead could make a *disabled* option the active descendant**, after which Enter silently did nothing. The arrow-key path already skipped disabled options; type-ahead did not. | **[verified]** |
+| P5-12 | **`NumberInputDirective` never reflected disabled to the DOM, and `onInput()` was ungated** — a disabled standalone control wrote every keystroke into the form model. `onKeydown` and `stepBy` both open with a disabled guard; `onInput` did not, which is the tell it was accidental. Masked because all 28 demo usages **and all five spec hosts** pair it with `twInput`, whose native attribute supplies the missing behaviour. The existing disabled spec asserts `inputEl.disabled === true` — a correct DOM assertion that was **measuring the sibling directive** and never dispatched an `input` event. Structurally incapable of failing. | **[verified]** |
+| P5-13 | **11 variant renames across 7 components** landed with deprecated aliases: `outlined`/`bordered` → `outline`, `filled` → `solid`, `plain` → `ghost`. | **[measured]** |
+| P5-14 | **17 `true`-default justifications migrated from `//` into JSDoc.** | **[measured]** |
+| P5-15 | **The MCP index served ZERO snippets for the entire runtime theming API** — the theme route had no `*Snippet` consts and no `<tw-code-block>`. Now 12. Repo-wide snippet count 733 → 745. | **[measured]** |
+| P5-16 | **`verify-mcp-index.mjs` check 4's `.css` carve-out was dead code** — the scanner regex `[\w/-]` excludes `.`, so `@cdevhub/ngx-tw/theme/index.css` captured as `theme/index`, failing the carve-out and both entry-point lookups. Landing P5-15's CSS snippet would have turned an advisory WARN into a **hard `exit 1` on the release pre-flight**. Check 5's "missing or renamed demo page" also reported a wrong cause. | **[measured]** — found by the fix agent *in the audit's own claim* that check 4 "already whitelists `theme/*.css`" |
+
+| P5-17 | **Overlay configuration was built once per component *lifetime* in `tooltip`, `select`, `combobox` and `popover`** — `position`, `offset`, `scrollStrategy` and backdrop config froze after the first open, because each guards creation on `if (this.overlayRef) return` and disposes only at destroy, while close merely `detach()`es. `tooltip` is the worst: `[twTooltipPosition]="isMobile() ? 'bottom' : 'right'"` is an ordinary binding and tooltips show and hide constantly. Extends the P4-6 / P4-9 "input read once, never re-read" class. | **[verified]** — `tooltip` re-derived by the orchestrator; all four re-verified by the fix agent |
+| P5-18 | **`provideCalendarIntl` / `provideTimePickerIntl` merged with `Object.assign`,** so an explicitly-`undefined` field overwrote the default and a missing key then crashed the calendar on view switch. P4-8's class, but in a **bootstrap-level provider** — one bad key at startup breaks every calendar in the app, and it surfaces later, on a view switch, far from the cause. | **[verified]** |
+| P5-19 | **A disabled `tw-calendar` still presented every day cell as enabled**, and `cellHover` fired on every pointer move across the disabled grid. `effectiveDisabled` was never plumbed to the cells while `readonly` was. Prior art preserved: no native `[disabled]` on cells, and exactly one tabbable cell when disabled. | **[verified]** |
+| P5-20 | **New e2e guards**: the `[twTheme]` subtree fix (P5-1) had none — `theme-matrix.spec.ts` covers 4 sampled pages and the theme page was not among them, which is exactly why P5-1 shipped. Plus the first RTL keyboard case for `paginator`. `dialog.spec.ts:92`'s stale fixme promoted to a live passing test. | **[measured]** — theme guard's non-vacuity proven by commenting out `@import "./_light.css"` in the loaded CSS and watching all three assertions fail independently |
+
+### Why the variant aliases are load-bearing, not courtesy
+
+Measured against the installed `tailwind-variants`: `tv({variant:'zzz'})` returns **base classes
+only** — not the default, no throw, no console warning. So a rename without an alias leaves a
+consumer's `variant="outlined"` **silently unstyled**. Every alias therefore ships a
+**string-equality** regression spec (not `toContain`), which is the literal encoding of the
+promise. `card`'s deliberately sets `color="primary"` because card has no `neutral` compound row,
+so at the default colour its seven-row rekey would have been entirely unguarded. **[measured]**
+
+The mechanism was decided once and applied uniformly: normalise in a `computed()` **before**
+`tv()`, rather than duplicating the `tv()` key — duplication would have doubled `card` 7→14 and
+`collapsible` 15→30 compound rows, which is exactly the drift CLAUDE.md codifies against.
+
+## Corrections to earlier passes, and to this pass's own agents
+
+- **The register's "6 of 12 injection tokens reach the root barrel" is wrong: all 12 do.** The
+  deferred `TW_` work is roughly double what the register advertised. **[verified]**
+- **The register's `test.fixme` reduced-motion cost is wrong, in the dangerous direction.** It says
+  adding the gate would kill six e2e tests. `playwright.config.ts:62` sets
+  `reducedMotion: 'reduce'` **globally**, so the real result is **1 red test and 3 silently vacuous
+  ones** — cheaper than advertised but worse, because vacuous tests advertise coverage that does
+  not exist. **[measured]**
+- **The 140/672 untested-inputs dispute is settled: neither pass was wrong.** Pass 4 measured a
+  total across methodologies; pass 2 measured a delta within one. Both are correct for their
+  denominator. The real defect was that **no pass ever published its script** — this one did.
+- **`test.fixme` count is 37, not 38.** `dialog.spec.ts:92` is **provably stale**:
+  `dialog-config.ts:56` already overrides `ariaModal = true` and three unit tests assert it.
+- **"69 outputs" matches no filter** — the real count is **88** source declarations (none
+  `@internal`), 96 shipped `OutputEmitterRef` members. Treat 69 as stale.
+- **Register Tier 2's "high-contrast has zero verification" is stale** — `theme-matrix.spec.ts`
+  sweeps all three themes. Its scope is narrow (4 sampled pages, `color-contrast` only) and the
+  theme page itself is not among them, **which is exactly why P5-1 shipped unguarded**.
+- **Pass 1's F5 (`--width-calendar-*` dead tokens) is closed**, and
+  `docs/production-audit.md:48`'s "`theme/index.css` is not exported" is closed — dist exports
+  carry both `./theme` and `./theme/*.css`.
+- **The `@internal` leak is 999 class members vs 2 module symbols**, which **kills the barrel
+  convention outright** as a mechanism for `stripInternal`. `protected` closes *callability* but
+  does not remove members from the `.d.ts`, so the published-surface fix still needs a post-rollup
+  strip or api-extractor. This narrows the open question left by pass 4.
+- **Three of the orchestrator's own briefing hypotheses were falsified by the SRP agent**, recorded
+  so nobody re-checks: keyboard/type-ahead duplication **does not exist** (`menu`→`CdkMenu`,
+  `tree`→`CdkTree`, `tabs`/`tab-nav`/`collapsible`→`FocusKeyManager`; only `select` hand-rolls a
+  buffer, with no sibling); selection tracking in `table`/`transfer`/`tree` is **correctly three
+  separate mechanisms**; and it is **four** overlay-bearing field components, not five.
+- **`SelectionModel` cannot serve `table`** — its `compareWith` is a comparator that linear-scans
+  (`_selection-model-chunk.mjs:145-152`), which is precisely what `table.ts:1396` rejects in
+  writing. Recorded so the "use CDK collections" lead is not re-opened.
+- **`dialog`/`sheet` reading `_config` / `_ariaLabelledByQueue` is idiomatic**, not a second
+  `CdkTree._expansionModel`: both are declared public on `CdkDialogContainer`.
+
+## Verified-clean, stated positively so pass 6 does not re-sweep
+
+- **CDK adoption: 9 of 10 "is a package missing?" leads close clean.** `menu` composes `CdkMenu`,
+  `transfer` composes `CdkListbox`, `tree` composes `CdkTree`, `textarea` composes
+  `CdkTextareaAutosize`, `stepper` extends `CdkStepper`, `dialog`/`sheet` extend
+  `CdkDialogContainer`. No deprecated CDK API in use; no CDK-private misuse beyond the two
+  idiomatic reads above. `BreakpointObserver`, `drag-drop`, `SelectionModel`, `ContentObserver`,
+  `HighContrastModeDetector` and `InteractivityChecker` were each checked and are genuinely not
+  needed — **absence is not a finding**.
+- **Theme token system: measured clean.** Scheme parity is **exact** — all three schemes define an
+  identical 195-token set, no holes in any direction. **0** undefined tokens across 225 library +
+  90 demo custom-namespace classes. **0** genuinely dead tokens. **16/16** `animate.enter`/`leave`
+  classes have keyframes; **0/28** `_base.css` keyframe classes are orphaned. Theme entry point is
+  SSR-guarded at all five touch points and correctly has no `providedIn`.
+- **Entry-point boundaries: clean.** All ~190 cross-entry-point imports go through barrels; zero
+  sibling-internal reaches.
+- **Correctly-large files, do not re-open:** `calendar.ts` is the residual of an already-complete
+  20-file decomposition; `table.ts` and `paginator.ts` are codified cap-exempt primitives.
+  `date-picker` vs `date-range-picker`'s 28/40 method-name overlap is a **skeleton match only** —
+  the bodies diverge for stated single-vs-range reasons.
+- **`stepper`'s `@ViewChildren` remains forced** by `CdkStepper`'s `QueryList` typing (re-confirmed;
+  the register already says do not re-investigate).
+
+## Open — carried to pass 6
+
+**Approved but deliberately not landed this pass** (maintainer scoped pass 5 to defects + variant
+renames):
+
+1. **`TW_` prefix on 12 injection tokens** — all 12 are root-barrel public (register said 6).
+   Alias shape is specified in `scratchpad/pass5-api.md` A2.3, with the one rule that matters:
+   `export const OLD = TW_NEW;` — **never** a second `new InjectionToken`, which would split the
+   DI graph in a way no test would catch.
+2. **`select`'s clear control is a `role="button" tabindex="0"` span inside the `<button>` trigger**
+   — an HTML content-model violation axe cannot see. The fix agent took the pre-authorised exit
+   rather than ship unverifiable work: `e2e/specs/04-visual/canary.spec.ts:190` screenshots the
+   select "Colors" section and `colorValues` seeds **6 of 8** of those selects with a value, so the
+   clear control sits inside `select-closed.{light,dark}.png`. Costed Path A/Path B hand-off is in
+   `scratchpad/pass5-fix-cbx-report.md`; Path A recommended.
+
+**Newly found, needing their own pass:**
+
+3. **The CVA + `NgControl` + error-state + `required` block is duplicated at 15 class sites across
+   14 files**, with the `statusChanges`/`ngSubmit` half **byte-identical at all 15** (~450 lines
+   recoverable). `FormFieldControl` declares the contract and none of the mechanics. Target: a
+   `wireErrorState()` injection-context function in `core/`, modelled on the existing
+   `onFormReset`. Precedent that it works: `TextareaDirective extends InputDirective` is the only
+   control without a copy.
+4. **`select` and `combobox` bypass `PickerOverlayCoordinator` entirely** (only the two date
+   pickers use it) and re-implement 7 methods, 5 identical modulo the anchor element. **Ordering
+   constraint: P5-6 and P5-7 had to land first** — they are bugs in the exact reopen path this
+   migration rewrites. Must not share a pass with item 3.
+5. **`carousel.ts` is the one genuine multi-responsibility file** (1695 lines, 5 classes, zero
+   extracted siblings). Safe half bounded precisely: lines 1467–1695 move with a one-way import;
+   `CarouselSlideComponent` cannot (a true `contentChildren` ↔ `inject` cycle).
+6. **6 genuine hand-rolled list navigations** remain (of 16 total; `calendar`'s 2-D grid and
+   `time-picker`'s segmented field are justified). `select`/`combobox`/`command-palette` hand-roll
+   ~350 lines of `ListKeyManager` and **have already diverged** — `select` does not wrap, `combobox`
+   does; type-ahead exists only in `select`.
+7. **`@angular/aria` is stable at 22.1.5, matches this repo's `^22.0.7` line, and is entirely
+   unused.** It ships headless directives for Accordion, Listbox, Combobox/Select, Menu, Tabs,
+   Toolbar, Tree and Grid — ngx-tw hand-rolls **all eight**. CLAUDE.md's "never rewrite what CDK
+   provides" was written when CDK was the only answer; in v22 the a11y-behaviour layer has moved
+   up. Three of this register's most expensive defect classes — roving-tabindex desync, RTL arrow
+   keys, `aria-activedescendant` drift — are exactly what these directives own. **This is a
+   multi-release architectural decision, not a fix**: the directives dictate DOM shape, which
+   collides with this library's flat-DOM and `tv()`-slot conventions. What pass 6 owes is a
+   recorded *position* in CLAUDE.md, either way, so the next component author is not left guessing.
+   **[measured]** — `npm view @angular/aria dist-tags`.
+8. **Escape-dismiss policy is split**: `dialog`/`sheet`/`tooltip` use `hasModifierKey`; ~9 other
+   overlay sites do not, so Shift+Escape closes a select but not a dialog. Nine different shapes of
+   dismissal API across the overlay family.
+9. **28 files hand-roll `let nextId = 0`; 4 use CDK's `_IdGenerator`** — `dialog.ts` and
+   `dialog-content.ts` differ *inside one entry point*.
+10. **`Directionality` mirroring is now half-migrated** — `paginator` uses `valueSignal()` (CDK 22);
+    `tabs`, `tab-nav`, `split` and `timeline` still hand-mirror `Directionality.change`.
+11. **`ThemeDirective` and `ThemeService` disagree on the attribute** — the directive hard-codes
+    `data-theme`, the service honours `config.attribute`. Documented in both JSDocs, not
+    reconciled: either direction breaks something. Needs a decision.
+12. **A dark high-contrast ramp** — the follow-up P5-4 deliberately deferred.
+13. **Theme scheme-parity guard blocked on tooling**: `@types/node` is not installed, so a
+    `scripts/verify-theme-parity.mjs` cannot be type-checked (`import 'node:fs'` fails TS2591).
+    The `grep`/`comm` recipe is in `scratchpad/pass5-fix-theme-report.md`. Three hand-duplicated
+    195-token blocks now exist with nothing guarding them against drift.
+14. **`segmented-control`'s `surface` variant** and the `default | naked` field-chrome axis (**four**
+    components — `select` too, not three) stay excluded from the variant vocabulary, verified
+    individually. `form-field`'s `appearance: outline | filled` was found to be a **fifth**
+    exclusion the earlier scope never named.
+15. **37 `test.fixme` with no expiry.** `A11Y_BACKLOG` self-expires because axe *runs*; a
+    `test.fixme` body never executes. Honest fix: `test.fail()` for the 8 "library is broken"
+    entries plus a dated registry for the 19 demo-blocked ones. **Five real library defects live
+    only inside fixme comments**, four of them one root cause (`onFormReset` is dead under signal
+    forms).
+16. **`onFormReset` is cited by seven e2e spec files and imported by no component** — reset actually
+    works via `writeValue(null)`. `docs/tree-shaking-audit.md:89` carries a milder version of the
+    same misattribution, claiming `calendar.ts:1151` references a symbol it does not.
+17. **Test harnesses: 1 of 56.** Position taken: the right target is ~14 (overlay + complex form),
+    not 56 — harnesses are semver-frozen public API. The harness the two `date-range-picker` skips
+    ask for **already ships** (`CalendarHarness.selectRange()`/`selectCell()`).
+18. **Five unexported types in public signatures** (`ThumbId`, `ResolvedItem`, `ResolvedGroup`,
+    `DialogContainer`, `SheetContainer`) — confirmed as exactly the non-`@internal` class; 15 more
+    exist but only behind `@internal`.
+19. **Seven components ship a `model()`-minted output alongside a hand-written one** with a real,
+    entirely undocumented any-change-vs-user-gesture split (`change` fires only on gesture;
+    `checkedChange` also fires from `writeValue`). Documentation gap, not a defect — and an audit
+    agent's first draft would have deprecated four load-bearing outputs before re-checking.
+20. **Demo prose defect**: the toast page claims swipe is disabled under `prefers-reduced-motion`;
+    no such gate exists. Recommend deleting the prose — WCAG 2.3.3 is AAA and targets
+    non-direct-manipulation motion.
+21. **Two out-of-scope demo files still pass legacy variant strings**
+    (`foundations/rhythm/panels/container-panel.ts`, `empty-state-examples.component.ts`) —
+    build-clean through the new aliases, left for a sweep.
+
+## Traps worth recording
+
+- **`Directionality` is root-provided in CDK 22** (`@Service()`), so omitting its provider in a
+  TestBed still injects the real instance, which reports `'ltr'` in jsdom. A "no provider"
+  fallback test written the obvious way **tests nothing**; use `{ provide: Directionality, useValue: null }`.
+  Caught by a fix agent reviewing its own spec.
+- **`tv()` fails silently on an unrecognised variant** (base classes only, no throw, no warning) —
+  see the aliases note above. This is the single most important thing to know before renaming any
+  variant in this library.
+- **Vitest resolves `templateUrl` through `dist/ngx-tw/`**, so any new spec asserting on an
+  external template cannot pass before `npm run build:lib` — and a stale-dist failure looks exactly
+  like the bug the spec guards.
+- **`ngc` compiles a malformed template with exit 0.** A `perl -pe` one-liner editing a template
+  parsed `$2[disabledGrid]` as an array subscript and injected four stray `="effectiveDisabled()"`
+  lines. The Angular compiler accepted the result and exited **0**; only reading the diff caught it.
+  Do not use `perl`/`sed` substitutions containing `$N` immediately followed by `[` on templates,
+  and never treat a green compile as evidence a mechanical template edit was correct. **[measured]**
+- **A spec can be vacuous because the code path it exercises was already inert.** Two of this
+  pass's proposed specs asserted "the disabled control does not activate" against handlers that
+  already early-returned — they would have passed before the fix. When guarding a newly-added
+  disabled state, find the path that was genuinely unguarded (here: `cellHover`, which fired on
+  every pointer move across a disabled grid) rather than the one the audit named.
+- **`--noEmit` skips declaration diagnostics.** A public member whose type is module-private
+  type-checks clean under `tsc --noEmit` and fails only on real declaration emit. Worth running
+  emit over touched entry points after any type-visibility change.
+
+## Two corrections this pass made to its own agents' proposals
+
+Recorded because in both cases the *proposed spec*, not the finding, was the defect:
+
+- **F-08's repro passes before the fix.** The gaps report proposed `{ monthViewLabel: undefined }`
+  plus a view switch. `viewSwitched()` branches on the **resulting** view, and one period-button
+  click from the default day view lands on `'month'`, which reads `yearViewLabel` —
+  `monthViewLabel` is only read on the drill-*down*.
+- **F-09's proposed assertion is vacuous**, and the report says why two paragraphs earlier:
+  `onDateSelected` already early-returned, so the click path was inert. The pre-existing
+  `disabled state` test is the same shape and must not be counted as coverage. The genuinely
+  unguarded path was **hover**.
+
+Also: the brief's own three-pane theme assertion was **unsatisfiable**. The panes carry
+`bg-surface`, and `--color-surface` is `var(--color-white)` in *both* `_light.css:41` and
+`_high-contrast.css:3` by design, so "three distinct pane backgrounds" fails on correct code. The
+guard moved to the `bg-primary-600` chip (blue-600 / blue-400 / blue-700), which captures the same
+failure.
+
+## The gate gap this pass walked into
+
+The `segmented-control` variant rename updated the examples page's `VARIANTS` const and missed its
+`variantValues` Record twelve lines later. **`build:lib`, `test:ci`, `lint`, `verify:package` and
+`verify:mcp-index` all stayed green while the demo did not compile** — because `ng test demo` does
+not type-check demo pages (the register already documented this; it was not acted on). The only
+symptom was that every local Playwright run died with `Timed out waiting for config.webServer`,
+which never names the file.
+
+**`npx ng build demo` is therefore a required gate after any change that touches demo source**, and
+it is now in the table below. A rename that widens a union is exactly the shape that produces this:
+the `Record<SegmentedControlVariant, …>` needed a fourth key once the union gained the deprecated
+alias. Keying the Record on the rendered subset (`as const satisfies`) is the durable fix.
+
+## Verification state at hand-off
+
+| Gate | Result |
+|---|---|
+| `npm run build:lib` | pass — 56 entry points, 567 symbols, **745 snippets** (was 733) |
+| `npx ng build demo` | pass — **newly added to the gate set, see above** |
+| `npm run test:ci` | **3299 passed**, 4 skipped (73 files) + 4 demo — up from 3225 |
+| `npm run lint` | **0 errors, 75 warnings** — the same 75 as at entry, all in `e2e/` |
+| `npm run verify:package` | pass — theme resolves from a clean consumer install |
+| `npm run verify:mcp-index` | **6 warnings** (was 7) — the theme entry point now carries snippets |
+| `npm run e2e:fast` | **936 passed**, 53 skipped, 0 failed (was 932) |
+| `npm run e2e:visual` | **NOT regenerated, by design** — Linux via `workflow_dispatch` only |
+
+**Visual baselines.** `_light.css` restates values `@theme` already set on `:root`, and all 195
+declarations were verified string-equal to `_semantic.css`, so a light-mode page is pixel-identical
+by construction. The variant renames resolve to byte-identical class strings, asserted by
+string-equality specs. No baseline shift is *expected* — but that is an expectation, not a
+measurement, and the Linux job is the only thing that can confirm it.

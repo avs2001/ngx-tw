@@ -1,7 +1,11 @@
 import { Component, signal, type TemplateRef, viewChild, ChangeDetectionStrategy } from '@angular/core';
 import { type ComponentFixture, TestBed } from '@angular/core/testing';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { OverlayModule } from '@angular/cdk/overlay';
+import {
+  type FlexibleConnectedPositionStrategy,
+  Overlay,
+  OverlayModule,
+} from '@angular/cdk/overlay';
 import { TooltipDirective } from './tooltip';
 import type { TwColor, TwSize } from '@cdevhub/ngx-tw/core';
 import type { TooltipPosition } from './tooltip';
@@ -21,18 +25,22 @@ class BasicTooltipHost {}
   template: `
     <button
       twTooltip="Styled"
-      [twTooltipColor]="color"
-      [twTooltipSize]="size"
-      [twTooltipPosition]="position"
+      [twTooltipColor]="color()"
+      [twTooltipSize]="size()"
+      [twTooltipPosition]="position()"
     >
       Styled
     </button>
   `,
 })
 class StyledTooltipHost {
-  color: TwColor = 'neutral';
-  size: TwSize = 'md';
-  position: TooltipPosition = 'top';
+  // Signals, not plain fields: a plain field is not a change-detection producer
+  // under zoneless, so mutating one after the first `detectChanges()` raises
+  // NG0100 instead of re-rendering. Every position test that changes the input
+  // mid-test depends on this.
+  color = signal<TwColor>('neutral');
+  size = signal<TwSize>('md');
+  position = signal<TooltipPosition>('top');
 }
 
 @Component({
@@ -293,7 +301,7 @@ describe('TooltipDirective', () => {
         const fixture = TestBed.configureTestingModule({
           imports: [StyledTooltipHost, OverlayModule],
         }).createComponent(StyledTooltipHost);
-        fixture.componentInstance.color = color;
+        fixture.componentInstance.color.set(color);
         fixture.detectChanges();
 
         hoverTrigger(fixture);
@@ -310,7 +318,7 @@ describe('TooltipDirective', () => {
       const fixture = TestBed.configureTestingModule({
         imports: [StyledTooltipHost, OverlayModule],
       }).createComponent(StyledTooltipHost);
-      fixture.componentInstance.color = 'success';
+      fixture.componentInstance.color.set('success');
       fixture.detectChanges();
 
       hoverTrigger(fixture);
@@ -331,7 +339,7 @@ describe('TooltipDirective', () => {
         const fixture = TestBed.configureTestingModule({
           imports: [StyledTooltipHost, OverlayModule],
         }).createComponent(StyledTooltipHost);
-        fixture.componentInstance.size = size;
+        fixture.componentInstance.size.set(size);
         fixture.detectChanges();
 
         hoverTrigger(fixture);
@@ -364,7 +372,7 @@ describe('TooltipDirective', () => {
         const fixture = TestBed.configureTestingModule({
           imports: [StyledTooltipHost, OverlayModule],
         }).createComponent(StyledTooltipHost);
-        fixture.componentInstance.position = pos;
+        fixture.componentInstance.position.set(pos);
         fixture.detectChanges();
 
         hoverTrigger(fixture);
@@ -374,6 +382,94 @@ describe('TooltipDirective', () => {
         expect(getOverlayTooltip()).toBeTruthy();
       });
     }
+  });
+
+  // Regression: the OverlayRef is built once per directive lifetime (hiding only
+  // detaches it), so `twTooltipPosition` used to be frozen at whatever the first
+  // hover read — `[twTooltipPosition]="isMobile() ? 'bottom' : 'right'"` silently
+  // stopped working after that first show.
+  //
+  // jsdom gives every element a zero-sized rect, so there is no honest DOM
+  // observable for placement; the assertion is on the position list handed to
+  // CDK, i.e. on the integration with CDK rather than on private state.
+  describe('position is re-read on every show', () => {
+    /** Captures the FlexibleConnectedPositionStrategy the directive builds. */
+    function capturePositionStrategy(): () => FlexibleConnectedPositionStrategy {
+      const builder = TestBed.inject(Overlay).position();
+      let captured: FlexibleConnectedPositionStrategy | null = null;
+      const original = builder.flexibleConnectedTo.bind(builder);
+      vi.spyOn(builder, 'flexibleConnectedTo').mockImplementation((origin) => {
+        captured = original(origin);
+        return captured;
+      });
+      return () => captured!;
+    }
+
+    it('applies a twTooltipPosition changed between two shows', () => {
+      const fixture = TestBed.configureTestingModule({
+        imports: [StyledTooltipHost, OverlayModule],
+      }).createComponent(StyledTooltipHost);
+      const strategy = capturePositionStrategy();
+      fixture.componentInstance.position.set('top');
+      fixture.detectChanges();
+
+      hoverTrigger(fixture);
+      vi.advanceTimersByTime(200);
+      fixture.detectChanges();
+      expect(getOverlayTooltip()).toBeTruthy();
+      // 'top' anchors the overlay's bottom edge to the trigger's top edge.
+      expect(strategy().positions[0]).toMatchObject({
+        originY: 'top',
+        overlayY: 'bottom',
+        offsetY: -8,
+      });
+
+      leaveTrigger(fixture);
+      vi.advanceTimersByTime(150);
+      fixture.detectChanges();
+      expect(getOverlayTooltip()).toBeNull();
+
+      fixture.componentInstance.position.set('bottom');
+      fixture.detectChanges();
+
+      hoverTrigger(fixture);
+      vi.advanceTimersByTime(200);
+      fixture.detectChanges();
+      expect(getOverlayTooltip()).toBeTruthy();
+      // 'bottom' flips it: the overlay's top edge meets the trigger's bottom.
+      // Before the fix this assertion saw the frozen 'top' pair.
+      expect(strategy().positions[0]).toMatchObject({
+        originY: 'bottom',
+        overlayY: 'top',
+        offsetY: 8,
+      });
+    });
+
+    it('applies a twTooltipPosition changed while the tooltip is on screen', () => {
+      const fixture = TestBed.configureTestingModule({
+        imports: [StyledTooltipHost, OverlayModule],
+      }).createComponent(StyledTooltipHost);
+      const strategy = capturePositionStrategy();
+      fixture.componentInstance.position.set('top');
+      fixture.detectChanges();
+
+      hoverTrigger(fixture);
+      vi.advanceTimersByTime(200);
+      fixture.detectChanges();
+
+      // A second show() while already visible — the re-hover path.
+      fixture.componentInstance.position.set('right');
+      fixture.detectChanges();
+      hoverTrigger(fixture);
+      vi.advanceTimersByTime(200);
+      fixture.detectChanges();
+
+      expect(strategy().positions[0]).toMatchObject({
+        originX: 'end',
+        overlayX: 'start',
+        offsetX: 8,
+      });
+    });
   });
 
   describe('delays', () => {

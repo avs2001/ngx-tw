@@ -70,6 +70,7 @@ export class YearsViewComponent<D> extends CalendarViewBase<D> {
     const minDate = this.minDate();
     const maxDate = this.maxDate();
     const dateClass = this.dateClass();
+    const gridDisabled = this.disabledGrid();
 
     const years: CalendarCell<D>[] = [];
     for (let i = 0; i < YEARS_PER_PAGE; i++) {
@@ -80,7 +81,7 @@ export class YearsViewComponent<D> extends CalendarViewBase<D> {
         value: date,
         displayValue: label,
         ariaLabel: label,
-        enabled: !isYearDisabled(year, minDate, maxDate, this.dateAdapter),
+        enabled: !gridDisabled && !isYearDisabled(year, minDate, maxDate, this.dateAdapter),
         cssClasses: dateClass ? dateClass(date, this.view) : '',
         compareValue: year,
       });

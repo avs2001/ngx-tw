@@ -394,6 +394,10 @@ export class PopoverDirective {
   private popoverInstance: PopoverOverlayComponent | null = null;
   private focusTrap: ReturnType<FocusTrapFactory['create']> | null = null;
   private perOpenSubs: Subscription | null = null;
+  /** The `twPopoverBackdrop` value baked into the current `overlayRef`. */
+  private appliedBackdrop: PopoverBackdrop | null = null;
+  /** The `twPopoverScrollStrategy` value baked into the current `overlayRef`. */
+  private appliedScrollStrategy: PopoverScrollStrategy | null = null;
   private closing = false;
   private closeTimer: ReturnType<typeof setTimeout> | null = null;
   /** Tracked focus-blur close timer; cleared on destroy so it can't fire post-teardown. */
@@ -502,8 +506,10 @@ export class PopoverDirective {
   // ── Private ──
 
   private openPopover(): void {
-    this.ensureOverlay();
-    this.updatePositionStrategy();
+    const createdFresh = this.ensureOverlay();
+    // A freshly built OverlayRef already carries a strategy made from the
+    // current inputs; only a reused one needs the per-open position refresh.
+    if (!createdFresh) this.updatePositionStrategy();
     this.attachContent();
     this.subscribePerOpen();
     this.overlayId.set(this.popoverInstance?.id ?? null);
@@ -574,18 +580,46 @@ export class PopoverDirective {
       .withViewportMargin(8);
   }
 
-  private ensureOverlay(): void {
-    if (this.overlayRef) return;
+  /**
+   * Ensures an `OverlayRef` exists whose creation-time configuration matches the
+   * current inputs. Returns `true` when a fresh ref was built.
+   *
+   * `hasBackdrop` / `backdropClass` are read by CDK inside `OverlayRef.attach()`
+   * straight off the config object handed to `Overlay.create()`, and there is no
+   * public setter that re-renders them. Since closing only detaches, a ref built
+   * on the first open would otherwise keep the first open's backdrop for the
+   * directive's whole lifetime — while `subscribePerOpen` re-reads
+   * `twPopoverBackdrop` every open to decide whether backdrop-click closes, so
+   * the two reads of one input disagreed. Rebuilding only when a creation-time
+   * input actually changed keeps the common reopen path on the same ref.
+   */
+  private ensureOverlay(): boolean {
+    const backdrop = this.twPopoverBackdrop();
+    const scrollStrategyName = this.twPopoverScrollStrategy();
+
+    if (this.overlayRef) {
+      if (
+        backdrop === this.appliedBackdrop &&
+        scrollStrategyName === this.appliedScrollStrategy
+      ) {
+        return false;
+      }
+      this.overlayRef.dispose();
+      this.overlayRef = null;
+      this.currentPositionStrategy = null;
+    }
 
     const positionStrategy = this.buildPositionStrategy();
     this.currentPositionStrategy = positionStrategy;
 
-    const backdrop = this.twPopoverBackdrop();
     const hasBackdrop = backdrop !== 'none';
     const backdropClass =
       backdrop === 'dimmed' ? 'bg-black/20' : 'cdk-overlay-transparent-backdrop';
 
     const scrollStrategy = this.resolveScrollStrategy();
+
+    this.appliedBackdrop = backdrop;
+    this.appliedScrollStrategy = scrollStrategyName;
 
     this.overlayRef = this.overlay.create({
       positionStrategy,
@@ -594,6 +628,7 @@ export class PopoverDirective {
       backdropClass,
       panelClass: 'tw-popover-panel',
     });
+    return true;
   }
 
   private updatePositionStrategy(): void {
@@ -729,6 +764,9 @@ export class PopoverDirective {
   private disposeOverlay(): void {
     this.overlayRef?.dispose();
     this.overlayRef = null;
+    this.currentPositionStrategy = null;
+    this.appliedBackdrop = null;
+    this.appliedScrollStrategy = null;
     this.popoverInstance = null;
   }
 

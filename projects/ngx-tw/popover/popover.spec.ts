@@ -1,8 +1,17 @@
 import { Component, inject, signal, viewChild, ChangeDetectionStrategy } from '@angular/core';
 import { type ComponentFixture, TestBed } from '@angular/core/testing';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { OverlayModule } from '@angular/cdk/overlay';
-import { PopoverDirective, type PopoverPosition } from './popover';
+import {
+  type CloseScrollStrategy,
+  Overlay,
+  OverlayModule,
+} from '@angular/cdk/overlay';
+import {
+  PopoverDirective,
+  type PopoverBackdrop,
+  type PopoverPosition,
+  type PopoverScrollStrategy,
+} from './popover';
 import { PopoverCloseDirective } from './popover-close';
 import { PopoverTitleDirective } from './popover-title';
 import { POPOVER_DATA, POPOVER_REF } from './popover-tokens';
@@ -238,6 +247,28 @@ class AriaLabelOverridePopoverHost {}
 })
 class FocusElsewherePopoverHost {
   readonly pop = viewChild.required<PopoverDirective>('pop');
+}
+
+/** Both creation-time overlay inputs bound to signals so they can change between opens. */
+@Component({
+  imports: [PopoverDirective],
+  changeDetection: ChangeDetectionStrategy.Eager,
+  template: `
+    <button
+      [twPopover]="content"
+      [(twPopoverOpen)]="isOpen"
+      [twPopoverBackdrop]="backdrop()"
+      [twPopoverScrollStrategy]="scrollStrategy()"
+    >
+      Config
+    </button>
+    <ng-template #content><p>Config content</p></ng-template>
+  `,
+})
+class OverlayConfigPopoverHost {
+  readonly isOpen = signal(false);
+  readonly backdrop = signal<PopoverBackdrop>('none');
+  readonly scrollStrategy = signal<PopoverScrollStrategy>('reposition');
 }
 
 // ── Constants ──
@@ -1009,5 +1040,112 @@ describe('PopoverDirective', () => {
     });
   });
 
+  // `hasBackdrop` / `backdropClass` / `scrollStrategy` are read by CDK off the
+  // config object handed to `Overlay.create()`, and closing only detaches — so
+  // a ref built on the first open kept that open's backdrop and scroll strategy
+  // for the directive's whole lifetime. Position and offset were already
+  // refreshed per open via `updatePositionStrategy()`; these two were not.
+  describe('creation-time overlay configuration on reopen', () => {
+    function getBackdrop(): HTMLElement | null {
+      return document.querySelector('.cdk-overlay-backdrop');
+    }
 
+    it('renders the backdrop after twPopoverBackdrop changes between opens', () => {
+      const fixture = TestBed.configureTestingModule({
+        imports: [OverlayConfigPopoverHost, OverlayModule],
+      }).createComponent(OverlayConfigPopoverHost);
+      fixture.detectChanges();
+
+      fixture.componentInstance.isOpen.set(true);
+      fixture.detectChanges();
+      expect(getOverlayPopover()).not.toBeNull();
+      // 'none' means CDK is told hasBackdrop: false.
+      expect(getBackdrop()).toBeNull();
+
+      fixture.componentInstance.isOpen.set(false);
+      fixture.detectChanges();
+      flushClose(fixture);
+      expect(getOverlayPopover()).toBeNull();
+
+      fixture.componentInstance.backdrop.set('dimmed');
+      fixture.detectChanges();
+
+      fixture.componentInstance.isOpen.set(true);
+      fixture.detectChanges();
+      expect(getOverlayPopover()).not.toBeNull();
+      // Before the fix `hasBackdrop` stayed false from the first open, so no
+      // backdrop element was ever attached — while `subscribePerOpen` had
+      // already switched to backdrop-click closing. Two reads, one input,
+      // disagreeing.
+      const backdrop = getBackdrop();
+      expect(backdrop).not.toBeNull();
+      expect(backdrop!.classList.contains('bg-black/20')).toBe(true);
+    });
+
+    it('installs a scroll strategy changed between two opens', () => {
+      // A stub strategy, so the assertion is that it reached the LIVE overlay:
+      // CDK only calls `enable()` once the strategy is installed on an attached
+      // OverlayRef. Asserting merely that the factory ran would pass even if the
+      // strategy never made it onto the overlay.
+      const fake = {
+        attach: vi.fn(),
+        enable: vi.fn(),
+        disable: vi.fn(),
+        detach: vi.fn(),
+      };
+      const fixture = TestBed.configureTestingModule({
+        imports: [OverlayConfigPopoverHost, OverlayModule],
+      }).createComponent(OverlayConfigPopoverHost);
+      const closeFactory = vi
+        .spyOn(TestBed.inject(Overlay).scrollStrategies, 'close')
+        .mockReturnValue(fake as unknown as CloseScrollStrategy);
+      fixture.detectChanges();
+
+      fixture.componentInstance.isOpen.set(true);
+      fixture.detectChanges();
+      expect(getOverlayPopover()).not.toBeNull();
+      expect(closeFactory).not.toHaveBeenCalled();
+
+      fixture.componentInstance.isOpen.set(false);
+      fixture.detectChanges();
+      flushClose(fixture);
+
+      fixture.componentInstance.scrollStrategy.set('close');
+      fixture.detectChanges();
+
+      fixture.componentInstance.isOpen.set(true);
+      fixture.detectChanges();
+      // Before the fix the reopen never re-read `twPopoverScrollStrategy`, so
+      // the factory never ran and nothing was ever enabled.
+      expect(closeFactory).toHaveBeenCalled();
+      expect(fake.attach).toHaveBeenCalled();
+      expect(fake.enable).toHaveBeenCalled();
+
+      closeFactory.mockRestore();
+    });
+
+    it('keeps the same overlay when neither creation-time input changed', () => {
+      const fixture = TestBed.configureTestingModule({
+        imports: [OverlayConfigPopoverHost, OverlayModule],
+      }).createComponent(OverlayConfigPopoverHost);
+      const createSpy = vi.spyOn(TestBed.inject(Overlay), 'create');
+      fixture.detectChanges();
+
+      fixture.componentInstance.isOpen.set(true);
+      fixture.detectChanges();
+      expect(createSpy).toHaveBeenCalledTimes(1);
+
+      fixture.componentInstance.isOpen.set(false);
+      fixture.detectChanges();
+      flushClose(fixture);
+
+      fixture.componentInstance.isOpen.set(true);
+      fixture.detectChanges();
+      expect(getOverlayPopover()).not.toBeNull();
+      // The rebuild is conditional: an unchanged reopen must not churn the ref.
+      expect(createSpy).toHaveBeenCalledTimes(1);
+
+      createSpy.mockRestore();
+    });
+  });
 });

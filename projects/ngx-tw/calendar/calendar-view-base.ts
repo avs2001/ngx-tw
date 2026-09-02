@@ -73,6 +73,21 @@ export abstract class CalendarViewBase<D> {
   /** `true` when the parent calendar is in read-only mode. Drives `aria-readonly` on the grid host. Defaults to `false`. */
   readonly readonlyGrid: InputSignal<boolean> = input<boolean>(false);
 
+  /**
+   * `true` when the parent calendar is disabled (the `disabled` input, or a
+   * bound form control's `setDisabledState`). Every cell then reports
+   * `aria-disabled` and refuses activation. Defaults to `false`.
+   *
+   * Distinct from `readonlyGrid`: read-only keeps cells *selectable-looking*
+   * and only blocks the commit in the orchestrator, whereas disabled removes
+   * the affordance itself. Both leave the grid focusable and arrow-navigable —
+   * per WAI-ARIA APG, a focusable disabled element stays "operable to the
+   * extent of allowing the user to read its state", and `rovingCellValue`
+   * guarantees exactly one tabbable cell so the grid never drops out of the
+   * tab order.
+   */
+  readonly disabledGrid: InputSignal<boolean> = input<boolean>(false);
+
   /** Optional cell-content override, rendered inside each cell button with `{ $implicit: CalendarCell<D> }`. Defaults to `null` (the cell renders its own display value). */
   readonly cellTemplate: InputSignal<TemplateRef<{ $implicit: CalendarCell<D> }> | null> =
     input<TemplateRef<{ $implicit: CalendarCell<D> }> | null>(null);
