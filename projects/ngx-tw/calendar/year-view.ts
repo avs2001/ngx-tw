@@ -67,6 +67,7 @@ export class YearViewComponent<D> extends CalendarViewBase<D> {
     const minDate = this.minDate();
     const maxDate = this.maxDate();
     const dateClass = this.dateClass();
+    const gridDisabled = this.disabledGrid();
 
     const months: CalendarCell<D>[] = [];
     for (let m = 0; m < MONTHS_PER_YEAR; m++) {
@@ -76,7 +77,7 @@ export class YearViewComponent<D> extends CalendarViewBase<D> {
         value: date,
         displayValue: name,
         ariaLabel: `${name} ${year}`,
-        enabled: !isMonthDisabled(year, m, minDate, maxDate, this.dateAdapter),
+        enabled: !gridDisabled && !isMonthDisabled(year, m, minDate, maxDate, this.dateAdapter),
         cssClasses: dateClass ? dateClass(date, this.view) : '',
         compareValue: m,
       });

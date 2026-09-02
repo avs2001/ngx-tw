@@ -657,6 +657,39 @@ describe('TimePickerComponent', () => {
       expect(intl.minutesLabel).toBe('Minutes');
       expect(intl.amLabel).toBe('AM');
     });
+
+    // F-08 — `provideTimePickerIntl` merged with a bare `Object.assign`, which
+    // copies own enumerable properties INCLUDING ones whose value is
+    // `undefined`. A consumer building the partial from an i18n bundle
+    // (`{ hoursLabel: bundle['time.hours'] }`) type-checks on a missing key
+    // because the root tsconfig does not set `exactOptionalPropertyTypes`, so
+    // the default was silently blanked at bootstrap for every time-picker in
+    // the app.
+    it('drops explicitly-undefined keys instead of blanking the default label', () => {
+      const fixture = setup(BasicHost, [
+        provideTimePickerIntl({
+          hoursLabel: undefined,
+          minutesLabel: 'Min',
+        }),
+      ]);
+      fixture.detectChanges();
+
+      // Before the fix: `Object.assign` copied `hoursLabel: undefined`, so the
+      // injected instance reported `undefined` here and this assertion was red.
+      const injected = TestBed.inject(TimePickerIntl);
+      expect(injected.hoursLabel).toBe('Hours');
+      // A defined sibling key in the same object still overrides.
+      expect(injected.minutesLabel).toBe('Min');
+
+      // Behavioural half: the stepper aria-label is built by
+      // `focusedFieldLabel()`, which calls `.toLowerCase()` on the field label
+      // directly. With the default blanked, the FIRST render threw
+      // `Cannot read properties of undefined (reading 'toLowerCase')`.
+      const hostEl = fixture.nativeElement as HTMLElement;
+      expect(hostEl.querySelector('input[aria-label="Hours"]')).toBeTruthy();
+      const up = hostEl.querySelector('button[aria-label="Increase hours"]');
+      expect(up).toBeTruthy();
+    });
   });
 
   describe('forms integration', () => {

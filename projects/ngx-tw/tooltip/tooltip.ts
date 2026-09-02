@@ -15,6 +15,7 @@ import {
 import { NgTemplateOutlet } from '@angular/common';
 import {
   type ConnectedPosition,
+  type FlexibleConnectedPositionStrategy,
   Overlay,
   type OverlayRef,
 } from '@angular/cdk/overlay';
@@ -373,6 +374,13 @@ export class TooltipDirective {
   private readonly ariaDescriber = inject(AriaDescriber, { optional: true });
 
   private overlayRef: OverlayRef | null = null;
+  /**
+   * The live position strategy. Held as a field so every show can re-apply
+   * `twTooltipPosition` onto it — see `applyPositions`.
+   */
+  private positionStrategy: FlexibleConnectedPositionStrategy | null = null;
+  /** The `twTooltipPosition` value currently baked into `positionStrategy`. */
+  private appliedPosition: TooltipPosition | null = null;
   private tooltipInstance: TooltipOverlayComponent | null = null;
   private showTimer: ReturnType<typeof setTimeout> | null = null;
   private hideTimer: ReturnType<typeof setTimeout> | null = null;
@@ -461,13 +469,16 @@ export class TooltipDirective {
   // ── Private ──
 
   private createAndShow(): void {
+    // Called before the `tooltipInstance` check so that a tooltip already on
+    // screen also picks up a changed `twTooltipPosition`.
+    this.createOverlay();
+
     if (this.tooltipInstance) {
       this.updateTooltip();
       this.applyAriaDescription();
       return;
     }
 
-    this.createOverlay();
     const portal = new ComponentPortal(TooltipOverlayComponent);
     const componentRef = this.overlayRef!.attach(portal);
     this.tooltipInstance = componentRef.instance;
@@ -479,15 +490,24 @@ export class TooltipDirective {
   }
 
   private createOverlay(): void {
-    if (this.overlayRef) return;
+    if (this.overlayRef) {
+      // The OverlayRef is built once per directive lifetime (hiding only
+      // detaches), so `twTooltipPosition` has to be re-applied on every show or
+      // a binding like `[twTooltipPosition]="isMobile() ? 'bottom' : 'right'"`
+      // stays frozen at whatever it read on the first hover.
+      this.applyPositions();
+      return;
+    }
 
-    const positions = buildPositions(this.twTooltipPosition());
+    this.appliedPosition = this.twTooltipPosition();
+    const positions = buildPositions(this.appliedPosition);
     const positionStrategy = this.overlay
       .position()
       .flexibleConnectedTo(this.elementRef)
       .withPositions(positions)
       .withPush(true)
       .withViewportMargin(8);
+    this.positionStrategy = positionStrategy;
 
     this.overlayRef = this.overlay.create({
       positionStrategy,
@@ -539,6 +559,26 @@ export class TooltipDirective {
       panel.removeEventListener('mouseleave', onLeave);
       this.overlayHoverCleanup = null;
     };
+  }
+
+  /**
+   * Pushes the current `twTooltipPosition` onto the live position strategy.
+   *
+   * Updating the strategy in place rather than disposing the `OverlayRef` on
+   * hide is not just the cheaper option — it is the correct one. `createOverlay`
+   * subscribes to `positionStrategy.positionChanges` exactly once, and that feed
+   * is what drives the arrow direction; `FlexibleConnectedPositionStrategy`
+   * completes that subject in `dispose()`, so a dispose-on-hide would silently
+   * kill arrow placement from the second show onward.
+   */
+  private applyPositions(): void {
+    const position = this.twTooltipPosition();
+    if (!this.positionStrategy || position === this.appliedPosition) return;
+    this.appliedPosition = position;
+    this.positionStrategy.withPositions(buildPositions(position));
+    // `withPositions` only stores the list; a tooltip that is currently on
+    // screen needs an explicit reflow. (Attaching later applies it anyway.)
+    if (this.overlayRef?.hasAttached()) this.overlayRef.updatePosition();
   }
 
   private updateTooltip(): void {
@@ -629,6 +669,8 @@ export class TooltipDirective {
       this.overlayRef.dispose();
       this.overlayRef = null;
     }
+    this.positionStrategy = null;
+    this.appliedPosition = null;
     this.tooltipInstance = null;
   }
 

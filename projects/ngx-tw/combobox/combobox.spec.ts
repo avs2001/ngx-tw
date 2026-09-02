@@ -3,7 +3,12 @@ import { ChangeDetectionStrategy, Component, signal } from '@angular/core';
 import { type ComponentFixture, TestBed } from '@angular/core/testing';
 import { FormControl, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
 import { form, FormField, required } from '@angular/forms/signals';
-import { OverlayModule } from '@angular/cdk/overlay';
+import {
+  type CloseScrollStrategy,
+  type FlexibleConnectedPositionStrategy,
+  Overlay,
+  OverlayModule,
+} from '@angular/cdk/overlay';
 import {
   ErrorDirective,
   FormFieldComponent,
@@ -1091,6 +1096,119 @@ describe('ComboboxComponent', () => {
   });
 
   // ── Overlay width ──
+
+  // The OverlayRef is created once and only detached on close, so everything
+  // read inside `ensureOverlay` used to be frozen from the first open onward.
+  // Neither `offset` nor `scrollStrategy` had any spec before this block.
+  //
+  // jsdom gives every element a zero-sized rect, so there is no honest DOM
+  // observable for panel placement or scroll behaviour; both assertions are on
+  // the configuration handed to CDK — the integration, not private state.
+  describe('overlay configuration on reopen', () => {
+    @Component({
+      imports: [ComboboxComponent],
+      changeDetection: ChangeDetectionStrategy.OnPush,
+      template: `
+        <tw-combobox
+          [options]="options"
+          [(open)]="open"
+          [offset]="offset()"
+          [scrollStrategy]="scrollStrategy()"
+          aria-label="Overlay config"
+        />
+      `,
+    })
+    class OverlayConfigHost {
+      options = OPTIONS;
+      readonly open = signal(false);
+      readonly offset = signal(4);
+      readonly scrollStrategy = signal<'reposition' | 'close' | 'block'>('reposition');
+    }
+
+    /** Captures the FlexibleConnectedPositionStrategy the component builds. */
+    function capturePositionStrategy(): () => FlexibleConnectedPositionStrategy {
+      const builder = TestBed.inject(Overlay).position();
+      let captured: FlexibleConnectedPositionStrategy | null = null;
+      const original = builder.flexibleConnectedTo.bind(builder);
+      vi.spyOn(builder, 'flexibleConnectedTo').mockImplementation((origin) => {
+        captured = original(origin);
+        return captured;
+      });
+      return () => captured!;
+    }
+
+    /** Closes the panel and waits out the real leave-animation timer. */
+    async function closePanel(
+      fixture: ComponentFixture<OverlayConfigHost>,
+    ): Promise<void> {
+      fixture.componentInstance.open.set(false);
+      await advance(fixture);
+      await new Promise((r) => setTimeout(r, 160));
+      fixture.detectChanges();
+      expect(getOverlayPanel()).toBeNull();
+    }
+
+    it('applies an offset changed between two opens', async () => {
+      const fixture = TestBed.createComponent(OverlayConfigHost);
+      const strategy = capturePositionStrategy();
+      fixture.detectChanges();
+
+      fixture.componentInstance.open.set(true);
+      await advance(fixture);
+      expect(getOverlayPanel()).toBeTruthy();
+      expect(strategy().positions[0].offsetY).toBe(4);
+
+      await closePanel(fixture);
+
+      fixture.componentInstance.offset.set(16);
+      fixture.detectChanges();
+
+      fixture.componentInstance.open.set(true);
+      await advance(fixture);
+      expect(getOverlayPanel()).toBeTruthy();
+      // Before the fix the reused strategy still carried the first open's 4.
+      expect(strategy().positions[0].offsetY).toBe(16);
+    });
+
+    it('applies a scrollStrategy changed between two opens', async () => {
+      // A stub strategy, so the assertion is that it reached the LIVE overlay —
+      // `enable()` is only called by CDK once the strategy is installed on an
+      // attached OverlayRef. Asserting merely that the factory ran would pass
+      // even if the swap happened while detached, which silently leaves the
+      // strategy without its OverlayRef.
+      const fake = {
+        attach: vi.fn(),
+        enable: vi.fn(),
+        disable: vi.fn(),
+        detach: vi.fn(),
+      };
+      const closeFactory = vi
+        .spyOn(TestBed.inject(Overlay).scrollStrategies, 'close')
+        .mockReturnValue(fake as unknown as CloseScrollStrategy);
+
+      const fixture = TestBed.createComponent(OverlayConfigHost);
+      fixture.detectChanges();
+
+      fixture.componentInstance.open.set(true);
+      await advance(fixture);
+      expect(getOverlayPanel()).toBeTruthy();
+      expect(closeFactory).not.toHaveBeenCalled();
+
+      await closePanel(fixture);
+
+      fixture.componentInstance.scrollStrategy.set('close');
+      fixture.detectChanges();
+
+      fixture.componentInstance.open.set(true);
+      await advance(fixture);
+      expect(getOverlayPanel()).toBeTruthy();
+      // Before the fix the reopen never re-read `scrollStrategy`, so the
+      // factory never ran and nothing was ever enabled.
+      expect(closeFactory).toHaveBeenCalled();
+      expect(fake.attach).toHaveBeenCalled();
+      expect(fake.enable).toHaveBeenCalled();
+    });
+  });
 
   describe('overlay width', () => {
     @Component({

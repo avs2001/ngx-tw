@@ -5,6 +5,7 @@ import { FormControl, ReactiveFormsModule } from '@angular/forms';
 import { form, FormField } from '@angular/forms/signals';
 import { LiveAnnouncer } from '@angular/cdk/a11y';
 import { CalendarComponent } from './calendar';
+import { CalendarIntl, provideCalendarIntl } from './calendar-intl';
 import { provideNativeDateAdapter } from './native-date-adapter';
 import type {
   CalendarMode,
@@ -111,6 +112,13 @@ function wireExplicitOutputs(fixture: ComponentFixture<BasicHost>): void {
     host.events.push({ name: 'modeChange', payload: e });
     host.modeChangeSpy(e);
   });
+}
+
+/** Every day-cell button in the rendered month grid, in DOM order. */
+function getAllDayCellButtons(fixture: ComponentFixture<unknown>): HTMLButtonElement[] {
+  return Array.from(
+    fixture.nativeElement.querySelectorAll('tw-calendar-month-view tw-calendar-cell button'),
+  ) as HTMLButtonElement[];
 }
 
 function getDayCell(fixture: ComponentFixture<unknown>, dayText: string): HTMLButtonElement | null {
@@ -588,6 +596,159 @@ describe('CalendarComponent', () => {
       fixture.detectChanges();
 
       expect(host.valueChangeSpy).not.toHaveBeenCalled();
+    });
+
+    // ── F-09 ──
+    // `effectiveDisabled` was never plumbed into the views: a cell's `enabled`
+    // flag came only from the date constraints, so a disabled calendar rendered
+    // ~35 day buttons that reported themselves as enabled to assistive tech
+    // while silently doing nothing on activation (WCAG 4.1.2). `readonly` was
+    // already plumbed via `readonlyGrid`; `disabled` simply was not.
+    //
+    // Every assertion below is red before the `disabledGrid` wiring: cells were
+    // built with `enabled: true`, so `aria-disabled` was absent on all of them.
+
+    it('marks every day cell aria-disabled when the calendar is disabled', () => {
+      const fixture = TestBed.createComponent(BasicHost);
+      fixture.componentInstance.disabled.set(true);
+      fixture.detectChanges();
+
+      const buttons = getAllDayCellButtons(fixture);
+      expect(buttons.length).toBeGreaterThan(0);
+      expect(buttons.every((b) => b.getAttribute('aria-disabled') === 'true')).toBe(true);
+    });
+
+    it('leaves day cells enabled when the calendar is not disabled', () => {
+      // Non-vacuity guard for the assertion above — proves the selector is not
+      // trivially true for every mount.
+      const fixture = TestBed.createComponent(BasicHost);
+      fixture.detectChanges();
+
+      const buttons = getAllDayCellButtons(fixture);
+      expect(buttons.some((b) => b.getAttribute('aria-disabled') !== 'true')).toBe(true);
+    });
+
+    it('keeps exactly one tabbable cell when disabled (grid never leaves the tab order)', () => {
+      // APG: a disabled composite stays reachable so the user can read its
+      // state. `rovingCellValue` falls back through focused → activeDate →
+      // first-enabled → first-cell, and the activeDate cell is always rendered,
+      // so the count must stay at 1 even with every cell disabled. Zero here
+      // would be the "stranded grid" regression `rovingCellValue` was written
+      // to prevent.
+      const fixture = TestBed.createComponent(BasicHost);
+      fixture.componentInstance.disabled.set(true);
+      fixture.detectChanges();
+
+      const tabbable = getAllDayCellButtons(fixture).filter(
+        (b) => b.getAttribute('tabindex') === '0',
+      );
+      expect(tabbable).toHaveLength(1);
+      // And it is a real focusable button — no native `disabled` attribute,
+      // which would make `.focus()` a no-op and desync the roving tabindex.
+      expect(tabbable[0]!.disabled).toBe(false);
+    });
+
+    it('stops emitting cellHover from a disabled grid', () => {
+      // The click path was ALREADY inert before this fix (`onDateSelected`
+      // early-returns on `effectiveDisabled`), which is exactly why no test
+      // caught F-09 — asserting "no valueChange" is vacuous here. Hover is the
+      // one user-facing behaviour that genuinely changed: `onPreviewChange` /
+      // `cellHover` carry no disabled guard, and the cell only suppresses
+      // `mouseenter` when its own `enabled` flag is false. Before the wiring
+      // every cell was `enabled: true`, so a disabled calendar still emitted
+      // cellHover on every pointer move across the grid.
+      const fixture = TestBed.createComponent(BasicHost);
+      fixture.detectChanges();
+      const calendar = getCalendarComponent(fixture);
+      const hoverSpy = vi.fn();
+      calendar.cellHover.subscribe(hoverSpy);
+
+      const cell = getDayCell(fixture, '15');
+      expect(cell).toBeTruthy();
+      cell!.dispatchEvent(new MouseEvent('mouseenter', { bubbles: false }));
+      fixture.detectChanges();
+      // Baseline: an enabled calendar does emit.
+      expect(hoverSpy).toHaveBeenCalledTimes(1);
+
+      fixture.componentInstance.disabled.set(true);
+      fixture.detectChanges();
+
+      getDayCell(fixture, '16')!.dispatchEvent(new MouseEvent('mouseenter', { bubbles: false }));
+      fixture.detectChanges();
+
+      expect(hoverSpy).toHaveBeenCalledTimes(1);
+    });
+
+    it('disables the header navigation and view-switch buttons when disabled', () => {
+      const fixture = TestBed.createComponent(BasicHost);
+      fixture.componentInstance.disabled.set(true);
+      fixture.detectChanges();
+
+      const buttons = Array.from(
+        fixture.nativeElement.querySelectorAll('tw-calendar-header button'),
+      ) as HTMLButtonElement[];
+      expect(buttons).toHaveLength(3);
+      // Before the fix these derived only from minDate/maxDate, so month paging
+      // and drill-up still worked on a disabled calendar.
+      expect(buttons.every((b) => b.disabled)).toBe(true);
+    });
+
+    it.each<[CalendarViewState, string]>([
+      ['month', 'tw-calendar-year-view'],
+      ['year', 'tw-calendar-years-view'],
+    ])('disables every cell in the %s view when the calendar is disabled', (view, selector) => {
+      const fixture = TestBed.createComponent(BasicHost);
+      fixture.detectChanges();
+      getCalendarComponent(fixture).setView(view);
+      // Flush the view switch on its own: `setView` writes `_viewState`, which
+      // the template's `@switch` reads, so the target view is not in the DOM
+      // until this pass. Keeping it separate from the `disabled` flip makes the
+      // two independent.
+      fixture.detectChanges();
+
+      const cellsIn = (): HTMLButtonElement[] =>
+        Array.from(
+          fixture.nativeElement.querySelectorAll(`${selector} tw-calendar-cell button`),
+        ) as HTMLButtonElement[];
+
+      // Enabled baseline — with no min/max these cells were all enabled, which
+      // is exactly why the assertion below was red before `disabledGrid`.
+      expect(cellsIn().length).toBeGreaterThan(0);
+      expect(cellsIn().some((b) => b.getAttribute('aria-disabled') !== 'true')).toBe(true);
+
+      fixture.componentInstance.disabled.set(true);
+      fixture.detectChanges();
+
+      const buttons = cellsIn();
+      expect(buttons.length).toBeGreaterThan(0);
+      expect(buttons.every((b) => b.getAttribute('aria-disabled') === 'true')).toBe(true);
+    });
+
+    it('propagates a form-bound setDisabledState(true) down to the day cells', () => {
+      // The e2e fixme at e2e/specs/01-components/calendar.spec.ts:153 records
+      // exactly this path: `effectiveDisabled` ORs the CVA flag with the public
+      // input, but neither half ever reached the cells.
+      const fixture = TestBed.createComponent(BasicHost);
+      fixture.detectChanges();
+      const calendar = getCalendarComponent(fixture);
+
+      expect(
+        getAllDayCellButtons(fixture).some((b) => b.getAttribute('aria-disabled') !== 'true'),
+      ).toBe(true);
+
+      calendar.setDisabledState(true);
+      fixture.detectChanges();
+
+      const buttons = getAllDayCellButtons(fixture);
+      expect(buttons.length).toBeGreaterThan(0);
+      expect(buttons.every((b) => b.getAttribute('aria-disabled') === 'true')).toBe(true);
+
+      // And it is reversible — no latching.
+      calendar.setDisabledState(false);
+      fixture.detectChanges();
+      expect(
+        getAllDayCellButtons(fixture).some((b) => b.getAttribute('aria-disabled') !== 'true'),
+      ).toBe(true);
     });
   });
 
@@ -2472,4 +2633,89 @@ describe('CalendarComponent', () => {
   });
 
 
+});
+
+// ── F-08: intl merge drops explicitly-undefined keys ───────────────
+//
+// `provideCalendarIntl` and the per-instance `intl` input both merged with a
+// bare `Object.assign`, which copies own enumerable properties INCLUDING ones
+// whose value is `undefined`. Building the partial from an i18n bundle
+// (`{ yearViewLabel: bundle['calendar.yearView'] }`) type-checks on a missing
+// key because the root tsconfig does not set `exactOptionalPropertyTypes`, so
+// the English default was silently replaced with `undefined` — at bootstrap,
+// for every calendar in the app. `viewSwitched()` then calls `.replace()` on
+// that field directly, so the first view switch threw
+// `Cannot read properties of undefined (reading 'replace')`.
+//
+// Note which key: `viewSwitched` reads `yearViewLabel` when the RESULTING view
+// is 'month', i.e. one period-button click up from the default day view.
+// `monthViewLabel` is only read on the drill-DOWN back to 'day', so a
+// monthViewLabel-based repro would pass before the fix.
+
+describe('CalendarComponent intl merge (undefined-key fallback)', () => {
+  it('provideCalendarIntl keeps the default when a key is explicitly undefined', () => {
+    TestBed.configureTestingModule({
+      providers: [
+        provideNativeDateAdapter(),
+        provideCalendarIntl({
+          yearViewLabel: undefined,
+          calendarLabel: 'Datumsauswahl',
+        }),
+      ],
+    });
+
+    // Before the fix this read `undefined` — the primary, unambiguous guard.
+    const intl = TestBed.inject(CalendarIntl);
+    expect(intl.yearViewLabel).toBe('year view');
+    // A defined sibling key in the same object still overrides.
+    expect(intl.calendarLabel).toBe('Datumsauswahl');
+
+    // Behavioural half: drive the day → month switch that reads the field.
+    const announcer = TestBed.inject(LiveAnnouncer);
+    const spy = vi.spyOn(announcer, 'announce');
+    const fixture = TestBed.createComponent(BasicHost);
+    fixture.detectChanges();
+
+    getPeriodButton(fixture).click();
+    fixture.detectChanges();
+
+    expect(spy).toHaveBeenCalled();
+    const [message] = spy.mock.calls[spy.mock.calls.length - 1]!;
+    expect(message as string).toContain('year');
+  });
+
+  it('the intl input keeps the default when a key is explicitly undefined', () => {
+    @Component({
+      imports: [CalendarComponent],
+      changeDetection: ChangeDetectionStrategy.OnPush,
+      template: `<tw-calendar [intl]="intl()" />`,
+    })
+    class IntlInputHost {
+      // `Partial<CalendarIntl>` accepts an explicit `undefined` because the
+      // root tsconfig does not set `exactOptionalPropertyTypes`.
+      readonly intl = signal<Partial<CalendarIntl>>({
+        yearViewLabel: undefined,
+        calendarLabel: 'Datumsauswahl',
+      });
+    }
+
+    TestBed.configureTestingModule({ providers: [provideNativeDateAdapter()] });
+    const announcer = TestBed.inject(LiveAnnouncer);
+    const spy = vi.spyOn(announcer, 'announce');
+
+    const fixture = TestBed.createComponent(IntlInputHost);
+    fixture.detectChanges();
+
+    const calendar = getCalendarComponent(fixture);
+    // Before the fix `Object.assign(merged, injected, override)` copied the
+    // `undefined` over the injected default, so this was `undefined`.
+    expect(calendar.effectiveIntl().yearViewLabel).toBe('year view');
+    expect(calendar.effectiveIntl().calendarLabel).toBe('Datumsauswahl');
+
+    getPeriodButton(fixture).click();
+    fixture.detectChanges();
+
+    const [message] = spy.mock.calls[spy.mock.calls.length - 1]!;
+    expect(message as string).toContain('year');
+  });
 });

@@ -267,10 +267,27 @@ export class CalendarIntl {
  * Provides a custom `CalendarIntl` instance. Place at any injector level —
  * the calendar resolves the closest one and merges any per-instance `intl`
  * input on top of it (§19.4 per-field merge semantics).
+ *
+ * Keys explicitly set to `undefined` are dropped before merging. Root
+ * `tsconfig.json` does not set `exactOptionalPropertyTypes`, so
+ * `provideCalendarIntl({ monthViewLabel: bundle['calendar.monthView'] })`
+ * type-checks even when the lookup misses — and a plain `Object.assign` would
+ * then copy that `undefined` over a field `CalendarIntl` types as `string`.
+ * Because this is a bootstrap-level provider, one missing key in an i18n
+ * bundle broke *every* calendar in the app, and the failure surfaced far from
+ * the call site: `viewSwitched()` calls `.replace()` on the label directly, so
+ * the first drill-up threw `Cannot read properties of undefined (reading
+ * 'replace')`. Filtering here makes a missing key fall back to the English
+ * default instead.
  */
 export function provideCalendarIntl(custom: Partial<CalendarIntl>): Provider {
   return {
     provide: CalendarIntl,
-    useFactory: () => Object.assign(new CalendarIntl(), custom),
+    useFactory: () => {
+      const overrides = Object.fromEntries(
+        Object.entries(custom ?? {}).filter(([, value]) => value !== undefined),
+      );
+      return Object.assign(new CalendarIntl(), overrides);
+    },
   };
 }

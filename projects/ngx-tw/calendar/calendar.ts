@@ -103,8 +103,22 @@ const calendarVariants = tv(
         1: { months: '' },
         2: { months: 'flex gap-3' },
       },
+      // Deliberately `opacity-50` WITHOUT `pointer-events-none`, which is the
+      // pairing CLAUDE.md's disabled table otherwise prefers. Cells must keep
+      // receiving mouse events: `calendar-cell.ts` dropped the native
+      // `disabled` attribute precisely because browsers do not dispatch mouse
+      // events on a natively-disabled button, which silently killed range
+      // preview and made `focusButton()` a no-op. `pointer-events-none` here
+      // reintroduces exactly that class of bug one level up. Activation is
+      // already refused at three layers (the cell's `enabled` flag, the view
+      // base's `onCellSelected`, and `onDateSelected`'s early return), so the
+      // container needs no pointer suppression.
+      disabled: {
+        true: { root: 'opacity-50' },
+        false: {},
+      },
     },
-    defaultVariants: { bordered: true, columns: 1 },
+    defaultVariants: { bordered: true, columns: 1, disabled: false },
   },
   { twMerge: true },
 );
@@ -161,9 +175,9 @@ const calendarVariants = tv(
         [periodAriaLabel]="periodAriaLabel()"
         [prevAriaLabel]="prevAriaLabel()"
         [nextAriaLabel]="nextAriaLabel()"
-        [prevDisabled]="prevDisabled()"
-        [nextDisabled]="nextDisabled()"
-        [canSwitchView]="viewState() !== 'year'"
+        [prevDisabled]="prevDisabled() || effectiveDisabled()"
+        [nextDisabled]="nextDisabled() || effectiveDisabled()"
+        [canSwitchView]="viewState() !== 'year' && !effectiveDisabled()"
         (prevClicked)="onPrevClicked()"
         (nextClicked)="onNextClicked()"
         (periodClicked)="onPeriodClicked()"
@@ -229,6 +243,7 @@ const calendarVariants = tv(
               [gridIndex]="0"
               [multiSelectable]="multiSelectable()"
               [readonlyGrid]="effectiveReadonly()"
+              [disabledGrid]="effectiveDisabled()"
               (selectedChange)="onDateSelected($event)"
               (activeDateChange)="onActiveDateChange($event, 0)"
               (previewChange)="onPreviewChange($event)"
@@ -251,6 +266,7 @@ const calendarVariants = tv(
                 [gridIndex]="1"
                 [multiSelectable]="multiSelectable()"
                 [readonlyGrid]="effectiveReadonly()"
+                [disabledGrid]="effectiveDisabled()"
                 (selectedChange)="onDateSelected($event)"
                 (activeDateChange)="onActiveDateChange($event, 1)"
                 (previewChange)="onPreviewChange($event)"
@@ -270,6 +286,7 @@ const calendarVariants = tv(
             [previewEnd]="previewRange()?.end ?? null"
             [multiSelectable]="multiSelectable()"
             [readonlyGrid]="effectiveReadonly()"
+            [disabledGrid]="effectiveDisabled()"
             (selectedChange)="onMonthSelected($event)"
             (activeDateChange)="onActiveDateChange($event)"
             (previewChange)="onPreviewChange($event)"
@@ -287,6 +304,7 @@ const calendarVariants = tv(
             [previewEnd]="previewRange()?.end ?? null"
             [multiSelectable]="multiSelectable()"
             [readonlyGrid]="effectiveReadonly()"
+            [disabledGrid]="effectiveDisabled()"
             (selectedChange)="onYearSelected($event)"
             (activeDateChange)="onActiveDateChange($event)"
             (previewChange)="onPreviewChange($event)"
@@ -929,7 +947,8 @@ export class CalendarComponent<
   /**
    * Effective `CalendarIntl` resolved per-field over the DI default (§19.4).
    * The injected default is the base; the `intl` input overrides individual
-   * fields. Unspecified fields fall through to English defaults.
+   * fields. Unspecified fields fall through to English defaults — and so do
+   * fields the consumer set explicitly to `undefined`.
    */
   readonly effectiveIntl: Signal<CalendarIntl> = computed(() => {
     const override = this.intl();
@@ -939,7 +958,16 @@ export class CalendarComponent<
     const merged = Object.create(
       Object.getPrototypeOf(this.injectedIntl) as object,
     ) as CalendarIntl;
-    Object.assign(merged, this.injectedIntl, override);
+    // Drop explicitly-`undefined` keys first. `Object.assign` copies own
+    // enumerable properties *including* ones whose value is `undefined`, so
+    // `[intl]="{ monthViewLabel: bundle['x'] }"` with a missing key would blank
+    // the default rather than fall through to it — and `viewSwitched()` calls
+    // `.replace()` on that field directly, throwing on the next view switch.
+    // Same guard as `provideCalendarIntl`.
+    const overrides = Object.fromEntries(
+      Object.entries(override).filter(([, value]) => value !== undefined),
+    );
+    Object.assign(merged, this.injectedIntl, overrides);
     return merged;
   });
 
@@ -1037,6 +1065,7 @@ export class CalendarComponent<
     calendarVariants({
       bordered: this.bordered(),
       columns: (this.effectiveMonthColumns() >= 2 ? 2 : 1) as 1 | 2,
+      disabled: this.effectiveDisabled(),
     }),
   );
 

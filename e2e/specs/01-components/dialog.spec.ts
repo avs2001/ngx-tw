@@ -89,21 +89,22 @@ test.describe('Dialog', () => {
     await expect(dialog.topDialog).toHaveAttribute('tabindex', '-1');
   });
 
-  test.fixme(
-    '@a11y @overlay BUG: aria-modal should be "true" while open',
-    async ({ page }) => {
-      // BUG (ngx-tw/dialog#aria-modal-default): CdkDialogConfig defaults
-      // `ariaModal = false`; TwDialogConfig should override to `true`. Until
-      // fixed, screen readers may not enter modal-only browse mode even
-      // though the dialog is visually modal. Re-enable this test once the
-      // library default is corrected.
-      const dialog = new DialogPage(page);
-      await dialog.goto();
-      await dialog.sizeTrigger('md').click();
-      await dialog.waitForOpen();
-      await expect(dialog.topDialog).toHaveAttribute('aria-modal', 'true');
-    },
-  );
+  test('@a11y @overlay aria-modal defaults to "true" while open', async ({ page }) => {
+    // Was `test.fixme` against ngx-tw/dialog#aria-modal-default, back when
+    // `TwDialogConfig` inherited `CdkDialogConfig`'s `ariaModal = false`.
+    // `dialog-config.ts:56` now overrides it to `true`, so this is a live
+    // guard again.
+    //
+    // It is also the ONLY guard on the *default*: the unit specs at
+    // `dialog.spec.ts:428` / `:440` / `:658` all pass an explicit `ariaModal`
+    // value, so they cover the plumbing but would stay green if the default
+    // regressed to `false`.
+    const dialog = new DialogPage(page);
+    await dialog.goto();
+    await dialog.sizeTrigger('md').click();
+    await dialog.waitForOpen();
+    await expect(dialog.topDialog).toHaveAttribute('aria-modal', 'true');
+  });
 
   test('@a11y @overlay confirmation dialog uses role="alertdialog"', async ({ page }) => {
     const dialog = new DialogPage(page);

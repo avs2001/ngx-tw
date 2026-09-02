@@ -112,6 +112,7 @@ export class MonthViewComponent<D> extends CalendarViewBase<D> {
     const disabledDaysOfWeek = this.disabledDaysOfWeek();
     const dateClass = this.dateClass();
     const displayedMonth = this.displayMonth();
+    const gridDisabled = this.disabledGrid();
 
     const days: CalendarCell<D>[] = [];
     for (let i = 0; i < TOTAL_CELLS; i++) {
@@ -124,15 +125,17 @@ export class MonthViewComponent<D> extends CalendarViewBase<D> {
         value: date,
         displayValue: String(dayOfMonth),
         ariaLabel: this.dateAdapter.format(date, { dateTimeFormat: { dateStyle: 'full' } }),
-        enabled: !isDateDisabled(
-          date,
-          minDate,
-          maxDate,
-          dateFilter,
-          this.dateAdapter,
-          disabledDates,
-          disabledDaysOfWeek,
-        ),
+        enabled:
+          !gridDisabled &&
+          !isDateDisabled(
+            date,
+            minDate,
+            maxDate,
+            dateFilter,
+            this.dateAdapter,
+            disabledDates,
+            disabledDaysOfWeek,
+          ),
         cssClasses: dateClass ? dateClass(date, this.view) : '',
         compareValue,
       });

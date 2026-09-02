@@ -7,7 +7,8 @@ import { ButtonDirective } from '@cdevhub/ngx-tw/button';
 import { CodeBlockComponent } from '@cdevhub/ngx-tw/code-block';
 import type { TwColor, TwSize } from '@cdevhub/ngx-tw/core';
 
-const VARIANTS: SegmentedControlVariant[] = ['surface', 'solid', 'outline'];
+const VARIANTS = ['surface', 'solid', 'outline'] as const satisfies readonly SegmentedControlVariant[];
+type RenderedVariant = (typeof VARIANTS)[number];
 const COLORS: TwColor[] = ['primary', 'secondary', 'accent', 'neutral', 'info', 'success', 'warning', 'error'];
 const SIZES: TwSize[] = ['xs', 'sm', 'md', 'lg', 'xl'];
 const ROUNDED: SegmentedControlRounded[] = ['pill', 'md'];
@@ -498,9 +499,9 @@ export class SegmentedControlExamples {
   protected readonly sizes = SIZES;
   protected readonly rounded = ROUNDED;
 
-  protected readonly variantValues: Record<SegmentedControlVariant, WritableSignal<string | null>> = {
+  protected readonly variantValues: Record<RenderedVariant, WritableSignal<string | null>> = {
     surface: signal<string | null>('daily'),
-    filled: signal<string | null>('weekly'),
+    solid: signal<string | null>('weekly'),
     outline: signal<string | null>('monthly'),
   };
 
