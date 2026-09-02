@@ -371,7 +371,7 @@ import { CodeBlockComponent } from '@cdevhub/ngx-tw/code-block';
               <td class="px-4 py-2 text-fg-muted">Icon override — string text glyph, or false to hide the severity-default icon.</td>
             </tr>
             <tr>
-              <td class="px-4 py-2 font-mono text-xs">ariaLabel</td>
+              <td class="px-4 py-2 font-mono text-xs">aria-label</td>
               <td class="px-4 py-2 font-mono text-xs text-fg-muted">string | undefined</td>
               <td class="px-4 py-2 font-mono text-xs text-fg-muted">undefined</td>
               <td class="px-4 py-2 text-fg-muted">Explicit aria-label for the wrapper; defaults to the rendered text content.</td>

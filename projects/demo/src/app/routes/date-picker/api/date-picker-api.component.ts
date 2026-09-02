@@ -168,6 +168,12 @@ import { CodeBlockComponent } from '@cdevhub/ngx-tw/code-block';
               <td class="px-4 py-2 text-fg-muted">Accessible name for the trigger button.</td>
             </tr>
             <tr>
+              <td class="px-4 py-2 font-mono text-xs">clearAriaLabel</td>
+              <td class="px-4 py-2 font-mono text-xs text-fg-muted">string</td>
+              <td class="px-4 py-2 font-mono text-xs text-fg-muted">'Clear date'</td>
+              <td class="px-4 py-2 text-fg-muted">Accessible name for the inline clear button.</td>
+            </tr>
+            <tr>
               <td class="px-4 py-2 font-mono text-xs">todayLabel / clearLabel / cancelLabel / applyLabel</td>
               <td class="px-4 py-2 font-mono text-xs text-fg-muted">string</td>
               <td class="px-4 py-2 font-mono text-xs text-fg-muted">localized defaults</td>

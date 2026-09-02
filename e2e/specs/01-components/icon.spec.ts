@@ -28,7 +28,7 @@ test.describe('Icon', () => {
     const icon = new IconPage(page);
     await icon.goto();
 
-    // The Accessibility section's first icon has ariaLabel="Synchronised".
+    // The Accessibility section's first icon has aria-label="Synchronised".
     const labelled = icon.accessibilitySection.locator('tw-icon svg').first();
     await expect(labelled).toHaveAttribute('role', 'img');
     await expect(labelled).toHaveAttribute('aria-label', 'Synchronised');

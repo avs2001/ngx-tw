@@ -2,7 +2,11 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { ChangeDetectionStrategy, Component, signal } from '@angular/core';
 import { type ComponentFixture, TestBed } from '@angular/core/testing';
 import { CalendarCellComponent } from './calendar-cell';
-import { createCalendarCell, type CalendarCell } from './calendar.types';
+import {
+  createCalendarCell,
+  type CalendarCell,
+  type CalendarViewState,
+} from './calendar.types';
 
 // ── Test host ─────────────────────────────────────────────────────
 
@@ -215,5 +219,89 @@ describe('CalendarCellComponent', () => {
       fixture.detectChanges();
       expect(getButton(fixture).getAttribute('tabindex')).toBe('-1');
     });
+  });
+});
+
+// ── View footprint ────────────────────────────────────────────────
+//
+// Switching day -> month -> year must not resize the calendar panel. The panel is
+// `inline-block`, so its box is the intrinsic size of whichever view is mounted, and each
+// view's intrinsic size is arithmetic on the cell geometry below plus the grid template in
+// month-view.ts / year-view.ts / multi-year-view.ts.
+//
+// jsdom performs no layout, so these tests re-derive the footprint from the rendered cell
+// classes rather than measuring it. The grid shapes are constants here because they live in
+// the view templates, not the cell: the day grid is `grid-cols-7 gap-0`, and both the month
+// and year grids are `grid-cols-4 gap-1`.
+//
+// This is what stops the two known regressions coming back: month and year cells were `h-10`
+// against the day cell's `h-9` (panel grew 4px per row on a view switch) and were `w-16` /
+// `w-14` against the day cell's `w-9` (panel measured 252 / 268 / 236 wide). Equalising has
+// to happen here, in the cell, and not as a `min-w` on the shared view region — see the
+// comment on that wrapper in calendar.ts.
+
+@Component({
+  imports: [CalendarCellComponent],
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  template: `<tw-calendar-cell [cell]="cell()" [view]="view()" />`,
+})
+class ViewHost {
+  readonly cell = signal<CalendarCell<Date>>(buildCell({}));
+  readonly view = signal<CalendarViewState>('day');
+}
+
+describe('CalendarCellComponent view footprint', () => {
+  /** Tailwind's `--spacing`, in px — `w-9` is 9 x 4 = 36px. */
+  const UNIT = 4;
+
+  /** Columns and gap of the grid each view renders its cells into. */
+  const GRIDS: Readonly<Record<CalendarViewState, { columns: number; gap: number }>> = {
+    day: { columns: 7, gap: 0 },
+    month: { columns: 4, gap: 1 },
+    year: { columns: 4, gap: 1 },
+  };
+
+  beforeEach(() => {
+    TestBed.configureTestingModule({});
+  });
+
+  /** Reads the `w-N` / `h-N` step off the rendered button. */
+  function step(fixture: ComponentFixture<unknown>, axis: 'w' | 'h'): number {
+    const match = getButton(fixture)
+      .className.split(/\s+/)
+      .map(cls => new RegExp(`^${axis}-(\\d+)$`).exec(cls))
+      .find(m => m !== null);
+
+    expect(match, `no ${axis}-N utility on the cell button`).toBeTruthy();
+    return Number(match![1]);
+  }
+
+  const views: readonly CalendarViewState[] = ['day', 'month', 'year'];
+
+  /** Renders each view in turn on ONE fixture and maps it through `read`. */
+  function forEachView(read: (fixture: ComponentFixture<ViewHost>) => number): number[] {
+    const fixture = TestBed.createComponent(ViewHost);
+    return views.map(view => {
+      fixture.componentInstance.view.set(view);
+      fixture.detectChanges();
+      return read(fixture);
+    });
+  }
+
+  it('renders every view at the same grid width, so the panel holds its box', () => {
+    const widths = forEachView(fixture => {
+      const { columns, gap } = GRIDS[fixture.componentInstance.view()];
+      return (step(fixture, 'w') * columns + gap * (columns - 1)) * UNIT;
+    });
+
+    expect(new Set(widths).size, `view widths diverge: ${widths.join(' / ')}px`).toBe(1);
+    expect(widths[0]).toBe(252);
+  });
+
+  it('renders every view at the same row height', () => {
+    const heights = forEachView(fixture => step(fixture, 'h') * UNIT);
+
+    expect(new Set(heights).size, `view row heights diverge: ${heights.join(' / ')}px`).toBe(1);
+    expect(heights[0]).toBe(36);
   });
 });

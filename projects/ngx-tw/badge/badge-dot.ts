@@ -25,12 +25,24 @@ const badgeDotVariants = tv({
       warning: 'bg-warning-500',
       error: 'bg-error-500',
     },
+    // Dot-indicator sub-scale, 2px per step: 8 / 10 / 12 / 14 / 16 px.
+    //
+    // xs / sm / md are CLAUDE.md's documented dot table verbatim (`size-2` / `size-2.5` /
+    // `size-3`). The table stops at md, so lg and xl continue its own 2px progression. They
+    // are NOT free choices: CLAUDE.md forbids `size-5` for a dot outright ("never size-5 for
+    // a dot indicator"), which caps the scale at 16px, and five distinct steps ending at 16
+    // with a 2px cadence admits exactly one assignment.
+    //
+    // Was 6 / 6 / 8 / 10 / 10 — an entire step below the documented scale, with dead steps at
+    // both ends (xs === sm, lg === xl).
     size: {
-      xs: 'size-1.5',
-      sm: 'size-1.5',
-      md: 'size-2',
-      lg: 'size-2.5',
-      xl: 'size-2.5',
+      xs: 'size-2',
+      sm: 'size-2.5',
+      md: 'size-3',
+      // `size-3.5` (14px) and `size-4` (16px) extend the dot table past its documented md
+      // row; both keep the 2px cadence rather than jumping to the glyph scale.
+      lg: 'size-3.5',
+      xl: 'size-4',
     },
   },
   defaultVariants: {

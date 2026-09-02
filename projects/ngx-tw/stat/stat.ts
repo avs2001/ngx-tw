@@ -280,8 +280,8 @@ export class StatDeltaComponent {
   /** Optional comparison label rendered next to the delta value (e.g. `"vs last week"`, `"since launch"`). Defaults to `undefined`. */
   readonly comparisonLabel = input<string>();
 
-  /** Explicit accessible label. When omitted, the component composes one from `direction` + projected text + `comparisonLabel`. Override when projected content is purely symbolic or already localized. Defaults to `undefined`. */
-  readonly ariaLabel = input<string>();
+  /** Explicit accessible label, mirrored to `aria-label`. When omitted, the component composes one from `direction` + projected text + `comparisonLabel`. Override when projected content is purely symbolic or already localized. Defaults to `undefined`. */
+  readonly ariaLabel = input<string | undefined>(undefined, { alias: 'aria-label' });
 
   /** @internal */
   protected readonly textEl = viewChild<ElementRef<HTMLElement>>('textEl');

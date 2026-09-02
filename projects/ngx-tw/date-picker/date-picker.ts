@@ -381,7 +381,7 @@ const DEFAULT_DISPLAY_FORMAT = {
         type="button"
         tabindex="-1"
         [class]="clearButtonClasses()"
-        [attr.aria-label]="'Clear date'"
+        [attr.aria-label]="clearAriaLabel()"
         (click)="onClearClick($event)"
       >
         <svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true" class="size-4">
@@ -526,6 +526,9 @@ export class DatePickerComponent<D = Date>
   /** Accessible name for the calendar trigger button. Defaults to `'Open calendar'`. */
   readonly triggerAriaLabel = input<string>('Open calendar');
 
+  /** Accessible name for the inline clear button shown when a value is set. Mirrors `tw-date-range-picker`'s input of the same name; distinct from `clearLabel`, which is the overlay action bar's visible button text. Defaults to `'Clear date'`. */
+  readonly clearAriaLabel = input<string>('Clear date');
+
   /**
    * Bundles the time-of-day configuration. Passing a non-null object turns on the embedded `<tw-time-picker>` and forwards each field.
    *
@@ -662,7 +665,6 @@ export class DatePickerComponent<D = Date>
 
   private readonly cvaDisabled = signal(false);
   private readonly describedByIdsSignal = signal<readonly string[]>([]);
-  private readonly closingSignal = signal(false);
   private readonly lastValueBeforeOpen = signal<D | null>(null);
   private readonly pendingCalendarValue = signal<D | null>(null);
   private readonly activePresetIdSignal = signal<string | undefined>(undefined);
@@ -672,12 +674,21 @@ export class DatePickerComponent<D = Date>
   private onChange: (value: D | null) => void = () => {};
   private onTouched: () => void = () => {};
 
-  private readonly overlayInstanceSignal = signal<DatePickerOverlayComponent<D> | null>(null);
+  // Overlay lifecycle bookkeeping. Both are PLAIN FIELDS, not signals, and that
+  // is load-bearing: the lifecycle effect in the constructor both reads and
+  // writes them, so as signals they would form a read → write → re-trigger
+  // cycle of exactly the shape CLAUDE.md forbids. Demoting them is the fix
+  // `popover.ts` and `command-palette.ts` already use — see the comment on that
+  // effect. Do not promote either back to `signal()`.
+  private overlayInstance: DatePickerOverlayComponent<D> | null = null;
+  private closing = false;
   private returnFocusTo: HTMLElement | null = null;
 
-  private get overlayInstance(): DatePickerOverlayComponent<D> | null {
-    return this.overlayInstanceSignal();
-  }
+  // The one piece of overlay state that must stay a signal: it is the *only*
+  // dependency that re-runs the overlay state-push effect when the panel
+  // attaches. Written here (openOverlay / closeOverlay), never read by the
+  // lifecycle effect, so it cannot cycle. Mirrors `command-palette.ts`.
+  private readonly isAttached = signal(false);
 
   // ── Derived state ──
 
@@ -845,24 +856,54 @@ export class DatePickerComponent<D = Date>
     });
 
     // Mirror the `open` model into the overlay lifecycle.
+    //
+    // The only tracked reads here are `open()` and `isDisabled()`. Everything
+    // this effect *writes* — `overlayInstance`, `closing` — is a plain field,
+    // never a signal, so opening or closing cannot re-trigger the effect that
+    // ordered it. That is the whole reason those two are declared as fields
+    // (see their declaration); promoting either back to `signal()` recreates
+    // the read → write → re-trigger cycle CLAUDE.md forbids.
+    //
+    // `openOverlay()` / `closeOverlay()` do write `isAttached`, but this effect
+    // never reads it, so that write is a one-way hand-off to the state-push
+    // effect below and terminates there.
+    //
+    // The body is wrapped in `untracked()` because demoting the two fields is
+    // NOT sufficient on its own. `openOverlay()` reads roughly twenty-five
+    // inputs while pushing them into the freshly attached panel, and it writes
+    // two signals it then reads straight back. Called from the tracked phase,
+    // every one of those reads becomes a dependency of THIS effect, which both
+    // recreates the forbidden write-then-read-back shape and re-runs the whole
+    // lifecycle on any of those twenty-five inputs changing. Tracked reads are
+    // now exactly `open()` and `isDisabled()`, which is what the paragraph
+    // above claims — and only now true.
     effect(() => {
       const shouldOpen = this.open();
       const disabled = this.isDisabled();
-      if (disabled && this.overlayInstance) {
-        this.closeOverlay('programmatic');
-        return;
-      }
-      if (shouldOpen && !this.overlayInstance && !disabled && !this.closingSignal()) {
-        this.openOverlay();
-      } else if (!shouldOpen && this.overlayInstance && !this.closingSignal()) {
-        this.closeOverlay('programmatic');
-      }
+      untracked(() => {
+        if (disabled && this.overlayInstance) {
+          this.closeOverlay('programmatic');
+          return;
+        }
+        if (shouldOpen && !this.overlayInstance && !disabled && !this.closing) {
+          this.openOverlay();
+        } else if (!shouldOpen && this.overlayInstance && !this.closing) {
+          this.closeOverlay('programmatic');
+        }
+      });
     });
 
     // Push state into the overlay whenever anything relevant changes.
     // Reads happen in the tracked phase; writes to the overlay instance are
     // wrapped in `untracked()` so they never feed back into this effect.
+    //
+    // `isAttached()` MUST be read first and unconditionally: it is this
+    // effect's only dependency on the overlay's existence, so it is what makes
+    // the initial push happen when the panel attaches (`overlayInstance` is a
+    // plain field and is invisible to the signal graph). Do not reorder it
+    // behind the null check — the effect would then never re-run on open.
     effect(() => {
+      this.isAttached();
       const instance = this.overlayInstance;
       if (!instance) return;
       const time = this.effectiveTimeConfig();
@@ -966,8 +1007,9 @@ export class DatePickerComponent<D = Date>
       monitorSub.unsubscribe();
       this.focusMonitor.stopMonitoring(this.elementRef);
       // The coordinator's own DestroyRef.onDestroy disposes the overlay and
-      // clears its timers; we only need to drop the local instance signal.
-      this.overlayInstanceSignal.set(null);
+      // clears its timers; we only need to drop the local instance reference.
+      this.overlayInstance = null;
+      this.isAttached.set(false);
     });
   }
 
@@ -1292,7 +1334,10 @@ export class DatePickerComponent<D = Date>
     instance.onApply.set(() => this.onApplyAction());
     instance.onPresetSelect.set((preset) => this.onPresetClick(preset));
     instance.activePresetId.set(this.activePresetIdSignal());
-    this.overlayInstanceSignal.set(instance);
+    this.overlayInstance = instance;
+    // Must follow the assignment above: this is what wakes the state-push
+    // effect, and it reads `overlayInstance` as a plain field.
+    this.isAttached.set(true);
 
     // Per-open streams from the coordinator complete on close, so no
     // takeUntilDestroyed is needed — accumulating subscribers across multiple
@@ -1318,8 +1363,8 @@ export class DatePickerComponent<D = Date>
   }
 
   private closeOverlay(reason: DatePickerCloseReason, restore = false): void {
-    if (this.closingSignal() || !this.overlayInstance) return;
-    this.closingSignal.set(true);
+    if (this.closing || !this.overlayInstance) return;
+    this.closing = true;
     this.overlayInstance.leaving.set(true);
 
     if (restore) {
@@ -1339,11 +1384,12 @@ export class DatePickerComponent<D = Date>
     (this.returnFocusTo ?? this.resolveFocusTarget()).focus();
 
     this.coordinator.close(() => {
-      this.overlayInstanceSignal.set(null);
+      this.overlayInstance = null;
+      this.isAttached.set(false);
       this.pendingCalendarValue.set(null);
       this.returnFocusTo = null;
       untracked(() => this.open.set(false));
-      this.closingSignal.set(false);
+      this.closing = false;
       this.closed.emit(reason);
     });
   }

@@ -42,6 +42,7 @@ import type {
       [required]="required()"
       [showActions]="showActions()"
       [showClear]="showClear()"
+      [clearAriaLabel]="clearAriaLabel()"
       [size]="size()"
       [color]="color()"
       [placeholder]="placeholder()"
@@ -63,6 +64,7 @@ class BasicHost {
   required = signal(false);
   showActions = signal(false);
   showClear = signal(true);
+  clearAriaLabel = signal('Clear date');
   size = signal<'xs' | 'sm' | 'md' | 'lg' | 'xl'>('md');
   color = signal<
     'primary' | 'secondary' | 'accent' | 'neutral' | 'info' | 'success' | 'warning' | 'error'
@@ -346,6 +348,21 @@ describe('DatePickerComponent', () => {
       fixture.componentInstance.showClear.set(false);
       await advance(fixture);
       expect(getClearButton(fixture)).toBeNull();
+    });
+
+    it('uses clearAriaLabel for the clear button accessible name', async () => {
+      const fixture = TestBed.createComponent(BasicHost);
+      fixture.componentInstance.value.set(new Date(2026, 3, 21));
+      await advance(fixture);
+      // Queried structurally, not by aria-label — the label is what is under test.
+      const clear = fixture.nativeElement.querySelector(
+        'tw-date-picker button[tabindex="-1"]',
+      ) as HTMLButtonElement;
+      expect(clear.getAttribute('aria-label')).toBe('Clear date');
+
+      fixture.componentInstance.clearAriaLabel.set('Effacer la date');
+      await advance(fixture);
+      expect(clear.getAttribute('aria-label')).toBe('Effacer la date');
     });
   });
 

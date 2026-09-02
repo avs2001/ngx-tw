@@ -1016,6 +1016,27 @@ describe('FileUploadComponent — state variants', () => {
     fixture.detectChanges();
     expect(getDropzone(fixture).className).toContain('bg-surface-muted');
   });
+
+  // Theme adaptation is owned by the slot tokens, exactly as `alert`,
+  // `tab-nav` and `segmented-control` already assert. This component was the
+  // sole exception: its drag-over states carried the library's ONLY two `dark:`
+  // utilities, and both were inverted. `theme/_dark.css` already remaps
+  // `--color-primary-50` onto `blue-950`, so `bg-primary-soft` IS the dark
+  // wash; the `dark:bg-primary-900/20` override on top resolved to `blue-100`,
+  // near-white, and flashed the dropzone bright on drag-over.
+  it('should never emit `dark:` overrides on the drag-over states', () => {
+    const fixture = TestBed.createComponent(BasicHost);
+    fixture.detectChanges();
+
+    for (const [type, file] of [
+      ['dragenter', makeFile('a.txt', 10, 'text/plain')],
+      ['dragenter', makeFile('big.txt', 10_000_000, 'text/plain')],
+    ] as const) {
+      dispatchDragEvent(getDropzone(fixture), type, [file]);
+      fixture.detectChanges();
+      expect(getDropzone(fixture).className).not.toMatch(/\bdark:/);
+    }
+  });
 });
 
 // ── 12. Custom item template ─────────────────────────────────────

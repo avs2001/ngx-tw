@@ -120,17 +120,36 @@ const tagsInputVariants = tv(
       // the control scale. Standalone-only, alongside the padding: inside a
       // `tw-form-field` the root drops its border and padding and the field owns
       // the box, so a floor here would stack on top of the field's own padding.
-      // Vertical padding sits one half-step below the inline-padding scale so the
-      // `min-h-*` floor actually BINDS at rest. With the nominal padding the
-      // natural height (padding + line box + 2px border) lands 2px ABOVE the
-      // floor at every size, leaving the floor inert and the control off the
-      // grid — the exact defect the rhythm system exists to remove. The padding
-      // still governs the multi-line case, where the box grows past the floor.
-      { inFormField: false, size: 'xs', class: { root: 'px-2 py-0.5 min-h-6' } },
+      // Vertical padding is set so the `min-h-*` floor actually BINDS at rest.
+      //
+      // The tallest resting content is a CHIP, not the bare input line box. A
+      // chip is a badge: its own padding and text size make it taller than the
+      // input beside it at every size, so the box arithmetic that decides
+      // whether the floor binds is
+      //
+      //     chip + 2*py + 2px border  <=  floor
+      //
+      // Sizing the padding against the input line box instead left the floor
+      // inert the moment a single tag existed. Empty, the control measured
+      // correctly at all five sizes; populated, it measured 26 / 32 / 38 / 50 /
+      // 54 against a 24 / 32 / 36 / 44 / 48 scale — so a filter bar was on the
+      // grid until the user typed the first tag, then jumped 2px at xs and md
+      // and 6px at lg and xl. Only sm was ever correct, which is why the
+      // isolated slot reading looked like a one-off rather than a broken rule.
+      //
+      // Resting appearance does not change: once the floor binds, `items-center`
+      // centres the chip and the padding is no longer what sets the height. The
+      // padding still governs the multi-line case, where chips wrap and the box
+      // legitimately grows past the floor.
+      //
+      // Chip heights are 20 / 20 / 24 / 32 / 32, so the padding ceiling is
+      // 1 / 5 / 5 / 5 / 7px. `py-px` at xs is not decorative restraint: a 20px
+      // chip inside a 24px control with a 1px border leaves exactly 1px a side.
+      { inFormField: false, size: 'xs', class: { root: 'px-2 py-px min-h-6' } },
       { inFormField: false, size: 'sm', class: { root: 'px-3 py-1 min-h-8' } },
-      { inFormField: false, size: 'md', class: { root: 'px-4 py-1.5 min-h-9' } },
-      { inFormField: false, size: 'lg', class: { root: 'px-5 py-2 min-h-11' } },
-      { inFormField: false, size: 'xl', class: { root: 'px-6 py-2.5 min-h-12' } },
+      { inFormField: false, size: 'md', class: { root: 'px-4 py-1 min-h-9' } },
+      { inFormField: false, size: 'lg', class: { root: 'px-5 py-1 min-h-11' } },
+      { inFormField: false, size: 'xl', class: { root: 'px-6 py-1.5 min-h-12' } },
       // Standalone error state — colored border + focus ring.
       {
         inFormField: false,

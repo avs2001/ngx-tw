@@ -154,12 +154,18 @@ const fileUploadVariants = tv(
         idle: {},
         // 1% scale-up — below Tailwind's smallest `scale-95` step but visually
         // correct for a subtle drag-over lift; the alternative is no lift.
+        // No `dark:` variant here, deliberately. The theme layer already
+        // inverts the ramp: `_dark.css` maps `--color-primary-50` onto
+        // `blue-950`, so `bg-primary-soft` IS the dark wash in dark mode. A
+        // `dark:bg-primary-900/20` override on top resolved to `blue-100` —
+        // near-white — and turned the drag-over affordance into a bright flash
+        // over a `gray-950` dropzone. These were the only two `dark:` utilities
+        // in the library, and both were wrong for this reason.
         draggingValid: {
-          dropzone:
-            'border-primary-500 bg-primary-50 dark:bg-primary-900/20 scale-[1.01]',
+          dropzone: 'border-primary-500 bg-primary-soft scale-[1.01]',
         },
         draggingInvalid: {
-          dropzone: 'border-error-500 bg-error-50 dark:bg-error-900/20',
+          dropzone: 'border-error-500 bg-error-soft',
         },
         error: { dropzone: 'border-error-500' },
       },

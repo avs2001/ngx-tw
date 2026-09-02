@@ -518,11 +518,11 @@ export class CarouselComponent {
   /** Two-way bound 0-based index of the first visible slide in the current page. Setting from the parent scrolls the viewport smoothly to align that slide; reading reflects user-driven scroll position after `scrollend`. Defaults to `0`. */
   readonly activeIndex = model<number>(0);
 
-  /** Accessible name for the carousel region. If both this and `ariaLabelledBy` are `null`, a one-time dev-mode `console.warn` is logged (production builds never log). Defaults to `null`. */
-  readonly ariaLabel = input<string | null>(null);
+  /** Accessible name for the carousel region. Mirrored to `aria-label`. If both this and `aria-labelledby` are `null`, a one-time dev-mode `console.warn` is logged (production builds never log). Defaults to `null`. */
+  readonly ariaLabel = input<string | null>(null, { alias: 'aria-label' });
 
-  /** ID of an element labeling the carousel. Either `ariaLabel` or `ariaLabelledBy` SHOULD be provided. Defaults to `null`. */
-  readonly ariaLabelledBy = input<string | null>(null);
+  /** ID of an element labeling the carousel. Mirrored to `aria-labelledby`. Either `aria-label` or `aria-labelledby` SHOULD be provided. Defaults to `null`. */
+  readonly ariaLabelledBy = input<string | null>(null, { alias: 'aria-labelledby' });
 
   /** Localizable strings for prev/next/pause/resume/indicator/slide-of templates. Unset keys fall back to the English defaults in `DEFAULT_CAROUSEL_LABELS`. Defaults to `{}`. */
   readonly labels = input<Partial<TwCarouselLabels>>({});
@@ -695,7 +695,7 @@ export class CarouselComponent {
         ) {
           warnedMissingLabel = true;
           console.warn(
-            '[tw-carousel] Provide either `ariaLabel` or `ariaLabelledBy` so the carousel region has an accessible name (WCAG 4.1.2).',
+            '[tw-carousel] Provide either `aria-label` or `aria-labelledby` so the carousel region has an accessible name (WCAG 4.1.2).',
           );
         }
         if (!warnedLowInterval && this.autoplayInterval() < 1000) {

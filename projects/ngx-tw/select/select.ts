@@ -546,13 +546,13 @@ export class SelectComponent<T = unknown>
 
   // ── Outputs ──
 
-  /** Fires when the panel's visibility finishes changing. */
+  /** Fires when the panel's visibility finishes changing. Payload carries the new `open` state and the trigger element the overlay is anchored to. */
   readonly openedChange = output<TwSelectOpenedEvent>();
 
   /** Fires after any selection change, with `added`, `removed`, `previousValue`, and a `source` discriminator. */
   readonly selectionChange = output<TwSelectSelectionChangeEvent<T>>();
 
-  /** Fires whenever the search input changes (only when `searchable` is true). */
+  /** Fires whenever the search input changes (only when `searchable` is true). Payload carries the raw, untrimmed query and the post-filter `visibleCount`. Emitted immediately, not debounced. */
   readonly searchChange = output<TwSelectSearchEvent>();
 
   // ── Content queries ──
@@ -611,20 +611,26 @@ export class SelectComponent<T = unknown>
   private readonly _formSubmitRev = signal(0);
   private readonly describedByIdsSignal = signal<readonly string[]>([]);
   private readonly labelledByIdsSignal = signal<readonly string[]>([]);
-  private readonly closingSignal = signal(false);
 
   private onChange: (value: T | readonly T[] | null) => void = () => {};
   private onTouched: () => void = () => {};
 
   private overlayRef: OverlayRef | null = null;
-  private readonly overlayInstanceSignal = signal<SelectOverlayComponent<T> | null>(null);
   private perOpenSubs: Subscription | null = null;
   private closeTimer: ReturnType<typeof setTimeout> | null = null;
   private resizeObserver: ResizeObserver | null = null;
 
-  private get overlayInstance(): SelectOverlayComponent<T> | null {
-    return this.overlayInstanceSignal();
-  }
+  // Overlay bookkeeping is deliberately held in plain fields, not signals — same
+  // shape as popover and command-palette. A signal here would be track-read by the
+  // open/close lifecycle effect that also writes it, which is the cycle shape
+  // CLAUDE.md forbids. The only reactive bit is `isAttached`, written by the
+  // lifecycle effect and read only by the state-push effect below, so the two
+  // never form a loop.
+  private overlayInstance: SelectOverlayComponent<T> | null = null;
+  private closing = false;
+
+  /** Flips true once the overlay component is attached; the sole trigger for the state-push effect. */
+  private readonly isAttached = signal(false);
 
   // ── Derived state ──
 
@@ -850,26 +856,32 @@ export class SelectComponent<T = unknown>
     }
 
     // Mirror parent `open` model into overlay lifecycle.
+    // Only `open` and `isDisabled` are read in the tracked phase; the lifecycle
+    // calls run inside `untracked()` because they both read and write panel state
+    // (openOverlay resets `search` and then reads it back through visibleOptions).
     effect(() => {
       const shouldOpen = this.open();
       const disabled = this.isDisabled();
-      if (disabled && this.overlayInstance) {
-        this.closeOverlay();
-        return;
-      }
-      if (shouldOpen && !this.overlayInstance && !disabled && !this.closingSignal()) {
-        this.openOverlay();
-      } else if (!shouldOpen && this.overlayInstance && !this.closingSignal()) {
-        this.closeOverlay();
-      }
+      untracked(() => {
+        if (disabled && this.overlayInstance) {
+          this.closeOverlay();
+          return;
+        }
+        if (shouldOpen && !this.overlayInstance && !disabled && !this.closing) {
+          this.openOverlay();
+        } else if (!shouldOpen && this.overlayInstance && !this.closing) {
+          this.closeOverlay();
+        }
+      });
     });
 
     // Push state into overlay component whenever anything relevant changes.
-    // Reads happen in the tracked phase; writes to the overlay instance are
-    // wrapped in `untracked()` so they never feed back into this effect.
+    // `isAttached` is the trigger — it is written by the lifecycle effect above
+    // and never written here, so the two effects cannot feed each other. All
+    // reads happen in the tracked phase; every write to the overlay instance is
+    // wrapped in `untracked()` so it never feeds back into this effect.
     effect(() => {
-      const instance = this.overlayInstance;
-      if (!instance) return;
+      const attached = this.isAttached();
       const size = this.size();
       const color = this.color();
       const multiple = this.multiple();
@@ -888,6 +900,8 @@ export class SelectComponent<T = unknown>
       const checkmarkColorClass = this.checkmarkColorClass();
       const panelClassValue = this.resolvePanelClass();
       untracked(() => {
+        const instance = this.overlayInstance;
+        if (!attached || !instance) return;
         instance.size.set(size);
         instance.color.set(color);
         instance.multiple.set(multiple);
@@ -964,7 +978,7 @@ export class SelectComponent<T = unknown>
       this.resizeObserver = null;
       this.overlayRef?.dispose();
       this.overlayRef = null;
-      this.overlayInstanceSignal.set(null);
+      this.overlayInstance = null;
     });
   }
 
@@ -1325,6 +1339,9 @@ export class SelectComponent<T = unknown>
     this.subscribePerOpen();
     this.search.set('');
     this.initActiveIndexOnOpen();
+    // Set last: this is what wakes the state-push effect, and it must not fire
+    // until the instance exists and the per-open state has been reset.
+    this.isAttached.set(true);
     queueMicrotask(() => {
       if (this.searchable()) {
         this.overlayInstance?.focusSearchInput();
@@ -1334,8 +1351,8 @@ export class SelectComponent<T = unknown>
   }
 
   private closeOverlay(): void {
-    if (this.closingSignal() || !this.overlayInstance) return;
-    this.closingSignal.set(true);
+    if (this.closing || !this.overlayInstance) return;
+    this.closing = true;
 
     this.overlayInstance.leaving.set(true);
 
@@ -1348,11 +1365,12 @@ export class SelectComponent<T = unknown>
       }
       this.perOpenSubs?.unsubscribe();
       this.perOpenSubs = null;
-      this.overlayInstanceSignal.set(null);
+      this.overlayInstance = null;
+      this.isAttached.set(false);
       this.search.set('');
       this.activeIndex.set(-1);
       untracked(() => this.open.set(false));
-      this.closingSignal.set(false);
+      this.closing = false;
       this.openedChange.emit({ open: false, trigger: this.elementRef.nativeElement });
     }, ANIMATION_DURATION);
   }
@@ -1417,7 +1435,7 @@ export class SelectComponent<T = unknown>
     instance.onOptionSelect.set((i) => this.selectByVisibleIndex(i, 'user'));
     instance.onOptionActivate.set((i) => this.activeIndex.set(i));
     instance.onPanelKeydown.set((e) => this.handleKeydown(e));
-    this.overlayInstanceSignal.set(instance);
+    this.overlayInstance = instance;
   }
 
   private subscribePerOpen(): void {

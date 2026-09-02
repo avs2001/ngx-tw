@@ -246,7 +246,7 @@ const INITIAL_MAP: Record<TwColor, string> = {
         <div class="space-y-6">
           <div>
             <p class="text-xs font-medium text-fg-muted mb-2 uppercase tracking-wide">Basic group</p>
-            <tw-avatar-group ariaLabel="Project members">
+            <tw-avatar-group aria-label="Project members">
               <tw-avatar initials="JD" color="primary" alt="Jane Doe" />
               <tw-avatar initials="AB" color="success" alt="Alice Brown" />
               <tw-avatar initials="MK" color="accent" alt="Mike Keller" />
@@ -255,7 +255,7 @@ const INITIAL_MAP: Record<TwColor, string> = {
           </div>
           <div>
             <p class="text-xs font-medium text-fg-muted mb-2 uppercase tracking-wide">With max overflow</p>
-            <tw-avatar-group [max]="3" ariaLabel="Project members">
+            <tw-avatar-group [max]="3" aria-label="Project members">
               <tw-avatar initials="JD" color="primary" alt="Jane Doe" />
               <tw-avatar initials="AB" color="success" alt="Alice Brown" />
               <tw-avatar initials="MK" color="accent" alt="Mike Keller" />
@@ -268,7 +268,7 @@ const INITIAL_MAP: Record<TwColor, string> = {
             <div class="flex flex-wrap items-end gap-4">
               @for (s of sizes; track s) {
                 <div class="flex flex-col items-center gap-1.5">
-                  <tw-avatar-group [size]="s" ariaLabel="Team">
+                  <tw-avatar-group [size]="s" aria-label="Team">
                     <tw-avatar initials="A" color="primary" alt="Alice" />
                     <tw-avatar initials="B" color="success" alt="Ben" />
                     <tw-avatar initials="C" color="accent" alt="Chen" />
@@ -476,7 +476,7 @@ export class AvatarExamples {
 </tw-avatar>`;
 
   protected readonly groupSnippet = `<!-- Basic group -->
-<tw-avatar-group ariaLabel="Project members">
+<tw-avatar-group aria-label="Project members">
   <tw-avatar initials="JD" color="primary" alt="Jane Doe" />
   <tw-avatar initials="AB" color="success" alt="Alice Brown" />
   <tw-avatar initials="MK" color="accent"  alt="Mike Keller" />
@@ -484,7 +484,7 @@ export class AvatarExamples {
 </tw-avatar-group>
 
 <!-- With max overflow -->
-<tw-avatar-group [max]="3" ariaLabel="Project members">
+<tw-avatar-group [max]="3" aria-label="Project members">
   <tw-avatar initials="JD" color="primary" alt="Jane Doe" />
   <tw-avatar initials="AB" color="success" alt="Alice Brown" />
   <tw-avatar initials="MK" color="accent"  alt="Mike Keller" />
@@ -494,7 +494,7 @@ export class AvatarExamples {
 
 <!-- Sizes propagate -->
 @for (s of sizes; track s) {
-  <tw-avatar-group [size]="s" ariaLabel="Team">
+  <tw-avatar-group [size]="s" aria-label="Team">
     <tw-avatar initials="A" color="primary" alt="Alice" />
     <tw-avatar initials="B" color="success" alt="Ben" />
     <tw-avatar initials="C" color="accent"  alt="Chen" />

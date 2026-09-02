@@ -147,7 +147,7 @@ const calendarVariants = tv(
     class: 'block',
     '[attr.aria-disabled]': 'effectiveDisabled() || null',
     '[attr.aria-readonly]': 'effectiveReadonly() || null',
-    '[attr.aria-describedby]': 'errorAriaDescribedBy() || null',
+    '[attr.aria-describedby]': 'effectiveAriaDescribedby() || null',
     '(focusout)': 'onBlur($event)',
   },
   template: `
@@ -189,14 +189,24 @@ const calendarVariants = tv(
         classes and consumer overrides silently stop winning
         (docs/vertical-rhythm.md section 1).
 
-        NOT pinned: width. The views also measure 252 / 268 / 236 wide, so the
-        panel still shifts horizontally. Equalizing it is deliberately deferred
-        — a min-w on this wrapper redistributes the day grid's grid-cols-7 to
-        fractional columns (268/7 = 38.28px) while the day button stays 36px,
-        which pushes the range wrapper's rounded-l-full / rounded-r-full cap
-        ~1px past the selected endpoint pill at every range boundary. That is a
-        sub-pixel change to the calendar's most visually load-bearing state and
-        needs a rendered check, not an arithmetic one.
+        Width is NOT pinned either, and no longer needs to be. All three views
+        compute to the same 252px intrinsic width, so the panel holds one width
+        across view switches on its own: the day grid is grid-cols-7 gap-0 at
+        7 x 36, and the month and year grids are grid-cols-4 gap-1 at 4 x 60
+        plus 3 x 4. The cell widths that produce this live in the view variant
+        in calendar-cell.ts. They used to measure 252 / 268 / 236.
+
+        A min-w on this wrapper was the rejected alternative: it redistributes
+        the day grid's grid-cols-7 into fractional columns (268/7 = 38.28px)
+        while the day button stays 36px, which pushes the range wrapper's
+        rounded-l-full / rounded-r-full cap ~1px past the selected endpoint pill
+        at every range boundary. Equalizing through the month and year cell
+        widths instead leaves the day view untouched, so the pill and its
+        wrapper still coincide exactly.
+
+        Still unequal in 2-column mode: the day case renders two month grids
+        side by side, 2 x 252 plus a gap-3, while the month and year views
+        render a single grid. Cell widths cannot express that.
       -->
       <div class="min-h-63">
       @switch (viewState()) {
@@ -417,9 +427,40 @@ export class CalendarComponent<
    * IDREF list for the form-error live region (§28.3). When set, the calendar
    * root carries `aria-describedby="<value>"` so screen readers read consumer-
    * rendered error messages alongside the focused cell announcement. Defaults to
-   * `null` (no `aria-describedby` is emitted).
+   * `null` (no error ids are contributed).
+   *
+   * @deprecated Superseded by the plain `aria-describedby` attribute, which now
+   * feeds {@link ariaDescribedby}. Both are merged — error ids first — so an
+   * existing `[errorAriaDescribedBy]` binding keeps working; it will be removed
+   * in a future major.
    */
   readonly errorAriaDescribedBy: InputSignal<string | null> = input<string | null>(null);
+
+  /**
+   * ID of an external element that describes the calendar, supplied as the plain
+   * `aria-describedby` attribute. Merged with {@link errorAriaDescribedBy} —
+   * error ids are listed first so assistive tech announces them before the
+   * general description. Defaults to `null`.
+   */
+  readonly ariaDescribedby: InputSignal<string | null> = input<string | null>(null, {
+    alias: 'aria-describedby',
+  });
+
+  /**
+   * Merged `aria-describedby` IDREF list: error ids from
+   * {@link errorAriaDescribedBy} first, then the consumer's `aria-describedby`.
+   * Mirrors `checkbox`'s `effectiveAriaDescribedby()`.
+   *
+   * @internal
+   */
+  readonly effectiveAriaDescribedby: Signal<string | undefined> = computed(() => {
+    const merged: string[] = [];
+    for (const source of [this.errorAriaDescribedBy(), this.ariaDescribedby()]) {
+      if (!source) continue;
+      for (const id of source.split(/\s+/).filter(Boolean)) merged.push(id);
+    }
+    return merged.length ? merged.join(' ') : undefined;
+  });
 
   /**
    * How `mode: 'range'` reacts to a click after a complete range (§21.2):

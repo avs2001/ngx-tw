@@ -99,10 +99,16 @@ import { CodeBlockComponent } from '@cdevhub/ngx-tw/code-block';
               <td class="px-4 py-2 text-fg-muted">What happens when a click exceeds <code class="font-mono">maxSelections</code>.</td>
             </tr>
             <tr>
+              <td class="px-4 py-2 font-mono text-xs">aria-describedby</td>
+              <td class="px-4 py-2 font-mono text-xs text-fg-muted">string | undefined</td>
+              <td class="px-4 py-2 font-mono text-xs text-fg-muted">undefined</td>
+              <td class="px-4 py-2 text-fg-muted">IDREF list describing the calendar. Merged with any error region ids, so a plain <code class="font-mono">aria-describedby</code> attribute is no longer stripped.</td>
+            </tr>
+            <tr>
               <td class="px-4 py-2 font-mono text-xs">errorAriaDescribedBy</td>
               <td class="px-4 py-2 font-mono text-xs text-fg-muted">string | null</td>
               <td class="px-4 py-2 font-mono text-xs text-fg-muted">null</td>
-              <td class="px-4 py-2 text-fg-muted">IDREF of a consumer-rendered error live region (§28.3) — applied to the host's <code class="font-mono">aria-describedby</code>.</td>
+              <td class="px-4 py-2 text-fg-muted"><strong>Deprecated</strong> — use <code class="font-mono">aria-describedby</code>. Still merged, so existing bindings keep working. IDREF of a consumer-rendered error live region (§28.3).</td>
             </tr>
             <tr>
               <td class="px-4 py-2 font-mono text-xs">rangeClickBehavior</td>

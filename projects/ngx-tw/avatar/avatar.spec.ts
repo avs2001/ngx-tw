@@ -457,6 +457,29 @@ describe('AvatarGroupComponent', () => {
       fixture.detectChanges();
       expect(getGroup(fixture).getAttribute('aria-label')).toBe('Avatar group');
     });
+
+    // A consumer writing the plain `aria-label` attribute. Unless the input is
+    // aliased to `aria-label`, the host binding overwrites it with the
+    // `'Avatar group'` default and the consumer's name is silently lost. The
+    // static attribute is the load-bearing shape — driving the input directly
+    // skips the attribute path and would have passed with the bug present.
+    it('should let a consumer-written aria-label attribute win over the default', () => {
+      @Component({
+        imports: [AvatarComponent, AvatarGroupComponent],
+        changeDetection: ChangeDetectionStrategy.Eager,
+        template: `
+          <tw-avatar-group aria-label="Project members">
+            <tw-avatar alt="A" />
+            <tw-avatar alt="B" />
+          </tw-avatar-group>
+        `,
+      })
+      class StaticAriaLabelHost {}
+
+      const fixture = TestBed.createComponent(StaticAriaLabelHost);
+      fixture.detectChanges();
+      expect(getGroup(fixture).getAttribute('aria-label')).toBe('Project members');
+    });
   });
 
   describe('max overflow', () => {

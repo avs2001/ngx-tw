@@ -50,6 +50,27 @@ const checkboxVariants = tv(
       // `items-start` aligns the boxWrap with the top of the label container; combined with
       // a `min-h-N` matching the label's first-line line-height on boxWrap, the box stays
       // centered on the first line of the label whether it spans one line or many.
+      //
+      // ── Row-height scale (selection cohort) ──────────────────────────────
+      // The rendered row is `max(boxWrap, label first line)`, and the host itself is the
+      // click target (`role="checkbox"` + `tabindex` + `(click)` all sit on the root), so
+      // the row IS the interactive target. It runs 16 / 20 / 24 / 28 / 32 px — five distinct
+      // steps, every one on the 4px baseline of docs/vertical-rhythm.md, and identical to
+      // `switch`, the sibling selection control. Selection controls are glyph-scale and
+      // deliberately do NOT take the pinned 24/32/36/44/48 form-row scale (vertical-rhythm.md
+      // section 4).
+      //
+      // The row is driven by `boxWrap` min-h, NOT by the box glyph, which stays at its own
+      // well-proportioned 14 / 16 / 20 / 24 / 28 scale (4px of slack inside the row at every
+      // size; 2px at xs, where the codified size-3.5 half-step applies). Driving it from
+      // boxWrap is what makes the five steps survive when no label is projected.
+      //
+      // Because centering demands `boxWrap height == label first-line leading`, the label
+      // leading carries the same 4 / 5 / 6 / 7 / 8 progression. That is forced, not chosen:
+      // the label font scale has only three steps (text-xs, text-sm, text-base), so leading
+      // is the only lever that can break the sm/md and lg/xl ties. Before this, sm and md
+      // both rendered a 20px row — a dead step. Accepted cost: `text-base leading-8` at xl is
+      // a 2.0 line ratio, looser than typographic ideal on a wrapped multi-line label.
       root: 'relative inline-flex items-start gap-3 cursor-pointer select-none rounded-md focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500',
       boxWrap: 'relative inline-flex items-center justify-center shrink-0',
       box: 'inline-flex items-center justify-center rounded-md border transition-colors duration-normal motion-reduce:transition-none',
@@ -81,24 +102,27 @@ const checkboxVariants = tv(
           // size-5 (20px) box; the half-step is the only size that fills the
           // checkmark without crowding the box edges.
           icon: '[&_svg]:size-3.5',
-          boxWrap: 'min-h-5',
-          label: 'text-sm leading-5',
+          // 24px row. `text-sm` is shared with sm by the documented font scale, so the
+          // leading breaks the tie: leading-6 lifts the row off sm's 20px.
+          boxWrap: 'min-h-6',
+          label: 'text-sm leading-6',
           description: 'text-xs leading-4',
         },
         lg: {
           box: 'size-6',
           icon: '[&_svg]:size-4',
-          boxWrap: 'min-h-6',
-          label: 'text-base leading-6',
+          // 28px row — leading-7 keeps the first label line the same height as boxWrap.
+          boxWrap: 'min-h-7',
+          label: 'text-base leading-7',
           description: 'text-sm leading-5',
         },
         xl: {
           box: 'size-7',
           icon: '[&_svg]:size-5',
-          // xl box (28px) > default text-base line-height (24px); bump leading to leading-7
-          // so the first line height matches the box and they align cleanly.
-          boxWrap: 'min-h-7',
-          label: 'text-base leading-7',
+          // 32px row. `text-base` is shared with lg, so leading-8 breaks that tie the same
+          // way leading-6 breaks sm/md. A 2.0 ratio on a wrapped label is the accepted cost.
+          boxWrap: 'min-h-8',
+          label: 'text-base leading-8',
           description: 'text-sm leading-5',
         },
       },

@@ -74,12 +74,16 @@ describe('BadgeDotDirective', () => {
   });
 
   describe('size', () => {
+    // The dot has no text and no children, so its rendered diameter is the only thing the
+    // size input controls and the only thing there is to assert. xs/sm/md are CLAUDE.md's
+    // documented dot sub-scale; lg/xl continue its 2px cadence up to the 16px ceiling that
+    // the "never size-5 for a dot indicator" rule imposes.
     const sizeMatrix: readonly { size: TwSize; expected: string }[] = [
-      { size: 'xs', expected: 'size-1.5' },
-      { size: 'sm', expected: 'size-1.5' },
-      { size: 'md', expected: 'size-2' },
-      { size: 'lg', expected: 'size-2.5' },
-      { size: 'xl', expected: 'size-2.5' },
+      { size: 'xs', expected: 'size-2' },
+      { size: 'sm', expected: 'size-2.5' },
+      { size: 'md', expected: 'size-3' },
+      { size: 'lg', expected: 'size-3.5' },
+      { size: 'xl', expected: 'size-4' },
     ];
 
     for (const { size, expected } of sizeMatrix) {
@@ -90,6 +94,23 @@ describe('BadgeDotDirective', () => {
         expect(getDot(fixture).className).toContain(expected);
       });
     }
+
+    // Dead-step guard. The dot previously rendered 6/6/8/10/10px, so `xs` and `sm` were
+    // indistinguishable and so were `lg` and `xl` — two of the five steps did nothing.
+    // Do not collapse this into the matrix above: it asserts the property (five steps that
+    // differ) rather than the values, and it is what fails if a future edit reintroduces a
+    // duplicate.
+    it('should render a different size for every step of the size axis', () => {
+      const sizes: readonly TwSize[] = ['xs', 'sm', 'md', 'lg', 'xl'];
+      const fixture = TestBed.createComponent(DotHost);
+      const rendered = sizes.map(size => {
+        fixture.componentRef.setInput('size', size);
+        fixture.detectChanges();
+        return getDot(fixture).className;
+      });
+
+      expect(new Set(rendered).size).toBe(sizes.length);
+    });
   });
 
   describe('accessibility', () => {

@@ -52,6 +52,25 @@ const radioVariants = tv(
       // `items-start` aligns circleWrap with the top of the label container; combined with
       // a `min-h-N` matching the label's first-line line-height on circleWrap, the circle
       // stays centered on the first line whether the label spans one line or many.
+      //
+      // ── Row-height scale (selection cohort) ──────────────────────────────
+      // The rendered row is `max(circleWrap, label first line)`, and the host itself is the
+      // click target (`role="radio"` + `tabindex` + `(click)` all sit on the root), so the
+      // row IS the interactive target. It runs 16 / 20 / 24 / 28 / 32 px — five distinct
+      // steps, every one on the 4px baseline of docs/vertical-rhythm.md, and identical to
+      // `checkbox` and `switch`. Selection controls are glyph-scale and deliberately do NOT
+      // take the pinned 24/32/36/44/48 form-row scale (vertical-rhythm.md section 4).
+      //
+      // The row is driven by `circleWrap` min-h, NOT by the circle glyph, which keeps its own
+      // 14 / 16 / 20 / 24 / 28 scale. Driving it from circleWrap is what makes the five steps
+      // survive when no label is projected.
+      //
+      // Because centering demands `circleWrap height == label first-line leading`, the label
+      // leading carries the same 4 / 5 / 6 / 7 / 8 progression. That is forced, not chosen:
+      // the label font scale has only three steps (text-xs, text-sm, text-base), so leading
+      // is the only lever that can break the sm/md and lg/xl ties. Before this, sm and md
+      // both rendered a 20px row — a dead step. Accepted cost: `text-base leading-8` at xl is
+      // a 2.0 line ratio, looser than typographic ideal on a wrapped multi-line label.
       root: 'inline-flex items-start gap-3 cursor-pointer select-none rounded-md focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500',
       circleWrap: 'relative inline-flex items-center justify-center shrink-0',
       circle:
@@ -68,6 +87,12 @@ const radioVariants = tv(
         xs: {
           // `size-3.5` half-step: aligns with text-xs/leading-4 row metric.
           circle: 'size-3.5',
+          // The dot runs 6 / 8 / 10 / 12 / 14px — it is NOT on the status-dot sub-scale of
+          // CLAUDE.md (that one is for standalone presence pips). It is a proportional inner
+          // selection mark, held at ~50% of the enclosing circle at every size, so its value
+          // is derived from `circle` rather than picked off a table. At xs, 50% of a 14px
+          // circle is 7px, which no utility expresses; `size-1.5` (6px) is the nearest step
+          // down — rounding up to 8px would leave under 3px of ring on each side.
           dot: 'size-1.5',
           circleWrap: 'min-h-4',
           label: 'text-xs leading-4',
@@ -83,15 +108,18 @@ const radioVariants = tv(
         md: {
           circle: 'size-5',
           dot: 'size-2.5',
-          circleWrap: 'min-h-5',
-          label: 'text-sm leading-5',
+          // 24px row. `text-sm` is shared with sm by the documented font scale, so the
+          // leading breaks the tie: leading-6 lifts the row off sm's 20px.
+          circleWrap: 'min-h-6',
+          label: 'text-sm leading-6',
           description: 'text-xs leading-4',
         },
         lg: {
           circle: 'size-6',
           dot: 'size-3',
-          circleWrap: 'min-h-6',
-          label: 'text-base leading-6',
+          // 28px row — leading-7 keeps the first label line the same height as circleWrap.
+          circleWrap: 'min-h-7',
+          label: 'text-base leading-7',
           description: 'text-sm leading-5',
         },
         xl: {
@@ -99,10 +127,10 @@ const radioVariants = tv(
           // xl density: dot uses `size-3.5` (14px) as the proportionally-sized
           // selection mark inside the size-7 (28px) circle — exactly 50%.
           dot: 'size-3.5',
-          // xl circle (28px) > default text-base line-height (24px); bump leading to
-          // leading-7 so the first line height matches the circle and they align.
-          circleWrap: 'min-h-7',
-          label: 'text-base leading-7',
+          // 32px row. `text-base` is shared with lg, so leading-8 breaks that tie the same
+          // way leading-6 breaks sm/md. A 2.0 ratio on a wrapped label is the accepted cost.
+          circleWrap: 'min-h-8',
+          label: 'text-base leading-8',
           description: 'text-sm leading-5',
         },
       },

@@ -48,7 +48,7 @@ import { CodeBlockComponent } from '@cdevhub/ngx-tw/code-block';
               <td class="px-4 py-2 text-fg-muted">Icon size on the standard scale from xs (12px) to xl (32px).</td>
             </tr>
             <tr>
-              <td class="px-4 py-2 font-mono text-xs">ariaLabel</td>
+              <td class="px-4 py-2 font-mono text-xs">aria-label</td>
               <td class="px-4 py-2 font-mono text-xs text-fg-muted">string</td>
               <td class="px-4 py-2 font-mono text-xs text-fg-muted">—</td>
               <td class="px-4 py-2 text-fg-muted">Accessible label; when set, removes aria-hidden and announces the icon as role="img".</td>

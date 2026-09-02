@@ -137,6 +137,57 @@ class FormFieldHost {
   ctrl = new FormControl<TwDateRange<Date> | null>(null, Validators.required);
 }
 
+/**
+ * Binds the label / format / overlay-chrome inputs that `BasicHost` leaves at
+ * their defaults, so each can be asserted against rendered DOM.
+ */
+@Component({
+  imports: [DateRangePickerComponent],
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  template: `
+    <tw-date-range-picker
+      [(value)]="value"
+      [rangeSeparator]="rangeSeparator()"
+      [emptyStartLabel]="emptyStartLabel()"
+      [emptyEndLabel]="emptyEndLabel()"
+      [format]="format()"
+      [clearAriaLabel]="clearAriaLabel()"
+      [startView]="startView()"
+      [showActions]="showActions()"
+      [todayLabel]="todayLabel()"
+      [clearLabel]="clearLabel()"
+      [cancelLabel]="cancelLabel()"
+      [applyLabel]="applyLabel()"
+      [panelClass]="panelClass()"
+      [aria-label]="ariaLabel()"
+      [aria-labelledby]="ariaLabelledby()"
+      [aria-describedby]="ariaDescribedby()"
+    />
+    <span id="ext-label">External label</span>
+    <span id="ext-hint">External hint</span>
+  `,
+})
+class ConfigHost {
+  value = signal<TwDateRange<Date> | null>(null);
+  rangeSeparator = signal(' – ');
+  emptyStartLabel = signal('Start date');
+  emptyEndLabel = signal('End date');
+  format = signal<unknown>({
+    dateTimeFormat: { year: 'numeric', month: 'short', day: 'numeric' },
+  });
+  clearAriaLabel = signal('Clear date range');
+  startView = signal<'day' | 'month' | 'year'>('day');
+  showActions = signal(false);
+  todayLabel = signal('Today');
+  clearLabel = signal('Clear');
+  cancelLabel = signal('Cancel');
+  applyLabel = signal('Apply');
+  panelClass = signal<string | readonly string[]>('');
+  ariaLabel = signal<string | undefined>('Booking window');
+  ariaLabelledby = signal<string | undefined>(undefined);
+  ariaDescribedby = signal<string | undefined>(undefined);
+}
+
 // ── Helpers ───────────────────────────────────────────────────────
 
 function getHost(fixture: ComponentFixture<unknown>): HTMLElement {
@@ -991,6 +1042,160 @@ describe('DateRangePickerComponent', () => {
       getTrigger(fixture).click();
       await advance(fixture);
       expect(document.querySelector('tw-calendar')).toBeTruthy();
+    });
+  });
+
+  // ── Configurable labels (trigger chrome, no overlay needed) ──
+
+  describe('trigger label inputs', () => {
+    it('composes the empty placeholder from emptyStartLabel + rangeSeparator + emptyEndLabel', () => {
+      const fixture = TestBed.createComponent(ConfigHost);
+      fixture.componentInstance.emptyStartLabel.set('Check-in');
+      fixture.componentInstance.emptyEndLabel.set('Check-out');
+      fixture.componentInstance.rangeSeparator.set(' to ');
+      fixture.detectChanges();
+      const text = (getTrigger(fixture).textContent ?? '').replace(/\s+/g, ' ').trim();
+      expect(text).toBe('Check-in to Check-out');
+    });
+
+    it('renders rangeSeparator between the endpoints of a complete range', async () => {
+      const fixture = TestBed.createComponent(ConfigHost);
+      fixture.componentInstance.rangeSeparator.set(' >>> ');
+      fixture.componentInstance.value.set(
+        new TwDateRange(new Date(2026, 3, 21), new Date(2026, 4, 3)),
+      );
+      await advance(fixture);
+      expect(getTrigger(fixture).textContent).toContain('>>>');
+    });
+
+    it('renders emptyEndLabel for the missing endpoint of a partial range', async () => {
+      const fixture = TestBed.createComponent(ConfigHost);
+      fixture.componentInstance.emptyEndLabel.set('No end yet');
+      fixture.componentInstance.value.set(new TwDateRange(new Date(2026, 3, 21), null));
+      await advance(fixture);
+      expect(getTrigger(fixture).textContent).toContain('No end yet');
+    });
+
+    it('formats the endpoints with the format input', async () => {
+      const fixture = TestBed.createComponent(ConfigHost);
+      // Year-only is locale-stable: every locale renders 2026 as "2026".
+      fixture.componentInstance.format.set({ dateTimeFormat: { year: 'numeric' } });
+      fixture.componentInstance.value.set(
+        new TwDateRange(new Date(2026, 3, 21), new Date(2026, 4, 3)),
+      );
+      await advance(fixture);
+      const text = (getTrigger(fixture).textContent ?? '').replace(/\s+/g, ' ').trim();
+      expect(text).toContain('2026');
+      expect(text).not.toContain('Apr');
+    });
+
+    it('applies clearAriaLabel to the clear button', async () => {
+      const fixture = TestBed.createComponent(ConfigHost);
+      fixture.componentInstance.clearAriaLabel.set('Reset the period');
+      fixture.componentInstance.value.set(
+        new TwDateRange(new Date(2026, 3, 21), new Date(2026, 4, 3)),
+      );
+      await advance(fixture);
+      // Queried structurally, not by aria-label — the label is what is under test.
+      const clear = fixture.nativeElement.querySelector(
+        'tw-date-range-picker > button:not([role="combobox"])',
+      ) as HTMLButtonElement;
+      expect(clear).toBeTruthy();
+      expect(clear.getAttribute('aria-label')).toBe('Reset the period');
+    });
+  });
+
+  // ── ARIA wiring inputs ──
+
+  describe('aria inputs', () => {
+    it('forwards aria-labelledby to the trigger and suppresses the composed aria-label', () => {
+      const fixture = TestBed.createComponent(ConfigHost);
+      fixture.componentInstance.ariaLabel.set(undefined);
+      fixture.componentInstance.ariaLabelledby.set('ext-label');
+      fixture.detectChanges();
+      const trigger = getTrigger(fixture);
+      expect(trigger.getAttribute('aria-labelledby')).toBe('ext-label');
+      expect(trigger.getAttribute('aria-label')).toBeNull();
+    });
+
+    it('merges aria-describedby into the trigger describedby list', () => {
+      const fixture = TestBed.createComponent(ConfigHost);
+      fixture.componentInstance.ariaDescribedby.set('ext-hint');
+      fixture.detectChanges();
+      const describedBy = getTrigger(fixture).getAttribute('aria-describedby') ?? '';
+      expect(describedBy.split(/\s+/)).toContain('ext-hint');
+    });
+  });
+
+  // ── Overlay chrome inputs ──
+
+  describe('overlay config inputs', () => {
+    it('renders the action bar labels from todayLabel / cancelLabel / applyLabel', async () => {
+      const fixture = TestBed.createComponent(ConfigHost);
+      fixture.componentInstance.showActions.set(true);
+      fixture.componentInstance.todayLabel.set('Today-FR');
+      fixture.componentInstance.cancelLabel.set('Cancel-FR');
+      fixture.componentInstance.applyLabel.set('Apply-FR');
+      fixture.detectChanges();
+      getTrigger(fixture).click();
+      await advance(fixture);
+      const labels = Array.from(
+        (getOverlayPanel() as HTMLElement).querySelectorAll('button'),
+      ).map((b) => b.textContent?.trim());
+      expect(labels).toContain('Today-FR');
+      expect(labels).toContain('Cancel-FR');
+      expect(labels).toContain('Apply-FR');
+    });
+
+    it('does not render the action bar when showActions=false', async () => {
+      const fixture = TestBed.createComponent(ConfigHost);
+      fixture.detectChanges();
+      getTrigger(fixture).click();
+      await advance(fixture);
+      const labels = Array.from(
+        (getOverlayPanel() as HTMLElement).querySelectorAll('button'),
+      ).map((b) => b.textContent?.trim());
+      expect(labels).not.toContain('Today');
+      expect(labels).not.toContain('Apply');
+    });
+
+    it('opens the calendar on the month view when startView="month"', async () => {
+      const fixture = TestBed.createComponent(ConfigHost);
+      fixture.componentInstance.startView.set('month');
+      fixture.detectChanges();
+      getTrigger(fixture).click();
+      await advance(fixture);
+      expect(document.querySelector('tw-calendar-year-view')).toBeTruthy();
+      expect(document.querySelector('tw-calendar-month-view')).toBeNull();
+    });
+
+    it('appends panelClass to the overlay panel element', async () => {
+      const fixture = TestBed.createComponent(ConfigHost);
+      fixture.componentInstance.panelClass.set('my-custom-panel');
+      fixture.detectChanges();
+      getTrigger(fixture).click();
+      await advance(fixture);
+      const panel = getOverlayPanel() as HTMLElement;
+      // Doubles as the guard for the overlay state-push effect: panelClass is
+      // NOT part of openOverlay's eager push, so it can only arrive here if the
+      // effect re-ran after the panel attached.
+      expect(panel.classList.contains('my-custom-panel')).toBe(true);
+    });
+
+    it('re-pushes action-bar labels into an already-open overlay', async () => {
+      const fixture = TestBed.createComponent(ConfigHost);
+      fixture.componentInstance.showActions.set(true);
+      fixture.detectChanges();
+      getTrigger(fixture).click();
+      await advance(fixture);
+      const labelsOf = (): (string | undefined)[] =>
+        Array.from((getOverlayPanel() as HTMLElement).querySelectorAll('button')).map((b) =>
+          b.textContent?.trim(),
+        );
+      expect(labelsOf()).toContain('Apply');
+      fixture.componentInstance.applyLabel.set('Confirm');
+      await advance(fixture);
+      expect(labelsOf()).toContain('Confirm');
     });
   });
 });

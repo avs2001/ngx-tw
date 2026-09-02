@@ -417,7 +417,7 @@ export class DateRangePickerComponent<D = Date>
   /** Placeholder text shown in the trigger for an empty `end` endpoint. Defaults to `'End date'`. */
   readonly emptyEndLabel = input<string>('End date');
 
-  /** When set, overrides the composed `${emptyStartLabel}${rangeSeparator}${emptyEndLabel}` placeholder with a single string. */
+  /** When set, overrides the composed `${emptyStartLabel}${rangeSeparator}${emptyEndLabel}` placeholder with a single string. Defaults to `undefined`. */
   readonly placeholder = input<string | undefined>(undefined);
 
   /** When true, the trigger cannot open the overlay and `aria-disabled="true"` is set. Defaults to `false`. */
@@ -524,7 +524,7 @@ export class DateRangePickerComponent<D = Date>
   /** Accessible label for the clear button. Defaults to `'Clear date range'`. */
   readonly clearAriaLabel = input<string>('Clear date range');
 
-  /** Per-instance override of the `ErrorStateMatcher`. When omitted, uses the injected `TW_ERROR_STATE_MATCHER`. */
+  /** Per-instance override of the `ErrorStateMatcher`. When omitted, uses the injected `TW_ERROR_STATE_MATCHER`. Defaults to `undefined`. */
   readonly errorStateMatcher = input<ErrorStateMatcher | undefined>(undefined);
 
   /** Accessible name for the trigger. Required when no visible label is supplied via `tw-form-field` or an external `aria-labelledby`. Alias: `aria-label`. Defaults to `undefined`. */
@@ -606,7 +606,6 @@ export class DateRangePickerComponent<D = Date>
 
   private readonly cvaDisabled = signal(false);
   private readonly describedByIdsSignal = signal<readonly string[]>([]);
-  private readonly closingSignal = signal(false);
   private readonly lastValueBeforeOpen = signal<TwDateRange<D> | null>(null);
   private readonly pendingRange = signal<TwDateRange<D> | null>(null);
   private readonly currentView = signal<CalendarViewState>('day');
@@ -616,12 +615,20 @@ export class DateRangePickerComponent<D = Date>
   private onChange: (value: TwDateRange<D> | null) => void = () => {};
   private onTouched: () => void = () => {};
 
-  private readonly overlayInstanceSignal =
-    signal<DateRangePickerOverlayComponent<D> | null>(null);
+  // Overlay lifecycle bookkeeping. Both are PLAIN FIELDS, not signals, and that
+  // is load-bearing: the lifecycle effect in the constructor both reads and
+  // writes them, so as signals they would form a read → write → re-trigger
+  // cycle of exactly the shape CLAUDE.md forbids. Demoting them is the fix
+  // `popover.ts` and `command-palette.ts` already use — see the comment on that
+  // effect. Do not promote either back to `signal()`.
+  private overlayInstance: DateRangePickerOverlayComponent<D> | null = null;
+  private closing = false;
 
-  private get overlayInstance(): DateRangePickerOverlayComponent<D> | null {
-    return this.overlayInstanceSignal();
-  }
+  // The one piece of overlay state that must stay a signal: it is the *only*
+  // dependency that re-runs the overlay state-push effect when the panel
+  // attaches. Written in openOverlay / closeOverlay, never read by the
+  // lifecycle effect, so it cannot cycle. Mirrors `command-palette.ts`.
+  private readonly isAttached = signal(false);
 
   // ── Derived state ──
 
@@ -804,24 +811,54 @@ export class DateRangePickerComponent<D = Date>
     super();
 
     // Mirror the `open` model into the overlay lifecycle.
+    //
+    // The only tracked reads here are `open()` and `isDisabled()`. Everything
+    // this effect *writes* — `overlayInstance`, `closing` — is a plain field,
+    // never a signal, so opening or closing cannot re-trigger the effect that
+    // ordered it. That is the whole reason those two are declared as fields
+    // (see their declaration); promoting either back to `signal()` recreates
+    // the read → write → re-trigger cycle CLAUDE.md forbids.
+    //
+    // `openOverlay()` / `closeOverlay()` do write `isAttached`, but this effect
+    // never reads it, so that write is a one-way hand-off to the state-push
+    // effect below and terminates there.
+    //
+    // The body is wrapped in `untracked()` because demoting the two fields is
+    // NOT sufficient on its own. `openOverlay()` reads roughly twenty-five
+    // inputs while pushing them into the freshly attached panel, and it writes
+    // two signals it then reads straight back. Called from the tracked phase,
+    // every one of those reads becomes a dependency of THIS effect, which both
+    // recreates the forbidden write-then-read-back shape and re-runs the whole
+    // lifecycle on any of those twenty-five inputs changing. Tracked reads are
+    // now exactly `open()` and `isDisabled()`, which is what the paragraph
+    // above claims — and only now true.
     effect(() => {
       const shouldOpen = this.open();
       const disabled = this.isDisabled();
-      if (disabled && this.overlayInstance) {
-        this.closeOverlay('programmatic');
-        return;
-      }
-      if (shouldOpen && !this.overlayInstance && !disabled && !this.closingSignal()) {
-        this.openOverlay();
-      } else if (!shouldOpen && this.overlayInstance && !this.closingSignal()) {
-        this.closeOverlay('programmatic');
-      }
+      untracked(() => {
+        if (disabled && this.overlayInstance) {
+          this.closeOverlay('programmatic');
+          return;
+        }
+        if (shouldOpen && !this.overlayInstance && !disabled && !this.closing) {
+          this.openOverlay();
+        } else if (!shouldOpen && this.overlayInstance && !this.closing) {
+          this.closeOverlay('programmatic');
+        }
+      });
     });
 
     // Push config into the overlay whenever anything relevant changes.
     // Reads happen in the tracked phase; writes to the overlay instance are
     // wrapped in `untracked()` so they never feed back into this effect.
+    //
+    // `isAttached()` MUST be read first and unconditionally: it is this
+    // effect's only dependency on the overlay's existence, so it is what makes
+    // the initial push happen when the panel attaches (`overlayInstance` is a
+    // plain field and is invisible to the signal graph). Do not reorder it
+    // behind the null check — the effect would then never re-run on open.
     effect(() => {
+      this.isAttached();
       const instance = this.overlayInstance;
       if (!instance) return;
       const size = this.size();
@@ -944,8 +981,9 @@ export class DateRangePickerComponent<D = Date>
       monitorSub.unsubscribe();
       this.focusMonitor.stopMonitoring(this.elementRef);
       // The coordinator's own DestroyRef.onDestroy disposes the overlay and
-      // clears its timers; we only need to drop the local instance signal.
-      this.overlayInstanceSignal.set(null);
+      // clears its timers; we only need to drop the local instance reference.
+      this.overlayInstance = null;
+      this.isAttached.set(false);
     });
   }
 
@@ -1217,7 +1255,10 @@ export class DateRangePickerComponent<D = Date>
     instance.locale.set(this.locale());
     instance.dateClass.set(this.dateClass());
     instance.cellTemplate.set(this.cellTemplate());
-    this.overlayInstanceSignal.set(instance);
+    this.overlayInstance = instance;
+    // Must follow the assignment above: this is what wakes the state-push
+    // effect, and it reads `overlayInstance` as a plain field.
+    this.isAttached.set(true);
     // Flush the initial config into the overlay's first render so view children
     // (calendar, time pickers, action bar) observe the picker's current inputs.
     result.componentRef.changeDetectorRef.detectChanges();
@@ -1250,8 +1291,8 @@ export class DateRangePickerComponent<D = Date>
   }
 
   private closeOverlay(reason: DateRangePickerCloseReason, restore = false): void {
-    if (this.closingSignal() || !this.overlayInstance) return;
-    this.closingSignal.set(true);
+    if (this.closing || !this.overlayInstance) return;
+    this.closing = true;
     this.overlayInstance.leaving.set(true);
 
     if (restore) {
@@ -1268,10 +1309,11 @@ export class DateRangePickerComponent<D = Date>
     this.triggerRef().nativeElement.focus();
 
     this.coordinator.close(() => {
-      this.overlayInstanceSignal.set(null);
+      this.overlayInstance = null;
+      this.isAttached.set(false);
       this.pendingRange.set(null);
       untracked(() => this.open.set(false));
-      this.closingSignal.set(false);
+      this.closing = false;
       this.closed.emit(reason);
     });
   }

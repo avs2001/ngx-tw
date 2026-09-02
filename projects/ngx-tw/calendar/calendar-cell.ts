@@ -38,10 +38,24 @@ const cellVariants = tv(
       // one or two digits in a circle; a month/year is a 3–4 char label in a
       // rounded rect). The panel's height is pinned separately — see the
       // view-region wrapper in `calendar.ts`.
+      //
+      // Widths are chosen so all three grids compute to the SAME 252px intrinsic
+      // width, which is what stops the panel shifting horizontally on a view
+      // switch. The day grid is `grid-cols-7 gap-0`: 7 x 36 = 252. The month and
+      // year grids are `grid-cols-4 gap-1`: 4 x 60 + 3 x 4 = 252. Month cells were
+      // `w-16` (4 x 64 + 12 = 268) and year cells `w-14` (4 x 56 + 12 = 236), which
+      // is where the 270 / 286 / 254 panel spread came from.
+      //
+      // The day cell is deliberately untouched: its `w-9` button has to coincide
+      // exactly with its grid column so the range wrapper's `rounded-l-full` /
+      // `rounded-r-full` cap lands on the selected endpoint pill instead of ~1px
+      // past it. Equalising via the month and year cells keeps that coincidence
+      // intact by construction, where a `min-w` on the shared view region would
+      // have broken it — see the note in `calendar.ts`.
       view: {
         day: { button: 'h-9 w-9 text-sm rounded-full' },
-        month: { button: 'h-9 w-16 text-sm rounded-md' },
-        year: { button: 'h-9 w-14 text-sm rounded-md' },
+        month: { button: 'h-9 w-15 text-sm rounded-md' },
+        year: { button: 'h-9 w-15 text-sm rounded-md' },
       },
       // Slot tokens own light/dark contrast — no `dark:`, no shade picks.
       // The range wash uses `primary-soft-hover` (one step deeper than `-soft`)

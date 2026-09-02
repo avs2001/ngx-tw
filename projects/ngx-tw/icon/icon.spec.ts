@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { ChangeDetectionStrategy, Component, signal } from '@angular/core';
 import { type ComponentFixture, TestBed } from '@angular/core/testing';
 import { IconComponent } from './icon';
 import { provideTwIcons } from './icon.providers';
@@ -213,15 +214,62 @@ describe('IconComponent', () => {
       expect(svg.getAttribute('role')).toBeNull();
     });
 
-    it('should set aria-label and role="img" when ariaLabel is provided', () => {
-      fixture.componentRef.setInput('name', 'star');
-      fixture.componentRef.setInput('ariaLabel', 'Favorite');
-      fixture.detectChanges();
+    // Bound form of the consumer contract: `[aria-label]="expr"`. Exercised
+    // through a host template rather than `componentRef.setInput`, because the
+    // input is aliased and `setInput` takes the public name — routing through
+    // the template keeps the spec honest about which spelling consumers write.
+    it('should set aria-label and role="img" when aria-label is bound', async () => {
+      @Component({
+        imports: [IconComponent],
+        changeDetection: ChangeDetectionStrategy.OnPush,
+        template: `<tw-icon name="star" [aria-label]="label()" />`,
+      })
+      class BoundAriaLabelHost {
+        readonly label = signal<string | undefined>('Favorite');
+      }
 
-      const svg = fixture.nativeElement.querySelector('svg');
+      TestBed.resetTestingModule();
+      await TestBed.configureTestingModule({
+        imports: [BoundAriaLabelHost],
+        providers: [provideTwIcons(TEST_ICONS)],
+      }).compileComponents();
+      const hostFixture = TestBed.createComponent(BoundAriaLabelHost);
+      hostFixture.detectChanges();
+
+      const svg = hostFixture.nativeElement.querySelector('svg');
       expect(svg.getAttribute('aria-label')).toBe('Favorite');
       expect(svg.getAttribute('role')).toBe('img');
       expect(svg.getAttribute('aria-hidden')).toBeNull();
+    });
+
+    // The plain-attribute shape, which is what a consumer actually writes.
+    // Before the input was aliased this left the SVG `aria-hidden="true"`, so
+    // the name was unreachable while the DOM looked labelled. The host itself
+    // must NOT end up carrying the attribute — `<tw-icon>` has no role, and
+    // ARIA 1.2 prohibits `aria-label` on a role-less element (axe: serious
+    // `aria-prohibited-attr`).
+    it('should make an icon labelled via the plain aria-label attribute reachable', async () => {
+      @Component({
+        imports: [IconComponent],
+        changeDetection: ChangeDetectionStrategy.OnPush,
+        template: `<tw-icon name="star" aria-label="Favorite" />`,
+      })
+      class StaticAriaLabelHost {}
+
+      TestBed.resetTestingModule();
+      await TestBed.configureTestingModule({
+        imports: [StaticAriaLabelHost],
+        providers: [provideTwIcons(TEST_ICONS)],
+      }).compileComponents();
+      const hostFixture = TestBed.createComponent(StaticAriaLabelHost);
+      hostFixture.detectChanges();
+
+      const iconEl = hostFixture.nativeElement.querySelector('tw-icon') as HTMLElement;
+      const svg = iconEl.querySelector('svg')!;
+      expect(svg.getAttribute('role')).toBe('img');
+      expect(svg.getAttribute('aria-label')).toBe('Favorite');
+      expect(svg.getAttribute('aria-hidden')).toBeNull();
+      expect(iconEl.getAttribute('aria-label')).toBeNull();
     });
   });
 

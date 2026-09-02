@@ -211,8 +211,8 @@ export class ToastComponent {
    */
   readonly icon = input<string | false | undefined>(undefined);
 
-  /** Explicit aria-label for the toast wrapper. When omitted, text content is used by assistive tech. */
-  readonly ariaLabel = input<string | undefined>(undefined);
+  /** Explicit aria-label for the toast wrapper. Mirrored to `aria-label`. When omitted, text content is used by assistive tech. Defaults to `undefined`. */
+  readonly ariaLabel = input<string | undefined>(undefined, { alias: 'aria-label' });
 
   /** Fires when the close button is clicked. */
   readonly dismissed = output<void>();

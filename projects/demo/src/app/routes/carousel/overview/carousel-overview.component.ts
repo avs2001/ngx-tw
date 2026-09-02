@@ -110,7 +110,7 @@ import { CodeBlockComponent } from '@cdevhub/ngx-tw/code-block';
     <section class="mb-10">
       <h2 class="text-sm font-semibold mb-3">Basic Usage</h2>
       <div class="rounded-lg border border-border p-6 bg-surface-raised mb-4">
-        <tw-carousel ariaLabel="Featured promotions">
+        <tw-carousel aria-label="Featured promotions">
           <tw-carousel-slide label="Spring sale">
             <div class="flex h-44 items-center justify-center rounded-lg bg-gradient-to-br from-primary-500 to-info-500 text-white text-lg font-semibold">
               Spring sale — 30% off
@@ -186,7 +186,7 @@ import { CodeBlockComponent } from '@cdevhub/ngx-tw/code-block';
   `,
 })
 export class CarouselOverview {
-  protected readonly basicUsageSnippet = `<tw-carousel ariaLabel="Featured promotions">
+  protected readonly basicUsageSnippet = `<tw-carousel aria-label="Featured promotions">
   <tw-carousel-slide label="Spring sale">
     <img src="/hero-spring.jpg" alt="Spring sale — 30% off" />
   </tw-carousel-slide>
