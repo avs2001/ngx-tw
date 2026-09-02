@@ -187,7 +187,7 @@ const GAPS: TwSize[] = ['xs', 'sm', 'md', 'lg', 'xl'];
 
       <div class="rounded-lg border border-border p-6 bg-surface-raised mb-4">
         <tw-carousel
-          ariaLabel="Featured promotions"
+          aria-label="Featured promotions"
           [autoplay]="true"
           [autoplayInterval]="4000"
           [loop]="true"
@@ -232,7 +232,7 @@ const GAPS: TwSize[] = ['xs', 'sm', 'md', 'lg', 'xl'];
       </p>
 
       <div class="rounded-lg border border-border p-6 bg-surface-raised mb-4">
-        <tw-carousel ariaLabel="Featured products">
+        <tw-carousel aria-label="Featured products">
           @for (product of products; track product.id) {
             <tw-carousel-slide [label]="product.name">
               <div class="flex flex-col items-center gap-4 rounded-lg border border-border bg-surface p-8">
@@ -295,7 +295,7 @@ const GAPS: TwSize[] = ['xs', 'sm', 'md', 'lg', 'xl'];
 
       <div class="rounded-lg border border-border p-6 bg-surface-raised mb-4">
         <tw-carousel
-          ariaLabel="Customer testimonials"
+          aria-label="Customer testimonials"
           [slidesPerView]="1.2"
           [slidesToScroll]="1"
           gap="md"
@@ -342,7 +342,7 @@ const GAPS: TwSize[] = ['xs', 'sm', 'md', 'lg', 'xl'];
       </p>
 
       <div class="rounded-lg border border-border p-6 bg-surface-raised mb-4">
-        <tw-carousel ariaLabel="Onboarding tour" [(activeIndex)]="onboardingStep">
+        <tw-carousel aria-label="Onboarding tour" [(activeIndex)]="onboardingStep">
           @for (step of onboardingSteps; track step.id) {
             <tw-carousel-slide [label]="step.title">
               <div class="flex h-52 flex-col items-center justify-center gap-3 rounded-lg bg-gradient-to-br from-primary-50 to-info-50 px-8 text-center">
@@ -386,7 +386,7 @@ const GAPS: TwSize[] = ['xs', 'sm', 'md', 'lg', 'xl'];
 
       <div class="rounded-lg border border-border p-6 bg-surface-raised mb-4">
         <tw-carousel
-          ariaLabel="Latest updates"
+          aria-label="Latest updates"
           orientation="vertical"
           [autoplay]="true"
           [autoplayInterval]="3500"
@@ -435,7 +435,7 @@ const GAPS: TwSize[] = ['xs', 'sm', 'md', 'lg', 'xl'];
         @for (variant of indicatorVariants; track variant) {
           <div>
             <p class="text-xs font-medium text-fg-muted mb-2 uppercase tracking-wide">{{ variant }}</p>
-            <tw-carousel ariaLabel="Indicator variant {{ variant }}">
+            <tw-carousel aria-label="Indicator variant {{ variant }}">
               @for (hero of heroes.slice(0, 3); track hero.id) {
                 <tw-carousel-slide [label]="hero.title">
                   <div class="flex h-24 items-center justify-center rounded-lg bg-gradient-to-br text-white text-sm font-medium" [class]="hero.tint">
@@ -619,7 +619,7 @@ const GAPS: TwSize[] = ['xs', 'sm', 'md', 'lg', 'xl'];
 
         <div class="p-6 rounded-lg bg-surface-sunken">
           <tw-carousel
-            ariaLabel="Playground carousel"
+            aria-label="Playground carousel"
             [orientation]="playOrientation()"
             [slidesPerView]="playSlidesPerView()"
             [slidesToScroll]="playSlidesToScroll()"
@@ -691,7 +691,7 @@ export class CarouselExamples {
   protected readonly playActiveIndex = signal(0);
 
   protected readonly heroSnippet = `<tw-carousel
-  ariaLabel="Featured promotions"
+  aria-label="Featured promotions"
   [autoplay]="true"
   [autoplayInterval]="4000"
   [loop]="true"
@@ -708,7 +708,7 @@ export class CarouselExamples {
   <tw-carousel-indicators position="overlay" color="neutral" />
 </tw-carousel>`;
 
-  protected readonly productSnippet = `<tw-carousel ariaLabel="Featured products">
+  protected readonly productSnippet = `<tw-carousel aria-label="Featured products">
   @for (product of products; track product.id) {
     <tw-carousel-slide [label]="product.name">
       <div class="flex flex-col items-center gap-4 rounded-lg border
@@ -729,7 +729,7 @@ export class CarouselExamples {
 </tw-carousel>`;
 
   protected readonly peekSnippet = `<tw-carousel
-  ariaLabel="Customer testimonials"
+  aria-label="Customer testimonials"
   [slidesPerView]="1.2"
   [slidesToScroll]="1"
   gap="md"
@@ -748,7 +748,7 @@ export class CarouselExamples {
 </tw-carousel>`;
 
   protected readonly onboardingSnippet = `<tw-carousel
-  ariaLabel="Onboarding tour"
+  aria-label="Onboarding tour"
   [(activeIndex)]="step"
 >
   @for (s of onboardingSteps; track s.id) {
@@ -767,7 +767,7 @@ export class CarouselExamples {
 </tw-carousel>`;
 
   protected readonly tickerSnippet = `<tw-carousel
-  ariaLabel="Latest updates"
+  aria-label="Latest updates"
   orientation="vertical"
   [autoplay]="true"
   [autoplayInterval]="3500"
@@ -781,7 +781,7 @@ export class CarouselExamples {
   }
 </tw-carousel>`;
 
-  protected readonly indicatorVariantsSnippet = `<tw-carousel ariaLabel="Demo">
+  protected readonly indicatorVariantsSnippet = `<tw-carousel aria-label="Demo">
   <!-- slides -->
   <tw-carousel-indicators variant="dots" />
   <tw-carousel-indicators variant="lines" />

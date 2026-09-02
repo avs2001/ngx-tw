@@ -81,7 +81,7 @@ beforeEach(() => {
   changeDetection: ChangeDetectionStrategy.Eager,
   template: `
     <tw-carousel
-      [ariaLabel]="ariaLabel()"
+      [aria-label]="ariaLabel()"
       [autoplay]="autoplay()"
       [autoplayInterval]="autoplayInterval()"
       [loop]="loop()"
@@ -135,6 +135,30 @@ function setup(): {
     .query((d) => d.componentInstance instanceof CarouselComponent)
     .componentInstance as CarouselComponent;
   return { fixture, host, carouselHost, viewport, carousel };
+}
+
+/**
+ * Dispatch a pointer event. `pointerdown` is bound on the viewport element in
+ * the carousel template; `pointermove` / `pointerup` are registered on `window`
+ * from `_onPointerDown`, so a drag needs two different targets.
+ */
+function dispatchPointer(
+  target: EventTarget,
+  type: 'pointerdown' | 'pointermove' | 'pointerup',
+  clientX: number,
+): void {
+  target.dispatchEvent(
+    new PointerEvent(type, {
+      bubbles: true,
+      cancelable: true,
+      clientX,
+      clientY: 10,
+      button: 0,
+      pointerId: 1,
+      pointerType: 'mouse',
+      isPrimary: true,
+    }),
+  );
 }
 
 // ── Rendering ─────────────────────────────────────────────────────
@@ -507,7 +531,7 @@ describe('CarouselComponent — disabled slides', () => {
   @Component({
     imports: [CarouselComponent, CarouselSlideComponent],
     template: `
-      <tw-carousel ariaLabel="Test" [(activeIndex)]="active">
+      <tw-carousel aria-label="Test" [(activeIndex)]="active">
         <tw-carousel-slide><div>A</div></tw-carousel-slide>
         <tw-carousel-slide [disabled]="true"><div>B</div></tw-carousel-slide>
         <tw-carousel-slide><div>C</div></tw-carousel-slide>
@@ -537,7 +561,7 @@ describe('CarouselComponent — labels', () => {
       imports: [CarouselComponent, CarouselSlideComponent, CarouselIndicatorsComponent],
       template: `
         <tw-carousel
-          ariaLabel="Test"
+          aria-label="Test"
           [labels]="{ indicator: 'Slide {page}' }"
         >
           <tw-carousel-slide><div>A</div></tw-carousel-slide>
@@ -561,7 +585,7 @@ describe('CarouselComponent — labels', () => {
     @Component({
       imports: [CarouselComponent, CarouselSlideComponent, CarouselPrevDirective],
       template: `
-        <tw-carousel ariaLabel="Test">
+        <tw-carousel aria-label="Test">
           <tw-carousel-slide><div>A</div></tw-carousel-slide>
           <tw-carousel-slide><div>B</div></tw-carousel-slide>
           <button twCarouselPrev aria-label="Custom previous">‹</button>
@@ -585,7 +609,7 @@ describe('CarouselComponent — edge cases', () => {
   it('renders without errors when there are no slides', () => {
     @Component({
       imports: [CarouselComponent],
-      template: `<tw-carousel ariaLabel="Empty"></tw-carousel>`,
+      template: `<tw-carousel aria-label="Empty"></tw-carousel>`,
     })
     class EmptyHost {}
     const fixture = TestBed.createComponent(EmptyHost);
@@ -594,6 +618,63 @@ describe('CarouselComponent — edge cases', () => {
       '[role="region"]',
     ) as HTMLElement;
     expect(region).toBeTruthy();
+  });
+});
+
+// ── Consumer-supplied accessible name ─────────────────────────────
+//
+// The host binds `[attr.aria-label]` / `[attr.aria-labelledby]` straight to the
+// inputs. Unless those inputs are aliased to the attribute names, a consumer
+// writing the plain attributes never reaches them, the bindings resolve to
+// `null`, and Angular REMOVES the attributes the consumer wrote — the region
+// ends up unnamed and the component even warns about the missing name. Both
+// tests below use the static-attribute form on purpose: driving the input
+// directly (`setInput`) skips the attribute path entirely and would have
+// passed with the bug present.
+
+describe('CarouselComponent — consumer-supplied accessible name', () => {
+  it('keeps a plain aria-label attribute written by the consumer', () => {
+    @Component({
+      imports: [CarouselComponent, CarouselSlideComponent],
+      template: `
+        <tw-carousel aria-label="Consumer name">
+          <tw-carousel-slide label="One">A</tw-carousel-slide>
+        </tw-carousel>
+      `,
+    })
+    class LabelHost {}
+
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    const fixture = TestBed.createComponent(LabelHost);
+    fixture.detectChanges();
+
+    const region = fixture.nativeElement.querySelector('tw-carousel') as HTMLElement;
+    expect(region.getAttribute('aria-label')).toBe('Consumer name');
+    // The dev-mode "provide an accessible name" warning must not fire for a
+    // consumer who did supply one.
+    expect(
+      warn.mock.calls.some((call) => String(call[0]).includes('accessible name')),
+    ).toBe(false);
+    warn.mockRestore();
+  });
+
+  it('keeps a plain aria-labelledby attribute written by the consumer', () => {
+    @Component({
+      imports: [CarouselComponent, CarouselSlideComponent],
+      template: `
+        <h2 id="gallery-heading">Gallery</h2>
+        <tw-carousel aria-labelledby="gallery-heading">
+          <tw-carousel-slide label="One">A</tw-carousel-slide>
+        </tw-carousel>
+      `,
+    })
+    class LabelledByHost {}
+
+    const fixture = TestBed.createComponent(LabelledByHost);
+    fixture.detectChanges();
+
+    const region = fixture.nativeElement.querySelector('tw-carousel') as HTMLElement;
+    expect(region.getAttribute('aria-labelledby')).toBe('gallery-heading');
   });
 });
 
@@ -616,5 +697,78 @@ describe('CarouselComponent — page count', () => {
     fixture.detectChanges();
     carousel.activeIndex.set(2);
     expect(carousel.activePage()).toBe(1);
+  });
+});
+
+// ── Teardown ──────────────────────────────────────────────────────
+//
+// Releasing a drag arms a post-interaction autoplay-pause timer for two
+// autoplay intervals. It shipped unstored, so teardown could not clear it: it
+// fired long after destroy and wrote a signal on a dead component. The guard is
+// the platform interaction — the handle `setTimeout` returned must reach
+// `clearTimeout` when the fixture is destroyed — not the private field itself.
+
+describe('CarouselComponent — teardown', () => {
+  it('clears the post-interaction autoplay-pause timer when the carousel is destroyed', () => {
+    vi.useFakeTimers();
+    const setSpy = vi.spyOn(globalThis, 'setTimeout');
+    const clearSpy = vi.spyOn(globalThis, 'clearTimeout');
+    try {
+      const { fixture, viewport } = setup();
+
+      dispatchPointer(viewport, 'pointerdown', 100);
+      // Past the 6px engage threshold.
+      dispatchPointer(window, 'pointermove', 140);
+
+      // Preconditions, asserted separately so a failure names its own cause:
+      // these two are the DOM side effects `_onPointerMove` applies once a drag
+      // engages. If the pointer events never reached the handlers, this is
+      // where it shows.
+      expect(viewport.style.scrollSnapType).toBe('none');
+      expect(viewport.className).toContain('cursor-grabbing');
+
+      dispatchPointer(window, 'pointerup', 140);
+      expect(viewport.style.scrollSnapType).toBe('');
+      expect(viewport.className).not.toContain('cursor-grabbing');
+
+      // `_onPointerUp` arms the pause timer at `interval * 2 + 16`. The host
+      // uses the default 5000ms interval and autoplay is off, so nothing else
+      // in the component schedules at this delay.
+      const pauseDelay = 5000 * 2 + 16;
+      const armedHandles = setSpy.mock.calls
+        .map((call, i) => ({ delay: call[1], handle: setSpy.mock.results[i]?.value }))
+        .filter((entry) => entry.delay === pauseDelay)
+        .map((entry) => entry.handle);
+      expect(armedHandles.length).toBe(1);
+
+      fixture.destroy();
+
+      expect(clearSpy.mock.calls.map((call) => call[0])).toContain(armedHandles[0]);
+    } finally {
+      setSpy.mockRestore();
+      clearSpy.mockRestore();
+      vi.useRealTimers();
+    }
+  });
+
+  it('detaches the window-level drag listeners when destroyed mid-drag', () => {
+    const { fixture, viewport } = setup();
+
+    dispatchPointer(viewport, 'pointerdown', 100);
+    dispatchPointer(window, 'pointermove', 140);
+    expect(viewport.style.scrollSnapType).toBe('none');
+    expect(viewport.className).toContain('cursor-grabbing');
+
+    // Destroyed mid-drag: `pointerup` never arrives while the component is
+    // alive, so the natural cleanup in `_onPointerUp` never runs. Only the
+    // DestroyRef hook can detach the window-level listeners.
+    fixture.destroy();
+
+    // A leaked `pointerup` listener would run `_onPointerUp` on the dead
+    // component, which restores `scrollSnapType` and drops `cursor-grabbing`.
+    // Both staying put is the proof the listener is gone.
+    dispatchPointer(window, 'pointerup', 140);
+    expect(viewport.style.scrollSnapType).toBe('none');
+    expect(viewport.className).toContain('cursor-grabbing');
   });
 });

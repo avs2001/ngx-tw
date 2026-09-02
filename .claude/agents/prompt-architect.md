@@ -257,7 +257,7 @@ they solved similar problems — use it as inspiration, not as a target to match
 - Do NOT use `@angular/animations` — deprecated as of v20.2, removed in v23.
 - Use `animate.enter="class-name"` and `animate.leave="class-name"` for DOM entry/exit animations.
 - These are compiler-level features used in templates or host bindings — not directives.
-- Keyframe definitions live in `projects/ngx-tw/theme/default.css` alongside `prefers-reduced-motion` handling.
+- Keyframe definitions live in `projects/ngx-tw/theme/_base.css` alongside `prefers-reduced-motion` handling.
 - For Tailwind hover/focus transitions: `transition-colors duration-200 motion-reduce:transition-none`.
 
 ## Visual design system
@@ -272,7 +272,7 @@ Components use **semantic color tokens** exclusively — never raw Tailwind pale
 - Token format: `{role}-{shade}` (e.g., `bg-info-50`, `text-error-800`, `border-primary-300`).
 - Semantic roles: `primary`, `secondary`, `accent`, `neutral`, `info`, `success`, `warning`, `error`.
 - For neutral structural styling (backgrounds, text, borders): use surface/fg/border tokens.
-- The library ships a default theme (`projects/ngx-tw/theme/default.css`) mapping semantic tokens to Tailwind palettes. Consumers import it or provide their own.
+- The library ships a default theme (`projects/ngx-tw/theme/index.css`, which imports `_base.css` / `_semantic.css` / `_typography.css` / `_dark.css` / `_high-contrast.css`) mapping semantic tokens to Tailwind palettes. Consumers import it or provide their own.
 - Dark mode and brand customization are handled by the consumer's theme layer — components are agnostic.
 
 ## Variants — tailwind-variants

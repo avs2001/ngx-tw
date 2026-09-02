@@ -208,7 +208,7 @@ export class BreadcrumbsOverview {
   { label: 'The Pragmatic Programmer' }, // current page
 ]`;
 
-  protected readonly routerSnippet = `<tw-breadcrumbs [items]="trail" ariaLabel="Section navigation">
+  protected readonly routerSnippet = `<tw-breadcrumbs [items]="trail" aria-label="Section navigation">
   <ng-template twBreadcrumbsItem let-item let-isCurrent="isCurrent">
     @if (isCurrent) {
       <span twBreadcrumbsLink [current]="true">{{ item.label }}</span>

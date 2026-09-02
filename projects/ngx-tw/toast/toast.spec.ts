@@ -56,6 +56,26 @@ function getOverlayFor(position: string): HTMLElement | null {
   return document.querySelector<HTMLElement>(`.tw-toast-overlay-${position}`);
 }
 
+/** Dispatch a pointer event on the toast wrapper the swipe handlers listen on. */
+function dispatchPointer(
+  target: EventTarget,
+  type: 'pointerdown' | 'pointermove' | 'pointerup',
+  clientX: number,
+): void {
+  target.dispatchEvent(
+    new PointerEvent(type, {
+      bubbles: true,
+      cancelable: true,
+      clientX,
+      clientY: 10,
+      button: 0,
+      pointerId: 1,
+      pointerType: 'mouse',
+      isPrimary: true,
+    }),
+  );
+}
+
 // ── Tests ──
 
 describe('ToastService', () => {
@@ -542,6 +562,84 @@ describe('ToastComponent outputs', () => {
 
     expect(fixture.componentInstance.dismissSpy).toHaveBeenCalledTimes(1);
     expect(fixture.componentInstance.actionSpy).not.toHaveBeenCalled();
+  });
+});
+
+// ── Consumer-supplied aria-label ──
+//
+// The host binds `[attr.aria-label]` to the `ariaLabel` input. Unless that
+// input is aliased to `aria-label`, a consumer writing the plain attribute
+// never reaches it and the binding then REMOVES the attribute they wrote,
+// leaving the toast unnamed. The static-attribute form below is the exact
+// case that regressed; driving the input directly (`setInput`) reaches it
+// without going through the attribute and would have passed with the bug
+// present, so it must not be used here.
+
+@Component({
+  imports: [ToastComponent],
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  template: `<tw-toast severity="info" aria-label="Upload finished">Saved</tw-toast>`,
+})
+class ToastAriaLabelHost {}
+
+describe('ToastComponent consumer aria-label', () => {
+  it('keeps a consumer-written aria-label attribute on the rendered host', () => {
+    TestBed.resetTestingModule();
+    TestBed.configureTestingModule({ imports: [ToastAriaLabelHost] });
+    const fixture = TestBed.createComponent(ToastAriaLabelHost);
+    fixture.detectChanges();
+
+    const toast = fixture.nativeElement.querySelector('tw-toast') as HTMLElement;
+    expect(toast.getAttribute('aria-label')).toBe('Upload finished');
+  });
+});
+
+// ── Swipe teardown ──
+//
+// A swipe can be interrupted by the toast auto-dismissing or by the whole
+// layer going away, in which case `pointerup` never reaches `onSwipeEnd` and
+// nothing removes the move listener or releases pointer capture. The container
+// carries a DestroyRef hook for exactly that case. Asserted through observable
+// behaviour — after destroy a further `pointermove` must not move the toast —
+// rather than by reading the teardown set.
+
+describe('ToastContainer swipe teardown', () => {
+  it('stops tracking an in-flight swipe once the toast layer is destroyed', async () => {
+    TestBed.resetTestingModule();
+    vi.useFakeTimers();
+    try {
+      TestBed.configureTestingModule({
+        imports: [OverlayModule],
+        providers: [provideToast()],
+      });
+      const svc = TestBed.inject(ToastService);
+      const ref = svc.show('swipe me', { duration: 0 });
+      await svc._whenRendered();
+      TestBed.inject(ApplicationRef).tick();
+      advance(ANIM_MS);
+      TestBed.inject(ApplicationRef).tick();
+
+      const wrapper = document.querySelector<HTMLElement>(`[data-toast-id="${ref.id}"]`);
+      expect(wrapper).not.toBeNull();
+
+      dispatchPointer(wrapper!, 'pointerdown', 0);
+      // Past the 6px engage threshold.
+      dispatchPointer(wrapper!, 'pointermove', 40);
+      // Precondition, asserted on its own so a failure names its own cause:
+      // the swipe engaged and is tracking.
+      expect(ref.swipeTransform()).toBe('translate3d(40px, 0, 0)');
+
+      // Tear the layer down mid-swipe. `pointerup` is deliberately never
+      // dispatched — that is the whole scenario.
+      TestBed.resetTestingModule();
+
+      const atDestroy = ref.swipeTransform();
+      dispatchPointer(wrapper!, 'pointermove', 160);
+      expect(ref.swipeTransform()).toBe(atDestroy);
+    } finally {
+      vi.useRealTimers();
+      document.querySelectorAll('.cdk-overlay-container').forEach((el) => (el.innerHTML = ''));
+    }
   });
 });
 

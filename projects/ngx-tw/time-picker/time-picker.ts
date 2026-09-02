@@ -539,7 +539,7 @@ export class TimePickerComponent<D = Date>
   /** Visual style of the chrome. `'default'` draws its own border; `'naked'` strips chrome. Auto-resolves to `'naked'` inside `<tw-form-field>`. */
   readonly variant = input<TimePickerVariant | undefined>(undefined);
 
-  /** `'12h'` renders 1–12 hours with an AM/PM toggle; `'24h'` renders 00–23. Defaults to `'24h'`. */
+  /** `'12h'` renders 1–12 hours with an AM/PM toggle; `'24h'` renders 00–23. The same axis is spelled `timeFormat` on `tw-date-range-picker` and lives under `timeConfig.format` on `tw-date-picker`, where `format` instead means the display-format descriptor. Defaults to `'24h'`. */
   readonly format = input<TimePickerFormat>('24h');
 
   /** When true, renders a seconds field after minutes. Defaults to `false`. */
@@ -574,7 +574,7 @@ export class TimePickerComponent<D = Date>
   // TRUE-default: matches `<tw-date-picker>` and `<tw-input>` clear behaviour; without the inline clear, every form has to wire its own reset surface for an obvious affordance.
   readonly showClear = input<boolean>(true);
 
-  /** Accessible label for the clear button. Defaults to `'Clear time'`. */
+  /** Accessible label for the clear button. Note the name differs in meaning from the date pickers, which spell this `clearAriaLabel` and reserve `clearLabel` for the overlay action bar's visible button text. Defaults to `'Clear time'`. */
   readonly clearLabel = input<string>('Clear time');
 
   /** Per-instance override of the `ErrorStateMatcher`. Defaults to `undefined`. */

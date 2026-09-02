@@ -112,7 +112,7 @@ const SWIPE_MAX_OPACITY_FADE = 0.6;
               [severity]="entry.ref.severity()"
               [dismissible]="entry.ref.dismissible()"
               [icon]="entry.ref.icon()"
-              [ariaLabel]="entry.ref.ariaLabel()"
+              [aria-label]="entry.ref.ariaLabel()"
               [class]="panelClassFor(entry.ref)"
               (dismissed)="entry.ref._dismissWith('manual')"
               (actionClicked)="entry.ref.triggerAction()"
@@ -128,7 +128,7 @@ const SWIPE_MAX_OPACITY_FADE = 0.6;
               [severity]="entry.ref.severity()"
               [dismissible]="entry.ref.dismissible()"
               [icon]="entry.ref.icon()"
-              [ariaLabel]="entry.ref.ariaLabel()"
+              [aria-label]="entry.ref.ariaLabel()"
               [class]="panelClassFor(entry.ref)"
               (dismissed)="entry.ref._dismissWith('manual')"
               (actionClicked)="entry.ref.triggerAction()"
@@ -316,7 +316,14 @@ export class ToastContainerComponent {
       width,
       active: false,
     });
-    el.setPointerCapture(event.pointerId);
+    try {
+      el.setPointerCapture(event.pointerId);
+    } catch {
+      // setPointerCapture throws when the pointerId is no longer active, and
+      // is absent entirely in jsdom. The swipe still tracks via the listeners
+      // below — capture is an enhancement, not a prerequisite. Matches the
+      // guards already on both `releasePointerCapture` call sites.
+    }
 
     const onMove = (e: PointerEvent) => this.onSwipeMove(ref, e, el);
     const onUp = (e: PointerEvent) => this.onSwipeEnd(ref, e, el, onMove, onUp);

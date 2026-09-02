@@ -406,7 +406,7 @@ report section so the user can see omissions at a glance.
   arrow keys on a listbox)
 - Missing focus indicator on an interactive element
 - Missing theme keyframes referenced by `animate.enter` / `animate.leave` (check
-  `projects/ngx-tw/theme/default.css` for the named class)
+  `projects/ngx-tw/theme/_base.css` for the named class)
 - Missing `ControlValueAccessor` implementation on a component that accepts user value
   change
 

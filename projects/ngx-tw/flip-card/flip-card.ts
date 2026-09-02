@@ -160,14 +160,14 @@ export class FlipCardComponent {
   readonly flipped = model(false);
 
   /**
-   * Accessible name for the host element. Required when `trigger` is
-   * `'manual'` (the host renders as `role="region"`, which AXE requires to
-   * have an accessible name); a default of `'Flip card'` is used in that
-   * mode if no value is provided. In interactive modes the host's accessible
-   * name is normally derived from the visible face's content — set this
-   * input to override.
+   * Accessible name for the host element, mirrored to `aria-label`. Required
+   * when `trigger` is `'manual'` (the host renders as `role="region"`, which
+   * AXE requires to have an accessible name); a default of `'Flip card'` is
+   * used in that mode if no value is provided. In interactive modes the host's
+   * accessible name is normally derived from the visible face's content — set
+   * this input to override. Defaults to `undefined`.
    */
-  readonly ariaLabel = input<string | undefined>(undefined);
+  readonly ariaLabel = input<string | undefined>(undefined, { alias: 'aria-label' });
 
   private readonly liveAnnouncer = inject(LiveAnnouncer);
   private readonly destroyRef = inject(DestroyRef);

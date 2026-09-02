@@ -1,4 +1,36 @@
 {
   "extends": "../tsconfig.json",
+  "compilerOptions": {
+    // `paths` is NOT merged with the parent's — declaring it here replaces the
+    // root map wholesale, so the library aliases are restated (rebased on this
+    // directory) even though no e2e file imports them today.
+    "paths": {
+      "@cdevhub/ngx-tw": ["../dist/ngx-tw"],
+      "@cdevhub/ngx-tw/*": ["../dist/ngx-tw/*"],
+
+      // Two copies of `playwright-core` are installed:
+      //   node_modules/playwright-core                          1.61.1
+      //   node_modules/playwright/node_modules/playwright-core  1.59.1
+      // `@axe-core/playwright` declares `playwright-core >= 1.0.0` as a peer,
+      // so npm hoisted a second, newer copy to satisfy it. Its typings do
+      // `import { Page } from 'playwright-core'` and land on 1.61.1, while
+      // every e2e file imports `Page` from `@playwright/test` -> `playwright`
+      // -> the nested 1.59.1. Two structurally different `Page` types, hence
+      // "Type 'Page' is missing the following properties from type 'Page':
+      // hideHighlight, localStorage, sessionStorage" at every AxeBuilder /
+      // runAxe call site.
+      //
+      // Pinning the specifier to the NESTED 1.59.1 copy gives both sides one
+      // type identity, and 1.59.1 is the version @playwright/test actually
+      // runs — mapping to 1.61.1 would dedupe just as well but advertise APIs
+      // (`page.localStorage`, `hideHighlight`) that do not exist at runtime.
+      //
+      // This is a type-level stand-in. The root fix is an install-level dedupe
+      // in the workspace package.json, which would make this block redundant:
+      //   "overrides": { "playwright-core": "1.59.1" }
+      "playwright-core": ["../node_modules/playwright/node_modules/playwright-core"],
+      "playwright-core/*": ["../node_modules/playwright/node_modules/playwright-core/*"]
+    }
+  },
   "include": ["./**/*.ts"]
 }

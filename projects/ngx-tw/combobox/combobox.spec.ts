@@ -149,6 +149,157 @@ class GroupedHost {
   open = signal(true);
 }
 
+// ── Accessor / configuration hosts ────────────────────────────────
+//
+// Deliberately separate from BasicHost: every test in this file shares that
+// template, so widening it would change the surface every other case runs on.
+
+/** Record shape sharing no field names with the default option accessors. */
+interface FruitRecord {
+  readonly name: string;
+  readonly id: string;
+  readonly off?: boolean;
+  readonly cat?: string;
+  readonly desc?: string;
+}
+
+const FRUIT_RECORDS: readonly FruitRecord[] = [
+  { name: 'Apricot', id: 'a1', cat: 'Stone' },
+  { name: 'Blueberry', id: 'b2', cat: 'Berry', desc: 'desk fruit' },
+  { name: 'Cranberry', id: 'c3', cat: 'Berry', off: true },
+];
+
+@Component({
+  imports: [ComboboxComponent],
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  template: `
+    <tw-combobox
+      [options]="options"
+      [(value)]="value"
+      [optionLabel]="labelFn"
+      [optionValue]="valueFn"
+      [optionDisabled]="disabledFn"
+      [optionGroup]="groupFn"
+      [optionDescription]="descFn"
+      [filterFn]="null"
+      aria-label="Fruit records"
+      (optionSelected)="onOptionSelected($event)"
+    />
+  `,
+})
+class AccessorHost {
+  options = FRUIT_RECORDS;
+  value = signal<string | null>(null);
+  labelFn = (o: unknown): string => (o as FruitRecord).name;
+  valueFn = (o: unknown): string => (o as FruitRecord).id;
+  disabledFn = (o: unknown): boolean => !!(o as FruitRecord).off;
+  groupFn = (o: unknown): string | undefined => (o as FruitRecord).cat;
+  descFn = (o: unknown): string | undefined => (o as FruitRecord).desc;
+  optionSelectedSpy = vi.fn();
+  onOptionSelected(e: TwComboboxOptionSelectedEvent<string>): void { this.optionSelectedSpy(e); }
+}
+
+interface TagValue {
+  readonly id: string;
+}
+
+const TAG_OPTIONS: readonly { label: string; value: TagValue }[] = [
+  { label: 'Red', value: { id: 'r' } },
+  { label: 'Green', value: { id: 'g' } },
+];
+
+@Component({
+  imports: [ComboboxComponent, ReactiveFormsModule],
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  template: `
+    <tw-combobox
+      [options]="options"
+      [compareWith]="cmp"
+      [formControl]="ctrl"
+      aria-label="Tags"
+    />
+  `,
+})
+class CompareHost {
+  options = TAG_OPTIONS;
+  ctrl = new FormControl<TagValue | null>(null);
+  cmp = (a: TagValue, b: TagValue): boolean => a.id === b.id;
+}
+
+@Component({
+  imports: [ComboboxComponent, ReactiveFormsModule],
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  template: `<tw-combobox [options]="options" [formControl]="ctrl" aria-label="Tags default" />`,
+})
+class DefaultCompareHost {
+  options = TAG_OPTIONS;
+  ctrl = new FormControl<TagValue | null>(null);
+}
+
+@Component({
+  imports: [ComboboxComponent],
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  template: `
+    <tw-combobox
+      [options]="options"
+      [openOnFocus]="openOnFocus()"
+      [minQueryLength]="minQueryLength()"
+      aria-label="Open policy"
+    />
+  `,
+})
+class OpenPolicyHost {
+  options = OPTIONS;
+  openOnFocus = signal(true);
+  minQueryLength = signal(0);
+}
+
+@Component({
+  imports: [ComboboxComponent],
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  template: `<tw-combobox [options]="options" [filterFn]="null" aria-label="No filter" />`,
+})
+class NoFilterHost {
+  options = OPTIONS;
+}
+
+@Component({
+  imports: [ComboboxComponent],
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  template: `
+    <tw-combobox
+      [options]="options"
+      [emptyMessage]="'Nothing to pick'"
+      [panelMaxHeight]="180"
+      [panelWidth]="320"
+      [panelClass]="'my-panel'"
+      aria-label="Panel config"
+    />
+  `,
+})
+class PanelConfigHost {
+  options = OPTIONS;
+}
+
+@Component({
+  imports: [ComboboxComponent],
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  template: `
+    <span id="cb-ext-label">External label</span>
+    <span id="cb-ext-desc">Helper text</span>
+    <tw-combobox
+      [options]="options"
+      [aria-labelledby]="labelledby"
+      [aria-describedby]="describedby"
+    />
+  `,
+})
+class AriaRefHost {
+  options = OPTIONS;
+  labelledby = 'cb-ext-label';
+  describedby = 'cb-ext-desc';
+}
+
 // ── Helpers ──
 
 function getCombobox(fixture: ComponentFixture<unknown>): HTMLElement {
@@ -177,6 +328,23 @@ function dispatchKey(el: HTMLElement, key: string, opts: KeyboardEventInit = {})
   return event;
 }
 
+/** Collapses template indentation so multi-line option rows compare cleanly. */
+function normalizeText(el: Element): string {
+  return (el.textContent ?? '').replace(/\s+/g, ' ').trim();
+}
+
+/**
+ * The label and description lines of one option, read separately.
+ *
+ * They render as sibling block spans, so an option's own `textContent`
+ * concatenates them with no separator ("Blueberrydesk fruit"). Reading each
+ * line on its own keeps an `optionLabel` assertion about `optionLabel` and an
+ * `optionDescription` assertion about `optionDescription`.
+ */
+function optionLines(el: Element): string[] {
+  return Array.from(el.querySelectorAll('span > span')).map(normalizeText);
+}
+
 function typeInto(input: HTMLInputElement, value: string): void {
   input.value = value;
   input.dispatchEvent(new Event('input', { bubbles: true }));
@@ -186,6 +354,34 @@ async function advance(fixture: ComponentFixture<unknown>): Promise<void> {
   fixture.detectChanges();
   await fixture.whenStable();
   fixture.detectChanges();
+}
+
+/**
+ * Pumps change detection on real macrotasks until `predicate` holds.
+ *
+ * Deliberately does NOT use `fixture.whenStable()`. The close path arms a
+ * leave-animation timer, and awaiting stability across it made the sibling
+ * reopen test in `select.spec.ts` intermittently blow the 5s limit — it passed
+ * one run and timed out the next with no code change between them. Polling the
+ * observable DOM is both deterministic and exactly what the assertion needs.
+ */
+async function pumpUntil(
+  fixture: ComponentFixture<unknown>,
+  predicate: () => boolean,
+  label: string,
+  timeoutMs = 2000,
+): Promise<void> {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    fixture.detectChanges();
+    if (predicate()) {
+      fixture.detectChanges();
+      return;
+    }
+    await new Promise(resolve => setTimeout(resolve, 10));
+  }
+  fixture.detectChanges();
+  throw new Error(`pumpUntil timed out waiting for: ${label}`);
 }
 
 // ── Tests ──
@@ -936,6 +1132,239 @@ describe('ComboboxComponent', () => {
       fixture.componentInstance.model.set({ fruit: 'banana' });
       await advance(fixture);
       expect(fixture.componentInstance.signalForm.fruit().valid()).toBe(true);
+    });
+  });
+
+  // ── Option accessors ──
+  //
+  // Exercised against a record shape sharing NO field names with the defaults
+  // (`label` / `value` / `disabled` / `group` / `description`), so a regression
+  // that silently falls back to the default accessor renders empty text.
+
+  describe('option accessors', () => {
+    it('renders custom optionLabel text in the popover and commits it into the input', async () => {
+      const fixture = TestBed.createComponent(AccessorHost);
+      fixture.detectChanges();
+      const input = getInput(fixture);
+      input.focus();
+      await advance(fixture);
+      expect(getOptions().map(el => optionLines(el)[0])).toEqual([
+        'Apricot',
+        'Blueberry',
+        'Cranberry',
+      ]);
+      // The second line is the custom optionDescription, asserted separately —
+      // only Blueberry has one.
+      expect(optionLines(getOptions()[1])[1]).toBe('desk fruit');
+      expect(optionLines(getOptions()[0])).toHaveLength(1);
+      getOptions()[0].click();
+      await advance(fixture);
+      expect(getInput(fixture).value).toBe('Apricot');
+    });
+
+    it('emits the custom optionValue result on optionSelected and valueCommit', async () => {
+      const fixture = TestBed.createComponent(AccessorHost);
+      fixture.detectChanges();
+      getInput(fixture).focus();
+      await advance(fixture);
+      getOptions()[1].click();
+      await advance(fixture);
+      expect(fixture.componentInstance.value()).toBe('b2');
+      const selected = fixture.componentInstance.optionSelectedSpy.mock.calls.at(-1)![0];
+      expect(selected.value).toBe('b2');
+      expect(selected.label).toBe('Blueberry');
+    });
+
+    it('marks options disabled through the custom optionDisabled accessor and blocks selection', async () => {
+      const fixture = TestBed.createComponent(AccessorHost);
+      fixture.detectChanges();
+      getInput(fixture).focus();
+      await advance(fixture);
+      const options = getOptions();
+      expect(options[2].getAttribute('aria-disabled')).toBe('true');
+      expect(options[0].getAttribute('aria-disabled')).toBeNull();
+      options[2].click();
+      await advance(fixture);
+      expect(fixture.componentInstance.value()).toBeNull();
+    });
+
+    it('renders one group region per distinct custom optionGroup value', async () => {
+      const fixture = TestBed.createComponent(AccessorHost);
+      fixture.detectChanges();
+      getInput(fixture).focus();
+      await advance(fixture);
+      const headers = Array.from(document.querySelectorAll('[role="group"] > div'));
+      expect(headers.map((h) => h.textContent?.trim())).toEqual(['Stone', 'Berry']);
+    });
+
+    it('renders the custom optionDescription under the option label', async () => {
+      const fixture = TestBed.createComponent(AccessorHost);
+      fixture.detectChanges();
+      getInput(fixture).focus();
+      await advance(fixture);
+      // Only Blueberry carries a description; the other rows render the label only.
+      expect(getOptions()[1].textContent).toContain('desk fruit');
+      expect(normalizeText(getOptions()[0])).toBe('Apricot');
+    });
+
+    it('resolves the written value to its label through compareWith', async () => {
+      const fixture = TestBed.createComponent(CompareHost);
+      fixture.detectChanges();
+      // A fresh object literal is never `Object.is`-equal to the option's own
+      // value, so only the custom comparator can resolve this label.
+      fixture.componentInstance.ctrl.setValue({ id: 'g' });
+      await advance(fixture);
+      expect(getInput(fixture).value).toBe('Green');
+    });
+
+    it('falls back to reference equality without compareWith, stringifying the value', async () => {
+      const fixture = TestBed.createComponent(DefaultCompareHost);
+      fixture.detectChanges();
+      fixture.componentInstance.ctrl.setValue({ id: 'g' });
+      await advance(fixture);
+      expect(getInput(fixture).value).not.toBe('Green');
+    });
+  });
+
+  // ── Open policy ──
+
+  describe('open policy', () => {
+    it('does not open on focus when openOnFocus=false, but still opens on typing', async () => {
+      const fixture = TestBed.createComponent(OpenPolicyHost);
+      fixture.componentInstance.openOnFocus.set(false);
+      fixture.detectChanges();
+      const input = getInput(fixture);
+      input.focus();
+      await advance(fixture);
+      expect(getOverlayPanel()).toBeFalsy();
+      typeInto(input, 'ap');
+      await advance(fixture);
+      expect(getOverlayPanel()).toBeTruthy();
+    });
+
+    it('opens on focus by default', async () => {
+      const fixture = TestBed.createComponent(OpenPolicyHost);
+      fixture.detectChanges();
+      getInput(fixture).focus();
+      await advance(fixture);
+      expect(getOverlayPanel()).toBeTruthy();
+    });
+
+    it('holds the popover closed until the query reaches minQueryLength', async () => {
+      const fixture = TestBed.createComponent(OpenPolicyHost);
+      fixture.componentInstance.minQueryLength.set(2);
+      fixture.detectChanges();
+      const input = getInput(fixture);
+      input.focus();
+      await advance(fixture);
+      expect(getOverlayPanel()).toBeFalsy();
+      typeInto(input, 'a');
+      await advance(fixture);
+      expect(getOverlayPanel()).toBeFalsy();
+      typeInto(input, 'ap');
+      await advance(fixture);
+      expect(getOverlayPanel()).toBeTruthy();
+    });
+
+    it('keeps every option visible while typing when filterFn is null', async () => {
+      const fixture = TestBed.createComponent(NoFilterHost);
+      fixture.detectChanges();
+      const input = getInput(fixture);
+      input.focus();
+      await advance(fixture);
+      expect(getOptions().length).toBe(4);
+      typeInto(input, 'zzzz');
+      await advance(fixture);
+      expect(getOptions().length).toBe(4);
+    });
+  });
+
+  // ── Panel configuration ──
+
+  describe('panel configuration', () => {
+    it('renders a custom emptyMessage when no option matches', async () => {
+      const fixture = TestBed.createComponent(PanelConfigHost);
+      fixture.detectChanges();
+      const input = getInput(fixture);
+      input.focus();
+      await advance(fixture);
+      typeInto(input, 'zzzz');
+      await advance(fixture);
+      expect(getOptions().length).toBe(0);
+      expect(getOverlayPanel()!.textContent).toContain('Nothing to pick');
+    });
+
+    it('applies panelMaxHeight to the scrollable listbox region', async () => {
+      const fixture = TestBed.createComponent(PanelConfigHost);
+      fixture.detectChanges();
+      getInput(fixture).focus();
+      await advance(fixture);
+      expect(getListbox()!.style.maxHeight).toBe('180px');
+    });
+
+    it('applies a numeric panelWidth to the overlay pane', async () => {
+      const fixture = TestBed.createComponent(PanelConfigHost);
+      fixture.detectChanges();
+      getInput(fixture).focus();
+      await advance(fixture);
+      const pane = document.querySelector('.cdk-overlay-pane') as HTMLElement | null;
+      expect(pane).toBeTruthy();
+      expect(pane!.style.width).toBe('320px');
+    });
+
+    it('appends the consumer panelClass to the overlay panel', async () => {
+      // Not the forbidden "assert internal class names" case: the asserted token
+      // is the consumer's own input value, and landing on the panel is the whole
+      // observable contract of `panelClass`.
+      const fixture = TestBed.createComponent(PanelConfigHost);
+      fixture.detectChanges();
+      getInput(fixture).focus();
+      await advance(fixture);
+      expect(getOverlayPanel()!.classList.contains('my-panel')).toBe(true);
+    });
+
+    it('forwards aria-labelledby and aria-describedby to the input', () => {
+      const fixture = TestBed.createComponent(AriaRefHost);
+      fixture.detectChanges();
+      const input = getInput(fixture);
+      expect(input.getAttribute('aria-labelledby')).toBe('cb-ext-label');
+      expect(input.getAttribute('aria-describedby')).toBe('cb-ext-desc');
+    });
+  });
+
+  // ── Reopen ──
+
+  describe('reopen', () => {
+    it('re-pushes the option rows into the fresh panel on reopen', async () => {
+      const fixture = TestBed.createComponent(BasicHost);
+      fixture.detectChanges();
+      getInput(fixture).focus();
+      await advance(fixture);
+      expect(getOptions().length).toBe(4);
+
+      fixture.componentInstance.open.set(false);
+      await pumpUntil(
+        fixture,
+        () => document.querySelectorAll('tw-combobox-overlay').length === 0,
+        'the panel to detach',
+      );
+
+      fixture.componentInstance.open.set(true);
+      await pumpUntil(
+        fixture,
+        () => document.querySelectorAll('tw-combobox-overlay').length > 0,
+        'the panel to reattach',
+      );
+
+      // The close path leaves the query, the active index and the rendered rows
+      // exactly as they were, so reopening changes no data signal at all. The
+      // fresh overlay component starts with an empty row list, so only the
+      // attach signal can populate it — without that wake-up this renders the
+      // empty-results message instead of the four options.
+      const panels = document.querySelectorAll('tw-combobox-overlay');
+      const fresh = panels[panels.length - 1];
+      expect(fresh).toBeTruthy();
+      expect(fresh.querySelectorAll('[role="option"]').length).toBe(4);
     });
   });
 });

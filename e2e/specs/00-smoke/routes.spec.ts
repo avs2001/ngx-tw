@@ -1,4 +1,5 @@
-import { expect, test, type Page } from '../../fixtures/base';
+import { expect, test } from '../../fixtures/base';
+import type { Page } from '@playwright/test';
 import { COMPONENTS, SERVICES, SUBROUTES } from '../../support/routes';
 
 test.describe.configure({ mode: 'parallel' });

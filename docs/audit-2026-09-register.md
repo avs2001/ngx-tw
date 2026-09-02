@@ -138,10 +138,10 @@ into the rhythm diff would make a regression in either unattributable.
 ### Coverage gaps behind all of the above
 
 1. `AXE_TAGS` omits `wcag22aa` (above).
-2. **axe never scans an interactive state** — `runAxe` runs only after `goto`. No open overlay,
+1. **axe never scans an interactive state** — `runAxe` runs only after `goto`. No open overlay,
    error or disabled state is ever scanned. That is where a11y bugs live.
 3. The only cross-theme contrast sweep is `test.fixme`'d; **high-contrast has zero verification.**
-4. `A11Y_BACKLOG` excludes 12 components wholesale rather than per-rule.
+3. `A11Y_BACKLOG` excludes 12 components wholesale rather than per-rule.
 
 ---
 
@@ -253,14 +253,131 @@ rule wins before anything should change.
    certainly the stale half — but that is your call, not mine. **[measured]**
 2. **The `table` data-primitive exception has self-expired.** It is written as valid only until
    PR8 reshapes the API into config objects. That shipped; `table` still has 12 inputs. **[verified]**
-3. **`tabTriggerVariants` is exported from `core/index.ts:42`**, contradicting "Do not export
+2. **`tabTriggerVariants` is exported from `core/index.ts:42`**, contradicting "Do not export
    variant configs." Either the rule needs a carve-out for shared cross-component configs, or the
    export should go. **[verified]**
-4. **The boolean `true`-default allow-list is 17 entries short** — 30 exist in code. All 17
+3. **The boolean `true`-default allow-list is 17 entries short** — 30 exist in code. All 17
    unlisted ones *do* carry justification, so the code complies and the spec lags. Decide whether
    the list is exhaustive-normative or illustrative. **[reported]**
-5. **Boolean justification comment style is specified two ways** (JSDoc at `:433`, inline `//` at
+4. **Boolean justification comment style is specified two ways** (JSDoc at `:433`, inline `//` at
    `:451`); 12 of 17 use `//`, which Compodoc cannot see. **[reported]**
-6. **`Tw*` class prefixes.** `TwDialog`, `TwDialogRef`, `TwDialogConfig`, `TwDateRange` exist. The
+5. **`Tw*` class prefixes.** `TwDialog`, `TwDialogRef`, `TwDialogConfig`, `TwDateRange` exist. The
    rule as written covers only *components and directives*, so these are not violations by the
    letter — but the intent is ambiguous. **[verified]**
+
+---
+
+# Pass 2 — 2026-09-02 (later the same day)
+
+A second audit pass, run after the one above. Scope was set by the maintainer: **land Tier 3 and
+Tier 3b, plus anything new this pass found. Tier 2 (26 HIGH accessibility) stays deferred, and
+theme palette / contrast values stay out of scope.** Six parallel agents partitioned by *file
+ownership* rather than by concern, so no two could touch the same component.
+
+New reports: `docs/research/api-consistency-2026-09-02.md`,
+`docs/research/token-compliance-2026-09-02.md`.
+
+## 2.0 — Register corrections. Read this before re-auditing anything above.
+
+**Tier 3 above is not deduplicated against Tier 1.** Five of its bullets restate work that Tier 1
+had already landed in the same pass. Verified against source this pass, with anchors:
+
+| Tier 3 bullet | Actual state | Proof |
+|---|---|---|
+| `carousel.ts:1324` timer handle never stored (dup of F11) | **already fixed** | field `carousel.ts:803`, cleared in the `DestroyRef` hook at `:897-900` |
+| `toast-container.ts:300-302` no destroy hook (dup of F12) | **already fixed** | `DestroyRef.onDestroy` at `toast-container.ts:191-198` |
+| `table.selectionChange` / `toast.actionClicked` untested | **already tested** | `table.spec.ts:1044-1101`, `toast.spec.ts:509-546` — real DOM clicks, full payloads |
+| `select.searchChange` untested | **already tested** | landed in `e62c129`; two tests dispatching a real `input` event |
+| `table`'s spec never dispatches a DOM event | **false** | `clickElement()` helper at `table.spec.ts:234-237`, used at `:435`, `:450`, `:468` |
+
+Also corrected: the boolean allow-list has **13** entries, not 17 (30 exist in code, so 17 are
+*unlisted* — which is what Tier 4 #4 meant). And the "138/647 inputs never in a spec" figure is
+overstated: it greps by property name and so misses every aliased input (`disabledInput`,
+`requiredInput`, `ariaLabel` are all covered via `[disabled]` / `[required]` / `[aria-label]`).
+
+## 2.1 — Fixed in this pass
+
+| # | Finding | Evidence |
+|---|---|---|
+| P1 | **`tags-input` defeated its own height floor as soon as it held one tag.** Padding was sized against the input's line box, but the tallest resting content is a *chip*. Measured populated: 26/32/38/50/54 against a 24/32/36/44/48 scale — on-grid while empty, then jumping 2px at xs/md and 6px at lg/xl. Only `sm` was ever correct. | **[measured]** — browser, all 5 sizes |
+| P2 | Four SUSPECT effects demoted to plain fields (`select`, `combobox`, `date-picker`, `date-range-picker`), per the proven `popover`/`command-palette` shape. | **[verified]** |
+| P3 | **Demotion alone would have broken `combobox`:** its close path leaves `activeIndex`/`inputValue`/`renderedRows` untouched, so on reopen no tracked signal changes and the fresh panel would render its empty-results message. Fixed with an `isAttached` signal. | **[verified]** |
+| P4 | **All four picker/select lifecycle effects now wrap their body in `untracked()`.** Demoting the fields was not sufficient: `openOverlay()` reads ~25 inputs and writes two signals it reads straight back, so called from the tracked phase it recreated the forbidden shape. | **[verified]** |
+| P5 | `checkbox`/`radio` dead step at sm/md → scale 16/20/24/28/32, matching `switch`. | **[verified]** |
+| P6 | `badge-dot` 6/6/8/10/10 → 8/10/12/14/16, on CLAUDE.md's dot table (extended to 5 rows). | **[verified]** |
+| P7 | `calendar` horizontal view-switch shift 270/286/254 → **270 in every view**, via cell widths, not `min-w` — the day grid is byte-identical, so the range pill cannot move. | **[verified]** |
+| P8 | **`file-upload`'s two `dark:` utilities were the only ones in the library, and both were wrong.** `_dark.css` already inverts the ramp, so `bg-primary-50` *is* the dark wash; the `dark:bg-primary-900/20` override resolved to near-white, flashing the drag-over state. Corroborated by the codebase itself: `alert`, `tab-nav` and `segmented-control` already ship specs *asserting* no `dark:` overrides ("theme adaptation is owned by the slot tokens"). The convention was settled in tests; CLAUDE.md and this one component were the laggards. `file-upload` now carries the same guard. | **[measured]** |
+| P9 | `e2e/tsconfig.json` — two colliding `playwright-core` installs diagnosed and pinned; `routes.spec.ts` was the only file importing `Page` from the fixtures barrel. `tsc -p e2e` is now **clean**. | **[measured]** |
+| P10 | `toast-container.ts:319` — `setPointerCapture` was unguarded while both release sites were wrapped. jsdom implements neither, so the whole swipe path was unreachable from unit tests. | **[verified]** |
+| P11 | New **row-alignment instrument** (`/foundations/rhythm`) + gate (`e2e/specs/02-cross-cutting/row-alignment.spec.ts`). Measures controls that *share a row*, over two boxes per item (outer vs. shell). | **[measured]** |
+| P12 | **`aria-label` alias drift — the inverse of F10, and worse.** F10 covered the components that alias `aria-label` as an input. The inverse population was never audited: six components host-bound `[attr.aria-label]` *without* aliasing, so a plain `aria-label="Save"` was either removed (`toast`, `carousel` x2) or silently overwritten by a fallback (`flip-card`, `stat-delta`, `avatar-group`). `calendar` did the same to `aria-describedby`; `<tw-icon aria-label>` left the glyph `aria-hidden`. All aliased, all spec-guarded with a *static attribute* host (a `setInput` test would have passed with the bug present). | **[verified]** |
+| P13 | The demo was itself a victim: 29 `ariaLabel="..."` usages across carousel, avatar-group, flip-card, icon and **breadcrumbs** never reached the input. `breadcrumbs` was already aliased before this session, so that page had been silently broken all along. All converted to the attribute form. | **[measured]** |
+
+### Spec corrections in `.claude/CLAUDE.md`
+
+- **`text-base`** — the "only for two codified exceptions" clause was the stale half; the trigger
+  font-size table is authoritative. 27 components were in nominal violation of a rule they were
+  correctly following. Maintainer decision.
+- **`dark:` variants are now forbidden in components.** The rule previously *instructed* them,
+  which is what produced P8. The library now contains zero, making it greppable as a lint rule.
+- **`theme/default.css` does not exist** and never did — keyframes live in `theme/_base.css`.
+  Corrected in CLAUDE.md and in three agent/skill definitions that were propagating it into
+  generated code.
+- Dot-indicator table extended to `lg` (`size-3.5`) and `xl` (`size-4`).
+
+## 2.2 — New findings NOT fixed (need a decision, or belong to deferred Tier 2)
+
+1. **`badge` matches CLAUDE.md's inline-padding table at zero of five sizes** — and that table
+   names badges explicitly. Tier-4 shaped: either the table should not claim badges, or badge is
+   in wholesale violation.
+2. **The `twMerge` blind set is far smaller than assumed.** Measured against the installed
+   `tailwind-merge`: exactly **6 classes, 91 sites, 3 conflict groups** (`duration-normal`,
+   `duration-fast`, `shadow-table-sticky*`, `animate-progress-bar-indeterminate`). Every colour
+   token, `text-2xs`, the fonts and `h-6…h-12` all merge correctly. The deferred `createTV` work
+   needs **three `classGroups` lines**, not a 55-call-site refactor — `vertical-rhythm.md` defers
+   it as though it were large. Worth reprioritising.
+3. **Four components in the `min-h` cohort have no floor at all** — `tree` (xs rows render at
+   20px, under the WCAG 2.2 floor; the register measured the symptom, this is the cause), plus
+   three more. A pinned-vs-padding sweep cannot see this by construction.
+4. **`items-baseline` sub-pixel**: shells agree exactly, but a native `<input>` places its first
+   text baseline 0.5px above every flex-container control at xs/sm/md (0 at lg/xl). Tolerated at
+   0.75px in the gate with the measurement recorded; forcing agreement means overriding a native
+   input's baseline.
+5. `dialog`/`sheet` publicly expose a type their own entry point deliberately does not export;
+   `SegmentedControlComponent` is a `ControlValueAccessor` with none of the form-control ARIA
+   baseline; the overlay family gives seven different answers to "how do I control dismissal".
+   Full detail in `docs/research/api-consistency-2026-09-02.md`.
+6. **`e2e/tsconfig.json`'s `paths` pin is temporary.** If its target moves (lockfile refresh,
+   `@axe-core/playwright` bump), TypeScript does **not** error — it silently falls through and the
+   errors return with no signal. The durable fix is `"overrides": { "playwright-core": "1.59.1" }`
+   in `package.json`, deliberately not applied here because it needs an install.
+
+## 2.3 — Verification at hand-off
+
+| Gate | Result |
+|---|---|
+| `npm run build:lib` | pass |
+| `npm run test:ci` | **3049 passed**, 4 skipped (71 files) + **4 demo** — library run 4x, demo re-run after the 29 demo edits |
+| `npm run lint` | **0 errors**, 70 warnings — the same 70 as before this pass |
+| `npm run e2e:fast` | **880 passed**, 0 failed, 58 skipped (was 869; +11 new `@rowalign` tests) |
+| `npx playwright test --grep @rhythm` | **17 passed** (6 vertical-rhythm + 11 row-alignment) |
+| `npx tsc -p e2e/tsconfig.json --noEmit` | **clean** — was 4 errors |
+| `npm run verify:package` | pass — 59 entry points, theme resolves from a clean consumer install |
+| `npm run verify:mcp-index` | pass (the same 7 pre-existing warnings) |
+| `npm run e2e:visual` | **still stale by design** — see Tier 3c. Regenerate on Linux via `workflow_dispatch`. |
+
+### Two traps this pass hit, recorded so the next one does not
+
+1. **A hidden browser tab suspends `requestAnimationFrame` and `ResizeObserver`.** The rhythm
+   instrument appeared to report stale heights after a size change — it was reported as a bug
+   before `document.visibilityState === 'hidden'` explained it. Driving the page through CDP does
+   not make it visible; a screenshot forces one frame, and the readings need two. Measure with
+   Playwright, not a background tab.
+2. **`menu.spec.ts > should type-ahead to the first item…` is a pre-existing flake.** It timed
+   out at ~5.2s in one of four full runs and passed in the other three. `projects/ngx-tw/menu/`
+   is untouched by this pass; the test is real-timer based and drifts over the 5s limit under
+   parallel load. Same shape as the two `reopen` tests fixed in this pass (see `pumpUntil` in
+   `select.spec.ts` / `combobox.spec.ts`) — worth the same treatment.
+3. **The dev server does not pick up a `dist/ngx-tw` rebuild on its own.** It watches demo source.
+   After `build:lib`, touch a demo file (or restart it) before measuring, or you will verify a fix
+   against the build that predates it — which happened here, and made a landed fix look inert.

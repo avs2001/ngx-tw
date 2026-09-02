@@ -1131,3 +1131,97 @@ describe('CheckboxComponent signal-forms required', () => {
     expect(getCheckbox(fixture).getAttribute('aria-required')).toBe('true');
   });
 });
+
+// ── Size axis ─────────────────────────────────────────────────────
+//
+// The checkbox's rendered row is `max(boxWrap min-h, label first-line leading)`, and the
+// host is the interactive target (role, tabindex and click all sit on the root). Before the
+// vertical-rhythm follow-up it measured 16 / 20 / 20 / 24 / 28px — `sm` and `md` rendered an
+// identical row, so one of the five steps did nothing. It is now 16 / 20 / 24 / 28 / 32.
+//
+// jsdom performs no layout, so the row height itself cannot be read back. What these tests
+// assert instead is the property that fix establishes: the two elements that determine the
+// row resolve differently at every step of the axis. That fails the moment a step is
+// collapsed again, which is the regression worth guarding.
+
+describe('CheckboxComponent size axis', () => {
+  const focusMonitorSpy = {
+    monitor: vi.fn(),
+    stopMonitoring: vi.fn(),
+  };
+
+  const SIZES: readonly TwSize[] = ['xs', 'sm', 'md', 'lg', 'xl'];
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    TestBed.configureTestingModule({
+      providers: [{ provide: FocusMonitor, useValue: focusMonitorSpy }],
+    });
+  });
+
+  /** `[boxWrap, label]` — the two elements whose box the rendered row height comes from. */
+  function rowElements(fixture: ComponentFixture<unknown>): [HTMLElement, HTMLElement] {
+    const spans = [...getCheckbox(fixture).children].filter(
+      el => el.tagName === 'SPAN',
+    ) as HTMLElement[];
+    return [spans[0], spans[1].firstElementChild as HTMLElement];
+  }
+
+  function renderEachSize(
+    fixture: ComponentFixture<BasicHost>,
+    pick: (fixture: ComponentFixture<unknown>) => string,
+  ): string[] {
+    return SIZES.map(size => {
+      fixture.componentInstance.size.set(size);
+      fixture.detectChanges();
+      return pick(fixture);
+    });
+  }
+
+  it('should size the box wrapper differently at every step', () => {
+    const fixture = TestBed.createComponent(BasicHost);
+    const rendered = renderEachSize(fixture, f => rowElements(f)[0].className);
+    expect(new Set(rendered).size).toBe(SIZES.length);
+  });
+
+  it('should size the label line differently at every step', () => {
+    const fixture = TestBed.createComponent(BasicHost);
+    const rendered = renderEachSize(fixture, f => rowElements(f)[1].className);
+    expect(new Set(rendered).size).toBe(SIZES.length);
+  });
+
+  it('should keep the steps distinct when no label is projected', () => {
+    const fixture = TestBed.createComponent(BasicHost);
+    fixture.componentInstance.label.set(undefined);
+    const rendered = renderEachSize(fixture, f => rowElements(f)[0].className);
+    expect(new Set(rendered).size).toBe(SIZES.length);
+  });
+
+  it('should render sm and md differently — the historical dead step', () => {
+    const fixture = TestBed.createComponent(BasicHost);
+
+    fixture.componentInstance.size.set('sm');
+    fixture.detectChanges();
+    const [smBoxWrap, smLabel] = rowElements(fixture).map(el => el.className);
+
+    fixture.componentInstance.size.set('md');
+    fixture.detectChanges();
+    const [mdBoxWrap, mdLabel] = rowElements(fixture).map(el => el.className);
+
+    expect(mdBoxWrap).not.toBe(smBoxWrap);
+    expect(mdLabel).not.toBe(smLabel);
+  });
+
+  // Pre-existing invariant, not part of the row fix — the box glyph was already
+  // 14/16/20/24/28 and this passes on the code before it. Pinned because the row scale is now
+  // driven by `boxWrap`, which makes it possible to "simplify" the glyph onto the row without
+  // anything else failing.
+  it('should keep the box glyph on a five-step scale of its own, independent of the row', () => {
+    const fixture = TestBed.createComponent(BasicHost);
+    const rendered = renderEachSize(
+      fixture,
+      f => (rowElements(f)[0].firstElementChild as HTMLElement).className,
+    );
+    expect(new Set(rendered).size).toBe(SIZES.length);
+  });
+});

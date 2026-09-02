@@ -82,7 +82,7 @@ const iconVariants = tv({
  * ```html
  * <tw-icon name="star" />
  * <tw-icon name="check" color="success" size="lg" />
- * <tw-icon name="alert-triangle" color="warning" ariaLabel="Warning" />
+ * <tw-icon name="alert-triangle" color="warning" aria-label="Warning" />
  * <tw-icon name="star" [svg]="{ strokeWidth: 1.5, absoluteStrokeWidth: true }" />
  * ```
  */
@@ -98,6 +98,17 @@ const iconVariants = tv({
   encapsulation: ViewEncapsulation.None,
   host: {
     '[class]': 'classes()',
+    // The accessible name belongs on the generated `<svg>` (which takes
+    // `role="img"`), never on the role-less `<tw-icon>` host: ARIA 1.2
+    // prohibits `aria-label` on an element with no role, and axe flags it as a
+    // serious `aria-prohibited-attr` violation.
+    //
+    // This binding is load-bearing, not defensive. Angular DOES leave the
+    // literal `aria-label="…"` on the host after handing it to the aliased
+    // input, so without this the host keeps a prohibited attribute. Verified
+    // by deleting the line: the "plain aria-label attribute reachable" spec
+    // fails. Do not remove it as dead code.
+    '[attr.aria-label]': 'null',
   },
 })
 export class IconComponent {
@@ -119,8 +130,8 @@ export class IconComponent {
   /** Icon size. Defaults to `'md'` (20px). */
   readonly size = input<TwSize>('md');
 
-  /** Accessible label. When set, removes `aria-hidden` and applies `aria-label` to the SVG. Defaults to `undefined` (icon is decorative, `aria-hidden="true"`). */
-  readonly ariaLabel = input<string>();
+  /** Accessible label, supplied as the plain `aria-label` attribute. When set, the generated SVG takes `role="img"` plus the label instead of `aria-hidden="true"`. Defaults to `undefined` (icon is decorative, `aria-hidden="true"`). */
+  readonly ariaLabel = input<string | undefined>(undefined, { alias: 'aria-label' });
 
   /**
    * SVG-author configuration: `strokeWidth`, `absoluteStrokeWidth`, `viewBox`.

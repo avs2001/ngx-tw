@@ -1660,6 +1660,58 @@ describe('CalendarComponent', () => {
     });
   });
 
+  // ── aria-describedby ──
+  //
+  // The host binds `[attr.aria-describedby]`. Until the input was aliased, a
+  // consumer writing the plain attribute never reached it, so the binding
+  // resolved to `null` and Angular REMOVED the description the consumer wrote.
+  // The static-attribute hosts below are the exact regressing shape; driving
+  // the input directly skips the attribute path and would pass regardless.
+
+  describe('aria-describedby', () => {
+    it('keeps a consumer-written aria-describedby attribute on the host', () => {
+      @Component({
+        imports: [CalendarComponent],
+        changeDetection: ChangeDetectionStrategy.OnPush,
+        template: `
+          <p id="calendar-hint">Pick a delivery date.</p>
+          <tw-calendar aria-describedby="calendar-hint" />
+        `,
+      })
+      class DescribedByHost {}
+
+      const fixture = TestBed.createComponent(DescribedByHost);
+      fixture.detectChanges();
+      const calendar = fixture.nativeElement.querySelector('tw-calendar') as HTMLElement;
+      expect(calendar.getAttribute('aria-describedby')).toBe('calendar-hint');
+    });
+
+    it('merges the deprecated errorAriaDescribedBy ids ahead of the consumer attribute', () => {
+      @Component({
+        imports: [CalendarComponent],
+        changeDetection: ChangeDetectionStrategy.OnPush,
+        template: `
+          <p id="calendar-error">Date is required.</p>
+          <p id="calendar-hint">Pick a delivery date.</p>
+          <tw-calendar aria-describedby="calendar-hint" errorAriaDescribedBy="calendar-error" />
+        `,
+      })
+      class MergedDescribedByHost {}
+
+      const fixture = TestBed.createComponent(MergedDescribedByHost);
+      fixture.detectChanges();
+      const calendar = fixture.nativeElement.querySelector('tw-calendar') as HTMLElement;
+      expect(calendar.getAttribute('aria-describedby')).toBe('calendar-error calendar-hint');
+    });
+
+    it('emits no aria-describedby when neither source is set', () => {
+      const fixture = TestBed.createComponent(BasicHost);
+      fixture.detectChanges();
+      const calendar = fixture.nativeElement.querySelector('tw-calendar') as HTMLElement;
+      expect(calendar.getAttribute('aria-describedby')).toBeNull();
+    });
+  });
+
   // ── Weekday header typography ──
 
   describe('weekday header typography', () => {

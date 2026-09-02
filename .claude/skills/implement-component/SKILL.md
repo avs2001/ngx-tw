@@ -159,7 +159,7 @@ Follow this structure exactly:
 **Animations**
 - Use `animate.enter="class-name"` and `animate.leave="class-name"` in templates or host
 - No `@angular/animations` imports whatsoever
-- CSS class names referenced here must be defined in `projects/ngx-tw/theme/default.css`
+- CSS class names referenced here must be defined in `projects/ngx-tw/theme/_base.css`
   (note this in the closing summary as a manual step for the developer)
 
 **ControlValueAccessor** (only if prompt specifies it)
@@ -354,7 +354,7 @@ passed and the assumption ledger is fully verified." Never leave this section ou
 
 **Manual steps required:**
 [List any steps Claude cannot do — e.g., "Add animation keyframes for
-'fade-in' and 'slide-in' classes to projects/ngx-tw/theme/default.css"]
+'fade-in' and 'slide-in' classes to projects/ngx-tw/theme/_base.css"]
 
 **Run tests:**
 ng test projects/ngx-tw

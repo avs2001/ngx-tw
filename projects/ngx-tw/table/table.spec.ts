@@ -222,6 +222,39 @@ class RowClickHost {
   }
 }
 
+// Same output, the other CDK index mode. `CdkTable._updateRowIndexContext()`
+// populates `dataIndex` + `renderIndex` when `multiTemplateDataRows` is on and
+// `index` when it is off — never both. `table.html` coalesces `di ?? i`, so
+// each mode needs its own host or half the coalescing goes untested.
+@Component({
+  imports: [TableComponent, ColumnComponent, CellDefDirective, RowExpansionDirective],
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  template: `
+    <tw-table
+      [data]="data()"
+      [multiTemplateRows]="true"
+      [(expandedRows)]="expanded"
+      aria-label="Multi-template click host"
+      (rowClicked)="onRowClick($event)"
+    >
+      <tw-column name="id" headerLabel="ID">
+        <ng-template twCellDef let-row>{{ $any(row).id }}</ng-template>
+      </tw-column>
+      <ng-template twRowExpansion let-row>
+        <div class="exp-panel">Expanded {{ $any(row).id }}</div>
+      </ng-template>
+    </tw-table>
+  `,
+})
+class MultiTemplateRowClickHost {
+  data = signal<Row[]>(SAMPLE_ROWS);
+  expanded = signal<ReadonlySet<Row>>(new Set());
+  events: TwRowClickEvent<Row>[] = [];
+  onRowClick(e: TwRowClickEvent<Row>): void {
+    this.events.push(e);
+  }
+}
+
 // ── Helpers ───────────────────────────────────────────────────────────
 
 /** Runs change detection, drains pending work, then renders again. */
@@ -429,9 +462,11 @@ describe('TableComponent — row click', () => {
     const rows = Array.from(fixture.nativeElement.querySelectorAll('tbody tr')) as HTMLElement[];
     expect(rows.length).toBe(SAMPLE_ROWS.length);
 
-    // The third row on purpose. `*cdkRowDef="let row; let i = dataIndex"` is the
-    // template glue under test here, and a row-0 assertion still passes when the
-    // index is wrong, hard-coded, or dropped altogether.
+    // The third row on purpose. The template glue under test is the `di ?? i`
+    // coalescing on the `*cdkRowDef` row — a row-0 assertion still passes when
+    // the index is wrong, hard-coded, or dropped altogether. This host does NOT
+    // set `multiTemplateRows`, so CDK populates `index` and leaves `dataIndex`
+    // undefined: this is the branch that shipped `index: undefined`.
     clickElement(rows[2]);
     await settle(fixture);
 
@@ -469,6 +504,48 @@ describe('TableComponent — row click', () => {
     await settle(fixture);
 
     expect(fixture.componentInstance.events).toEqual([]);
+  });
+});
+
+describe('TableComponent — row click with multiTemplateRows', () => {
+  let fixture: ComponentFixture<MultiTemplateRowClickHost>;
+
+  beforeEach(async () => {
+    await TestBed.configureTestingModule({
+      imports: [MultiTemplateRowClickHost],
+    }).compileComponents();
+    fixture = TestBed.createComponent(MultiTemplateRowClickHost);
+    await settle(fixture);
+  });
+
+  it('emits rowClicked with the data index, not the render index, when an expansion row is interleaved', async () => {
+    const table = fixture.debugElement.children[0].componentInstance as TableComponent<Row>;
+
+    // Expanding row 0 inserts an extra <tr> ahead of rows 1 and 2, so from here
+    // renderIndex !== dataIndex. Without this the two are equal and the test
+    // cannot tell a correct emission from a `renderIndex` regression.
+    table.expand(SAMPLE_ROWS[0]);
+    await settle(fixture);
+
+    const allRows = Array.from(
+      fixture.nativeElement.querySelectorAll('tbody tr'),
+    ) as HTMLElement[];
+    // Precondition: the expansion row actually rendered.
+    expect(allRows.length).toBe(SAMPLE_ROWS.length + 1);
+
+    // Data rows are the ones carrying the id column cell; the expansion row
+    // renders a single colspan cell with no `data-column`.
+    const dataRows = allRows.filter((tr) => tr.querySelector('td[data-column="id"]'));
+    expect(dataRows.length).toBe(SAMPLE_ROWS.length);
+
+    clickElement(dataRows[2]);
+    await settle(fixture);
+
+    const { events } = fixture.componentInstance;
+    expect(events.length).toBe(1);
+    expect(events[0].row).toBe(SAMPLE_ROWS[2]);
+    // dataIndex is 2; renderIndex is 3 because of the expansion row above it.
+    expect(events[0].index).toBe(2);
   });
 });
 

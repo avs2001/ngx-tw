@@ -207,7 +207,7 @@ interface RhythmRow {
         [unit]="settings().unit"
         [flagOffGrid]="settings().flagOffGrid"
       >
-        <tw-flip-card class="block h-24 w-full" ariaLabel="Flip card, rhythm sample">
+        <tw-flip-card class="block h-24 w-full" aria-label="Flip card, rhythm sample">
           <div slot="front" class="flex h-full w-full items-center justify-center p-4 text-sm">
             {{ line }}
           </div>
@@ -287,7 +287,7 @@ interface RhythmRow {
         [unit]="settings().unit"
         [flagOffGrid]="settings().flagOffGrid"
       >
-        <tw-carousel class="w-full" ariaLabel="Carousel, rhythm sample">
+        <tw-carousel class="w-full" aria-label="Carousel, rhythm sample">
           <tw-carousel-slide label="First">
             <p class="text-sm">{{ line }}</p>
           </tw-carousel-slide>

@@ -164,8 +164,25 @@ Movements worth knowing about:
 
 - **Selection controls** (`switch`, `checkbox`, `radio`, `slider`) — glyph-scale by design.
 - **`textarea`, `tags-input`, `item`, `menu` rows, table cells, `tree` nodes, `form-field`** take
-  a `min-h-*` floor, not a pin, so content can grow. An *empty* tags-input sits on the scale; a
-  populated one is legitimately taller, because the chip out-measures the text line.
+  a `min-h-*` floor, not a pin, so content can grow. A tags-input whose chips **wrap to a second
+  row** is legitimately taller; one showing a *single* row of chips is not, and sits on the scale
+  exactly like the empty control.
+
+  > **Corrected 2026-09-02.** This bullet previously read "an *empty* tags-input sits on the
+  > scale; a populated one is legitimately taller, because the chip out-measures the text line."
+  > The mechanism was real — the chip does out-measure the text line at xs, md, lg and xl, and
+  > not at sm, where the two are both 20px — but the conclusion was wrong. It described the
+  > symptom of a padding bug as if it were a design intent. `tags-input`'s own compound-variant
+  > comment stated the opposite intent: vertical padding is set below the nominal scale "so the
+  > `min-h-*` floor actually BINDS at rest". It did not bind, because the arithmetic was computed
+  > against the input's line box rather than against the chip.
+  >
+  > Measured populated: **26 / 32 / 38 / 50 / 54** against a 24 / 32 / 36 / 44 / 48 scale. A
+  > filter bar was therefore on the grid until the user typed the first tag, then jumped 2px at
+  > xs and md and 6px at lg and xl. Padding is now sized against the chip, so the floor binds in
+  > the single-row case and still governs the wrapped case. Resting appearance is unchanged —
+  > once the floor binds, `items-center` centres the chip and the padding no longer sets the
+  > height. Gated by the `Pinned next to floored` row in `e2e/specs/02-cross-cutting/row-alignment.spec.ts`.
 - **`button` `variant="link"`** — no box; a pinned height would blow out the line box of any
   paragraph it sits in.
 - **`date-picker` with a projected custom trigger** — the consumer owns that box.
@@ -179,3 +196,68 @@ Movements worth knowing about:
 per side leaves a 16px target, under the WCAG 2.2 SC 2.5.8 floor. An inset track and a 24px
 target cannot both fit in 24px. The alternative (a 32px root at `xs`) would have kept the inset
 but broken the shared control height. The inset returns at `sm` and above.
+
+---
+
+## 7. Row alignment — what the per-slot measurements cannot tell you
+
+**Status:** normative. Adopted 2026-09-02.
+**Instrument:** the "Row alignment" section of `/foundations/rhythm`.
+**Gate:** `e2e/specs/02-cross-cutting/row-alignment.spec.ts` (`@rowalign`).
+
+§1–§6 answer *"is this control the right height?"* by measuring each control alone. That cannot
+answer *"do these two line up?"* — and the two are genuinely different questions. Every control
+below passes the isolated check; some rows still misalign.
+
+The instrument measures **two boxes per item**, because for a wrapper they are not the same box:
+
+| Box | What it is |
+|---|---|
+| **outer** | the element the consumer writes in their markup |
+| **control** | the visible shell — the bordered or filled box a reader perceives as "the control" |
+
+It reports five spreads (outer, control, top, bottom, centre). **Which one is load-bearing is
+decided by the row's `align-items`, not by the components.** A non-zero top spread under
+`items-center` is not a defect — it is what centring mismatched heights *means*. The invariant
+that must hold in every mode is the **control spread**.
+
+### 7.1 The result
+
+At every size, the seven controls a toolbar puts side by side — button, input, select, combobox,
+date-picker, time-picker, segmented-control — agree on **every** edge to the pixel, under
+`items-center` and under `items-baseline` alike.
+
+Two measured caveats, both recorded rather than hidden:
+
+- **`items-baseline` carries a 0.5px offset at xs/sm/md.** Four controls place their first text
+  baseline identically; a native `<input>` sits 0.5px higher. The shells are identical — the cause
+  is that an input derives its baseline from its own text layout while every other control is a
+  flex container deriving it from a child, and the two round differently at the fractional ascents
+  12px and 14px text produce. At 16px (lg/xl) it is exactly zero. Forcing agreement means
+  overriding a native input's baseline, which is not worth it; the gate tolerates 0.75px.
+- **The consumer's inherited font cannot move a pinned control.** Verified by measuring the same
+  row under `text-xs`, `text-sm` and `text-base` parents: identical at all three. This is the
+  regression gate for the `select`-at-27px bug class (§6), which only a shared row with a varied
+  font strut can see.
+
+### 7.2 The rule that matters for consumers
+
+> **`tw-form-field` does not box-match a bare control, and no `align-items` value fixes that.**
+
+A form field reserves a label row above its shell and a subscript row below it. At `md` its shell
+is 36px — exactly on the scale, agreeing with every neighbour — while its **outer box is 60px**.
+So in a row mixing form fields with bare controls:
+
+| Mode | What happens |
+|---|---|
+| `items-center` | centres the 60px *wrapper*, putting its shell **12px** above its neighbours |
+| `items-end` | aligns the wrapper's bottom, and the reserved-but-empty subscript row keeps the shell **24px** off |
+| `items-start` | aligns the label row against the neighbours' shells |
+
+This is not a library defect — the control spread is 0px in every one of those modes. It is a
+composition rule, and it has one correct answer:
+
+**Do not mix wrapped and bare controls in the same row.** Either wrap every control in a
+`tw-form-field` (the label row then aligns across the row, and the shells align beneath it), or
+use none and put the labels somewhere else. A filter bar with one labelled field among bare ones
+is the arrangement that cannot be rescued by an alignment property.

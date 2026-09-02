@@ -943,3 +943,121 @@ describe('RadioGroupComponent errorState', () => {
     expect(getGroup(fixture).getAttribute('aria-invalid')).toBe(null);
   });
 });
+
+// ── Size axis ─────────────────────────────────────────────────────
+//
+// The radio's rendered row is `max(circleWrap min-h, label first-line leading)`, and the
+// host is the interactive target (role, tabindex and click all sit on the root). Before the
+// vertical-rhythm follow-up it measured 16 / 20 / 20 / 24 / 28px — `sm` and `md` rendered an
+// identical row, so one of the five steps did nothing. It is now 16 / 20 / 24 / 28 / 32.
+//
+// jsdom performs no layout, so the row height itself cannot be read back. What these tests
+// assert instead is the property that fix establishes: the two elements that determine the
+// row resolve differently at every step of the axis. That fails the moment a step is
+// collapsed again, which is the regression worth guarding.
+
+@Component({
+  imports: [RadioComponent],
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  template: `<tw-radio [size]="size()" [label]="label()" value="a" aria-label="Sized" />`,
+})
+class SizeAxisHost {
+  size = signal<TwSize>('md');
+  label = signal<string | undefined>('Option A');
+}
+
+describe('RadioComponent size axis', () => {
+  const focusMonitorSpy = {
+    monitor: vi.fn(),
+    stopMonitoring: vi.fn(),
+  };
+
+  const SIZES: readonly TwSize[] = ['xs', 'sm', 'md', 'lg', 'xl'];
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    TestBed.configureTestingModule({
+      providers: [{ provide: FocusMonitor, useValue: focusMonitorSpy }],
+    });
+  });
+
+  /** `[circleWrap, label]` — the two elements the rendered row height comes from. */
+  function rowElements(fixture: ComponentFixture<unknown>): [HTMLElement, HTMLElement] {
+    const spans = [...getRadios(fixture)[0].children].filter(
+      el => el.tagName === 'SPAN',
+    ) as HTMLElement[];
+    return [spans[0], spans[1].firstElementChild as HTMLElement];
+  }
+
+  function renderEachSize(
+    fixture: ComponentFixture<SizeAxisHost>,
+    pick: (fixture: ComponentFixture<unknown>) => string,
+  ): string[] {
+    return SIZES.map(size => {
+      fixture.componentInstance.size.set(size);
+      fixture.detectChanges();
+      return pick(fixture);
+    });
+  }
+
+  it('should size the circle wrapper differently at every step', () => {
+    const fixture = TestBed.createComponent(SizeAxisHost);
+    const rendered = renderEachSize(fixture, f => rowElements(f)[0].className);
+    expect(new Set(rendered).size).toBe(SIZES.length);
+  });
+
+  it('should size the label line differently at every step', () => {
+    const fixture = TestBed.createComponent(SizeAxisHost);
+    const rendered = renderEachSize(fixture, f => rowElements(f)[1].className);
+    expect(new Set(rendered).size).toBe(SIZES.length);
+  });
+
+  it('should keep the steps distinct when no label is projected', () => {
+    const fixture = TestBed.createComponent(SizeAxisHost);
+    fixture.componentInstance.label.set(undefined);
+    const rendered = renderEachSize(fixture, f => rowElements(f)[0].className);
+    expect(new Set(rendered).size).toBe(SIZES.length);
+  });
+
+  it('should render sm and md differently — the historical dead step', () => {
+    const fixture = TestBed.createComponent(SizeAxisHost);
+
+    fixture.componentInstance.size.set('sm');
+    fixture.detectChanges();
+    const [smCircleWrap, smLabel] = rowElements(fixture).map(el => el.className);
+
+    fixture.componentInstance.size.set('md');
+    fixture.detectChanges();
+    const [mdCircleWrap, mdLabel] = rowElements(fixture).map(el => el.className);
+
+    expect(mdCircleWrap).not.toBe(smCircleWrap);
+    expect(mdLabel).not.toBe(smLabel);
+  });
+
+  // The next two are pre-existing invariants, not part of the row fix — circle (14/16/20/24/28)
+  // and dot (6/8/10/12/14) were already five distinct steps and both pass on the code before
+  // it. Pinned because the row scale is now driven by `circleWrap`, which makes it possible to
+  // "simplify" the glyph onto the row without anything else failing.
+  it('should keep the circle glyph on a five-step scale of its own, independent of the row', () => {
+    const fixture = TestBed.createComponent(SizeAxisHost);
+    const rendered = renderEachSize(
+      fixture,
+      f => (rowElements(f)[0].firstElementChild as HTMLElement).className,
+    );
+    expect(new Set(rendered).size).toBe(SIZES.length);
+  });
+
+  it('should keep the selection dot on a five-step scale of its own', () => {
+    const fixture = TestBed.createComponent(SizeAxisHost);
+    fixture.detectChanges();
+    getRadios(fixture)[0].click();
+
+    const rendered = renderEachSize(fixture, f => {
+      // circleWrap > circle > dotWrap > dot
+      const circle = rowElements(f)[0].firstElementChild!;
+      return (circle.firstElementChild!.firstElementChild as HTMLElement).className;
+    });
+
+    expect(new Set(rendered).size).toBe(SIZES.length);
+  });
+});

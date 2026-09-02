@@ -92,7 +92,7 @@ const PROGRESS_SIZE: Record<TwSize, ProgressBarSize> = {
         [flagOffGrid]="settings().flagOffGrid"
         note="the group's size overrides each child avatar's own size input"
       >
-        <tw-avatar-group [size]="settings().size" ariaLabel="Project members">
+        <tw-avatar-group [size]="settings().size" aria-label="Project members">
           <tw-avatar initials="JD" color="primary" alt="Jane Doe" />
           <tw-avatar initials="AB" color="success" alt="Alice Brown" />
           <tw-avatar initials="MK" color="accent" alt="Mike Keller" />

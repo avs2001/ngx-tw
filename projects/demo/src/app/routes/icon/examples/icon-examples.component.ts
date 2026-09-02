@@ -224,7 +224,7 @@ const PLAYGROUND_ICONS: readonly string[] = [
       <div class="rounded-lg border border-border p-6 bg-surface-raised mb-4">
         <div class="flex flex-wrap items-center gap-4">
           <div class="flex items-center gap-3">
-            <tw-icon name="check-circle" color="success" size="lg" ariaLabel="Synchronised" />
+            <tw-icon name="check-circle" color="success" size="lg" aria-label="Synchronised" />
             <span class="text-sm text-fg-muted">Standalone icon — uses ariaLabel</span>
           </div>
           <div class="flex items-center gap-3">
@@ -407,7 +407,7 @@ export class IconExamples {
 </span>`;
 
   protected readonly accessibilitySnippet = `<!-- Standalone icon: ariaLabel makes it announce as role="img" -->
-<tw-icon name="check-circle" color="success" size="lg" ariaLabel="Synchronised" />
+<tw-icon name="check-circle" color="success" size="lg" aria-label="Synchronised" />
 
 <!-- Icon-only button: label the button, keep the icon aria-hidden -->
 <button twButton variant="outline" size="sm" aria-label="Open settings">

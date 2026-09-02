@@ -140,7 +140,7 @@ import { CodeBlockComponent } from '@cdevhub/ngx-tw/code-block';
               <td class="px-4 py-2 text-fg-muted">Optional comparison label rendered next to the delta value (e.g. <code class="font-mono text-xs">"vs last week"</code>, <code class="font-mono text-xs">"since launch"</code>). Defaults to <code class="font-mono text-xs">undefined</code>.</td>
             </tr>
             <tr>
-              <td class="px-4 py-2 font-mono text-xs">ariaLabel</td>
+              <td class="px-4 py-2 font-mono text-xs">aria-label</td>
               <td class="px-4 py-2 font-mono text-xs text-fg-muted">string | undefined</td>
               <td class="px-4 py-2 font-mono text-xs text-fg-muted">undefined</td>
               <td class="px-4 py-2 text-fg-muted">Explicit accessible label. When omitted, the component composes one from <code class="font-mono text-xs">direction</code> + projected text + <code class="font-mono text-xs">comparisonLabel</code>. Override when projected content is purely symbolic or already localized. Defaults to <code class="font-mono text-xs">undefined</code>.</td>

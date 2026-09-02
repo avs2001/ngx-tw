@@ -258,8 +258,8 @@ export class AvatarGroupComponent {
   /** Maximum number of avatars to display. Remaining count is shown as a "+N" overflow indicator. Defaults to `null` (show all). */
   readonly max = input<number | null>(null);
 
-  /** Accessible label for the avatar group. Defaults to `'Avatar group'` (English) — override for localisation. */
-  readonly ariaLabel = input('Avatar group');
+  /** Accessible label for the avatar group, mirrored to `aria-label`. Defaults to `'Avatar group'` (English) — override for localisation. */
+  readonly ariaLabel = input('Avatar group', { alias: 'aria-label' });
 
   private readonly avatars = contentChildren(AvatarComponent);
 

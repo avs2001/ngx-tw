@@ -121,7 +121,11 @@ For neutral/structural styling, use these tokens instead of raw `neutral-*` shad
 | `border-muted` | border | very subtle (ghost variant footers) |
 | `border-strong` | border | emphasized (code-block outlines) |
 
-**Rule.** For color-specific variants (alert colors, tab active states), use `{color}-{shade}` tokens with explicit `dark:` overrides. For neutral structural styling (backgrounds, text, borders that don't change with the color variant), use surface/fg/border tokens — they handle dark mode automatically.
+**Rule.** For color-specific variants (alert colors, tab active states), use `{color}-{shade}` tokens. For neutral structural styling (backgrounds, text, borders that don't change with the color variant), use surface/fg/border tokens. Both handle dark mode automatically.
+
+**Never write a `dark:` variant in a component.** The theme layer already inverts the ramp: `theme/_dark.css` maps `--color-primary-50` onto `blue-950`, so `bg-primary-50` *is* the dark wash in dark mode. A `dark:` override on top re-inverts it — `dark:bg-primary-900/20` resolves to `blue-100`, near-white. Dark mode belongs entirely to the consumer's theme layer; a component that names it has already broken it.
+
+> This rule previously said the opposite — "use `{color}-{shade}` tokens with **explicit `dark:` overrides**". Only two `dark:` utilities were ever written against that instruction, both in `file-upload`, and both inverted the drag-over affordance into a bright flash in dark mode. The instruction was the defect. Corrected 2026-09-02; the library now contains zero `dark:` variants, which makes this greppable as a lint rule.
 
 ### Visual Design System
 
@@ -188,7 +192,9 @@ Font sizes by component role:
 | xs-density secondary text (xs descriptions, xs meridiem buttons, kbd hints) | `text-2xs` | normal |
 | Monospace content | `font-mono text-sm` | normal |
 
-`text-base` (16px) is permitted **only** for the codified exceptions above — the lg-density `tw-item` title (dominant section header above a `text-sm` description) and the `tw-stat` lg/xl value (dominant KPI numeric above a `text-sm` label/description). Do not introduce new uses of `text-base` for component-internal text.
+`text-base` (16px) is permitted in exactly two places: the **`lg`/`xl` steps of the trigger font-size scale** below, and the two codified content exceptions above — the lg-density `tw-item` title (dominant section header above a `text-sm` description) and the `tw-stat` lg/xl value (dominant KPI numeric above a `text-sm` label/description). Outside those, do not introduce `text-base` for component-internal text.
+
+> This clause previously read "permitted **only** for the codified exceptions above", which contradicted the trigger table eight lines below and put 27 components in nominal violation of a rule they were correctly following. The trigger table is the authoritative half; this sentence was the stale one. Resolved 2026-09-02.
 
 Trigger font size scale (tabs, segmented controls, button groups):
 
@@ -229,7 +235,7 @@ Do NOT use `@angular/animations` — deprecated in v20.2, removed in v23. Use An
 - Host binding: `host: { '[animate.enter]': 'enterAnimation' }` where `enterAnimation` is a signal or string property
 - Multiple classes are space-separated: `animate.enter="slide-in fade-in"`
 
-**Keyframe definitions live in `projects/ngx-tw/theme/default.css`** (e.g., `.fade-in`, `.slide-in`), not in component files. Components reference class names only. Handle `prefers-reduced-motion` in the theme CSS alongside the keyframe: `@media (prefers-reduced-motion: reduce) { .fade-in { animation-duration: 0ms; } }`.
+**Keyframe definitions live in `projects/ngx-tw/theme/_base.css`** (e.g., `.fade-in`, `.slide-in`), not in component files. Components reference class names only. Handle `prefers-reduced-motion` in the theme CSS alongside the keyframe: `@media (prefers-reduced-motion: reduce) { .fade-in { animation-duration: 0ms; } }`.
 
 #### Focus Rings
 
@@ -279,8 +285,12 @@ The `<tw-icon>` component parametrises the glyph scale across the full `TwSize` 
 | `xs` | `size-2` (8px) |
 | `sm` | `size-2.5` (10px) |
 | `md` | `size-3` (12px) |
+| `lg` | `size-3.5` (14px) |
+| `xl` | `size-4` (16px) |
 
-**Half-step decorative.** `size-3.5` (14px) is permitted **only** for xs-density chevrons inside compact triggers (sort, pickers, time-picker meridiem, split chevron) where neither `size-3` nor `size-4` lines up with adjacent text. Each use must carry a one-line comment explaining why the half-step is needed.
+The `lg` / `xl` rows exist because `badge-dot` spans the full `TwSize` axis while the table originally defined three steps, leaving it to render 6/6/8/10/10 — both a dead step and a scale violation. Continuing the table's own 2px cadence to five steps admits exactly one assignment. `size-5` (20px) is not a dot; the scale stops at 16px.
+
+**Half-step decorative.** `size-3.5` (14px) is permitted **only** for xs-density chevrons inside compact triggers (sort, pickers, time-picker meridiem, split chevron) where neither `size-3` nor `size-4` lines up with adjacent text, **and** as the `lg` step of the dot sub-scale above. Each chevron use must carry a one-line comment explaining why the half-step is needed; dot-scale uses need none, because the table is the justification.
 
 Always add `shrink-0` to icons in flex containers to prevent collapse. Use `mt-0.5` on icons next to multi-line text to align with the first line's baseline.
 

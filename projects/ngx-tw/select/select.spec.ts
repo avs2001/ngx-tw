@@ -109,6 +109,152 @@ class SignalFormHost {
   readonly selectForm = form(this.model);
 }
 
+// ── Accessor / configuration hosts ────────────────────────────────
+//
+// Deliberately separate from BasicHost: every test in this file shares that
+// template, so widening it would change the surface every other case runs on.
+
+/** Record shape sharing no field names with the default option accessors. */
+interface FruitRecord {
+  readonly name: string;
+  readonly id: string;
+  readonly off?: boolean;
+  readonly cat?: string;
+}
+
+const FRUIT_RECORDS: readonly FruitRecord[] = [
+  { name: 'Apricot', id: 'a1', cat: 'Stone' },
+  { name: 'Blueberry', id: 'b2', cat: 'Berry' },
+  { name: 'Cranberry', id: 'c3', cat: 'Berry', off: true },
+];
+
+@Component({
+  imports: [SelectComponent],
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  template: `
+    <tw-select
+      [options]="options"
+      [(value)]="value"
+      [optionLabel]="labelFn"
+      [optionValue]="valueFn"
+      [optionDisabled]="disabledFn"
+      [optionGroup]="groupFn"
+      aria-label="Fruit records"
+      (selectionChange)="onSelectionChange($event)"
+    />
+  `,
+})
+class AccessorHost {
+  options = FRUIT_RECORDS;
+  value = signal<string | null>(null);
+  labelFn = (o: unknown): string => (o as FruitRecord).name;
+  valueFn = (o: unknown): string => (o as FruitRecord).id;
+  disabledFn = (o: unknown): boolean => !!(o as FruitRecord).off;
+  groupFn = (o: unknown): string | undefined => (o as FruitRecord).cat;
+  selectionSpy = vi.fn();
+  onSelectionChange(ev: TwSelectSelectionChangeEvent<string>): void { this.selectionSpy(ev); }
+}
+
+interface TagValue {
+  readonly id: string;
+}
+
+const TAG_OPTIONS: readonly TwSelectOption<TagValue>[] = [
+  { label: 'Red', value: { id: 'r' } },
+  { label: 'Green', value: { id: 'g' } },
+];
+
+@Component({
+  imports: [SelectComponent],
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  template: `
+    <tw-select [options]="options" [(value)]="value" [compareWith]="cmp" aria-label="Tags" />
+  `,
+})
+class CompareHost {
+  options = TAG_OPTIONS;
+  value = signal<TagValue | null>(null);
+  cmp = (a: TagValue, b: TagValue): boolean => a.id === b.id;
+}
+
+@Component({
+  imports: [SelectComponent],
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  template: `<tw-select [options]="options" [(value)]="value" aria-label="Tags default" />`,
+})
+class DefaultCompareHost {
+  options = TAG_OPTIONS;
+  value = signal<TagValue | null>(null);
+}
+
+@Component({
+  imports: [SelectComponent],
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  template: `
+    <tw-select [options]="options" [emptyMessage]="emptyMessage" aria-label="Empty" />
+  `,
+})
+class EmptyMessageHost {
+  options: readonly TestOption[] = [];
+  emptyMessage = 'Nothing to pick';
+}
+
+@Component({
+  imports: [SelectComponent],
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  template: `
+    <tw-select
+      [options]="options"
+      [searchable]="true"
+      [filterPredicate]="predicate"
+      aria-label="Predicate"
+    />
+  `,
+})
+class PredicateHost {
+  options = OPTIONS;
+  // Matches on the option's `value`, which the default label-substring
+  // predicate never reads.
+  predicate = (o: unknown, search: string): boolean =>
+    (o as TestOption).value.endsWith(search);
+}
+
+@Component({
+  imports: [SelectComponent],
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  template: `
+    <tw-select
+      [options]="options"
+      [panelWidth]="320"
+      [panelMaxHeight]="180"
+      [panelClass]="'my-panel'"
+      aria-label="Panel config"
+    />
+  `,
+})
+class PanelConfigHost {
+  options = OPTIONS;
+}
+
+@Component({
+  imports: [SelectComponent],
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  template: `
+    <span id="sel-ext-label">External label</span>
+    <span id="sel-ext-desc">Helper text</span>
+    <tw-select
+      [options]="options"
+      [aria-labelledby]="labelledby"
+      [aria-describedby]="describedby"
+    />
+  `,
+})
+class AriaRefHost {
+  options = OPTIONS;
+  labelledby = 'sel-ext-label';
+  describedby = 'sel-ext-desc';
+}
+
 // ── Helpers ───────────────────────────────────────────────────────
 
 function getSelectHost(fixture: ComponentFixture<unknown>): HTMLElement {
@@ -127,6 +273,11 @@ function getOptions(): HTMLElement[] {
   return Array.from(document.querySelectorAll('[role="option"]')) as HTMLElement[];
 }
 
+/** Collapses template indentation so multi-line rows compare cleanly. */
+function normalizeText(el: Element): string {
+  return (el.textContent ?? '').replace(/\s+/g, ' ').trim();
+}
+
 function dispatchKeyOn(el: HTMLElement, key: string, opts: KeyboardEventInit = {}): KeyboardEvent {
   const event = new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true, ...opts });
   el.dispatchEvent(event);
@@ -137,6 +288,34 @@ async function advance(fixture: ComponentFixture<unknown>): Promise<void> {
   fixture.detectChanges();
   await fixture.whenStable();
   fixture.detectChanges();
+}
+
+/**
+ * Pumps change detection on real macrotasks until `predicate` holds.
+ *
+ * Deliberately does NOT use `fixture.whenStable()`. The close path arms a
+ * leave-animation timer, and awaiting stability across it made the reopen test
+ * intermittently blow the 5s limit — it passed one run and timed out the next
+ * with no code change between them. Polling the observable DOM is both
+ * deterministic and exactly what the assertion cares about.
+ */
+async function pumpUntil(
+  fixture: ComponentFixture<unknown>,
+  predicate: () => boolean,
+  label: string,
+  timeoutMs = 2000,
+): Promise<void> {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    fixture.detectChanges();
+    if (predicate()) {
+      fixture.detectChanges();
+      return;
+    }
+    await new Promise(resolve => setTimeout(resolve, 10));
+  }
+  fixture.detectChanges();
+  throw new Error(`pumpUntil timed out waiting for: ${label}`);
 }
 
 // ── Tests ─────────────────────────────────────────────────────────
@@ -744,6 +923,182 @@ describe('SelectComponent', () => {
       await advance(fixture);
       const listbox = document.querySelector('[role="listbox"]');
       expect(listbox!.id).toBe(ariaControls);
+    });
+
+    it('forwards aria-labelledby and aria-describedby to the trigger', () => {
+      const fixture = TestBed.createComponent(AriaRefHost);
+      fixture.detectChanges();
+      const trigger = getTriggerButton(fixture);
+      expect(trigger.getAttribute('aria-labelledby')).toBe('sel-ext-label');
+      expect(trigger.getAttribute('aria-describedby')).toBe('sel-ext-desc');
+    });
+  });
+
+  // ── Option accessors ──
+  //
+  // Every accessor input is exercised against a record shape that shares NO
+  // field names with the defaults (`label` / `value` / `disabled` / `group`), so
+  // a regression that silently falls back to the default accessor renders an
+  // empty label instead of the expected text.
+
+  describe('option accessors', () => {
+    it('renders custom optionLabel text in the panel and in the trigger', async () => {
+      const fixture = TestBed.createComponent(AccessorHost);
+      fixture.detectChanges();
+      getTriggerButton(fixture).click();
+      await advance(fixture);
+      expect(getOptions().map(normalizeText)).toEqual(['Apricot', 'Blueberry', 'Cranberry']);
+      getOptions()[0].click();
+      await advance(fixture);
+      expect(getTriggerButton(fixture).textContent).toContain('Apricot');
+    });
+
+    it('emits the custom optionValue result, not the record itself', async () => {
+      const fixture = TestBed.createComponent(AccessorHost);
+      fixture.detectChanges();
+      getTriggerButton(fixture).click();
+      await advance(fixture);
+      const spy = fixture.componentInstance.selectionSpy;
+      spy.mockClear();
+      getOptions()[1].click();
+      await advance(fixture);
+      expect(fixture.componentInstance.value()).toBe('b2');
+      expect(spy).toHaveBeenCalled();
+      const event = spy.mock.calls.at(-1)![0] as TwSelectSelectionChangeEvent<string>;
+      expect(event.value).toBe('b2');
+      expect(event.added).toEqual(['b2']);
+    });
+
+    it('marks options disabled through the custom optionDisabled accessor and blocks selection', async () => {
+      const fixture = TestBed.createComponent(AccessorHost);
+      fixture.detectChanges();
+      getTriggerButton(fixture).click();
+      await advance(fixture);
+      const options = getOptions();
+      expect(options[2].getAttribute('aria-disabled')).toBe('true');
+      expect(options[0].getAttribute('aria-disabled')).toBeNull();
+      options[2].click();
+      await advance(fixture);
+      expect(fixture.componentInstance.value()).toBeNull();
+    });
+
+    it('renders one group region per distinct custom optionGroup value', async () => {
+      const fixture = TestBed.createComponent(AccessorHost);
+      fixture.detectChanges();
+      getTriggerButton(fixture).click();
+      await advance(fixture);
+      const groups = Array.from(document.querySelectorAll('[role="group"]'));
+      expect(groups.map((g) => g.getAttribute('aria-label'))).toEqual(['Stone', 'Berry']);
+    });
+
+    it('resolves the selected label through compareWith for a structurally-equal value', async () => {
+      const fixture = TestBed.createComponent(CompareHost);
+      fixture.componentInstance.value.set({ id: 'g' });
+      await advance(fixture);
+      // A fresh object literal is never `Object.is`-equal to the option's own
+      // value, so only the custom comparator can resolve this label.
+      expect(getTriggerButton(fixture).textContent).toContain('Green');
+    });
+
+    it('falls back to reference equality without compareWith, leaving the trigger label blank', async () => {
+      const fixture = TestBed.createComponent(DefaultCompareHost);
+      fixture.componentInstance.value.set({ id: 'g' });
+      await advance(fixture);
+      expect(getTriggerButton(fixture).textContent).not.toContain('Green');
+    });
+  });
+
+  // ── Panel configuration ──
+
+  describe('panel configuration', () => {
+    it('renders a custom emptyMessage when the option list is empty', async () => {
+      const fixture = TestBed.createComponent(EmptyMessageHost);
+      fixture.detectChanges();
+      getTriggerButton(fixture).click();
+      await advance(fixture);
+      expect(getOptions().length).toBe(0);
+      expect(getOverlayPanel()!.textContent).toContain('Nothing to pick');
+    });
+
+    it('filters with a custom filterPredicate instead of the default label match', async () => {
+      const fixture = TestBed.createComponent(PredicateHost);
+      fixture.detectChanges();
+      getTriggerButton(fixture).click();
+      await advance(fixture);
+      const searchInput = document.querySelector('input[type="search"]') as HTMLInputElement;
+      // The default predicate is a label substring match, which 'a' satisfies for
+      // Apple, Banana and Date. The custom one is a suffix match on the option's
+      // `value`, which only Banana satisfies — so the count discriminates.
+      searchInput.value = 'a';
+      searchInput.dispatchEvent(new Event('input', { bubbles: true }));
+      await advance(fixture);
+      const options = getOptions();
+      expect(options.length).toBe(1);
+      expect(options[0].textContent).toContain('Banana');
+    });
+
+    it('applies a numeric panelWidth to the overlay pane', async () => {
+      const fixture = TestBed.createComponent(PanelConfigHost);
+      fixture.detectChanges();
+      getTriggerButton(fixture).click();
+      await advance(fixture);
+      const pane = document.querySelector('.cdk-overlay-pane') as HTMLElement | null;
+      expect(pane).toBeTruthy();
+      expect(pane!.style.width).toBe('320px');
+    });
+
+    it('applies panelMaxHeight to the scrollable listbox region', async () => {
+      const fixture = TestBed.createComponent(PanelConfigHost);
+      fixture.detectChanges();
+      getTriggerButton(fixture).click();
+      await advance(fixture);
+      const listbox = document.querySelector('[role="listbox"]') as HTMLElement;
+      expect(listbox.style.maxHeight).toBe('180px');
+    });
+
+    it('appends the consumer panelClass to the overlay panel', async () => {
+      // Not the forbidden "assert internal class names" case: the asserted token
+      // is the consumer's own input value, and landing on the panel is the whole
+      // observable contract of `panelClass`.
+      const fixture = TestBed.createComponent(PanelConfigHost);
+      fixture.detectChanges();
+      getTriggerButton(fixture).click();
+      await advance(fixture);
+      expect(getOverlayPanel()!.classList.contains('my-panel')).toBe(true);
+    });
+  });
+
+  // ── Reopen ──
+
+  describe('reopen', () => {
+    it('re-pushes the option rows into the fresh panel on reopen', async () => {
+      const fixture = TestBed.createComponent(BasicHost);
+      fixture.detectChanges();
+      getTriggerButton(fixture).click();
+      await pumpUntil(fixture, () => getOptions().length === 4, 'the panel to open');
+
+      // Close, then let the leave-animation window elapse so the overlay detaches.
+      getTriggerButton(fixture).click();
+      await pumpUntil(
+        fixture,
+        () => getTriggerButton(fixture).getAttribute('aria-expanded') === 'false',
+        'the panel to close',
+      );
+
+      // Reopening builds a brand-new overlay component whose row list starts
+      // empty. The panel is only populated by the state-push effect, so this
+      // asserts that effect still wakes on a second attach.
+      getTriggerButton(fixture).click();
+      await pumpUntil(
+        fixture,
+        () => getTriggerButton(fixture).getAttribute('aria-expanded') === 'true',
+        'the panel to reopen',
+      );
+
+      const panels = document.querySelectorAll('tw-select-overlay');
+      const fresh = panels[panels.length - 1];
+      expect(fresh).toBeTruthy();
+      expect(fresh.querySelectorAll('[role="option"]').length).toBe(4);
     });
   });
 });

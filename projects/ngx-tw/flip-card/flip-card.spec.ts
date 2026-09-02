@@ -71,7 +71,7 @@ class DynamicBackHost {
   imports: [FlipCardComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <tw-flip-card trigger="manual" [ariaLabel]="ariaLabel()">
+    <tw-flip-card trigger="manual" [aria-label]="ariaLabel()">
       <div slot="front">Front</div>
       <div slot="back">Back</div>
     </tw-flip-card>
@@ -80,6 +80,23 @@ class DynamicBackHost {
 class ManualLabelHost {
   readonly ariaLabel = signal<string | undefined>(undefined);
 }
+
+// A consumer writing the plain `aria-label` attribute — the exact shape that
+// used to be overwritten by the `'Flip card'` fallback because the input was
+// not aliased. Driving the input directly (`setInput`) skips the attribute
+// path and would have passed with the bug present, so this host uses the
+// static attribute deliberately.
+@Component({
+  imports: [FlipCardComponent],
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  template: `
+    <tw-flip-card trigger="manual" aria-label="Invoice #00412 summary">
+      <div slot="front">Front</div>
+      <div slot="back">Back</div>
+    </tw-flip-card>
+  `,
+})
+class StaticAriaLabelHost {}
 
 // ── Helpers ──
 
@@ -397,6 +414,15 @@ describe('FlipCardComponent', () => {
       fixture.componentInstance.ariaLabel.set('Invoice summary');
       await flushBack(fixture);
       expect(host(fixture).getAttribute('aria-label')).toBe('Invoice summary');
+    });
+
+    it('a consumer-written aria-label attribute wins over the "Flip card" fallback', async () => {
+      await TestBed.configureTestingModule({ imports: [StaticAriaLabelHost] })
+        .compileComponents();
+      const fixture = TestBed.createComponent(StaticAriaLabelHost);
+      await flushBack(fixture);
+      expect(host(fixture).getAttribute('aria-label')).toBe('Invoice #00412 summary');
+      expect(host(fixture).getAttribute('aria-label')).not.toBe('Flip card');
     });
 
     it('interactive modes leave aria-label unset by default (accessible name comes from visible face)', async () => {

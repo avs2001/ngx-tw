@@ -54,6 +54,7 @@ import { ComboboxOverlayComponent } from './combobox-overlay';
 import type {
   ComboboxRenderedRow,
   ComboboxVisibleOption,
+  TwComboboxFilterFn,
   TwComboboxOpenedEvent,
   TwComboboxOptionContext,
   TwComboboxOptionSelectedEvent,
@@ -375,7 +376,7 @@ export class ComboboxComponent<T = unknown>
   readonly optionDescription = input<(option: unknown) => string | undefined>(defaultOptionDescription);
 
   /** Filter function applied client-side whenever `inputValue` changes. Pass `null` to disable client filtering (async mode). Defaults to case-insensitive `startsWith` on the label. */
-  readonly filterFn = input<((option: unknown, query: string) => boolean) | null>(defaultStartsWithFilter);
+  readonly filterFn = input<TwComboboxFilterFn | null>(defaultStartsWithFilter);
 
   /** When `true`, free-text commits are rejected — the input reverts to the last committed label on blur. Defaults to `false`. */
   readonly strict = input<boolean>(false);
@@ -395,12 +396,12 @@ export class ComboboxComponent<T = unknown>
   /** Semantic color for the focus ring. Defaults to `'primary'`. */
   readonly color = input<TwColor>('primary');
 
-  /** Whether the trailing chevron affordance is rendered. */
+  /** Whether the trailing chevron affordance is rendered. Defaults to `true` — the chevron signals the dropdown affordance; the special case is an inline search input that opts out. */
   // TRUE-default: the chevron signals the dropdown affordance; without it the
   // combobox reads as a plain input. Opt-out is for inline search inputs.
   readonly showChevron = input<boolean>(true);
 
-  /** Whether the inline clear (×) button appears while `inputValue` is non-empty. */
+  /** Whether the inline clear (×) button appears while `inputValue` is non-empty. Defaults to `true` — clearing a typed value is the expected combobox gesture; the special case is a required-only flow. */
   // TRUE-default: the clear affordance is the expected combobox UX once a value
   // is set; opt-out is for required-only flows.
   readonly clearable = input<boolean>(true);
@@ -414,7 +415,7 @@ export class ComboboxComponent<T = unknown>
   /** Minimum query length before the popover opens automatically. `0` opens on focus. Defaults to `0`. */
   readonly minQueryLength = input<number>(0);
 
-  /** Whether the popover opens automatically when the input receives focus. */
+  /** Whether the popover opens automatically when the input receives focus. Defaults to `true` — clicking into a combobox opens the dropdown, matching select-like UX; the special case is a flow that should open only once the user types. */
   // TRUE-default: clicking into a combobox opens the dropdown — standard select-
   // like UX. Opt-out is for command-palette-style flows triggered only by typing.
   readonly openOnFocus = input<boolean>(true);
@@ -457,7 +458,7 @@ export class ComboboxComponent<T = unknown>
   /** Two-way bound committed value. May be an option's value (`T`), a typed string (free-text mode), or `null`. Defaults to `null`. */
   readonly value = model<T | string | null>(null);
 
-  /** Two-way bound visible text in the input. Bound separately from `value` so async consumers can drive the query. */
+  /** Two-way bound visible text in the input. Bound separately from `value` so async consumers can drive the query. Writes back on every keystroke, on commit, and on clear. Defaults to `''`. */
   readonly inputValue = model<string>('');
 
   /** Two-way bound open state of the popover. Defaults to `false`. */
@@ -465,16 +466,16 @@ export class ComboboxComponent<T = unknown>
 
   // ── Outputs ──
 
-  /** Fires after the query text changes, debounced by `queryDebounce`. Async-mode consumers subscribe to this to fetch results. */
+  /** Fires after the query text changes, debounced by `queryDebounce`. Async-mode consumers subscribe to this to fetch results. Payload is the current input text, untrimmed. */
   readonly queryChange = output<string>();
 
-  /** Fires when the user picks an option from the list (not on free-text commit). */
+  /** Fires when the user picks an option from the list (not on free-text commit). Payload carries the raw option record plus its resolved `value` and `label`. */
   readonly optionSelected = output<TwComboboxOptionSelectedEvent<T>>();
 
   /** Fires whenever `value` changes, with a `source` discriminator distinguishing option / free-text / reset / programmatic origin. */
   readonly valueCommit = output<TwComboboxValueCommitEvent<T>>();
 
-  /** Fires when the popover opens or closes. */
+  /** Fires when the popover finishes opening or closing. Payload carries the new `open` state and the trigger element the overlay is anchored to. */
   readonly openedChange = output<TwComboboxOpenedEvent>();
 
   // ── Content queries ──
@@ -534,7 +535,6 @@ export class ComboboxComponent<T = unknown>
   /** @internal */
   readonly lastCommittedLabel = signal<string>('');
   private readonly pendingWriteValue = signal<T | string | null | typeof UNRESOLVED>(UNRESOLVED);
-  private readonly closingSignal = signal(false);
   /** Re-runs the input handler once after IME composition ends. */
   private composingPendingValue: string | null = null;
 
@@ -542,15 +542,27 @@ export class ComboboxComponent<T = unknown>
   private onTouched: () => void = () => {};
 
   private overlayRef: OverlayRef | null = null;
-  private readonly overlayInstanceSignal = signal<ComboboxOverlayComponent<T> | null>(null);
   private closeTimer: ReturnType<typeof setTimeout> | null = null;
   private queryDebounceTimer: ReturnType<typeof setTimeout> | null = null;
   private announceTimer: ReturnType<typeof setTimeout> | null = null;
   private resizeObserver: ResizeObserver | null = null;
 
-  private get overlayInstance(): ComboboxOverlayComponent<T> | null {
-    return this.overlayInstanceSignal();
-  }
+  // Overlay bookkeeping is deliberately held in plain fields, not signals — same
+  // shape as popover and command-palette. A signal here would be track-read by the
+  // open/close lifecycle effect that also writes it, which is the cycle shape
+  // CLAUDE.md forbids. The only reactive bit is `isAttached`, written by the
+  // lifecycle effect and read only by the state-push effect below, so the two
+  // never form a loop.
+  private overlayInstance: ComboboxOverlayComponent<T> | null = null;
+  private closing = false;
+
+  /**
+   * Flips true once the overlay component is attached; the sole trigger for the
+   * state-push effect. Load-bearing: the close path leaves `activeIndex` and the
+   * rest of the pushed state untouched, so on a reopen no data signal changes and
+   * nothing else would wake that effect — the fresh panel would render empty.
+   */
+  private readonly isAttached = signal(false);
 
   // ── Derived state ──
 
@@ -737,28 +749,33 @@ export class ComboboxComponent<T = unknown>
     }
 
     // Mirror parent `open` model into overlay lifecycle.
+    // Only `open` and `isDisabled` are read in the tracked phase; the lifecycle
+    // calls run inside `untracked()` because they both read and write panel state
+    // (openOverlay writes activeIndex and reads visibleOptions).
     effect(() => {
       const shouldOpen = this.open();
       const disabled = this.isDisabled();
-      if (disabled && this.overlayInstance) {
-        this.closeOverlay({ silent: false });
-        return;
-      }
-      if (shouldOpen && !this.overlayInstance && !disabled && !this.closingSignal()) {
-        this.openOverlay();
-      } else if (!shouldOpen && this.overlayInstance && !this.closingSignal()) {
-        this.closeOverlay({ silent: false });
-      }
+      untracked(() => {
+        if (disabled && this.overlayInstance) {
+          this.closeOverlay({ silent: false });
+          return;
+        }
+        if (shouldOpen && !this.overlayInstance && !disabled && !this.closing) {
+          this.openOverlay();
+        } else if (!shouldOpen && this.overlayInstance && !this.closing) {
+          this.closeOverlay({ silent: false });
+        }
+      });
     });
 
     // Push state into overlay component whenever anything relevant changes.
+    // `isAttached` is the trigger — it is written by the lifecycle effect above
+    // and never written here, so the two effects cannot feed each other.
     // While the panel is animating out, freeze content updates so list mutations
     // (e.g. the input filtering down after commitOption) don't visually flicker
     // the panel during the leave animation.
     effect(() => {
-      const instance = this.overlayInstance;
-      if (!instance) return;
-      if (this.closingSignal()) return;
+      const attached = this.isAttached();
       const renderedRows = this.renderedRows();
       const activeIndex = this.activeIndex();
       const panelMaxHeight = this.panelMaxHeight();
@@ -771,6 +788,8 @@ export class ComboboxComponent<T = unknown>
       const loadingTemplate = this.loadingTemplateChild()?.templateRef;
       const customPanelClass = this.resolvePanelClass();
       untracked(() => {
+        const instance = this.overlayInstance;
+        if (!attached || !instance || this.closing) return;
         instance.renderedRows.set(renderedRows);
         instance.activeIndex.set(activeIndex);
         instance.panelMaxHeight.set(panelMaxHeight);
@@ -860,7 +879,7 @@ export class ComboboxComponent<T = unknown>
       this.resizeObserver = null;
       this.overlayRef?.dispose();
       this.overlayRef = null;
-      this.overlayInstanceSignal.set(null);
+      this.overlayInstance = null;
     });
   }
 
@@ -1254,6 +1273,9 @@ export class ComboboxComponent<T = unknown>
     this.subscribeOverlayEscape();
     // Reset active to first enabled when opening.
     this.activeIndex.set(this.firstEnabledIndex());
+    // Set last: this is what wakes the state-push effect, and it must not fire
+    // until the instance exists and the per-open state has been reset.
+    this.isAttached.set(true);
     this.liveAnnouncer.announce(
       `${this.visibleOptions().length} suggestions available`,
       'polite',
@@ -1265,8 +1287,8 @@ export class ComboboxComponent<T = unknown>
   }
 
   private closeOverlay(_opts: { silent: boolean }): void {
-    if (this.closingSignal() || !this.overlayInstance) return;
-    this.closingSignal.set(true);
+    if (this.closing || !this.overlayInstance) return;
+    this.closing = true;
     this.clearAnnounceTimer();
 
     this.closeTimer = setTimeout(() => {
@@ -1274,11 +1296,12 @@ export class ComboboxComponent<T = unknown>
       if (this.overlayRef?.hasAttached()) {
         this.overlayRef.detach();
       }
-      this.overlayInstanceSignal.set(null);
+      this.overlayInstance = null;
+      this.isAttached.set(false);
       this.resizeObserver?.disconnect();
       this.resizeObserver = null;
       untracked(() => this.open.set(false));
-      this.closingSignal.set(false);
+      this.closing = false;
       this.openedChange.emit({
         open: false,
         trigger: this.inputRef()?.nativeElement ?? this.elementRef.nativeElement,
@@ -1356,7 +1379,7 @@ export class ComboboxComponent<T = unknown>
       if (visible[index].disabled) return;
       this.activeIndex.set(index);
     });
-    this.overlayInstanceSignal.set(instance);
+    this.overlayInstance = instance;
   }
 
   private subscribeBackdrop(): void {

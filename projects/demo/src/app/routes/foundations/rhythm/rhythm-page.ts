@@ -18,6 +18,7 @@ import { ActionNavPanel } from './panels/action-nav-panel';
 import { DisplayPanel } from './panels/display-panel';
 import { ContainerPanel } from './panels/container-panel';
 import { OverlayPanel } from './panels/overlay-panel';
+import { RowAlignmentPanel } from './panels/row-alignment-panel';
 import { RhythmReport } from './rhythm-report';
 
 const SIZES: readonly TwSize[] = ['xs', 'sm', 'md', 'lg', 'xl'];
@@ -43,6 +44,7 @@ const SIZES: readonly TwSize[] = ['xs', 'sm', 'md', 'lg', 'xl'];
     RhythmCell,
     RhythmPaper,
     FormControlsPanel,
+    RowAlignmentPanel,
     ActionNavPanel,
     DisplayPanel,
     ContainerPanel,
@@ -319,6 +321,10 @@ const SIZES: readonly TwSize[] = ['xs', 'sm', 'md', 'lg', 'xl'];
           </app-rhythm-cell>
         </app-rhythm-paper>
       </section>
+
+      <!-- ===================== Row alignment =====================
+           Mounted directly for the same reason the panels below are. -->
+      <app-row-alignment-panel [settings]="settings()" />
 
       <!-- ===================== Off-grid ledger ===================== -->
       @if (report.offGrid().length > 0) {

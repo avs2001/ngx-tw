@@ -105,7 +105,7 @@ class LoadingHost {
       [inverted]="inverted()"
       [variant]="variant()"
       [comparisonLabel]="comparisonLabel()"
-      [ariaLabel]="ariaLabel()"
+      [aria-label]="ariaLabel()"
     >{{ text() }}</tw-stat-delta>
   `,
 })
@@ -561,6 +561,33 @@ describe('StatDeltaComponent', () => {
       fixture.detectChanges();
       const delta = fixture.nativeElement.querySelector('tw-stat-delta') as HTMLElement;
       expect(delta.getAttribute('aria-label')).toBe('Custom label override');
+    });
+  });
+
+  // A consumer writing the plain `aria-label` attribute. Unless the input is
+  // aliased to `aria-label`, the host binding overwrites it with the composed
+  // "increased by …" sentence and the consumer's name is silently lost. The
+  // static attribute is the load-bearing shape here — driving the input
+  // directly skips the attribute path and would have passed with the bug
+  // present.
+  describe('consumer-written aria-label attribute', () => {
+    it('wins over the composed delta sentence', async () => {
+      @Component({
+        imports: [StatDeltaComponent],
+        changeDetection: ChangeDetectionStrategy.OnPush,
+        template: `<tw-stat-delta direction="up" aria-label="Revenue up sharply">+12.5%</tw-stat-delta>`,
+      })
+      class StaticAriaLabelHost {}
+
+      await TestBed.configureTestingModule({ imports: [StaticAriaLabelHost] }).compileComponents();
+      const fixture = TestBed.createComponent(StaticAriaLabelHost);
+      fixture.detectChanges();
+      await fixture.whenStable();
+      fixture.detectChanges();
+
+      const delta = fixture.nativeElement.querySelector('tw-stat-delta') as HTMLElement;
+      expect(delta.getAttribute('aria-label')).toBe('Revenue up sharply');
+      expect(delta.getAttribute('aria-label')).not.toContain('increased');
     });
   });
 });

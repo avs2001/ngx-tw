@@ -102,13 +102,13 @@ import { CodeBlockComponent } from '@cdevhub/ngx-tw/code-block';
               <td class="px-4 py-2 text-fg-muted">Two-way bound 0-based index of the first visible slide in the current page.</td>
             </tr>
             <tr>
-              <td class="px-4 py-2 font-mono text-xs">ariaLabel</td>
+              <td class="px-4 py-2 font-mono text-xs">aria-label</td>
               <td class="px-4 py-2 font-mono text-xs text-fg-muted">string | null</td>
               <td class="px-4 py-2 font-mono text-xs text-fg-muted">null</td>
-              <td class="px-4 py-2 text-fg-muted">Accessible name for the carousel region; either this or <code class="font-mono">ariaLabelledBy</code> should be provided.</td>
+              <td class="px-4 py-2 text-fg-muted">Accessible name for the carousel region; either this or <code class="font-mono">aria-labelledby</code> should be provided.</td>
             </tr>
             <tr>
-              <td class="px-4 py-2 font-mono text-xs">ariaLabelledBy</td>
+              <td class="px-4 py-2 font-mono text-xs">aria-labelledby</td>
               <td class="px-4 py-2 font-mono text-xs text-fg-muted">string | null</td>
               <td class="px-4 py-2 font-mono text-xs text-fg-muted">null</td>
               <td class="px-4 py-2 text-fg-muted">ID of an element labeling the carousel.</td>
