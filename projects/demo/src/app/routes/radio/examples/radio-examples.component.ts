@@ -366,6 +366,7 @@ const ORIENTATIONS: RadioOrientation[] = ['vertical', 'horizontal'];
         </tw-radio-group>
         <p class="text-xs text-fg-muted mt-4 font-mono">
           control.value = {{ shippingControl.value ?? 'null' }} · touched = {{ shippingControl.touched }}
+        <span class="block mt-1 text-fg-subtle">touched flips on blur, not on change — the same as a native input. Click the control and then move focus away to see it become true.</span>
         </p>
         <div class="flex gap-2 mt-3">
           <button twButton variant="outline" color="neutral" size="xs" (click)="shippingControl.setValue('express')">Set express</button>

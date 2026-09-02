@@ -658,6 +658,14 @@ are **correctly** diagnosed (verified: no `[constraints]` binding and no custom
 | P4-13 | **Six `@internal` symbols were re-exported from `core/index.ts`** — an annotation contradicting the barrel. Now module-private; nothing outside their own file ever used them. | **[measured]** |
 | P4-14 | **Icon/dot scales corrected** on `menu` (was 4/4/4/5/5 → 3/4/5/6/**6**), `avatar.status` (8/8/10/12/12 → 8/10/12/14/16), `carousel` dots (8/10/12/12/12 → 8/10/12/14/16), `transfer` glyphs (4/4/5/5/5 → 3/4/5/6/6). | **[measured]** in-browser + unit specs with negative controls |
 
+**P4-12 has a demo-visible consequence, now annotated.** The `checkbox`, `switch`, `radio` and
+`segmented-control` demo pages all print a live `touched = …` readout directly under the control.
+Before this pass, clicking flipped it to `true` immediately; now it stays `false` until focus
+leaves — correct, and the same as a native input, but it reads as a bug to someone clicking
+through the page. The four e2e specs pass because they blur explicitly; a human does not. Each
+readout now carries a one-line note saying `touched` flips on blur. Worth recording as a pattern:
+**a spec fixed by adding the missing gesture can hide a demo that never performs it.**
+
 **Semver discipline held this time.** Pass 3 shipped two required-member breaks from two
 independent agents; this pass put the rule verbatim in every fix prompt and **zero** occurred.
 `TwCarouselLabels`, `TwPaginatorLabels`, `TwThemeConfig` and `TwTimelineScrollLabels` were
@@ -756,7 +764,7 @@ were deliberately queued rather than raced):
 
 **Not yet decided:**
 
-- **`stripInternal` alternative** (above) — the 991-member leak is real and still open.
+- **`stripInternal`**: decided (approved) and attempted, **blocked by ng-packagr** — see the dedicated section above for the full diagnosis and the failure mode. What remains open is not the decision but the *mechanism*: the 991-member leak is real, and closing it needs api-extractor or a barrel convention rather than the compiler flag.
 - **`NumberInputDirective.setDisabledState`** is worse than audited: no `[disabled]`/`aria-disabled`
   host binding *and* `onInput()` (`number-input.ts:224-231`) is not gated on `disabled()`, so a
   disabled standalone control still writes every keystroke into the form model. Masked today

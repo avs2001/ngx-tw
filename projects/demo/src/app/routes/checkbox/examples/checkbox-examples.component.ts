@@ -399,6 +399,7 @@ const PERMISSIONS: readonly Permission[] = [
         <tw-checkbox label="Remember this device for 30 days" color="info" [formControl]="rememberControl" />
         <p class="text-xs text-fg-muted mt-3 font-mono">
           control.value = {{ rememberControl.value }} · touched = {{ rememberControl.touched }} · disabled = {{ rememberControl.disabled }}
+        <span class="block mt-1 text-fg-subtle">touched flips on blur, not on change — the same as a native input. Click the control and then move focus away to see it become true.</span>
         </p>
         <div class="flex gap-2 mt-3">
           <button twButton variant="outline" color="neutral" size="xs" (click)="rememberControl.setValue(true)">Set true</button>
