@@ -3,6 +3,23 @@
   --font-sans: 'Inter', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji';
   --font-mono: 'JetBrains Mono', ui-monospace, 'Cascadia Code', 'Source Code Pro', monospace;
 
+  /* ===== Font sizes — line-heights pinned in `rem`, deliberately =====
+     Tailwind's defaults are UNITLESS ratios (e.g. `--text-sm--line-height:
+     calc(1.25 / 0.875)`). A consumer who re-units `--text-sm` therefore
+     rescales every line box, which silently overflows controls whose height is
+     pinned. Absolute values make the line box a fixed 4px multiple that cannot
+     be rescaled out from under a pinned height.
+
+     These reproduce Tailwind's own COMPUTED defaults exactly (16 / 20 / 24px),
+     so the visual diff of adopting them is zero. This is robustness, not a
+     redesign — do not "simplify" them back to ratios. */
+  --text-xs: 0.75rem;
+  --text-xs--line-height: 1rem; /* 12 / 16 */
+  --text-sm: 0.875rem;
+  --text-sm--line-height: 1.25rem; /* 14 / 20 */
+  --text-base: 1rem;
+  --text-base--line-height: 1.5rem; /* 16 / 24 */
+
   /* ===== Animation durations ===== */
   --duration-fast: 150ms;
   --duration-normal: 200ms;

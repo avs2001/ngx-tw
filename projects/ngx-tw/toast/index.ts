@@ -1,4 +1,4 @@
-export { ToastService, provideToast } from './toast';
+export { ToastService, provideToast, type PromiseMessages } from './toast';
 export {
   ToastComponent,
   ToastIconDirective,

@@ -85,21 +85,21 @@ export class CalendarSingleDirective<D = Date, TOut = D | null>
   /** Two-way value, forwarded to the hosting `CalendarComponent`. Signal Forms `Field` binds against this. */
   readonly value = this.host.value as unknown as ModelSignal<TOut>;
 
-  /** Mirrors the bound field's disabled flag. */
+  /** Mirrors the bound field's disabled flag; Signal Forms writes it, and the host calendar disables itself when it is `true`. Defaults to `false`. */
   readonly disabled = input<boolean>(false);
-  /** Mirrors the bound field's readonly flag. */
+  /** Mirrors the bound field's readonly flag; the host calendar renders its grids read-only when it is `true`. Defaults to `false`. */
   readonly readonly = input<boolean>(false);
-  /** Mirrors the bound field's required flag. */
+  /** Mirrors the bound field's required flag. Defaults to `false`. */
   readonly required = input<boolean>(false);
-  /** Mirrors the bound field's invalid flag. */
+  /** Mirrors the bound field's invalid flag. Defaults to `false`. */
   readonly invalid = input<boolean>(false);
-  /** Mirrors the bound field's hidden flag. */
+  /** Mirrors the bound field's hidden flag. Defaults to `false`. */
   readonly hidden = input<boolean>(false);
-  /** Mirrors the bound field's errors. */
+  /** Mirrors the bound field's errors. Defaults to `[]` (no errors). */
   readonly errors = input<readonly ValidationError.WithOptionalFieldTree[]>([]);
-  /** Mirrors the bound field's disablement reasons. */
+  /** Mirrors the bound field's disablement reasons. Defaults to `[]` (none). */
   readonly disabledReasons = input<readonly WithOptionalFieldTree<DisabledReason>[]>([]);
-  /** Two-way `touched` flag — drives and reflects the field's touched state. */
+  /** Two-way `touched` flag — drives and reflects the field's touched state, flipping to `true` when the calendar loses focus after an interaction. Defaults to `false`. */
   readonly touched = model<boolean>(false);
 
   constructor() {
@@ -136,21 +136,21 @@ export class CalendarMultipleDirective<D = Date, TOut = D[]>
   /** Two-way value, forwarded to the hosting `CalendarComponent`. Signal Forms `Field` binds against this. */
   readonly value = this.host.value as unknown as ModelSignal<TOut>;
 
-  /** Mirrors the bound field's disabled flag. */
+  /** Mirrors the bound field's disabled flag; Signal Forms writes it, and the host calendar disables itself when it is `true`. Defaults to `false`. */
   readonly disabled = input<boolean>(false);
-  /** Mirrors the bound field's readonly flag. */
+  /** Mirrors the bound field's readonly flag; the host calendar renders its grids read-only when it is `true`. Defaults to `false`. */
   readonly readonly = input<boolean>(false);
-  /** Mirrors the bound field's required flag. */
+  /** Mirrors the bound field's required flag. Defaults to `false`. */
   readonly required = input<boolean>(false);
-  /** Mirrors the bound field's invalid flag. */
+  /** Mirrors the bound field's invalid flag. Defaults to `false`. */
   readonly invalid = input<boolean>(false);
-  /** Mirrors the bound field's hidden flag. */
+  /** Mirrors the bound field's hidden flag. Defaults to `false`. */
   readonly hidden = input<boolean>(false);
-  /** Mirrors the bound field's errors. */
+  /** Mirrors the bound field's errors. Defaults to `[]` (no errors). */
   readonly errors = input<readonly ValidationError.WithOptionalFieldTree[]>([]);
-  /** Mirrors the bound field's disablement reasons. */
+  /** Mirrors the bound field's disablement reasons. Defaults to `[]` (none). */
   readonly disabledReasons = input<readonly WithOptionalFieldTree<DisabledReason>[]>([]);
-  /** Two-way `touched` flag — drives and reflects the field's touched state. */
+  /** Two-way `touched` flag — drives and reflects the field's touched state, flipping to `true` when the calendar loses focus after an interaction. Defaults to `false`. */
   readonly touched = model<boolean>(false);
 
   constructor() {
@@ -187,21 +187,21 @@ export class CalendarRangeDirective<D = Date, TOut = CalendarRangeValue<D>>
   /** Two-way value, forwarded to the hosting `CalendarComponent`. Signal Forms `Field` binds against this. */
   readonly value = this.host.value as unknown as ModelSignal<TOut>;
 
-  /** Mirrors the bound field's disabled flag. */
+  /** Mirrors the bound field's disabled flag; Signal Forms writes it, and the host calendar disables itself when it is `true`. Defaults to `false`. */
   readonly disabled = input<boolean>(false);
-  /** Mirrors the bound field's readonly flag. */
+  /** Mirrors the bound field's readonly flag; the host calendar renders its grids read-only when it is `true`. Defaults to `false`. */
   readonly readonly = input<boolean>(false);
-  /** Mirrors the bound field's required flag. */
+  /** Mirrors the bound field's required flag. Defaults to `false`. */
   readonly required = input<boolean>(false);
-  /** Mirrors the bound field's invalid flag. */
+  /** Mirrors the bound field's invalid flag. Defaults to `false`. */
   readonly invalid = input<boolean>(false);
-  /** Mirrors the bound field's hidden flag. */
+  /** Mirrors the bound field's hidden flag. Defaults to `false`. */
   readonly hidden = input<boolean>(false);
-  /** Mirrors the bound field's errors. */
+  /** Mirrors the bound field's errors. Defaults to `[]` (no errors). */
   readonly errors = input<readonly ValidationError.WithOptionalFieldTree[]>([]);
-  /** Mirrors the bound field's disablement reasons. */
+  /** Mirrors the bound field's disablement reasons. Defaults to `[]` (none). */
   readonly disabledReasons = input<readonly WithOptionalFieldTree<DisabledReason>[]>([]);
-  /** Two-way `touched` flag — drives and reflects the field's touched state. */
+  /** Two-way `touched` flag — drives and reflects the field's touched state, flipping to `true` when the calendar loses focus after an interaction. Defaults to `false`. */
   readonly touched = model<boolean>(false);
 
   constructor() {

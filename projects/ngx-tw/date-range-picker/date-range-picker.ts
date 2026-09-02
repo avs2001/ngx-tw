@@ -154,8 +154,12 @@ const dateRangePickerVariants = tv(
   {
     slots: {
       root: 'relative inline-flex items-center w-full text-fg transition-[color,border-color,box-shadow] duration-normal motion-reduce:transition-none',
+      // `self-stretch` so the trigger — the component's only interactive surface —
+      // fills the pinned control height. Without it the button is exactly its line
+      // box tall and everything above/below it inside the shell is dead click area
+      // (up to 22px at xl).
       trigger:
-        'flex-1 inline-flex items-center gap-2 min-w-0 bg-transparent text-left text-fg outline-none border-0 p-0 m-0 cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500 disabled:cursor-not-allowed',
+        'flex-1 inline-flex items-center gap-2 min-w-0 self-stretch bg-transparent text-left text-fg outline-none border-0 p-0 m-0 cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500 disabled:cursor-not-allowed',
       startText: 'truncate',
       separator: 'shrink-0 text-fg-subtle',
       endText: 'truncate',
@@ -164,6 +168,11 @@ const dateRangePickerVariants = tv(
       triggerIcon:
         'shrink-0 text-fg-muted transition-colors duration-normal motion-reduce:transition-none',
       // size-6 (24×24 CSS px) is the WCAG AA minimum interactive target — bumping past size-5 keeps the affordance hittable without growing the inline row.
+      // Held flat across every size. It fits the 30/34/42/46px content boxes at sm..xl. At xs the
+      // pinned root is h-6 (24px border-box) so its content box is only 22px: the button is kept at
+      // 24×24 anyway — docs/vertical-rhythm.md calls 24px a hard floor — and therefore coincides with
+      // the root's *border*-box, overlapping the 1px border row top and bottom. The root's height is
+      // unaffected (h-6 is a definite height); only the hover fill meets the border at that density.
       clearButton:
         'inline-flex items-center justify-center shrink-0 rounded-md text-fg-muted hover:text-fg hover:bg-surface-muted transition-colors duration-normal motion-reduce:transition-none size-6 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500',
     },
@@ -194,7 +203,10 @@ const dateRangePickerVariants = tv(
       },
       variant: {
         default: {
-          root: 'rounded-md border border-border bg-surface px-3 py-2 hover:border-border-strong',
+          // No `py-*`: the height is pinned per size in compoundVariants below.
+          // See docs/vertical-rhythm.md §3 — padding and a pinned height fight,
+          // and under border-box the taller one silently wins.
+          root: 'rounded-md border border-border bg-surface px-3 hover:border-border-strong',
         },
         naked: {
           root: 'bg-transparent border-0 rounded-none p-0 focus-within:outline-none',
@@ -219,6 +231,17 @@ const dateRangePickerVariants = tv(
       },
     },
     compoundVariants: [
+      // ── Pinned control height (docs/vertical-rhythm.md §1) ──
+      // Only the `default` variant carries a height. `naked` means somebody else
+      // owns the box — `<tw-form-field>` auto-nakeds this picker and supplies its
+      // own bordered, padded controlWrapper, so pinning naked would stack 36px on
+      // top of the form-field's `py-2` and inflate a wrapped picker at every size.
+      { variant: 'default', size: 'xs', class: { root: 'h-6' } },
+      { variant: 'default', size: 'sm', class: { root: 'h-8' } },
+      { variant: 'default', size: 'md', class: { root: 'h-9' } },
+      { variant: 'default', size: 'lg', class: { root: 'h-11' } },
+      { variant: 'default', size: 'xl', class: { root: 'h-12' } },
+
       { variant: 'default', focused: true, color: 'primary', class: { root: 'border-primary-500' } },
       { variant: 'default', focused: true, color: 'secondary', class: { root: 'border-secondary-500' } },
       { variant: 'default', focused: true, color: 'accent', class: { root: 'border-accent-500' } },
@@ -373,13 +396,13 @@ export class DateRangePickerComponent<D = Date>
   /** Latest selectable date for either endpoint. Presets and calendar cells later than this are rejected or disabled. Defaults to `null`. */
   readonly maxDate = input<D | null>(null);
 
-  /** Per-date predicate — return `false` to disable. Applied in both calendars. Presets that fall on a filtered date are skipped. */
+  /** Per-date predicate — return `false` to disable. Applied in both calendars. Presets that fall on a filtered date are skipped. Defaults to `null`. */
   readonly dateFilter = input<DateFilterFn<D> | null>(null);
 
   /** Which calendar view opens first — `'day'`, `'month'`, or `'year'`. Defaults to `'day'`. */
   readonly startView = input<CalendarViewState>('day');
 
-  /** Date the left calendar focuses on when opened with no value. Falls back to today. Ignored when a value is already set. */
+  /** Date the left calendar focuses on when opened with no value. Falls back to today. Ignored when a value is already set. Defaults to `null`. */
   readonly startAt = input<D | null>(null);
 
   /** Display format for each endpoint, passed to `DateAdapter.format()`. When `showTime` is true and this is left at the default, hour/minute (and optional seconds) are folded in automatically. */
@@ -388,10 +411,10 @@ export class DateRangePickerComponent<D = Date>
   /** Separator rendered between the two formatted endpoints in the trigger. Defaults to `" – "`. */
   readonly rangeSeparator = input<string>(' – ');
 
-  /** Placeholder text shown in the trigger for an empty `start` endpoint. */
+  /** Placeholder text shown in the trigger for an empty `start` endpoint. Defaults to `'Start date'`. */
   readonly emptyStartLabel = input<string>('Start date');
 
-  /** Placeholder text shown in the trigger for an empty `end` endpoint. */
+  /** Placeholder text shown in the trigger for an empty `end` endpoint. Defaults to `'End date'`. */
   readonly emptyEndLabel = input<string>('End date');
 
   /** When set, overrides the composed `${emptyStartLabel}${rangeSeparator}${emptyEndLabel}` placeholder with a single string. */
@@ -421,7 +444,7 @@ export class DateRangePickerComponent<D = Date>
   /** How many months the overlay shows side-by-side. `2` is the standard range-picker layout; use `1` for compact contexts. Defaults to `2`. */
   readonly numberOfMonths = input<DateRangePickerMonths>(2);
 
-  /** Optional quick-select presets rendered as a vertical list before the calendars. Each preset provides a label and a factory returning a `TwDateRange<D>`. An empty array hides the preset panel. */
+  /** Optional quick-select presets rendered as a vertical list before the calendars. Each preset provides a label and a factory returning a `TwDateRange<D>`. An empty array hides the preset panel. Defaults to an empty array. */
   readonly presets = input<readonly DateRangePreset<D>[]>([]);
 
   /** Whether to show a clear-button affordance inside the trigger when a value is set. Defaults to `true`. */
@@ -447,13 +470,13 @@ export class DateRangePickerComponent<D = Date>
   /** Override first day of week (0=Sun, 1=Mon) on the embedded calendar. Falls back to the adapter's default. */
   readonly firstDayOfWeek = input<number | null>(null);
 
-  /** Per-instance locale override. Forwarded to the embedded calendar and the underlying `DateAdapter` so the trigger display tracks the picker's locale. Falls back to Angular `LOCALE_ID` when `null`. */
+  /** Per-instance locale override. Forwarded to the embedded calendar and the underlying `DateAdapter` so the trigger display tracks the picker's locale. Falls back to Angular `LOCALE_ID` when `null`. Defaults to `null`. */
   readonly locale = input<string | null>(null);
 
-  /** Function producing per-cell CSS classes on the embedded calendar. */
+  /** Function producing per-cell CSS classes on the embedded calendar. Defaults to `null`. */
   readonly dateClass = input<DateClassFn<D> | null>(null);
 
-  /** Optional cell-content template, forwarded to the embedded calendar. Use to customize cell visuals beyond `dateClass`. */
+  /** Optional cell-content template, forwarded to the embedded calendar. Use to customize cell visuals beyond `dateClass`. Defaults to `null`. */
   readonly cellTemplate = input<TemplateRef<{ $implicit: CalendarCell<D> }> | null>(null);
 
   /** When true, renders a `Today / Clear / Cancel / Apply` action bar at the bottom of the overlay. The calendar commits on the second click by default — turn this on for touch-heavy contexts. Defaults to `false`. */
@@ -477,19 +500,19 @@ export class DateRangePickerComponent<D = Date>
   /** Step for the embedded time-pickers' second fields. Defaults to `1`. */
   readonly secondStep = input<number>(1);
 
-  /** Label for the `Today` action in the overlay's action bar. */
+  /** Label for the `Today` action in the overlay's action bar. Defaults to `'Today'`. */
   readonly todayLabel = input<string>('Today');
 
-  /** Label for the `Clear` action in the overlay's action bar. */
+  /** Label for the `Clear` action in the overlay's action bar. Defaults to `'Clear'`. */
   readonly clearLabel = input<string>('Clear');
 
-  /** Label for the `Cancel` action in the overlay's action bar. */
+  /** Label for the `Cancel` action in the overlay's action bar. Defaults to `'Cancel'`. */
   readonly cancelLabel = input<string>('Cancel');
 
-  /** Label for the `Apply` action in the overlay's action bar. */
+  /** Label for the `Apply` action in the overlay's action bar. Defaults to `'Apply'`. */
   readonly applyLabel = input<string>('Apply');
 
-  /** Extra class(es) applied to the overlay panel element. `twMerge` resolves conflicts with internal classes. */
+  /** Extra class(es) applied to the overlay panel element. `twMerge` resolves conflicts with internal classes. Defaults to an empty string. */
   readonly panelClass = input<string | readonly string[]>('');
 
   /** CDK scroll strategy for the overlay. Defaults to `'reposition'`. */
@@ -504,23 +527,23 @@ export class DateRangePickerComponent<D = Date>
   /** Per-instance override of the `ErrorStateMatcher`. When omitted, uses the injected `TW_ERROR_STATE_MATCHER`. */
   readonly errorStateMatcher = input<ErrorStateMatcher | undefined>(undefined);
 
-  /** Accessible name for the trigger. Required when no visible label is supplied via `tw-form-field` or an external `aria-labelledby`. Alias: `aria-label`. */
+  /** Accessible name for the trigger. Required when no visible label is supplied via `tw-form-field` or an external `aria-labelledby`. Alias: `aria-label`. Defaults to `undefined`. */
   readonly ariaLabel = input<string | undefined>(undefined, { alias: 'aria-label' });
 
-  /** ID of an external element that labels the trigger. Alias: `aria-labelledby`. */
+  /** ID of an external element that labels the trigger. Alias: `aria-labelledby`. Defaults to `undefined`. */
   readonly ariaLabelledby = input<string | undefined>(undefined, { alias: 'aria-labelledby' });
 
-  /** Consumer-supplied `aria-describedby` ids. The form-field preserves these when merging hint/error ids. Alias: `aria-describedby`. */
+  /** Consumer-supplied `aria-describedby` ids. The form-field preserves these when merging hint/error ids. Alias: `aria-describedby`. Defaults to `undefined`. */
   readonly userAriaDescribedByInput = input<string | undefined>(undefined, {
     alias: 'aria-describedby',
   });
 
   // ── Models (two-way) ──
 
-  /** Two-way bound selected range. `null` when no selection. Setting programmatically updates the trigger display and the calendar selection; it does NOT trigger `onChange`. */
+  /** Two-way bound selected range. `null` when no selection. Setting programmatically updates the trigger display and the calendar selection; it does NOT trigger `onChange`. Defaults to `null`. */
   readonly value = model<TwDateRange<D> | null>(null);
 
-  /** Two-way bound open state of the overlay. Setting to `true` opens; setting to `false` closes. */
+  /** Two-way bound open state of the overlay. Setting to `true` opens; setting to `false` closes. Defaults to `false`. */
   readonly open = model(false);
 
   // ── Outputs ──
@@ -933,9 +956,14 @@ export class DateRangePickerComponent<D = Date>
       self: true,
       optional: true,
     });
-    // Wire this component as the NgControl's value accessor. NG_VALUE_ACCESSOR
-    // is not registered as a provider to keep `inject(NgControl, { self })`
-    // possible — we assign it here instead.
+    // Wire this component as the NgControl's value accessor.
+    //
+    // NOTE: this assignment is a belt-and-braces no-op in practice — the static
+    // NG_VALUE_ACCESSOR provider above has already registered this component on
+    // the value-accessor channel, which is what makes `validate()` run at all.
+    // Do NOT read this as evidence the static provider is unnecessary and
+    // remove it: dropping it silently disables every calendar error code, with
+    // no test failure outside the guard spec. See the provider's own comment.
     if (this.ngControl) {
       this.ngControl.valueAccessor = this;
     }

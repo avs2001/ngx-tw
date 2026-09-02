@@ -5,7 +5,12 @@ import { FormControl, FormsModule, ReactiveFormsModule, Validators } from '@angu
 import { form, FormField } from '@angular/forms/signals';
 import { OverlayModule } from '@angular/cdk/overlay';
 import { SelectComponent } from './select';
-import type { TwSelectOption, TwSelectSelectionChangeEvent, TwSelectOpenedEvent } from './select';
+import type {
+  TwSelectOption,
+  TwSelectSelectionChangeEvent,
+  TwSelectOpenedEvent,
+  TwSelectSearchEvent,
+} from './select';
 
 // ── Test hosts ────────────────────────────────────────────────────
 
@@ -40,6 +45,7 @@ const OPTIONS: readonly TestOption[] = [
       [aria-label]="ariaLabel()"
       (openedChange)="onOpenedChange($event)"
       (selectionChange)="onSelectionChange($event)"
+      (searchChange)="onSearchChange($event)"
     />
   `,
 })
@@ -56,8 +62,10 @@ class BasicHost {
   ariaLabel = signal<string | undefined>('Fruit');
   openedSpy = vi.fn();
   selectionSpy = vi.fn();
+  searchSpy = vi.fn();
   onOpenedChange(ev: TwSelectOpenedEvent): void { this.openedSpy(ev); }
   onSelectionChange(ev: TwSelectSelectionChangeEvent<string>): void { this.selectionSpy(ev); }
+  onSearchChange(ev: TwSelectSearchEvent): void { this.searchSpy(ev); }
 }
 
 @Component({
@@ -568,6 +576,45 @@ describe('SelectComponent', () => {
       expect(getOptions().length).toBe(0);
       const panel = getOverlayPanel()!;
       expect(panel.textContent).toContain('No results');
+    });
+
+    it('emits searchChange with the typed query and the post-filter visible count', async () => {
+      const fixture = TestBed.createComponent(BasicHost);
+      fixture.componentInstance.searchable.set(true);
+      await advance(fixture);
+      getTriggerButton(fixture).click();
+      await advance(fixture);
+
+      const spy = fixture.componentInstance.searchSpy;
+      spy.mockClear();
+
+      const searchInput = document.querySelector('input[type="search"]') as HTMLInputElement;
+      searchInput.value = 'ban';
+      searchInput.dispatchEvent(new Event('input', { bubbles: true }));
+      await advance(fixture);
+
+      // `visibleCount` must be the *filtered* count (1 = Banana), not the
+      // unfiltered option count (4). Asserting the whole payload also pins the
+      // raw, untrimmed query text through to the consumer.
+      expect(spy).toHaveBeenLastCalledWith({ search: 'ban', visibleCount: 1 });
+    });
+
+    it('emits searchChange with visibleCount 0 when the query matches nothing', async () => {
+      const fixture = TestBed.createComponent(BasicHost);
+      fixture.componentInstance.searchable.set(true);
+      await advance(fixture);
+      getTriggerButton(fixture).click();
+      await advance(fixture);
+
+      const spy = fixture.componentInstance.searchSpy;
+      spy.mockClear();
+
+      const searchInput = document.querySelector('input[type="search"]') as HTMLInputElement;
+      searchInput.value = 'xxxzzz';
+      searchInput.dispatchEvent(new Event('input', { bubbles: true }));
+      await advance(fixture);
+
+      expect(spy).toHaveBeenLastCalledWith({ search: 'xxxzzz', visibleCount: 0 });
     });
   });
 

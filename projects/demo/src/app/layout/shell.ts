@@ -308,6 +308,12 @@ const NAV: NavGroup[] = [
     ],
   },
   {
+    category: 'Foundations',
+    items: [
+      { label: 'Rhythm Grid', path: '/foundations/rhythm' },
+    ],
+  },
+  {
     category: 'Services',
     items: [
       { label: 'Theme', children: [

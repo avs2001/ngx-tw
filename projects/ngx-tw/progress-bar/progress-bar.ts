@@ -194,7 +194,7 @@ const DEFAULT_FORMATTER: ProgressBarValueFormatter = (value, max, min) => {
   `,
 })
 export class ProgressBarComponent {
-  /** Current progress value. When null or undefined, the bar renders indeterminate. Values outside `[options.min, options.max]` are clamped. */
+  /** Current progress value. When null or undefined, the bar renders indeterminate. Values outside `[options.min, options.max]` are clamped. Defaults to `null`. */
   readonly value = input<number | null | undefined>(null);
 
   /** Visual style of the bar. `'linear'` renders a single fill; `'segmented'` splits the rail into discrete steps. Defaults to `'linear'`. */

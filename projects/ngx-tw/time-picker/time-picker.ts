@@ -128,6 +128,10 @@ const timePickerVariants = tv(
       // as the equivalent-control exception applies — the time is fully editable
       // by typing into the spinbutton fields (and via ↑/↓), so the spinner is a
       // pointer enhancement, never the only path.
+      //
+      // That min-content floor is also why the column is suppressed at
+      // `size="xs"` + `variant="default"`: a pinned h-6 root leaves a 22px content
+      // box, below the stacked pair's 24px floor. See `steppersVisible` below.
       stepperGroup: 'flex flex-col self-stretch ml-0.5',
       stepper:
         'flex-1 inline-flex items-center justify-center text-fg-muted hover:text-fg hover:bg-surface-muted rounded-md transition-colors duration-normal motion-reduce:transition-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500 disabled:opacity-40 disabled:pointer-events-none',
@@ -136,6 +140,12 @@ const timePickerVariants = tv(
         'inline-flex items-center rounded-md border border-border overflow-hidden ml-2 shrink-0',
       meridiemButton:
         'font-medium text-fg-muted hover:bg-surface-muted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500 transition-colors duration-normal motion-reduce:transition-none disabled:opacity-40 disabled:pointer-events-none',
+      // size-6 (24×24 CSS px) is the WCAG 2.2 SC 2.5.8 minimum interactive target, held flat across
+      // every size. It fits the 30/34/42/46px content boxes at sm..xl. At xs the pinned root is h-6
+      // (24px border-box) so its content box is only 22px: the button stays 24×24 anyway —
+      // docs/vertical-rhythm.md calls 24px a hard floor — and therefore coincides with the root's
+      // *border*-box, overlapping the 1px border row top and bottom. The root's height is unaffected
+      // (h-6 is a definite height); only the hover fill meets the border at that density.
       clearButton:
         'inline-flex items-center justify-center shrink-0 rounded-md text-fg-muted hover:text-fg hover:bg-surface-muted transition-colors duration-normal motion-reduce:transition-none size-6 ml-1 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500',
     },
@@ -149,6 +159,13 @@ const timePickerVariants = tv(
           field: 'w-5 text-xs',
           stepper: 'w-6',
           stepperIcon: 'size-3',
+          // `border-0` on the AM/PM shell only at xs. With its 1px border the pair
+          // measures 26px, which cannot sit inside the 22px content box of a pinned
+          // h-6 root. Dropping the shell border lets each radio keep the full 24px
+          // WCAG 2.2 SC 2.5.8 target height and makes the pair coincide with the
+          // root's border-box. The pair stays legible without the shell because the
+          // selected half always carries a solid `bg-{color}-500` fill.
+          meridiem: 'border-0',
           meridiemButton: 'px-1.5 py-1 text-2xs',
         },
         sm: {
@@ -186,7 +203,10 @@ const timePickerVariants = tv(
       },
       variant: {
         default: {
-          root: 'rounded-md border border-border bg-surface px-3 py-2 hover:border-border-strong',
+          // No `py-*`: the height is pinned per size in compoundVariants below.
+          // See docs/vertical-rhythm.md §3 — padding and a pinned height fight,
+          // and under border-box the taller one silently wins.
+          root: 'rounded-md border border-border bg-surface px-3 hover:border-border-strong',
         },
         naked: {
           root: 'bg-transparent border-0 rounded-none p-0 focus-within:outline-none',
@@ -210,6 +230,18 @@ const timePickerVariants = tv(
       },
     },
     compoundVariants: [
+      // ── Pinned control height (docs/vertical-rhythm.md §1) ──
+      // Only the `default` variant carries a height. `naked` means somebody else
+      // owns the box — `<tw-form-field>` auto-nakeds this picker and supplies its
+      // own bordered, padded controlWrapper, and both `<tw-date-picker>` and
+      // `<tw-date-range-picker>` embed a naked time-picker in their overlay footer.
+      // Pinning naked would stack 36px on top of those hosts' own padding.
+      { variant: 'default', size: 'xs', class: { root: 'h-6' } },
+      { variant: 'default', size: 'sm', class: { root: 'h-8' } },
+      { variant: 'default', size: 'md', class: { root: 'h-9' } },
+      { variant: 'default', size: 'lg', class: { root: 'h-11' } },
+      { variant: 'default', size: 'xl', class: { root: 'h-12' } },
+
       { variant: 'default', focused: true, color: 'primary', class: { root: 'border-primary-500' } },
       { variant: 'default', focused: true, color: 'secondary', class: { root: 'border-secondary-500' } },
       { variant: 'default', focused: true, color: 'accent', class: { root: 'border-accent-500' } },
@@ -385,7 +417,7 @@ export type TimePickerValidationErrors = Partial<{
       }
     </div>
 
-    @if (showSteppers()) {
+    @if (steppersVisible()) {
       <div [class]="stepperGroupClasses()">
         <button
           type="button"
@@ -492,7 +524,7 @@ export class TimePickerComponent<D = Date>
     transform: booleanAttribute,
   });
 
-  /** When true, blocks typing, stepping, and the AM/PM toggle — the value is still read-only visible. Defaults to `false`. */
+  /** When true, blocks typing, stepping, and the AM/PM toggle — the value is still read-only visible. Defaults to `false`. Alias: `readonly`. */
   readonly readonlyInput = input<boolean, unknown>(false, {
     alias: 'readonly',
     transform: booleanAttribute,
@@ -534,7 +566,7 @@ export class TimePickerComponent<D = Date>
   /** Placeholder shown in each field when empty. Defaults to `'--'`. */
   readonly placeholder = input<string | undefined>(undefined);
 
-  /** Whether to render the up/down stepper column. Defaults to `true`. */
+  /** Whether to render the up/down stepper column. Defaults to `true`. Ignored at `size="xs"` on the bordered `default` variant, where the 24px control leaves no room for a stacked pair — use ↑/↓ on a field instead. */
   // TRUE-default: pointer users expect inline up/down chevrons next to a numeric editor — without them the picker reads as a static display, and consumers must rebuild stepping for every instance.
   readonly showSteppers = input<boolean>(true);
 
@@ -545,23 +577,23 @@ export class TimePickerComponent<D = Date>
   /** Accessible label for the clear button. Defaults to `'Clear time'`. */
   readonly clearLabel = input<string>('Clear time');
 
-  /** Per-instance override of the `ErrorStateMatcher`. */
+  /** Per-instance override of the `ErrorStateMatcher`. Defaults to `undefined`. */
   readonly errorStateMatcher = input<ErrorStateMatcher | undefined>(undefined);
 
-  /** Accessible name for the fields group. Required when no visible label is supplied. Alias: `aria-label`. */
+  /** Accessible name for the fields group. Required when no visible label is supplied. Alias: `aria-label`. Defaults to `undefined`. */
   readonly ariaLabel = input<string | undefined>(undefined, { alias: 'aria-label' });
 
-  /** ID of an external element that labels the group. Alias: `aria-labelledby`. */
+  /** ID of an external element that labels the group. Alias: `aria-labelledby`. Defaults to `undefined`. */
   readonly ariaLabelledby = input<string | undefined>(undefined, { alias: 'aria-labelledby' });
 
-  /** Consumer-supplied `aria-describedby` ids. The form-field preserves these when merging hint/error ids. Alias: `aria-describedby`. */
+  /** Consumer-supplied `aria-describedby` ids. The form-field preserves these when merging hint/error ids. Alias: `aria-describedby`. Defaults to `undefined`. */
   readonly userAriaDescribedByInput = input<string | undefined>(undefined, {
     alias: 'aria-describedby',
   });
 
   // ── Models ──
 
-  /** Two-way bound current time. `null` when empty. Setting programmatically updates the fields without firing `onChange`. */
+  /** Two-way bound current time. `null` when empty. Setting programmatically updates the fields without firing `onChange`. Defaults to `null`. */
   readonly value = model<D | null>(null);
 
   // ── Outputs ──
@@ -648,6 +680,27 @@ export class TimePickerComponent<D = Date>
   readonly resolvedVariant = computed<TimePickerVariant>(
     () => this.variant() ?? (this.formField ? 'naked' : 'default'),
   );
+
+  /**
+   * @internal Whether the stepper column actually renders.
+   *
+   * `showSteppers` stays the consumer's switch, but the column is geometrically
+   * impossible at `size="xs"` on the bordered `default` variant: the pinned h-6
+   * root is 24px border-box, leaving a 22px content box, while a stacked pair of
+   * chevron buttons has a 24px min-content height (2 × size-3). Rendering it
+   * anyway would either overflow the shell or squeeze each button to 11px — far
+   * under any usable pointer target. The `naked` variant keeps its steppers: it
+   * draws no border, so in the date-picker / date-range-picker overlay footers a
+   * 24px row leaves a full 24px content box and the pair fits exactly. (Inside
+   * `<tw-form-field>` the row is governed by the field's own padding and its
+   * `min-h-*` floor, which is a minimum — the row grows rather than clipping.)
+   * Stepping stays available everywhere via ↑/↓ on a focused field, so nothing
+   * becomes unreachable.
+   */
+  readonly steppersVisible = computed(() => {
+    if (!this.showSteppers()) return false;
+    return !(this.size() === 'xs' && this.resolvedVariant() === 'default');
+  });
 
   /** @internal */
   readonly hourMin = computed(() => fieldMin('hour', this.format()));

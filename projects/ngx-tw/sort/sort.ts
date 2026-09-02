@@ -80,16 +80,16 @@ export class SortDirective {
   /** Current sort direction. `null` represents the cleared state. Two-way bindable via `[(twSortDirection)]`. Defaults to `null`. */
   readonly direction = model<SortDirection>(null, { alias: 'twSortDirection' });
 
-  /** Starting direction used when a header becomes active for the first time. Per-header `start` overrides this. Defaults to `'asc'`. */
+  /** Starting direction used when a header becomes active for the first time. Per-header `start` overrides this. Defaults to `'asc'`. Alias: `twSortStart`. */
   readonly start = input<'asc' | 'desc'>('asc', { alias: 'twSortStart' });
 
-  /** When true, the direction cycle skips the cleared (`null`) state — headers toggle between `'asc'` and `'desc'` only. Per-header `disableClear` overrides this. Defaults to `false`. */
+  /** When true, the direction cycle skips the cleared (`null`) state — headers toggle between `'asc'` and `'desc'` only. Per-header `disableClear` overrides this. Defaults to `false`. Alias: `twSortDisableClear`. */
   readonly disableClear = input<boolean>(false, { alias: 'twSortDisableClear' });
 
-  /** When true, all child sort headers are disabled. Defaults to `false`. */
+  /** When true, all child sort headers are disabled. Defaults to `false`. Alias: `twSortDisabled`. */
   readonly disabled = input<boolean>(false, { alias: 'twSortDisabled' });
 
-  /** Fires whenever the user changes `active` or `direction` by interacting with a header. Programmatic writes to `[(twSortActive)]` / `[(twSortDirection)]` do NOT emit. */
+  /** Fires whenever the user changes `active` or `direction` by interacting with a header. Programmatic writes to `[(twSortActive)]` / `[(twSortDirection)]` do NOT emit. Alias: `twSortChange`. */
   readonly sortChange = output<TwSortEvent>({ alias: 'twSortChange' });
 
   private readonly sortableIds = new Set<string>();

@@ -88,6 +88,12 @@ const commandPaletteVariants = tv(
       footer: 'border-t border-border px-4 py-2 bg-surface-muted',
     },
     variants: {
+      // The search input's `py-*` runs one full step above the item rows
+      // (8/10/12/14/16px vs 4/6/8/10/12px) — it is the palette's primary
+      // control, not a list row. `lg`'s `py-3.5` is the half-step that keeps
+      // that ramp monotonic: `py-3` collides with `md` and `py-4` with `xl`,
+      // either of which collapses `lg` into a neighbouring density and leaves
+      // the five-step size axis with only four distinct search-field heights.
       size: {
         xs: {
           item: 'py-1 text-xs',
@@ -401,7 +407,7 @@ export class CommandPaletteComponent {
   /** Placeholder text shown inside the search input. Defaults to `'Type a command or search…'`. */
   readonly placeholder = input<string>('Type a command or search…');
 
-  /** Two-way bindable search query. Reads or resets the current filter. Defaults to `''`. */
+  /** Two-way bindable search query. Writes back on every keystroke in the search input. Opening and closing the palette leave it untouched — reset it yourself if each open should start empty. Defaults to `''`. */
   readonly query = model<string>('');
 
   /** Two-way bindable open state. Setting to `true` opens the palette; closing updates it to `false`. Defaults to `false`. */

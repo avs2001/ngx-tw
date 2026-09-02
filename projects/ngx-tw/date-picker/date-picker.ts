@@ -156,12 +156,17 @@ const datePickerVariants = tv(
   {
     slots: {
       root: 'relative inline-flex items-center w-full text-fg transition-[color,border-color,box-shadow] duration-normal motion-reduce:transition-none',
+      // `self-stretch` so the text field fills the pinned control height — without
+      // it the input is only its line box tall and the rest of the box is dead
+      // click area (up to 22px at xl).
       input:
-        'flex-1 min-w-0 bg-transparent text-fg placeholder:text-fg-subtle outline-none border-0 p-0 m-0 font-inherit',
+        'flex-1 min-w-0 self-stretch bg-transparent text-fg placeholder:text-fg-subtle outline-none border-0 p-0 m-0 font-inherit',
       triggerButton:
         'inline-flex items-center justify-center shrink-0 rounded-md text-fg-muted hover:text-fg hover:bg-surface-muted transition-colors duration-normal motion-reduce:transition-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500',
       triggerIcon: 'shrink-0',
       // size-6 (24×24 CSS px) is the WCAG AA minimum interactive target — bumping past size-5 keeps the affordance hittable without growing the inline row.
+      // Held flat across every size: it fits the 30/34/42/46px content boxes at sm..xl, and at xs it
+      // coincides with the root's border-box for the reason spelled out on `triggerButton` below.
       clearButton:
         'inline-flex items-center justify-center shrink-0 rounded-md text-fg-muted hover:text-fg hover:bg-surface-muted transition-colors duration-normal motion-reduce:transition-none size-6 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500',
     },
@@ -170,6 +175,13 @@ const datePickerVariants = tv(
         xs: {
           root: 'gap-1 text-xs',
           input: 'text-xs',
+          // At xs the pinned root is h-6 (24px border-box), so its content box is
+          // only 22px. size-6 is kept anyway: 24×24 is the WCAG 2.2 SC 2.5.8
+          // floor and docs/vertical-rhythm.md calls it non-negotiable. The button
+          // therefore coincides with the root's *border*-box, overlapping the 1px
+          // border row top and bottom. The root's height is unaffected (h-6 is a
+          // definite height) and the only visible effect is the hover fill
+          // meeting the border at the densest size.
           triggerButton: 'size-6',
           // size-3.5 (14px) is the codified half-step for xs-density chevrons — size-3 (12px) looks pinched next to text-xs and size-4 (16px) crowds the 24px trigger.
           triggerIcon: 'size-3.5',
@@ -202,12 +214,19 @@ const datePickerVariants = tv(
       },
       variant: {
         default: {
-          root: 'rounded-md border border-border bg-surface px-3 py-2 hover:border-border-strong',
+          // No `py-*`: the height is pinned per size in compoundVariants below.
+          // See docs/vertical-rhythm.md §3 — padding and a pinned height fight,
+          // and under border-box the taller one silently wins.
+          root: 'rounded-md border border-border bg-surface px-3 hover:border-border-strong',
         },
         naked: {
           root: 'bg-transparent border-0 rounded-none p-0 focus-within:outline-none',
         },
       },
+      // True when a `[slot=trigger]` element is projected. The projected content
+      // then owns its own height (it can be a lg button, a card, a badge row),
+      // so the pinned control height must not apply.
+      customTrigger: { true: {}, false: {} },
       open: { true: { triggerButton: 'bg-surface-muted text-fg' }, false: {} },
       disabled: {
         true: { root: 'opacity-50 pointer-events-none cursor-not-allowed' },
@@ -227,6 +246,22 @@ const datePickerVariants = tv(
       },
     },
     compoundVariants: [
+      // ── Pinned control height (docs/vertical-rhythm.md §1) ──
+      // Only the `default` variant carries a height. `naked` means somebody else
+      // owns the box — either `<tw-form-field>` (which auto-nakeds this picker and
+      // supplies its own bordered, padded controlWrapper) or the calendar overlay
+      // footer. Pinning naked would stack 36px on top of the form-field's own
+      // `py-2`, inflating a wrapped picker from 38px to 54px at md.
+      { variant: 'default', customTrigger: false, size: 'xs', class: { root: 'h-6' } },
+      { variant: 'default', customTrigger: false, size: 'sm', class: { root: 'h-8' } },
+      { variant: 'default', customTrigger: false, size: 'md', class: { root: 'h-9' } },
+      { variant: 'default', customTrigger: false, size: 'lg', class: { root: 'h-11' } },
+      { variant: 'default', customTrigger: false, size: 'xl', class: { root: 'h-12' } },
+      // …and the projected-trigger path keeps the vertical padding the pinned
+      // sizes drop, so a rich trigger still sits inset from the shell's border
+      // exactly as it did before the height migration.
+      { variant: 'default', customTrigger: true, class: { root: 'py-2' } },
+
       // Default variant — focused border per color
       { variant: 'default', focused: true, color: 'primary', class: { root: 'border-primary-500' } },
       { variant: 'default', focused: true, color: 'secondary', class: { root: 'border-secondary-500' } },
@@ -242,6 +277,7 @@ const datePickerVariants = tv(
     defaultVariants: {
       size: 'md',
       variant: 'default',
+      customTrigger: false,
       open: false,
       disabled: false,
       errorState: false,
@@ -411,13 +447,13 @@ export class DatePickerComponent<D = Date>
   /** Maximum selectable date. Typed input later than this commits the value and marks the bound control invalid with `calendarMaxDate`; the calendar disables the cell. Defaults to `null`. */
   readonly maxDate = input<D | null>(null);
 
-  /** Per-date predicate — return `false` to disable. Applied in the calendar, the text-parse path, and the `calendarDisabledDate` validation error. */
+  /** Per-date predicate — return `false` to disable. Applied in the calendar, the text-parse path, and the `calendarDisabledDate` validation error. Defaults to `null`. */
   readonly dateFilter = input<DateFilterFn<D> | null>(null);
 
   /** Which calendar view opens first — `'day'`, `'month'`, or `'year'`. Defaults to `'day'`. */
   readonly startView = input<CalendarViewState>('day');
 
-  /** Date to focus when the calendar opens with no selection. Falls back to today. */
+  /** Date to focus when the calendar opens with no selection. Falls back to today. Defaults to `null`. */
   readonly startAt = input<D | null>(null);
 
   /** Display format passed to `DateAdapter.format()`. With the default adapter, accepts `{ dateTimeFormat: Intl.DateTimeFormatOptions }`. When `withTime` is true and this is left at the default, hour/minute (and optional seconds) are folded in automatically. */
@@ -426,7 +462,7 @@ export class DatePickerComponent<D = Date>
   /** Optional format hint passed to `DateAdapter.parse()`. Ignored by the native adapter. */
   readonly parseFormat = input<unknown | undefined>(undefined);
 
-  /** Placeholder text shown in the input when no value is entered. */
+  /** Placeholder text shown in the input when no value is entered. Defaults to `undefined`. */
   readonly placeholder = input<string | undefined>(undefined);
 
   /** When true, the input is disabled, the trigger cannot open the calendar, and `aria-disabled="true"` is set. Defaults to `false`. */
@@ -441,7 +477,7 @@ export class DatePickerComponent<D = Date>
     transform: booleanAttribute,
   });
 
-  /** When true, blocks typing but still allows picking via the calendar trigger. Defaults to `false`. */
+  /** When true, blocks typing but still allows picking via the calendar trigger. Defaults to `false`. Alias: `readonly`. */
   readonly readonlyInput = input<boolean, unknown>(false, {
     alias: 'readonly',
     transform: booleanAttribute,
@@ -463,22 +499,22 @@ export class DatePickerComponent<D = Date>
   /** When true, renders a `Today / Clear / Cancel / Apply` action bar at the bottom of the overlay. Defaults to `false`. */
   readonly showActions = input<boolean>(false);
 
-  /** Label for the `Today` action in the overlay's action bar. */
+  /** Label for the `Today` action in the overlay's action bar. Defaults to `'Today'`. */
   readonly todayLabel = input<string>('Today');
 
-  /** Label for the `Clear` action in the overlay's action bar. */
+  /** Label for the `Clear` action in the overlay's action bar. Defaults to `'Clear'`. */
   readonly clearLabel = input<string>('Clear');
 
-  /** Label for the `Cancel` action in the overlay's action bar. */
+  /** Label for the `Cancel` action in the overlay's action bar. Defaults to `'Cancel'`. */
   readonly cancelLabel = input<string>('Cancel');
 
-  /** Label for the `Apply` action in the overlay's action bar. */
+  /** Label for the `Apply` action in the overlay's action bar. Defaults to `'Apply'`. */
   readonly applyLabel = input<string>('Apply');
 
   /** When true, focusing the text input opens the overlay. Defaults to `false`. */
   readonly openOnFocus = input<boolean>(false);
 
-  /** Extra class(es) applied to the overlay panel element. */
+  /** Extra class(es) applied to the overlay panel element. Defaults to an empty string. */
   readonly panelClass = input<string | readonly string[]>('');
 
   /** CDK scroll strategy for the overlay. Defaults to `'reposition'`. */
@@ -497,38 +533,38 @@ export class DatePickerComponent<D = Date>
    */
   readonly timeConfig = input<DatePickerTimeConfig<D> | null>(null);
 
-  /** Per-instance locale override. Forwarded to the embedded calendar and the underlying `DateAdapter` for parse/format. Falls back to Angular `LOCALE_ID` when `null`. */
+  /** Per-instance locale override. Forwarded to the embedded calendar and the underlying `DateAdapter` for parse/format. Falls back to Angular `LOCALE_ID` when `null`. Defaults to `null`. */
   readonly locale = input<string | null>(null);
 
-  /** Function producing per-cell CSS classes, forwarded to the embedded calendar. Useful for visually marking special dates (holidays, billing cycles). */
+  /** Function producing per-cell CSS classes, forwarded to the embedded calendar. Useful for visually marking special dates (holidays, billing cycles). Defaults to `null`. */
   readonly dateClass = input<DateClassFn<D> | null>(null);
 
-  /** Optional cell-content template, forwarded to the embedded calendar. Use to customize cell visuals beyond `dateClass`. */
+  /** Optional cell-content template, forwarded to the embedded calendar. Use to customize cell visuals beyond `dateClass`. Defaults to `null`. */
   readonly cellTemplate = input<TemplateRef<{ $implicit: CalendarCell<D> }> | null>(null);
 
-  /** Optional quick-select presets rendered as a vertical list before the calendar. Each preset provides a `label` and a `date` factory. An empty array hides the preset panel. */
+  /** Optional quick-select presets rendered as a vertical list before the calendar. Each preset provides a `label` and a `date` factory. An empty array hides the preset panel. Defaults to an empty array. */
   readonly presets = input<readonly DatePickerPreset<D>[]>([]);
 
-  /** Per-instance override of the `ErrorStateMatcher`. */
+  /** Per-instance override of the `ErrorStateMatcher`. Defaults to `undefined`. */
   readonly errorStateMatcher = input<ErrorStateMatcher | undefined>(undefined);
 
-  /** Accessible name for the input. Required when no visible label is supplied. Alias: `aria-label`. */
+  /** Accessible name for the input. Required when no visible label is supplied. Alias: `aria-label`. Defaults to `undefined`. */
   readonly ariaLabel = input<string | undefined>(undefined, { alias: 'aria-label' });
 
-  /** ID of an external element that labels the input. Alias: `aria-labelledby`. */
+  /** ID of an external element that labels the input. Alias: `aria-labelledby`. Defaults to `undefined`. */
   readonly ariaLabelledby = input<string | undefined>(undefined, { alias: 'aria-labelledby' });
 
-  /** Consumer-supplied `aria-describedby` ids. The form-field preserves these when merging hint/error ids. Alias: `aria-describedby`. */
+  /** Consumer-supplied `aria-describedby` ids. The form-field preserves these when merging hint/error ids. Alias: `aria-describedby`. Defaults to `undefined`. */
   readonly userAriaDescribedByInput = input<string | undefined>(undefined, {
     alias: 'aria-describedby',
   });
 
   // ── Models (two-way) ──
 
-  /** Two-way bound selected date. `null` when no selection. Setting programmatically updates the display; does NOT trigger `onChange`. */
+  /** Two-way bound selected date. `null` when no selection. Setting programmatically updates the display; does NOT trigger `onChange`. Defaults to `null`. */
   readonly value = model<D | null>(null);
 
-  /** Two-way bound open state of the calendar overlay. */
+  /** Two-way bound open state of the calendar overlay. Defaults to `false`. */
   readonly open = model(false);
 
   // ── Outputs ──
@@ -713,6 +749,7 @@ export class DatePickerComponent<D = Date>
     datePickerVariants({
       size: this.size(),
       variant: this.resolvedVariant(),
+      customTrigger: this.hasCustomTrigger(),
       open: this.open(),
       disabled: this.isDisabled(),
       errorState: this.errorState(),

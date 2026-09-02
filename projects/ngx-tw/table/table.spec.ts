@@ -17,6 +17,7 @@ import {
 import type {
   TwRowClickEvent,
   TwRowExpansionChangeEvent,
+  TwSelectionChangeEvent,
   TwTableDensity,
   TwTableResponsiveMode,
   TwTableVariant,
@@ -221,6 +222,20 @@ class RowClickHost {
   }
 }
 
+// ── Helpers ───────────────────────────────────────────────────────────
+
+/** Runs change detection, drains pending work, then renders again. */
+async function settle(fixture: ComponentFixture<unknown>): Promise<void> {
+  fixture.detectChanges();
+  await fixture.whenStable();
+  fixture.detectChanges();
+}
+
+/** Dispatches a real bubbling click, the way a user's pointer would. */
+function clickElement(el: HTMLElement): void {
+  el.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
+}
+
 // ── Tests ─────────────────────────────────────────────────────────────
 
 describe('TableComponent — rendering', () => {
@@ -401,65 +416,59 @@ describe('TableComponent — async data source', () => {
   });
 });
 
-describe('TableComponent — row click suppression', () => {
-  it('suppresses rowClicked when the click originates inside a button', async () => {
+describe('TableComponent — row click', () => {
+  let fixture: ComponentFixture<RowClickHost>;
+
+  beforeEach(async () => {
     await TestBed.configureTestingModule({ imports: [RowClickHost] }).compileComponents();
-    const fixture = TestBed.createComponent(RowClickHost);
-    fixture.detectChanges();
-    await fixture.whenStable();
-    fixture.detectChanges();
+    fixture = TestBed.createComponent(RowClickHost);
+    await settle(fixture);
+  });
 
-    const tableCmp = fixture.debugElement.children[0].componentInstance as TableComponent<Row>;
+  it('emits rowClicked with the row and its data index when a click lands on the <tr>', async () => {
+    const rows = Array.from(fixture.nativeElement.querySelectorAll('tbody tr')) as HTMLElement[];
+    expect(rows.length).toBe(SAMPLE_ROWS.length);
 
-    const button = fixture.nativeElement.querySelector('button.row-action') as HTMLElement;
-    const row = fixture.nativeElement.querySelector('tbody tr') as HTMLElement;
+    // The third row on purpose. `*cdkRowDef="let row; let i = dataIndex"` is the
+    // template glue under test here, and a row-0 assertion still passes when the
+    // index is wrong, hard-coded, or dropped altogether.
+    clickElement(rows[2]);
+    await settle(fixture);
+
+    const { events } = fixture.componentInstance;
+    expect(events.length).toBe(1);
+    expect(events[0].row).toBe(SAMPLE_ROWS[2]);
+    expect(events[0].index).toBe(2);
+  });
+
+  it('suppresses rowClicked when the click originates inside a button', async () => {
+    const button = fixture.nativeElement.querySelector(
+      'tbody tr button.row-action',
+    ) as HTMLElement;
     expect(button).toBeTruthy();
-    expect(row).toBeTruthy();
 
-    const spy = vi.spyOn(tableCmp.rowClicked, 'emit');
+    clickElement(button);
+    await settle(fixture);
 
-    // Clicking inside a button should suppress rowClicked.
-    const buttonEvent = new MouseEvent('click', { bubbles: true });
-    Object.defineProperty(buttonEvent, 'composedPath', {
-      value: () => [button, row],
-    });
-    tableCmp.handleRowClick(SAMPLE_ROWS[0], 0, buttonEvent);
-    expect(spy).not.toHaveBeenCalled();
-
-    // Clicking the row body should emit.
-    const rowEvent = new MouseEvent('click', { bubbles: true });
-    Object.defineProperty(rowEvent, 'composedPath', { value: () => [row] });
-    tableCmp.handleRowClick(SAMPLE_ROWS[0], 0, rowEvent);
-    expect(spy).toHaveBeenCalledTimes(1);
+    expect(fixture.componentInstance.events).toEqual([]);
   });
 
   it('suppresses rowClicked when the click originates inside a <select>/<option>', async () => {
-    await TestBed.configureTestingModule({ imports: [RowClickHost] }).compileComponents();
-    const fixture = TestBed.createComponent(RowClickHost);
-    fixture.detectChanges();
-    await fixture.whenStable();
-    fixture.detectChanges();
-
-    const tableCmp = fixture.debugElement.children[0].componentInstance as TableComponent<Row>;
-    const row = fixture.nativeElement.querySelector('tbody tr') as HTMLElement;
-    expect(row).toBeTruthy();
+    const cell = fixture.nativeElement.querySelector('tbody tr td') as HTMLElement;
+    expect(cell).toBeTruthy();
 
     const select = document.createElement('select');
     const option = document.createElement('option');
     option.value = 'a';
     option.textContent = 'A';
     select.appendChild(option);
-    row.appendChild(select);
-
-    const spy = vi.spyOn(tableCmp.rowClicked, 'emit');
+    cell.appendChild(select);
 
     // Click target is the <option> — its tag must be in INTERACTIVE_TAGS.
-    const optionEvent = new MouseEvent('click', { bubbles: true });
-    Object.defineProperty(optionEvent, 'composedPath', {
-      value: () => [option, select, row],
-    });
-    tableCmp.handleRowClick(SAMPLE_ROWS[0], 0, optionEvent);
-    expect(spy).not.toHaveBeenCalled();
+    clickElement(option);
+    await settle(fixture);
+
+    expect(fixture.componentInstance.events).toEqual([]);
   });
 });
 
@@ -936,6 +945,7 @@ describe('TableComponent — aria-sort plumbing', () => {
       [selection]="{ enabled: true }"
       [(selected)]="selected"
       aria-label="Selection host"
+      (selectionChange)="onSelectionChange($event)"
     >
       <tw-column name="id" headerLabel="ID">
         <ng-template twCellDef let-row>{{ $any(row).id }}</ng-template>
@@ -946,6 +956,10 @@ describe('TableComponent — aria-sort plumbing', () => {
 class SelectionHost {
   data = signal<Row[]>(SAMPLE_ROWS);
   selected = signal<readonly Row[]>([]);
+  selectionEvents: TwSelectionChangeEvent<Row>[] = [];
+  onSelectionChange(e: TwSelectionChangeEvent<Row>): void {
+    this.selectionEvents.push(e);
+  }
 }
 
 describe('TableComponent — selection column rendering', () => {
@@ -1025,6 +1039,65 @@ describe('TableComponent — selection column rendering', () => {
 
     tableCmp.clearSelection();
     expect(tableCmp.selected().length).toBe(0);
+  });
+
+  it('emits selectionChange with added/removed/previous when a row checkbox is toggled', async () => {
+    const host = fixture.componentInstance;
+    const rowCheckbox = fixture.nativeElement.querySelectorAll(
+      'tbody tw-checkbox',
+    )[1] as HTMLElement;
+
+    rowCheckbox.click();
+    await settle(fixture);
+
+    expect(host.selectionEvents.length).toBe(1);
+    expect(host.selectionEvents[0]).toEqual({
+      selected: [SAMPLE_ROWS[1]],
+      added: [SAMPLE_ROWS[1]],
+      removed: [],
+      previous: [],
+    });
+
+    // Deselect. `previous` / `removed` are computed against the pre-change
+    // snapshot — the half that silently breaks if the payload is built after
+    // `selected.set()` instead of before it.
+    rowCheckbox.click();
+    await settle(fixture);
+
+    expect(host.selectionEvents.length).toBe(2);
+    expect(host.selectionEvents[1]).toEqual({
+      selected: [],
+      added: [],
+      removed: [SAMPLE_ROWS[1]],
+      previous: [SAMPLE_ROWS[1]],
+    });
+  });
+
+  it('emits selectionChange for every row when the master checkbox is toggled', async () => {
+    const host = fixture.componentInstance;
+    const master = fixture.nativeElement.querySelector('thead tw-checkbox') as HTMLElement;
+
+    master.click();
+    await settle(fixture);
+
+    expect(host.selectionEvents.length).toBe(1);
+    expect(host.selectionEvents[0]).toEqual({
+      selected: SAMPLE_ROWS,
+      added: SAMPLE_ROWS,
+      removed: [],
+      previous: [],
+    });
+
+    master.click();
+    await settle(fixture);
+
+    expect(host.selectionEvents.length).toBe(2);
+    expect(host.selectionEvents[1]).toEqual({
+      selected: [],
+      added: [],
+      removed: SAMPLE_ROWS,
+      previous: SAMPLE_ROWS,
+    });
   });
 });
 

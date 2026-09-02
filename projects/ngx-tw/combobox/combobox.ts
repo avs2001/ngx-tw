@@ -125,15 +125,18 @@ const comboboxVariants = tv(
       spinner: 'shrink-0 text-fg-muted animate-spin',
     },
     variants: {
+      // Trigger height is PINNED (docs/vertical-rhythm.md §1-3): the box is
+      // always one line, so it declares its border-box height and carries no
+      // vertical padding. Horizontal padding and the font size are unchanged.
       size: {
         // xs density: chevron and spinner use `size-3.5` (14px) — the codified
         // half-step between size-3 and size-4 that lines up with text-xs metric
-        // inside a 28px trigger.
-        xs: { trigger: 'px-2 py-1 text-xs', chevron: 'size-3.5', clearButton: 'size-4', spinner: 'size-3.5' },
-        sm: { trigger: 'px-3 py-1.5 text-sm', chevron: 'size-4', spinner: 'size-4' },
-        md: { trigger: 'px-4 py-2 text-sm', chevron: 'size-4', spinner: 'size-4' },
-        lg: { trigger: 'px-5 py-2.5 text-base', chevron: 'size-5', spinner: 'size-5' },
-        xl: { trigger: 'px-6 py-3 text-base', chevron: 'size-5', spinner: 'size-5' },
+        // inside a 24px trigger.
+        xs: { trigger: 'px-2 text-xs h-6', chevron: 'size-3.5', clearButton: 'size-4', spinner: 'size-3.5' },
+        sm: { trigger: 'px-3 text-sm h-8', chevron: 'size-4', spinner: 'size-4' },
+        md: { trigger: 'px-4 text-sm h-9', chevron: 'size-4', spinner: 'size-4' },
+        lg: { trigger: 'px-5 text-base h-11', chevron: 'size-5', spinner: 'size-5' },
+        xl: { trigger: 'px-6 text-base h-12', chevron: 'size-5', spinner: 'size-5' },
       },
       color: {
         primary: { trigger: 'focus-within:outline-primary-500' },
@@ -153,10 +156,15 @@ const comboboxVariants = tv(
         true: { chevron: 'rotate-180' },
         false: {},
       },
+      // `naked` = wrapped in a `tw-form-field`, which owns the box: its
+      // controlWrapper draws the border and the vertical padding. `h-auto`
+      // releases the pinned height (declared after `size`, so twMerge keeps it
+      // — the same ordering `px-0` already relies on) so the trigger
+      // contributes only its line box and the field's own rhythm governs.
       naked: {
         true: {
           trigger:
-            'border-0 bg-transparent rounded-none px-0 py-0 hover:border-0 focus-within:outline-0 focus-within:outline-offset-0',
+            'border-0 bg-transparent rounded-none px-0 py-0 h-auto hover:border-0 focus-within:outline-0 focus-within:outline-offset-0',
         },
         false: {},
       },
@@ -348,43 +356,43 @@ export class ComboboxComponent<T = unknown>
 {
   // ── Inputs ──
 
-  /** Array of options to render in the popover. Accepts plain records or `TwComboboxOption<T>`. */
+  /** Array of options to render in the popover. Accepts plain records or `TwComboboxOption<T>`. Defaults to an empty array. */
   readonly options = input<readonly unknown[]>([]);
 
-  /** Accessor returning the visible label for an option. Used by the default filter and the trigger label resolver. */
+  /** Accessor returning the visible label for an option. Used by the default filter and the trigger label resolver. Defaults to reading `.label`, falling back to `String(.value)`. */
   readonly optionLabel = input<(option: unknown) => string>(defaultOptionLabel);
 
-  /** Accessor returning the value emitted via `valueCommit` when this option is picked. */
+  /** Accessor returning the value emitted via `valueCommit` when this option is picked. Defaults to reading `.value`. */
   readonly optionValue = input<(option: unknown) => T>(defaultOptionValue as (option: unknown) => T);
 
-  /** Accessor returning whether an option is non-interactive. */
+  /** Accessor returning whether an option is non-interactive. Defaults to reading `.disabled`. */
   readonly optionDisabled = input<(option: unknown) => boolean>(defaultOptionDisabled);
 
-  /** Accessor returning a group label. Options sharing a group render under a labelled `role="group"` region. */
+  /** Accessor returning a group label. Options sharing a group render under a labelled `role="group"` region. Defaults to reading `.group`. */
   readonly optionGroup = input<(option: unknown) => string | undefined>(defaultOptionGroup);
 
-  /** Accessor returning an optional secondary description rendered under the label in the default option row. */
+  /** Accessor returning an optional secondary description rendered under the label in the default option row. Defaults to reading `.description`. */
   readonly optionDescription = input<(option: unknown) => string | undefined>(defaultOptionDescription);
 
   /** Filter function applied client-side whenever `inputValue` changes. Pass `null` to disable client filtering (async mode). Defaults to case-insensitive `startsWith` on the label. */
   readonly filterFn = input<((option: unknown, query: string) => boolean) | null>(defaultStartsWithFilter);
 
-  /** When `true`, free-text commits are rejected — the input reverts to the last committed label on blur. */
+  /** When `true`, free-text commits are rejected — the input reverts to the last committed label on blur. Defaults to `false`. */
   readonly strict = input<boolean>(false);
 
-  /** Placeholder shown when the input is empty. */
+  /** Placeholder shown when the input is empty. Defaults to `undefined`. */
   readonly placeholder = input<string | undefined>(undefined);
 
-  /** Disables the input and prevents the popover from opening. */
+  /** Disables the input and prevents the popover from opening. Defaults to `false`. Alias: `disabled`. */
   readonly disabledInput = input<boolean>(false, { alias: 'disabled' });
 
-  /** Sets `aria-required="true"` on the input. */
+  /** Sets `aria-required="true"` on the input. Defaults to `false`. */
   readonly requiredInput = input<boolean>(false, { alias: 'required' });
 
-  /** Controls trigger padding and font size per the inline padding scale. */
+  /** Controls trigger padding and font size per the inline padding scale. Defaults to `'md'`. */
   readonly size = input<TwSize>('md');
 
-  /** Semantic color for the focus ring. */
+  /** Semantic color for the focus ring. Defaults to `'primary'`. */
   readonly color = input<TwColor>('primary');
 
   /** Whether the trailing chevron affordance is rendered. */
@@ -397,13 +405,13 @@ export class ComboboxComponent<T = unknown>
   // is set; opt-out is for required-only flows.
   readonly clearable = input<boolean>(true);
 
-  /** When `true`, shows an in-popover spinner and an inline spinner in the trigger while the popover is open. */
+  /** When `true`, shows an in-popover spinner and an inline spinner in the trigger while the popover is open. Defaults to `false`. */
   readonly loading = input<boolean>(false);
 
-  /** Debounce window (ms) before `queryChange` emits. Local filtering is not debounced. */
+  /** Debounce window (ms) before `queryChange` emits. Local filtering is not debounced. Defaults to `150`. */
   readonly queryDebounce = input<number>(150);
 
-  /** Minimum query length before the popover opens automatically. `0` opens on focus. */
+  /** Minimum query length before the popover opens automatically. `0` opens on focus. Defaults to `0`. */
   readonly minQueryLength = input<number>(0);
 
   /** Whether the popover opens automatically when the input receives focus. */
@@ -411,34 +419,34 @@ export class ComboboxComponent<T = unknown>
   // like UX. Opt-out is for command-palette-style flows triggered only by typing.
   readonly openOnFocus = input<boolean>(true);
 
-  /** Maximum height (px) of the popover scroll region. */
+  /** Maximum height (px) of the popover scroll region. Defaults to `256`. */
   readonly panelMaxHeight = input<number>(256);
 
-  /** Overlay width strategy. `'trigger'` matches input width; `'auto'` lets content decide; a number is applied as px; a string is passed as a CSS length. */
+  /** Overlay width strategy. `'trigger'` matches input width; `'auto'` lets content decide; a number is applied as px; a string is passed as a CSS length. Defaults to `'trigger'`. */
   readonly panelWidth = input<'trigger' | 'auto' | number | string>('trigger');
 
-  /** Extra class(es) appended to the overlay panel for consumer customization. */
+  /** Extra class(es) appended to the overlay panel for consumer customization. Defaults to an empty string. */
   readonly panelClass = input<string | readonly string[]>('');
 
-  /** CDK overlay scroll strategy. */
+  /** CDK overlay scroll strategy. Defaults to `'reposition'`. */
   readonly scrollStrategy = input<'reposition' | 'close' | 'block'>('reposition');
 
-  /** Pixel offset between the input and the popover. */
+  /** Pixel offset between the input and the popover. Defaults to `4`. */
   readonly offset = input<number>(4);
 
-  /** Fallback empty-state message when no `*twComboboxEmpty` template is projected. */
+  /** Fallback empty-state message when no `*twComboboxEmpty` template is projected. Defaults to `'No results'`. */
   readonly emptyMessage = input<string>('No results');
 
-  /** Equality comparator used to reconcile `value` with options during `writeValue`. */
+  /** Equality comparator used to reconcile `value` with options during `writeValue`. Defaults to `Object.is`. */
   readonly compareWith = input<(a: T, b: T) => boolean>(Object.is);
 
-  /** Accessible name for the combobox input. */
+  /** Accessible name for the combobox input. Defaults to `undefined`. Alias: `aria-label`. */
   readonly ariaLabel = input<string | undefined>(undefined, { alias: 'aria-label' });
 
-  /** ID of an external label element. */
+  /** ID of an external label element. Defaults to `undefined`. Alias: `aria-labelledby`. */
   readonly ariaLabelledby = input<string | undefined>(undefined, { alias: 'aria-labelledby' });
 
-  /** ID of an external descriptor element. */
+  /** ID of an external descriptor element. Defaults to `undefined`. Alias: `aria-describedby`. */
   readonly ariaDescribedby = input<string | undefined>(undefined, { alias: 'aria-describedby' });
 
   /** Per-instance override of the {@link ErrorStateMatcher}. When omitted, the combobox uses the `TW_ERROR_STATE_MATCHER` token's value. */
@@ -446,13 +454,13 @@ export class ComboboxComponent<T = unknown>
 
   // ── Models ──
 
-  /** Two-way bound committed value. May be an option's value (`T`), a typed string (free-text mode), or `null`. */
+  /** Two-way bound committed value. May be an option's value (`T`), a typed string (free-text mode), or `null`. Defaults to `null`. */
   readonly value = model<T | string | null>(null);
 
   /** Two-way bound visible text in the input. Bound separately from `value` so async consumers can drive the query. */
   readonly inputValue = model<string>('');
 
-  /** Two-way bound open state of the popover. */
+  /** Two-way bound open state of the popover. Defaults to `false`. */
   readonly open = model<boolean>(false);
 
   // ── Outputs ──

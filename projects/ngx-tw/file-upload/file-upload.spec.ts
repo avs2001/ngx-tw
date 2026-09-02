@@ -440,11 +440,18 @@ describe('FileUploadComponent — inputs', () => {
     expect(getHiddenInput(fixture).disabled).toBe(true);
   });
 
-  it('sets aria-required on host when required', () => {
+  // ARIA 1.2 does not allow `aria-required` on `role="group"`, and axe reports
+  // it as a critical `aria-allowed-attr` violation. The requirement belongs on
+  // the control that holds the value — the hidden `<input type="file">`, via
+  // the native `required` attribute. Asserting BOTH halves: present on the
+  // input, absent from the host. Without the negative half this test would
+  // still pass if the disallowed host attribute were reintroduced.
+  it('marks the hidden file input required, and never the group host', () => {
     const fixture = TestBed.createComponent(BasicHost);
     fixture.componentInstance.required.set(true);
     fixture.detectChanges();
-    expect(getHost(fixture).getAttribute('aria-required')).toBe('true');
+    expect(getHiddenInput(fixture).required).toBe(true);
+    expect(getHost(fixture).hasAttribute('aria-required')).toBe(false);
   });
 
   it('renders the label input as the headline', () => {
@@ -949,14 +956,17 @@ describe('FileUploadComponent — accessibility', () => {
     );
   });
 
-  it('sets aria-invalid when errorState is true', async () => {
+  // As above: `aria-invalid` is not allowed on `role="group"`. It goes on the
+  // hidden file input, which is the control carrying the value.
+  it('sets aria-invalid on the hidden file input, not on the group host', async () => {
     const fixture = TestBed.createComponent(FormFieldHost);
     fixture.detectChanges();
     fixture.componentInstance.control.markAsTouched();
     fixture.componentInstance.control.updateValueAndValidity();
     fixture.detectChanges();
     await fixture.whenStable();
-    expect(getHost(fixture).getAttribute('aria-invalid')).toBe('true');
+    expect(getHiddenInput(fixture).getAttribute('aria-invalid')).toBe('true');
+    expect(getHost(fixture).hasAttribute('aria-invalid')).toBe(false);
   });
 });
 

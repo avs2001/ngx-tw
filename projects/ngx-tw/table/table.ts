@@ -603,7 +603,7 @@ export class NoDataRowDirective extends CdkNoDataRow {}
 /** Structural directive on an `<ng-template>` declaring the row-expansion template. Requires `[multiTemplateRows]="true"` on the parent `<tw-table>`. */
 @Directive({ selector: 'ng-template[twRowExpansion]' })
 export class RowExpansionDirective<T = unknown> {
-  /** Optional predicate that decides whether this expansion renders for a given row. Defaults to `undefined` (render for every expanded row). */
+  /** Optional predicate that decides whether this expansion renders for a given row. Defaults to `undefined` (render for every expanded row). Alias: `twRowExpansionWhen`. */
   readonly predicate = input<((row: T, index: number) => boolean) | undefined>(
     undefined,
     { alias: 'twRowExpansionWhen' },
@@ -868,18 +868,18 @@ export class TableComponent<T = unknown> {
   /** Overrides for user-facing strings. Unset keys fall back to the English defaults. Defaults to `{}`. */
   readonly labels = input<Partial<TwTableLabels>>({});
 
-  /** Accessible name for the `<table>`. Required when no visible `<caption slot="caption">` is provided. */
+  /** Accessible name for the `<table>`. Required when no visible `<caption slot="caption">` is provided. Defaults to `undefined`. Alias: `aria-label`. */
   readonly ariaLabel = input<string | undefined>(undefined, { alias: 'aria-label' });
 
-  /** Id of an external element labelling the table. Mirrored to `aria-labelledby` on the `<table>`. */
+  /** Id of an external element labelling the table. Mirrored to `aria-labelledby` on the `<table>`. Defaults to `undefined`. */
   readonly ariaLabelledby = input<string | undefined>(undefined, { alias: 'aria-labelledby' });
 
   // ── Models (two-way) ──
 
-  /** Two-way bound set of rows currently expanded. Immutable — set a new `Set` on every change; do not mutate in place. */
+  /** Two-way bound set of rows currently expanded. Immutable — set a new `Set` on every change; do not mutate in place. Defaults to an empty set. */
   readonly expandedRows = model<ReadonlySet<T>>(new Set<T>());
 
-  /** Two-way bound list of selected rows. Set a new array on every change; do not mutate. Only used when `selection.enabled` is `true`. */
+  /** Two-way bound list of selected rows. Set a new array on every change; do not mutate. Only used when `selection.enabled` is `true`. Defaults to an empty array. */
   readonly selected = model<readonly T[]>([]);
 
   // ── Outputs ──

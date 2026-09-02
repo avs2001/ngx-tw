@@ -87,7 +87,7 @@ function humanSize(bytes: number): string {
                 [variant]="v"
                 [label]="'Variant: ' + v"
                 description="Drop a file or click to browse."
-                [attr.aria-label]="'Variant ' + v"
+                [aria-label]="'Variant ' + v"
               />
             </div>
           }
@@ -122,7 +122,7 @@ function humanSize(bytes: number): string {
                 [size]="s"
                 label="Drop a file"
                 description="Click to browse."
-                [attr.aria-label]="'Size ' + s"
+                [aria-label]="'Size ' + s"
               />
             </div>
           }

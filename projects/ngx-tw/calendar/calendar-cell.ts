@@ -31,10 +31,17 @@ const cellVariants = tv(
         'relative flex items-center justify-center cursor-pointer select-none transition-colors duration-normal motion-reduce:transition-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500 disabled:cursor-not-allowed',
     },
     variants: {
+      // Every view's cell is `h-9` — the 36px `md` control height from
+      // docs/vertical-rhythm.md. Month and year cells were `h-10`, which made a
+      // month-picker row 4px taller than a day row for no reason and put the
+      // value off the height scale. Only the width differs per view (a day is
+      // one or two digits in a circle; a month/year is a 3–4 char label in a
+      // rounded rect). The panel's height is pinned separately — see the
+      // view-region wrapper in `calendar.ts`.
       view: {
         day: { button: 'h-9 w-9 text-sm rounded-full' },
-        month: { button: 'h-10 w-16 text-sm rounded-md' },
-        year: { button: 'h-10 w-14 text-sm rounded-md' },
+        month: { button: 'h-9 w-16 text-sm rounded-md' },
+        year: { button: 'h-9 w-14 text-sm rounded-md' },
       },
       // Slot tokens own light/dark contrast — no `dark:`, no shade picks.
       // The range wash uses `primary-soft-hover` (one step deeper than `-soft`)
@@ -163,16 +170,16 @@ export class CalendarCellComponent<D> {
   /** The cell data object to render. */
   readonly cell: InputSignal<CalendarCell<D>> = input.required<CalendarCell<D>>();
 
-  /** The active calendar view — drives cell dimensions and radius. */
+  /** The active calendar view — drives cell width and radius. Defaults to `'day'`. */
   readonly view: InputSignal<CalendarViewState> = input<CalendarViewState>('day');
 
-  /** `true` when the cell's date is outside the currently displayed month. */
+  /** `true` when the cell's date is outside the currently displayed month, which mutes its text. Defaults to `false`. */
   readonly outside: InputSignal<boolean> = input<boolean>(false);
 
-  /** Tab index for roving focus (`0` for the active cell, `-1` otherwise). */
+  /** Tab index for roving focus (`0` for the active cell, `-1` otherwise). Defaults to `-1`. */
   readonly tabindex: InputSignal<number> = input<number>(-1);
 
-  /** Optional template rendered inside the button — receives `{ $implicit: CalendarCell<D> }`. */
+  /** Optional template rendered inside the button — receives `{ $implicit: CalendarCell<D> }`. Defaults to `null` (the cell renders its own display value). */
   readonly cellTemplate: InputSignal<TemplateRef<{ $implicit: CalendarCell<D> }> | null> =
     input<TemplateRef<{ $implicit: CalendarCell<D> }> | null>(null);
 

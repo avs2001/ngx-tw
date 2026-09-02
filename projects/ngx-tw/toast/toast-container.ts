@@ -4,6 +4,7 @@ import {
   type ComponentRef,
   Component,
   computed,
+  DestroyRef,
   ElementRef,
   Injector,
   TemplateRef,
@@ -169,10 +170,32 @@ export class ToastContainerComponent {
   private readonly liveAnnouncer = inject(LiveAnnouncer);
   private readonly host = inject(ElementRef<HTMLElement>);
 
+  /**
+   * Teardown for every swipe currently in flight.
+   *
+   * `swipeSessions` is a WeakMap and the listeners are bound to the toast
+   * element, so neither outlives the DOM — but a swipe interrupted by destroy
+   * (the toast auto-dismisses mid-drag) would otherwise leave the pointer
+   * capture unreleased. Each entry removes its listeners and releases capture.
+   */
+  private readonly activeSwipeTeardowns = new Set<() => void>();
+
+  /** Per-toast handle into {@link activeSwipeTeardowns}. */
+  private readonly swipeTeardowns = new WeakMap<ToastRef, () => void>();
+
   private readonly swipeSessions = new WeakMap<
     ToastRef,
     { pointerId: number; startX: number; width: number; active: boolean }
   >();
+
+  constructor() {
+    // A toast can auto-dismiss (or the whole container can be torn down) while
+    // a drag is still in flight, in which case `onSwipeEnd` never runs.
+    inject(DestroyRef).onDestroy(() => {
+      for (const teardown of [...this.activeSwipeTeardowns]) teardown();
+      this.activeSwipeTeardowns.clear();
+    });
+  }
 
   private readonly entries = computed<readonly Entry[]>(() => {
     const pos = this.position();
@@ -300,6 +323,21 @@ export class ToastContainerComponent {
     el.addEventListener('pointermove', onMove);
     el.addEventListener('pointerup', onUp);
     el.addEventListener('pointercancel', onUp);
+
+    const teardown = () => {
+      el.removeEventListener('pointermove', onMove);
+      el.removeEventListener('pointerup', onUp);
+      el.removeEventListener('pointercancel', onUp);
+      try {
+        el.releasePointerCapture(event.pointerId);
+      } catch {
+        /* capture already released, or the element is detached */
+      }
+      this.swipeSessions.delete(ref);
+      this.activeSwipeTeardowns.delete(teardown);
+    };
+    this.swipeTeardowns.set(ref, teardown);
+    this.activeSwipeTeardowns.add(teardown);
   }
 
   private onSwipeMove(ref: ToastRef, event: PointerEvent, _el: HTMLElement): void {
@@ -324,6 +362,11 @@ export class ToastContainerComponent {
     el.removeEventListener('pointermove', onMove);
     el.removeEventListener('pointerup', onUp);
     el.removeEventListener('pointercancel', onUp);
+    const teardown = this.swipeTeardowns.get(ref);
+    if (teardown) {
+      this.activeSwipeTeardowns.delete(teardown);
+      this.swipeTeardowns.delete(ref);
+    }
     if (!session || event.pointerId !== session.pointerId) return;
     try {
       el.releasePointerCapture(session.pointerId);

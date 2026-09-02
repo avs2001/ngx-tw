@@ -306,22 +306,22 @@ export class CheckboxComponent
   /** Id on the host element. Auto-generated as `tw-checkbox-N` when not provided. Used by the form-field's `<label for>` attribute. */
   readonly idInput = input<string | undefined>(undefined, { alias: 'id' });
 
-  /** Accessible name when no visible label is provided. Mirrored to `aria-label`. */
+  /** Accessible name when no visible label is provided. Mirrored to `aria-label`. Defaults to `undefined`. */
   readonly ariaLabel = input<string | undefined>(undefined, { alias: 'aria-label' });
 
-  /** ID of an external element that labels the checkbox. Mirrored to `aria-labelledby`. */
+  /** ID of an external element that labels the checkbox. Mirrored to `aria-labelledby`. Defaults to `undefined`. */
   readonly ariaLabelledby = input<string | undefined>(undefined, { alias: 'aria-labelledby' });
 
-  /** ID of an external element that describes the checkbox. Mirrored to `aria-describedby`. Form-field merges its hint/error ids alongside. */
+  /** ID of an external element that describes the checkbox. Mirrored to `aria-describedby`. Form-field merges its hint/error ids alongside. Defaults to `undefined`. */
   readonly ariaDescribedby = input<string | undefined>(undefined, { alias: 'aria-describedby' });
 
   /** Per-instance override of the {@link ErrorStateMatcher}. When omitted, the directive uses the `TW_ERROR_STATE_MATCHER` token's value. */
   readonly errorStateMatcher = input<ErrorStateMatcher | undefined>(undefined);
 
-  /** Two-way bound checked state. Updates when the user toggles via click or Space. */
+  /** Two-way bound checked state. Updates when the user toggles via click or Space. Defaults to `false`. */
   readonly checked = model(false);
 
-  /** Two-way bound indeterminate state. When true, the box shows a dash and the host exposes `aria-checked="mixed"`. Any user toggle clears indeterminate and sets `checked` to `true`. */
+  /** Two-way bound indeterminate state. When true, the box shows a dash and the host exposes `aria-checked="mixed"`. Any user toggle clears indeterminate and sets `checked` to `true`. Defaults to `false`. */
   readonly indeterminate = model(false);
 
   /** Fires after the checked state changes from a user interaction. Does not fire when the value is updated programmatically via `writeValue`. */

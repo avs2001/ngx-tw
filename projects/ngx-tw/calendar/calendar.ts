@@ -171,6 +171,34 @@ const calendarVariants = tv(
 
       <ng-content select="[twCalendarPresets]" />
 
+      <!--
+        View region — height-pinned so day → month → year switching never
+        resizes the panel vertically. The root is inline-block, so without this
+        the three views rendered 252 / 108 / 216 tall and the popup jumped on
+        every view switch.
+
+        min-h-63 = 252px = the day grid, the tallest view, which always renders
+        a fixed 6 weeks: one h-9 weekday header row + 6 h-9 week rows. It is a
+        min-*, never h-*, so a taller consumer cell template can still grow.
+        The number is derived from the cell geometry in calendar-cell.ts —
+        change a cell's h-* and this has to be recomputed, or the tallest view
+        starts overflowing it.
+
+        Stock spacing utility on purpose: a --width-calendar-* theme token was
+        tried and deleted, because tailwind-merge cannot collapse custom-token
+        classes and consumer overrides silently stop winning
+        (docs/vertical-rhythm.md section 1).
+
+        NOT pinned: width. The views also measure 252 / 268 / 236 wide, so the
+        panel still shifts horizontally. Equalizing it is deliberately deferred
+        — a min-w on this wrapper redistributes the day grid's grid-cols-7 to
+        fractional columns (268/7 = 38.28px) while the day button stays 36px,
+        which pushes the range wrapper's rounded-l-full / rounded-r-full cap
+        ~1px past the selected endpoint pill at every range boundary. That is a
+        sub-pixel change to the calendar's most visually load-bearing state and
+        needs a rendered check, not an arithmetic one.
+      -->
+      <div class="min-h-63">
       @switch (viewState()) {
         @case ('day') {
           <div [class]="monthsClasses()">
@@ -255,6 +283,7 @@ const calendarVariants = tv(
           />
         }
       }
+      </div>
     </div>
   `,
 })
@@ -318,13 +347,14 @@ export class CalendarComponent<
   // Public inputs (§33.1)
   // ---------------------------------------------------------------------------
 
-  /** Selection mode (§5). Changing this at runtime clears the value and emits `modeChange`. */
+  /** Selection mode (§5), bound as `mode`. Changing this at runtime clears the value and emits `modeChange`. Defaults to `'single'`. */
   readonly modeInput = input<CalendarMode>('single', { alias: 'mode' });
   readonly mode: WritableSignal<CalendarMode> = linkedSignal(this.modeInput);
 
   /**
-   * Consumer-bound value. Shape narrows by `M`: `D | null` for single,
-   * `D[]` for multiple, `{ start; end }` for range.
+   * Consumer-bound value, bound as `value`. Shape narrows by `M`: `D | null` for
+   * single, `D[]` for multiple, `{ start; end }` for range. Defaults to `null`,
+   * which reads as the empty selection in every mode.
    */
   readonly valueInput = input<CalendarValue<M, D>>(null as CalendarValue<M, D>, {
     alias: 'value',
@@ -334,24 +364,25 @@ export class CalendarComponent<
   /** Anchor date for the displayed view. Defaults to today on mount. */
   readonly startAt: InputSignal<D | null> = input<D | null>(null);
 
-  /** Minimum selectable date. */
+  /** Minimum selectable date. Defaults to `null` (no lower bound). */
   readonly minDate: InputSignal<D | null> = input<D | null>(null);
 
-  /** Maximum selectable date. */
+  /** Maximum selectable date. Defaults to `null` (no upper bound). */
   readonly maxDate: InputSignal<D | null> = input<D | null>(null);
 
-  /** Per-date predicate — return `false` to disable. */
+  /** Per-date predicate — return `false` to disable. Defaults to `null` (every date passes). */
   readonly dateFilter: InputSignal<DateFilterFn<D> | null> = input<DateFilterFn<D> | null>(null);
 
   /**
    * Explicitly disabled dates (§10.1). Either an array (each entry compared via
    * `adapter.sameDate`) or a predicate returning `true` for disabled dates.
    * OR-combined with `dateFilter`, `disabledDaysOfWeek`, and `[minDate, maxDate]`.
+   * Defaults to `null` (no explicitly disabled dates).
    */
   readonly disabledDates: InputSignal<DisabledDates<D> | null> =
     input<DisabledDates<D> | null>(null);
 
-  /** Days of the week to disable (0=Sun … 6=Sat). Empty array = no day-of-week disabling. */
+  /** Days of the week to disable (0=Sun … 6=Sat). Defaults to `[]` — no day-of-week disabling. */
   readonly disabledDaysOfWeek: InputSignal<readonly number[]> = input<readonly number[]>([]);
 
   /**
@@ -360,18 +391,18 @@ export class CalendarComponent<
    * useful for sharing a constraint preset across multiple calendars. Each field is
    * optional. Individual inputs (`minDate`, `maxDate`, `disabledDates`,
    * `disabledDaysOfWeek`, `dateFilter`) take precedence over fields here when both
-   * are set non-null.
+   * are set non-null. Defaults to `null` (no bundle; use the individual inputs).
    */
   readonly constraints: InputSignal<CalendarConstraints<D> | null> =
     input<CalendarConstraints<D> | null>(null);
 
-  /** Minimum range length in days, inclusive (`mode: 'range'` only). `null` = no minimum. */
+  /** Minimum range length in days, inclusive (`mode: 'range'` only). Defaults to `null` — no minimum. */
   readonly minRangeLength: InputSignal<number | null> = input<number | null>(null);
 
-  /** Maximum range length in days, inclusive (`mode: 'range'` only). `null` = no maximum. */
+  /** Maximum range length in days, inclusive (`mode: 'range'` only). Defaults to `null` — no maximum. */
   readonly maxRangeLength: InputSignal<number | null> = input<number | null>(null);
 
-  /** Maximum number of selections in `mode: 'multiple'`. `null` = unlimited. */
+  /** Maximum number of selections in `mode: 'multiple'`. Defaults to `null` — unlimited. */
   readonly maxSelections: InputSignal<number | null> = input<number | null>(null);
 
   /**
@@ -385,7 +416,8 @@ export class CalendarComponent<
   /**
    * IDREF list for the form-error live region (§28.3). When set, the calendar
    * root carries `aria-describedby="<value>"` so screen readers read consumer-
-   * rendered error messages alongside the focused cell announcement.
+   * rendered error messages alongside the focused cell announcement. Defaults to
+   * `null` (no `aria-describedby` is emitted).
    */
   readonly errorAriaDescribedBy: InputSignal<string | null> = input<string | null>(null);
 
@@ -406,38 +438,40 @@ export class CalendarComponent<
   readonly rangeBehavior: InputSignal<Partial<RangeBehaviorConfig>> =
     input<Partial<RangeBehaviorConfig>>({});
 
-  /** Function producing per-cell CSS classes. */
+  /** Function producing per-cell CSS classes, appended to the cell button. Defaults to `null` (no extra classes). */
   readonly dateClass: InputSignal<DateClassFn<D> | null> = input<DateClassFn<D> | null>(null);
 
-  /** When `true`, the calendar renders with a border and a soft shadow. */
+  /** When `true`, the calendar renders with a border and a soft shadow. Defaults to `true`. */
+  // TRUE-default: an embedded calendar reads as a bordered panel; the borderless
+  // variant is the special case (codified in CLAUDE.md's boolean-default list).
   readonly bordered: InputSignal<boolean> = input<boolean>(true);
 
   /** Which view opens first. Defaults to `'day'`. Phase 8 will derive the default from `rangeGranularity`. */
   readonly startView: InputSignal<CalendarViewState> = input<CalendarViewState>('day');
 
-  /** Override first day of week (0=Sun, 1=Mon). Falls back to the adapter's default. */
+  /** Override first day of week (0=Sun, 1=Mon). Defaults to `null` — falls back to the adapter's locale default. */
   readonly firstDayOfWeek: InputSignal<number | null> = input<number | null>(null);
 
   /**
    * Number of months to display side-by-side (1 or 2). Phase 9 replaces this with a
-   * full `numberOfMonths: 1..12+` surface (§23).
+   * full `numberOfMonths: 1..12+` surface (§23). Defaults to `1`.
    */
   readonly monthColumns: InputSignal<number> = input<number>(1);
 
-  /** Disabled state. Merged with any `setDisabledState` call from a bound form control via `effectiveDisabled`. */
+  /** Disabled state. Merged with any `setDisabledState` call from a bound form control via `effectiveDisabled`. Defaults to `false`. */
   readonly disabled: InputSignal<boolean> = input<boolean>(false);
 
-  /** Read-only state (§33.1). When `true`, focus and keyboard navigation still work but selections cannot be committed. */
+  /** Read-only state (§33.1). When `true`, focus and keyboard navigation still work but selections cannot be committed. Defaults to `false`. */
   readonly readonly: InputSignal<boolean> = input<boolean>(false);
 
   /** How a form reset restores internal state (§6.5). `'full'` (default) also restores view + active-date; `'value-only'` clears the draft but leaves navigation where the user left it. */
   readonly resetBehavior: InputSignal<ResetBehavior> = input<ResetBehavior>('full');
 
-  /** Optional cell-content template. */
+  /** Optional cell-content template, rendered inside each cell button with `{ $implicit: CalendarCell<D> }`. Defaults to `null` (cells render their own display value). */
   readonly cellTemplate: InputSignal<TemplateRef<{ $implicit: CalendarCell<D> }> | null> =
     input<TemplateRef<{ $implicit: CalendarCell<D> }> | null>(null);
 
-  /** Per-instance locale override. Falls back to Angular `LOCALE_ID` when `null` (§19.1). */
+  /** Per-instance locale override. Defaults to `null` — falls back to Angular's `LOCALE_ID` (§19.1). */
   readonly locale: InputSignal<string | null> = input<string | null>(null);
 
   /**

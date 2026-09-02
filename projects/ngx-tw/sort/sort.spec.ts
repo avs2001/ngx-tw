@@ -488,11 +488,14 @@ describe('SortHeaderComponent', () => {
     expect(labelIdx).toBeGreaterThan(arrowIdx);
   });
 
-  it('size variant applies padding classes', () => {
-    // The 'md' default applies `px-3 py-2 text-sm` to the container.
+  it('size variant applies the pinned height and horizontal padding', () => {
+    // The 'md' default applies `px-3 text-sm h-9` to the container. Vertical
+    // padding is intentionally absent — the height is pinned to the control
+    // scale (docs/vertical-rhythm.md) and `py-*` would fight it.
     const container = getContainer(getHeader(fixture, 'name'));
     expect(container.className).toContain('px-3');
-    expect(container.className).toContain('py-2');
+    expect(container.className).toContain('h-9');
+    expect(container.className).not.toContain('py-');
   });
 
   it('throws when header is rendered without a parent twSort directive', async () => {

@@ -51,12 +51,18 @@ const menuItemVariants = tv(
   {
     base: 'relative flex w-full flex-wrap items-center gap-2 rounded-md cursor-pointer select-none transition-colors duration-normal motion-reduce:transition-none text-fg outline-none focus-visible:bg-surface-muted hover:bg-surface-muted',
     variants: {
+      // Menu rows are on the `min-h-*` list (docs/vertical-rhythm.md §2), not
+      // the pinned one: `[twMenuItemDescription]` wraps onto a second line via
+      // `basis-full`, so the box must stay free to grow. The floor lands on the
+      // control scale (24 / 32 / 36 / 44 / 48) and `py-*` is kept exactly as it
+      // was — it sets the breathing room around a wrapped two-line row, where
+      // the floor no longer binds.
       size: {
-        xs: 'px-1.5 py-0.5 text-xs',
-        sm: 'px-2 py-1 text-xs',
-        md: 'px-3 py-1.5 text-sm',
-        lg: 'px-4 py-2 text-sm',
-        xl: 'px-5 py-2.5 text-base',
+        xs: 'px-1.5 py-0.5 text-xs min-h-6',
+        sm: 'px-2 py-1 text-xs min-h-8',
+        md: 'px-3 py-1.5 text-sm min-h-9',
+        lg: 'px-4 py-2 text-sm min-h-11',
+        xl: 'px-5 py-2.5 text-base min-h-12',
       },
       // Slot tokens own light/dark contrast — no `dark:`, no shade picks.
       // `undefined` (the default) leaves the base text-fg styling untouched.
@@ -162,10 +168,10 @@ export class MenuComponent {
   /** Controls item density and padding. Defaults to `'md'`. */
   readonly size = input<TwSize>('md');
 
-  /** Accessible label for the menu panel. Use when no visible heading describes the menu (e.g. a kebab-icon trigger). */
+  /** Accessible label for the menu panel. Use when no visible heading describes the menu (e.g. a kebab-icon trigger). Defaults to `undefined`. Alias: `aria-label`. */
   readonly ariaLabel = input<string | undefined>(undefined, { alias: 'aria-label' });
 
-  /** ID of an element that labels the menu panel. Ignored when `ariaLabel` is set. */
+  /** ID of an element that labels the menu panel. Ignored when `ariaLabel` is set. Defaults to `undefined`. Alias: `aria-labelledby`. */
   readonly ariaLabelledBy = input<string | undefined>(undefined, { alias: 'aria-labelledby' });
 
   readonly classes = computed(() => menuVariants({ size: this.size() }));

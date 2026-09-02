@@ -36,15 +36,6 @@
   --shadow-table-sticky-cell-start: 1px 0 0 0 var(--color-border);
   --shadow-table-sticky-cell-end: -1px 0 0 0 var(--color-border);
 
-  /* ===== Calendar widths =====
-     Pinned per size so month / year / multi-year views share the same footprint
-     across view transitions. Each value is roughly `cell-size × 7 + gutters`. */
-  --width-calendar-xs: 210px;
-  --width-calendar-sm: 240px;
-  --width-calendar-md: 292px;
-  --width-calendar-lg: 320px;
-  --width-calendar-xl: 376px;
-
   /* ===== Extra-small typography =====
      Used for xs-density secondary text (xs descriptions, calendar cell labels,
      keyboard hints). Sits one step below Tailwind's `text-xs` (0.75rem).

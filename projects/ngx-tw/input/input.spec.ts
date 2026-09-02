@@ -232,28 +232,43 @@ describe('InputDirective', () => {
       fixture.detectChanges();
     });
 
-    it('defaults to md padding and font (`px-4 py-2 text-sm`)', () => {
-      const cls = inputEl(fixture).className;
-      expect(cls).toContain('px-4');
-      expect(cls).toContain('py-2');
-      expect(cls).toContain('text-sm');
+    it('defaults to md padding, font, and pinned height (`px-4 text-sm h-9`)', () => {
+      const tokens = inputEl(fixture).className.split(/\s+/);
+      expect(tokens).toContain('px-4');
+      expect(tokens).toContain('text-sm');
+      expect(tokens).toContain('h-9');
     });
 
     it.each([
-      ['xs', 'px-2', 'py-1', 'text-xs'],
-      ['sm', 'px-3', 'py-1.5', 'text-sm'],
-      ['md', 'px-4', 'py-2', 'text-sm'],
-      ['lg', 'px-5', 'py-2.5', 'text-base'],
-      ['xl', 'px-6', 'py-3', 'text-base'],
+      ['xs', 'px-2', 'h-6', 'text-xs'],
+      ['sm', 'px-3', 'h-8', 'text-sm'],
+      ['md', 'px-4', 'h-9', 'text-sm'],
+      ['lg', 'px-5', 'h-11', 'text-base'],
+      ['xl', 'px-6', 'h-12', 'text-base'],
     ] as const)(
       'maps size="%s" to %s %s %s',
-      (size, px, py, font) => {
+      (size, px, height, font) => {
         fixture.componentInstance.size.set(size);
         fixture.detectChanges();
-        const cls = inputEl(fixture).className;
-        expect(cls).toContain(px);
-        expect(cls).toContain(py);
-        expect(cls).toContain(font);
+        // Token match, not substring: `toContain('h-9')` would also pass on
+        // `min-h-9`, hiding a mis-keyed height variant.
+        const tokens = inputEl(fixture).className.split(/\s+/);
+        expect(tokens).toContain(px);
+        expect(tokens).toContain(height);
+        expect(tokens).toContain(font);
+      },
+    );
+
+    // The pinned height replaces the vertical padding — leaving both alive lets
+    // padding and height fight, and the taller one silently wins. See
+    // `docs/vertical-rhythm.md`.
+    it.each(['xs', 'sm', 'md', 'lg', 'xl'] as const)(
+      'emits no vertical padding at size="%s"',
+      (size) => {
+        fixture.componentInstance.size.set(size);
+        fixture.detectChanges();
+        const tokens = inputEl(fixture).className.split(/\s+/);
+        expect(tokens.filter((t) => /^(p|py|pt|pb)-/.test(t))).toEqual([]);
       },
     );
   });
@@ -269,6 +284,19 @@ describe('InputDirective', () => {
       const cls = inputEl(ff).className;
       expect(cls).toContain('p-0');
       expect(cls).not.toContain('px-4');
+    });
+
+    // The wrapper's control row owns the height when the input is nested, so
+    // the control must not carry one of its own.
+    it('emits no pinned height when wrapped', async () => {
+      await TestBed.configureTestingModule({
+        imports: [InFormFieldHost],
+      }).compileComponents();
+      const ff = TestBed.createComponent(InFormFieldHost);
+      ff.detectChanges();
+      await ff.whenStable();
+      const tokens = inputEl(ff).className.split(/\s+/);
+      expect(tokens.filter((t) => /^h-/.test(t))).toEqual([]);
     });
   });
 

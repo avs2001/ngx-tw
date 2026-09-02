@@ -95,7 +95,7 @@ type BoundsPreset = 'none' | 'wide' | 'tight';
       </p>
       <div class="rounded-lg border border-border p-6 bg-surface-raised mb-4">
         <div class="flex items-stretch gap-1 w-44">
-          <input twInput twNumberInput #seats="twNumberInput" [(ngModel)]="demoSeats" name="demoSeats" [min]="1" [max]="8" />
+          <input twInput twNumberInput #seats="twNumberInput" [(ngModel)]="demoSeats" name="demoSeats" aria-label="Seats" [min]="1" [max]="8" />
           <tw-number-stepper [for]="seats" />
         </div>
         <p class="text-xs text-fg-muted mt-4 font-mono">seats = {{ demoSeats }}</p>
@@ -185,7 +185,7 @@ type BoundsPreset = 'none' | 'wide' | 'tight';
       </p>
       <div class="rounded-lg border border-border p-6 bg-surface-raised mb-4 flex flex-wrap items-start gap-6">
         <div class="flex items-stretch gap-1 w-44">
-          <input twInput twNumberInput #lockedA="twNumberInput" [ngModel]="42" name="lockedA" disabled />
+          <input twInput twNumberInput #lockedA="twNumberInput" [ngModel]="42" name="lockedA" aria-label="Locked value" disabled />
           <tw-number-stepper [for]="lockedA" />
         </div>
         <tw-form-field class="w-44">

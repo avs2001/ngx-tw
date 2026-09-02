@@ -40,12 +40,17 @@ export const tabTriggerVariants = tv(
           trigger: 'rounded-md text-fg-muted hover:text-fg',
         },
       },
+      // Pinned control heights — see `docs/vertical-rhythm.md`. Vertical padding
+      // is deliberately absent: the height is declared, not derived, and the
+      // trigger's own border (`border-b-2` on underline, `border` on enclosed)
+      // sits *inside* it under Preflight's global `box-sizing: border-box`.
+      // `inline-flex items-center` on the base slot does the centring.
       size: {
-        xs: { trigger: 'px-2 py-1 text-xs' },
-        sm: { trigger: 'px-3 py-1.5 text-sm' },
-        md: { trigger: 'px-4 py-2 text-sm' },
-        lg: { trigger: 'px-5 py-2.5 text-base' },
-        xl: { trigger: 'px-6 py-3 text-base' },
+        xs: { trigger: 'px-2 text-xs h-6' },
+        sm: { trigger: 'px-3 text-sm h-8' },
+        md: { trigger: 'px-4 text-sm h-9' },
+        lg: { trigger: 'px-5 text-base h-11' },
+        xl: { trigger: 'px-6 text-base h-12' },
       },
       fitted: {
         true: { trigger: 'flex-1 justify-center' },

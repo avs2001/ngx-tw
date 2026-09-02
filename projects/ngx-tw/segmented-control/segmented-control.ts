@@ -36,12 +36,16 @@ const segmentedControlVariants = tv({
       'inline-flex items-center justify-center gap-1.5 font-medium whitespace-nowrap cursor-pointer transition-colors duration-normal motion-reduce:transition-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500',
   },
   variants: {
+    // Pinned control heights — see `docs/vertical-rhythm.md`. The option carries
+    // horizontal padding and font size only; the height itself is pinned in the
+    // orientation-keyed compound variants below, because *which box* owns the
+    // pin depends on the axis (root when horizontal, option when vertical).
     size: {
-      xs: { option: 'px-2 py-1 text-xs' },
-      sm: { option: 'px-3 py-1.5 text-sm' },
-      md: { option: 'px-4 py-2 text-sm' },
-      lg: { option: 'px-5 py-2.5 text-base' },
-      xl: { option: 'px-6 py-3 text-base' },
+      xs: { option: 'px-2 text-xs' },
+      sm: { option: 'px-3 text-sm' },
+      md: { option: 'px-4 text-sm' },
+      lg: { option: 'px-5 text-base' },
+      xl: { option: 'px-6 text-base' },
     },
     orientation: {
       horizontal: { root: 'flex-row gap-1' },
@@ -80,6 +84,36 @@ const segmentedControlVariants = tv({
     },
   },
   compoundVariants: [
+    // ── Pinned heights (docs/vertical-rhythm.md) ──
+    // Horizontal: the *root* is the single-line control, so the pin lives there.
+    // The `p-1` recessed track stays (it is the component's visual identity) and
+    // is absorbed by the pinned box under `box-sizing: border-box`; the root is
+    // `inline-flex` with the default `align-items: stretch`, so each option fills
+    // the remaining height without a pin of its own.
+    //
+    // `xs` is the exception, and it is an accessibility floor rather than a
+    // style choice. The option — not the root — carries `role="radio"`, the
+    // tabindex and the click handler, so the option IS the target. A 24px root
+    // minus a 4px inset per side leaves a 16px target, under the WCAG 2.2
+    // SC 2.5.8 (AA) 24px minimum. An inset track and a 24px target cannot both
+    // fit inside 24px, so at `xs` the inset is dropped: the option fills the
+    // full 24px and `gap-1` alone carries the track read. Widening the root to
+    // 32px instead would restore the inset but break the shared control height
+    // that lets a segmented control sit flush beside a button or input.
+    { orientation: 'horizontal', size: 'xs', class: { root: 'h-6 p-0' } },
+    { orientation: 'horizontal', size: 'sm', class: { root: 'h-8' } },
+    { orientation: 'horizontal', size: 'md', class: { root: 'h-9' } },
+    { orientation: 'horizontal', size: 'lg', class: { root: 'h-11' } },
+    { orientation: 'horizontal', size: 'xl', class: { root: 'h-12' } },
+    // Vertical: the root grows with the option count, so pinning it would crush
+    // the stack. Each option is its own single-line control row instead, which
+    // reproduces the pre-migration vertical height exactly (padding-derived
+    // before, declared now).
+    { orientation: 'vertical', size: 'xs', class: { option: 'h-6' } },
+    { orientation: 'vertical', size: 'sm', class: { option: 'h-8' } },
+    { orientation: 'vertical', size: 'md', class: { option: 'h-9' } },
+    { orientation: 'vertical', size: 'lg', class: { option: 'h-11' } },
+    { orientation: 'vertical', size: 'xl', class: { option: 'h-12' } },
     // surface × color × active=true
     { variant: 'surface', color: 'primary', active: true, class: { option: 'bg-surface shadow-sm text-primary-fg' } },
     { variant: 'surface', color: 'secondary', active: true, class: { option: 'bg-surface shadow-sm text-secondary-fg' } },
@@ -194,11 +228,13 @@ export class SegmentedControlOptionComponent {
     return result.option();
   });
 
+  /** Selects this option in the parent segmented control. No-op when the option is disabled. */
   select(): void {
     if (this.isDisabled()) return;
     this.parent?.selectOption(this.value());
   }
 
+  /** Moves DOM focus to this option's element. Called by `FocusKeyManager` during arrow-key navigation. */
   focus(): void {
     this.elementRef.nativeElement.focus();
   }
@@ -244,7 +280,7 @@ export class SegmentedControlComponent implements ControlValueAccessor {
   /** When true, prevents all interaction and applies muted styling. Defaults to `false`. */
   readonly disabled = input(false);
 
-  /** The value of the currently selected option. Two-way bound. Updates on user selection. */
+  /** The value of the currently selected option. Two-way bound. Updates on user selection. Defaults to `null`. */
   readonly value = model<string | null>(null);
 
   /** @internal */
@@ -280,6 +316,7 @@ export class SegmentedControlComponent implements ControlValueAccessor {
 
   // ── Selection ──
 
+  /** Selects the option with the given value, updating the two-way bound `value` and notifying the registered `ControlValueAccessor` callbacks. No-op when the control is disabled. */
   selectOption(val: string): void {
     if (this.isDisabled()) return;
     this.activeValue.set(val);
@@ -290,6 +327,7 @@ export class SegmentedControlComponent implements ControlValueAccessor {
 
   // ── Keyboard navigation ──
 
+  /** @internal Handles roving-focus keyboard navigation (Arrow keys, Home, End) across the option group. */
   onKeydown(event: KeyboardEvent): void {
     const opts = this.options();
     if (opts.length === 0) return;

@@ -238,7 +238,7 @@ let nextRadioId = 0;
   },
 })
 export class RadioComponent implements ControlValueAccessor, OnInit {
-  /** The value this radio contributes when selected inside a `tw-radio-group`. Required when nested in a group; ignored when used standalone. */
+  /** The value this radio contributes when selected inside a `tw-radio-group`. Required when nested in a group; ignored when used standalone. Defaults to `undefined`. */
   readonly value = input<unknown>(undefined);
 
   /** Overrides the parent group's color for this radio. When undefined, inherits from the group (or defaults to `'primary'` standalone). */
@@ -265,16 +265,16 @@ export class RadioComponent implements ControlValueAccessor, OnInit {
   /** Optional name attribute for standalone use. Ignored when the parent group provides a name. */
   readonly name = input<string | undefined>(undefined);
 
-  /** Accessible name when no visible label is provided. Mirrored to `aria-label`. */
+  /** Accessible name when no visible label is provided. Mirrored to `aria-label`. Defaults to `undefined`. */
   readonly ariaLabel = input<string | undefined>(undefined, { alias: 'aria-label' });
 
-  /** ID of an external element that labels the radio. Mirrored to `aria-labelledby`. */
+  /** ID of an external element that labels the radio. Mirrored to `aria-labelledby`. Defaults to `undefined`. */
   readonly ariaLabelledby = input<string | undefined>(undefined, { alias: 'aria-labelledby' });
 
-  /** ID of an external element that describes the radio. Mirrored to `aria-describedby`. */
+  /** ID of an external element that describes the radio. Mirrored to `aria-describedby`. Defaults to `undefined`. */
   readonly ariaDescribedby = input<string | undefined>(undefined, { alias: 'aria-describedby' });
 
-  /** Two-way bound checked state. Authoritative only in standalone mode; when inside a `tw-radio-group`, this model reflects group selection but does NOT drive it. */
+  /** Two-way bound checked state. Authoritative only in standalone mode; when inside a `tw-radio-group`, this model reflects group selection but does NOT drive it. Defaults to `false`. */
   readonly checked = model(false);
 
   /** Per-instance override of the {@link ErrorStateMatcher}. When omitted, the radio uses the `TW_ERROR_STATE_MATCHER` token's value. */
@@ -599,16 +599,16 @@ export class RadioGroupComponent<T = unknown> implements ControlValueAccessor, O
   /** Optional form-association name. Propagated to each child radio's host `name` attribute so standard HTML form semantics still apply. */
   readonly name = input<string | undefined>(undefined);
 
-  /** Accessible name for the group when no visible label is provided. Mirrored to `aria-label`. */
+  /** Accessible name for the group when no visible label is provided. Mirrored to `aria-label`. Defaults to `undefined`. */
   readonly ariaLabel = input<string | undefined>(undefined, { alias: 'aria-label' });
 
-  /** ID of an external element that labels the group. Mirrored to `aria-labelledby`. */
+  /** ID of an external element that labels the group. Mirrored to `aria-labelledby`. Defaults to `undefined`. */
   readonly ariaLabelledby = input<string | undefined>(undefined, { alias: 'aria-labelledby' });
 
-  /** ID of an external element that describes the group. Mirrored to `aria-describedby`. */
+  /** ID of an external element that describes the group. Mirrored to `aria-describedby`. Defaults to `undefined`. */
   readonly ariaDescribedby = input<string | undefined>(undefined, { alias: 'aria-describedby' });
 
-  /** Two-way bound selected value. Updates when the user picks a radio; fires `valueChange`. `null` means no selection. */
+  /** Two-way bound selected value. Updates when the user picks a radio; fires `valueChange`. `null` means no selection. Defaults to `null`. */
   readonly value = model<T | null>(null);
 
   /** Per-instance override of the {@link ErrorStateMatcher}. When omitted, the group uses the `TW_ERROR_STATE_MATCHER` token's value. */
@@ -700,6 +700,7 @@ export class RadioGroupComponent<T = unknown> implements ControlValueAccessor, O
     this._ngControlRev.update((n) => n + 1);
   }
 
+  /** @internal Handles roving-focus keyboard navigation (Arrow keys, Space) across the radios in the group. */
   onKeydown(event: KeyboardEvent): void {
     if (this.isDisabled()) return;
     const radios = this.radios();

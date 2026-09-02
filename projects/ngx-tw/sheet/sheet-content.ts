@@ -179,7 +179,7 @@ export class SheetActionsDirective {
   },
 })
 export class SheetCloseDirective {
-  /** Value passed to `afterClosed()` when the button is clicked. */
+  /** Value passed to `afterClosed()` when the button is clicked. Defaults to `undefined`. */
   readonly twSheetClose = input<unknown>(undefined);
 
   /** Native button `type`. Defaults to `'button'` to avoid accidental form submission. */

@@ -278,10 +278,12 @@ class PopoverOverlayComponent {
     return this.ariaLabelledByQueue()[0] ?? null;
   });
 
+  /** @internal Registers a projected title's id so the panel's `aria-labelledby` points at it. */
   _addAriaLabelledBy(id: string): void {
     this.ariaLabelledByQueue.update((q) => (q.includes(id) ? q : [...q, id]));
   }
 
+  /** @internal Unregisters a previously added `aria-labelledby` id when the title is destroyed. */
   _removeAriaLabelledBy(id: string): void {
     this.ariaLabelledByQueue.update((q) => q.filter((existing) => existing !== id));
   }
@@ -336,7 +338,7 @@ export class PopoverDirective {
   /** When true, all trigger interactions are suppressed. Defaults to `false`. */
   readonly twPopoverDisabled = input(false);
 
-  /** Two-way bindable open state. Setting to `true` opens the popover; the popover sets it to `false` on close. */
+  /** Two-way bindable open state. Setting to `true` opens the popover; the popover sets it to `false` on close. Defaults to `false`. */
   readonly twPopoverOpen = model(false);
 
   /** Controls panel padding using the standard spacing scale. Defaults to `'md'`. */
@@ -371,16 +373,16 @@ export class PopoverDirective {
   /** Whether to trap focus inside the popover panel using CDK FocusTrapFactory. Defaults to `true`. */
   readonly twPopoverTrapFocus = input(true);
 
-  /** Arbitrary data passed to template context or component via `POPOVER_DATA` token. */
+  /** Arbitrary data passed to template context or component via `POPOVER_DATA` token. Defaults to `undefined`. */
   readonly twPopoverData = input<unknown>(undefined);
 
-  /** Additional CSS classes applied to the overlay panel for consumer customization. */
+  /** Additional CSS classes applied to the overlay panel for consumer customization. Defaults to an empty string. */
   readonly twPopoverPanelClass = input<string | string[]>('');
 
   /** Optional semantic color. When set, adds a colored top border accent to the panel. */
   readonly twPopoverColor = input<TwColor | undefined>(undefined);
 
-  /** Explicit `aria-label` for the dialog panel. */
+  /** Explicit `aria-label` for the dialog panel. Defaults to `undefined`. */
   readonly twPopoverAriaLabel = input<string | undefined>(undefined);
 
   /** Fires after the popover becomes visible. */

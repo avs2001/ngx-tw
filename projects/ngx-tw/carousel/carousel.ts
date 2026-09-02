@@ -800,6 +800,8 @@ export class CarouselComponent {
   private _onScrollEndBound: (() => void) | null = null;
   private _onScrollDebouncedBound: (() => void) | null = null;
   private _scrollDebounceTimer: ReturnType<typeof setTimeout> | null = null;
+  /** Handle for the post-interaction autoplay-pause expiry (see `_onPointerUp`). */
+  private _postInteractionPauseTimer: ReturnType<typeof setTimeout> | null = null;
   private _onVisibilityChangeBound: (() => void) | null = null;
 
   private _setupViewport(): void {
@@ -892,6 +894,10 @@ export class CarouselComponent {
     this._intersectionObserver = null;
     this._resizeObserver?.disconnect();
     this._resizeObserver = null;
+    if (this._postInteractionPauseTimer !== null) {
+      clearTimeout(this._postInteractionPauseTimer);
+      this._postInteractionPauseTimer = null;
+    }
     if (this._loopJumpHandle !== null) {
       clearTimeout(this._loopJumpHandle);
       this._loopJumpHandle = null;
@@ -1321,7 +1327,14 @@ export class CarouselComponent {
     this._postInteractionPauseUntil.set(
       Date.now() + this._effectiveAutoplayInterval() * 2,
     );
-    setTimeout(() => {
+    // Held in a field so `_teardownViewport` can clear it. Unstored, this
+    // fires at least two autoplay intervals after destroy and writes a signal
+    // on a torn-down component.
+    if (this._postInteractionPauseTimer !== null) {
+      clearTimeout(this._postInteractionPauseTimer);
+    }
+    this._postInteractionPauseTimer = setTimeout(() => {
+      this._postInteractionPauseTimer = null;
       if (
         this._postInteractionPauseUntil() !== null &&
         Date.now() >= (this._postInteractionPauseUntil() ?? 0)

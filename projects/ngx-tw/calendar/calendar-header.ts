@@ -106,13 +106,13 @@ export class CalendarHeaderComponent {
   /** Accessible label for the next button. */
   readonly nextAriaLabel: InputSignal<string> = input.required<string>();
 
-  /** Disables the previous button. */
+  /** Disables the previous button — set by the orchestrator when `minDate` blocks backward navigation. Defaults to `false`. */
   readonly prevDisabled: InputSignal<boolean> = input<boolean>(false);
 
-  /** Disables the next button. */
+  /** Disables the next button — set by the orchestrator when `maxDate` blocks forward navigation. Defaults to `false`. */
   readonly nextDisabled: InputSignal<boolean> = input<boolean>(false);
 
-  /** When false, the period button is disabled (e.g. when already at the top view). */
+  /** When false, the period button is disabled (e.g. when already at the top view). Defaults to `true`. */
   // TRUE-default: the period button is the calendar header's primary drill-up
   // affordance; disabling it is reserved for the top view where there's nowhere
   // to drill up to.

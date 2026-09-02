@@ -259,8 +259,11 @@ function clampPercent(n: number): number {
     '[attr.aria-labelledby]': 'effectiveAriaLabelledby() || null',
     '[attr.aria-describedby]': 'effectiveAriaDescribedby() || null',
     '[attr.aria-disabled]': 'disabled() || null',
-    '[attr.aria-required]': 'required() || null',
-    '[attr.aria-invalid]': 'errorState() || null',
+    // NOTE: `aria-required` and `aria-invalid` are NOT set here. ARIA 1.2 does
+    // not allow either on `role="group"`, and axe flags it as a *critical*
+    // `aria-allowed-attr` violation. Both belong on the control that carries
+    // the value: the hidden `<input type="file">` takes native `required` and
+    // `aria-invalid` in `file-upload.html`.
   },
 })
 export class FileUploadComponent
@@ -299,24 +302,24 @@ export class FileUploadComponent
     transform: booleanAttribute,
   });
 
-  /** Headline text rendered inside the drop zone (e.g., `'Drag files here'`). Projected `[twFileUploadHeadline]` content takes precedence over this input. */
+  /** Headline text rendered inside the drop zone (e.g., `'Drag files here'`). Projected `[twFileUploadHeadline]` content takes precedence over this input. Defaults to `undefined`. */
   readonly label = input<string | undefined>(undefined);
 
-  /** Secondary text rendered under the label (e.g., `'PDF up to 10MB'`). Projected `[twFileUploadDescription]` content takes precedence. */
+  /** Secondary text rendered under the label (e.g., `'PDF up to 10MB'`). Projected `[twFileUploadDescription]` content takes precedence. Defaults to `undefined`. */
   readonly description = input<string | undefined>(undefined);
 
   /** Label rendered inside the trigger button. Defaults to `'Choose files'`. Use `'Choose file'` when `multiple` is `false` (consumer responsibility). */
   readonly triggerLabel = input<string>('Choose files');
 
-  /** Accessible name applied to the host when no visible label is projected. Mirrored to `aria-label`. */
+  /** Accessible name applied to the host when no visible label is projected. Mirrored to `aria-label`. Defaults to `undefined`. */
   readonly ariaLabel = input<string | undefined>(undefined, { alias: 'aria-label' });
 
-  /** ID of an external element that labels the control. Mirrored to `aria-labelledby`. */
+  /** ID of an external element that labels the control. Mirrored to `aria-labelledby`. Defaults to `undefined`. */
   readonly ariaLabelledby = input<string | undefined>(undefined, {
     alias: 'aria-labelledby',
   });
 
-  /** ID of an external element that describes the control. Form-field merges its hint/error ids alongside. */
+  /** ID of an external element that describes the control. Form-field merges its hint/error ids alongside. Defaults to `undefined`. Alias: `aria-describedby`. */
   readonly ariaDescribedby = input<string | undefined>(undefined, {
     alias: 'aria-describedby',
   });
