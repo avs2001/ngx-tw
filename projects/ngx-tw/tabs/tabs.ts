@@ -561,12 +561,21 @@ export class TabsComponent implements AfterViewInit {
 
       // Initialise the manager's active index to the active tab so the first
       // arrow press moves from the active item, not from -1.
+      //
+      // `updateActiveItem`, NOT `setActiveItem`: on a FocusKeyManager,
+      // `setActiveItem` also moves DOM focus to the item. Calling it here —
+      // during construction — makes merely MOUNTING a `<tw-tabs>` steal focus
+      // from wherever the user was and scroll the tablist into view. On a page
+      // where the tabs sit below the fold that silently jumps the viewport.
+      // `updateActiveItem` seeds the index without touching focus, which is
+      // all this needs; the keydown handler still uses `setActiveItem`, where
+      // moving focus is the point.
       untracked(() => {
         const activeVal = this.activeValue();
         const tabs = this.tabs();
         const idx = tabs.findIndex(t => t.value() === activeVal);
         if (idx >= 0) {
-          manager.setActiveItem(idx);
+          manager.updateActiveItem(idx);
         }
       });
 
