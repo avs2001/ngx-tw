@@ -32,6 +32,7 @@ import {
   FormGroupDirective,
   NgControl,
   NgForm,
+  Validators,
 } from '@angular/forms';
 import { FocusMonitor } from '@angular/cdk/a11y';
 import { Directionality } from '@angular/cdk/bidi';
@@ -402,11 +403,29 @@ const toNumber = (value: SliderValue | null | undefined, fallback: number): numb
   },
 })
 export class SliderComponent implements ControlValueAccessor, OnInit {
-  /** Lower bound of the slider scale. Defaults to `0`. */
-  readonly min = input(0);
+  /**
+   * Lower bound of the slider scale. Defaults to `0`.
+   *
+   * Accepts `undefined` so `[formField]` type-checks under `strictTemplates`:
+   * signal forms writes the `min` control binding from the field's own
+   * `min()` state, which is `number | undefined`. `undefined` resolves back to
+   * the documented default through {@link min}.
+   */
+  readonly minInput = input<number | undefined>(0, { alias: 'min' });
 
-  /** Upper bound of the slider scale. Defaults to `100`. */
-  readonly max = input(100);
+  /**
+   * Upper bound of the slider scale. Defaults to `100`.
+   *
+   * Accepts `undefined` for the same reason as {@link minInput}; `undefined`
+   * resolves back to the documented default through {@link max}.
+   */
+  readonly maxInput = input<number | undefined>(100, { alias: 'max' });
+
+  /** @internal Resolved lower bound — the `min` input with its documented `0` default restored when the binding resolves to `undefined`. Every internal reader goes through this, never through the raw input. */
+  readonly min: Signal<number> = computed(() => this.minInput() ?? 0);
+
+  /** @internal Resolved upper bound — the `max` input with its documented `100` default restored when the binding resolves to `undefined`. */
+  readonly max: Signal<number> = computed(() => this.maxInput() ?? 100);
 
   /** Step increment used for snapping, keyboard nav, and auto-generated marks. Pass `null` for continuous values. Defaults to `1`. */
   readonly step = input<number | null>(1);
@@ -423,8 +442,22 @@ export class SliderComponent implements ControlValueAccessor, OnInit {
   /** When true, prevents interaction and applies muted styling. Defaults to `false`. */
   readonly disabled = input(false);
 
-  /** When true, sets `aria-required="true"` on the thumb for assistive tech. Defaults to `false`. */
-  readonly required = input(false);
+  /** When true, sets `aria-required="true"` on the thumb for assistive tech. Also inferred from `Validators.required` on a bound control, so a reactive/template-driven form does not have to state it twice. Defaults to `false`. */
+  readonly requiredInput = input(false, { alias: 'required' });
+
+  /**
+   * @internal Resolved required state: the `required` input OR'd with
+   * `Validators.required` on a bound `NgControl`. The OR (rather than a
+   * validator-only read) is what keeps signal forms working — `cvaControlCreate`
+   * writes the `required` *input* directly from the field state and never
+   * consults validators, so the input arm carries that branch while the
+   * validator arm carries reactive/template-driven forms.
+   */
+  readonly required: Signal<boolean> = computed(() => {
+    this._ngControlRev();
+    if (this.requiredInput()) return true;
+    return !!this.ngControl?.control?.hasValidator(Validators.required);
+  });
 
   /** When true, the slider selects a `[start, end]` range and renders two thumbs. Defaults to `false`. */
   readonly range = input(false);

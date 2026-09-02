@@ -548,6 +548,108 @@ describe('FileUploadComponent — outputs', () => {
     expect(focusSpy).toHaveBeenCalled();
   });
 
+  // ── The remove button, actually clicked ──
+  //
+  // `file-upload.html:109` binds `(click)="remove(item.id)"`. `item.id` is
+  // template-context glue: every other removal test calls `remove(id)` on the
+  // component and therefore supplies the id itself, so a binding regressed to
+  // `$index` or `item.file.name` would remove the wrong file — or nothing —
+  // with the suite still green. Three files and the MIDDLE button are what make
+  // the assertions falsifiable: with one file, every wrong binding still
+  // removes the only file there is.
+  it('clicking the middle remove button removes that file and no other', async () => {
+    const fixture = TestBed.createComponent(BasicHost);
+    fixture.componentInstance.multiple.set(true);
+    fixture.detectChanges();
+    dispatchDragEvent(getDropzone(fixture), 'drop', [
+      makeFile('first.txt', 10, 'text/plain'),
+      makeFile('second.txt', 10, 'text/plain'),
+      makeFile('third.txt', 10, 'text/plain'),
+    ]);
+    fixture.detectChanges();
+
+    const buttons = () =>
+      Array.from(
+        getHost(fixture).querySelectorAll<HTMLButtonElement>('[data-tw-file-upload-remove]'),
+      );
+    expect(buttons().map((b) => b.getAttribute('aria-label'))).toEqual([
+      'Remove first.txt',
+      'Remove second.txt',
+      'Remove third.txt',
+    ]);
+
+    buttons()[1].click();
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    expect(buttons().map((b) => b.getAttribute('aria-label'))).toEqual([
+      'Remove first.txt',
+      'Remove third.txt',
+    ]);
+    expect(fixture.componentInstance.removedSpy).toHaveBeenCalledTimes(1);
+    const removed = fixture.componentInstance.removedSpy.mock
+      .calls[0][0] as FileUploadItem;
+    expect(removed.file.name).toBe('second.txt');
+  });
+
+  it('clicking a remove button retargets focus to the button that took its place', async () => {
+    // `remove()` re-queries `[data-tw-file-upload-remove]` after the row is
+    // gone and focuses `nextButtons[min(idx, len - 1)]`. Removing index 1 of
+    // three therefore lands on the button that now sits at index 1 — the one
+    // belonging to the THIRD file. Reached only from a real click: a
+    // programmatic call leaves no button focused to begin with, so this branch
+    // had never been entered under its real preconditions.
+    //
+    // NOTE THE ORDERING. There is deliberately no `detectChanges()` between the
+    // click and the await. In a browser, change detection is asynchronous with
+    // respect to the click handler, so the focus restore must survive running
+    // against a not-yet-re-rendered list. A `detectChanges()` here re-renders
+    // first and hides exactly the bug this asserts — which is how the original
+    // `queueMicrotask` implementation passed its unit tests while focus fell to
+    // `<body>` in every real browser.
+    const fixture = TestBed.createComponent(BasicHost);
+    fixture.componentInstance.multiple.set(true);
+    fixture.detectChanges();
+    dispatchDragEvent(getDropzone(fixture), 'drop', [
+      makeFile('first.txt', 10, 'text/plain'),
+      makeFile('second.txt', 10, 'text/plain'),
+      makeFile('third.txt', 10, 'text/plain'),
+    ]);
+    fixture.detectChanges();
+
+    const middle = getHost(fixture).querySelectorAll<HTMLButtonElement>(
+      '[data-tw-file-upload-remove]',
+    )[1];
+    middle.focus();
+    middle.click();
+    await fixture.whenStable();
+
+    const focused = document.activeElement as HTMLElement | null;
+    expect(focused?.getAttribute('aria-label')).toBe('Remove third.txt');
+  });
+
+  it('removing the last file by click returns focus to the trigger button', async () => {
+    // Same ordering discipline as above. With the stale-node-list bug the
+    // `length === 0` branch was never reached (the count was still 1), so focus
+    // landed on the button being destroyed and then on `<body>`.
+    const fixture = TestBed.createComponent(BasicHost);
+    fixture.componentInstance.multiple.set(true);
+    fixture.detectChanges();
+    dispatchDragEvent(getDropzone(fixture), 'drop', [
+      makeFile('only.txt', 10, 'text/plain'),
+    ]);
+    fixture.detectChanges();
+    const focusSpy = vi.spyOn(getTriggerButton(fixture), 'focus');
+
+    const only = getHost(fixture).querySelector<HTMLButtonElement>(
+      '[data-tw-file-upload-remove]',
+    )!;
+    only.click();
+    await fixture.whenStable();
+
+    expect(focusSpy).toHaveBeenCalled();
+  });
+
   it('delegates form-field container-click focus to the trigger button (H1 focus retarget)', () => {
     const fixture = TestBed.createComponent(BasicHost);
     fixture.detectChanges();

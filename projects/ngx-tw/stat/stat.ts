@@ -1,15 +1,15 @@
 import {
-  afterRenderEffect,
+  afterNextRender,
   booleanAttribute,
   ChangeDetectionStrategy,
   Component,
   computed,
   contentChild,
+  DestroyRef,
   Directive,
   type ElementRef,
   inject,
   input,
-  Injector,
   signal,
   viewChild,
 } from '@angular/core';
@@ -289,24 +289,47 @@ export class StatDeltaComponent {
   /** @internal */
   protected readonly projectedText = signal('');
 
+  private readonly destroyRef = inject(DestroyRef);
+
   constructor() {
-    const injector = inject(Injector);
-    // Read the projected text via the wrapper span's textContent. textContent
-    // is recursive across projected children, so this resolves the consumer's
-    // string even when wrapped in arbitrary markup. afterRenderEffect runs
-    // after each render so projection changes are captured.
-    afterRenderEffect(
-      () => {
-        const el = this.textEl()?.nativeElement;
-        if (!el) {
-          this.projectedText.set('');
-          return;
-        }
-        const text = (el.textContent ?? '').trim();
-        this.projectedText.set(text);
-      },
-      { injector },
-    );
+    // Read the projected text via the wrapper span's `textContent`, which is
+    // recursive across projected children and therefore resolves the
+    // consumer's string even when wrapped in arbitrary markup.
+    //
+    // A `MutationObserver` — not a render hook, and not `contentChild`:
+    //
+    //  * `contentChild` cannot see through `<ng-content>`; it resolves the
+    //    *parent's* own content children, not the nodes the consumer projected
+    //    into this component. `flip-card.ts` uses an observer for exactly this
+    //    reason and says so.
+    //  * `afterRenderEffect` does NOT run after every render. It is a reactive
+    //    effect scheduled into a render phase and re-runs only when a tracked
+    //    signal producer changes (Angular v22 `AFTER_RENDER_PHASE_EFFECT_NODE`
+    //    bails on `!this.dirty` / `!consumerPollProducersForChange`).
+    //    `el.textContent` is not a signal and `textEl` is a static,
+    //    unconditional `viewChild`, so the earlier hook sampled the text once
+    //    and froze it: `{{ growth() }}%` going 12 → 34 kept announcing 12.
+    //    (The previous comment here asserted the opposite; it was wrong.)
+    //
+    // Scope is broader than flip-card's single-target `childList` because the
+    // interesting mutation is a *text* edit on a descendant text node:
+    // `characterData` fires on the child node, so `subtree` is load-bearing,
+    // and `childList` catches structural swaps inside the projected markup.
+    // The observed element is the component's own single wrapper span, so the
+    // cost stays bounded, and it disconnects on destroy.
+    //
+    // No signal cycle: the write feeds `composedAriaLabel` → the *host*'s
+    // `[attr.aria-label]`, which is outside `#textEl` and so cannot re-trigger
+    // the observer. Identical-value `signal.set` calls are no-ops.
+    afterNextRender(() => {
+      const el = this.textEl()?.nativeElement;
+      if (!el) return;
+      const update = () => this.projectedText.set((el.textContent ?? '').trim());
+      update();
+      const observer = new MutationObserver(update);
+      observer.observe(el, { childList: true, characterData: true, subtree: true });
+      this.destroyRef.onDestroy(() => observer.disconnect());
+    });
   }
 
   /** @internal */

@@ -96,6 +96,12 @@ test.describe('Forms · Three strategies · Segmented Control', () => {
     await seg.goto();
 
     await seg.optionIn('signal', 'Grid').click();
+
+    // `touched` flips on blur, not on change — aligned with Angular's native
+    // controls in audit pass 4 (previously these controls marked themselves
+    // touched from the change handler, so errors appeared a gesture early).
+    // Blur explicitly before asserting; the click alone no longer suffices.
+    await seg.optionIn('signal', 'Grid').blur();
     await expect(seg.readoutIn('signal')).toContainText('touched = true');
 
     await seg.buttonIn('signal', 'Reset').click();

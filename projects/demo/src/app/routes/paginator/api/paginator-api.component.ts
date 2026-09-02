@@ -263,21 +263,22 @@ type TwPaginatorLabelSlot =
   | 'last'
   | 'pageSizeLabel';
 
+// Every key is optional — unset keys fall back to the English defaults.
 interface TwPaginatorLabels {
-  ariaLabel: string;
-  previous: string;
-  next: string;
-  first: string;
-  last: string;
-  pageInfo: string;
-  pageInfoSeparator: string;
-  pageRange: string;
-  pageSizeLabel: string;
-  announcement: string;
-  pageButtonAriaLabel: string;
-  currentPageAriaLabel: string;
-  ellipsis: string;
-  empty: string;
+  ariaLabel?: string;
+  previous?: string;
+  next?: string;
+  first?: string;
+  last?: string;
+  pageInfo?: string;
+  pageInfoSeparator?: string;
+  pageRange?: string;
+  pageSizeLabel?: string;
+  announcement?: string;
+  pageButtonAriaLabel?: string;
+  currentPageAriaLabel?: string;
+  ellipsis?: string;
+  empty?: string;
 }
 
 interface TwPaginatorPageChangeEvent {

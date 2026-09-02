@@ -3,7 +3,23 @@
 {
   "extends": "./tsconfig.lib.json",
   "compilerOptions": {
-    "declarationMap": false
+    "declarationMap": false,
+    // NOTE: `stripInternal` is deliberately NOT enabled. It is the obvious way
+    // to stop the library's ~991 `@internal` annotations from shipping as
+    // callable public API, and it was tried in audit pass 4 (2026-09-02) — but
+    // ng-packagr's `.d.ts` rollup silently DROPS three genuinely public exports
+    // from `core` when it is on: `tabTriggerVariants`, `getActiveTriggerClasses`
+    // and `getInactiveTriggerClasses`. The build then fails in `tabs` with
+    // TS2305/TS2724 pointing at the *importer*, never at the cause.
+    //
+    // Measured, so nobody re-derives it: plain `tsc --stripInternal
+    // --emitDeclarationOnly` over `core/tab-trigger-variants.ts` emits all three
+    // correctly, so TypeScript is not at fault — the loss is in ng-packagr's
+    // flattening step. Making the six `@internal` lookup tables module-private
+    // (done, and kept — they were only ever used in their own file) does NOT
+    // fix it. Re-enabling this needs a different mechanism, e.g. api-extractor
+    // or keeping internals out of the barrels by convention.
+    "stripInternal": false
   },
   "angularCompilerOptions": {
     "compilationMode": "partial",

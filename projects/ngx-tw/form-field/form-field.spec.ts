@@ -1191,11 +1191,16 @@ describe('FormFieldComponent', () => {
     });
 
     it('shifts the resting-label left so the label sits after the icon', async () => {
-      // Wait an additional macrotask so ResizeObserver-driven measurement settles in jsdom.
+      // Wait an additional macrotask so the afterRenderEffect measurement (and any
+      // ResizeObserver follow-up) settles in jsdom.
       await fixture.whenStable();
       const wrapper = (fixture.nativeElement.querySelector('label[twLabel]') as HTMLElement)
         .parentElement as HTMLElement;
-      // Resting label `left` is set inline by the form-field; it should not equal the default '0.5rem' (floated edge).
+      // Resting label `left` is set inline by the form-field as a measured pixel offset; it
+      // should not equal '0.5rem' (the floated-edge value). jsdom reports `offsetLeft` as 0, so
+      // assert the shape rather than a magnitude — the magnitude only means something in a real
+      // layout engine, where the visual e2e specs cover it.
+      expect(wrapper.style.left).toMatch(/^\d+(\.\d+)?px$/);
       expect(wrapper.style.left).not.toBe('0.5rem');
     });
   });

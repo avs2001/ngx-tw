@@ -23,6 +23,7 @@ import {
   FormGroupDirective,
   NgControl,
   NgForm,
+  Validators,
 } from '@angular/forms';
 import { FocusMonitor } from '@angular/cdk/a11y';
 import { merge } from 'rxjs';
@@ -468,7 +469,8 @@ export class RadioComponent implements ControlValueAccessor, OnInit {
       this.internalChecked.set(true);
       this.checked.set(true);
       this.onChange(true);
-      this.onTouched();
+      // Deliberately NOT `onTouched()` — that is the blur notification, and
+      // `onBlur()` owns it. See the note on `RadioGroupComponent.selectValue`.
       this.change.emit(true);
     }
   }
@@ -621,8 +623,22 @@ export class RadioGroupComponent<T = unknown> implements ControlValueAccessor, O
   /** When true, disables every radio in the group and blocks keyboard interaction. Defaults to `false`. */
   readonly disabled = input(false);
 
-  /** When true, sets `aria-required="true"` on the group for assistive tech. Defaults to `false`. */
-  readonly required = input(false);
+  /** When true, sets `aria-required="true"` on the group for assistive tech. Also inferred from `Validators.required` on a bound control, so a reactive/template-driven form does not have to state it twice. Defaults to `false`. */
+  readonly requiredInput = input(false, { alias: 'required' });
+
+  /**
+   * @internal Resolved required state: the `required` input OR'd with
+   * `Validators.required` on a bound `NgControl`. The OR (rather than a
+   * validator-only read) is what keeps signal forms working —
+   * `cvaControlCreate` writes the `required` *input* directly from the field
+   * state and never consults validators, so the input arm carries that branch
+   * while the validator arm carries reactive/template-driven forms.
+   */
+  readonly required: Signal<boolean> = computed(() => {
+    this._ngControlRev();
+    if (this.requiredInput()) return true;
+    return !!this.ngControl?.control?.hasValidator(Validators.required);
+  });
 
   /** Optional form-association name. Propagated to each child radio's host `name` attribute so standard HTML form semantics still apply. */
   readonly name = input<string | undefined>(undefined);
@@ -712,13 +728,17 @@ export class RadioGroupComponent<T = unknown> implements ControlValueAccessor, O
     if (this.isDisabled()) return;
     const typed = next as T | null;
     if (typed === this.activeValue()) {
-      this.onTouched();
       return;
     }
     this.activeValue.set(typed);
     this.value.set(typed);
     this.onChange(typed);
-    this.onTouched();
+    // Deliberately NOT `onTouched()`. Angular's CVA contract registers
+    // `onTouched` as the BLUR notification; calling it on selection flipped
+    // `touched` with no blur, so a consumer staging error display on `touched`
+    // got different behaviour from `tw-radio-group` than from `tw-slider` /
+    // `tw-input`. `notifyTouched()` — reached from a child radio's real blur —
+    // is the only place that fires it.
     this.change.emit(typed);
   }
 

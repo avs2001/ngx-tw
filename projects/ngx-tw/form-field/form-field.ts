@@ -1,5 +1,6 @@
 import {
   type AfterContentInit,
+  afterRenderEffect,
   ChangeDetectionStrategy,
   Component,
   computed,
@@ -50,7 +51,24 @@ export abstract class FormFieldControl<T = unknown> {
   abstract readonly required: Signal<boolean>;
   /** Whether the control should be rendered as invalid. Usually derived from `NgControl.invalid` combined with `touched`/`submitted`. */
   abstract readonly errorState: Signal<boolean>;
-  /** Active validation errors map keyed by validator name (e.g. `{ required: true, email: true }`). Returns `null` when the control has no validation errors. Drives `[twError match="…"]` filtering inside the form-field. Optional — controls without a backing `NgControl` may omit it. */
+  /**
+   * Active validation errors map keyed by validator name (e.g. `{ required: true, email: true }`).
+   * Returns `null` when the control has no validation errors.
+   *
+   * This is the *only* source the form-field consults for `[twError match="…"]` filtering: it
+   * feeds `FormFieldComponent.activeErrorKeys`, and an error with a `match` renders only while
+   * that key is present. A control that leaves this undefined therefore reports an empty key set,
+   * and **every `match`-targeted message under it is permanently hidden** — in all three form
+   * strategies, with no warning. Unmatched `[twError]` messages are unaffected; they follow
+   * `errorState` alone.
+   *
+   * Optional only so the member can be added to existing controls without a breaking change. Any
+   * control that resolves an `NgControl` should implement it — typically as
+   * `computed(() => ngControl?.control?.errors ?? null)`, reading whatever revision signal the
+   * control already uses to invalidate `errorState`, so the map tracks validator transitions that
+   * do not flip `VALID`/`INVALID`. Omit it only for a control that genuinely has no validation
+   * errors to report.
+   */
   readonly errors?: Signal<Record<string, unknown> | null>;
   /** Optional control-type identifier (e.g. `'input'`, `'select'`). When set, the form-field appends `tw-form-field-type-{controlType}` to its host for styling hooks. */
   abstract readonly controlType?: string;
@@ -101,6 +119,10 @@ export interface TwFormFieldParent {
  * form-field component out of each control's bundle.
  */
 export const TW_FORM_FIELD = new InjectionToken<TwFormFieldParent>('TW_FORM_FIELD');
+
+// Resting-label left offset used when the field has no prefix: matches the control row's own
+// horizontal padding so the label lines up with the control's text.
+const DEFAULT_RESTING_LABEL_OFFSET_PX = 12;
 
 // ── Unique ID counters ──
 let nextLabelId = 0;
@@ -523,7 +545,7 @@ export class FormFieldComponent implements AfterContentInit, TwFormFieldParent {
   readonly hasPrefix = computed(() => this.prefixChildren().length > 0);
 
   /** @internal Resting-label left offset in pixels, mirroring the infix's `offsetLeft` so the label sits right after any prefix. */
-  private readonly restingLabelOffset = signal(12);
+  private readonly restingLabelOffset = signal(DEFAULT_RESTING_LABEL_OFFSET_PX);
 
   /** @internal */
   readonly isFocused = computed(() => !!this.control()?.focused());
@@ -690,18 +712,47 @@ export class FormFieldComponent implements AfterContentInit, TwFormFieldParent {
     });
 
     // Track the infix's left offset so the resting label can sit right after any prefix.
+    //
+    // The measurement lives in `afterRenderEffect`'s `earlyRead` phase, NOT in a plain
+    // `effect()`. `effect()` runs inside `refreshView` *after* this component's own template but
+    // *before* its embedded views, content queries, host bindings and child components are
+    // refreshed, so `offsetLeft` read there samples geometry that predates the very change that
+    // triggered the run — a prefix appearing inside an `@if`, for instance. `earlyRead` runs
+    // after the whole render has committed, which is what it exists for.
+    //
+    // `afterRenderEffect` is a *reactive* effect scheduled into a render phase, not an
+    // every-render hook: it re-runs only when a tracked producer changes. The tracked producers
+    // here are `prefixChildren()` and `infixRef()` — exactly the set the previous `effect()`
+    // tracked, so this is a timing fix, not a coverage fix. A prefix that changes width without
+    // changing the prefix set is invisible to the signal graph either way, which is why the
+    // ResizeObserver below stays.
+    afterRenderEffect({
+      earlyRead: () => {
+        if (this.prefixChildren().length === 0) return DEFAULT_RESTING_LABEL_OFFSET_PX;
+        const infix = this.infixRef()?.nativeElement;
+        // `null` means "nothing measurable this run" — leave the previous offset in place.
+        return infix ? infix.offsetLeft : null;
+      },
+      write: (offset) => {
+        const px = offset();
+        if (px !== null) this.restingLabelOffset.set(px);
+      },
+    });
+
+    // Keep the offset fresh when an already-mounted prefix changes size. Creating the observer
+    // is a subscription, not a layout read, so a plain `effect()` is the right hook; the
+    // callback itself is delivered after layout, so its `offsetLeft` read is safe. Note this
+    // repairs *size* changes only — an infix that shifts position with no observed box resizing
+    // is not covered here and not covered by the render effect above either.
     effect((onCleanup) => {
       const prefixes = this.prefixChildren();
-      if (prefixes.length === 0) {
-        this.restingLabelOffset.set(12);
-        return;
-      }
+      if (prefixes.length === 0) return;
       const infix = this.infixRef()?.nativeElement;
       if (!infix) return;
-      const update = (): void => this.restingLabelOffset.set(infix.offsetLeft);
-      update();
       if (typeof ResizeObserver === 'undefined') return;
-      const ro = new ResizeObserver(update);
+      const ro = new ResizeObserver(() =>
+        this.restingLabelOffset.set(infix.offsetLeft),
+      );
       for (const p of prefixes) {
         ro.observe(p.elementRef.nativeElement);
       }

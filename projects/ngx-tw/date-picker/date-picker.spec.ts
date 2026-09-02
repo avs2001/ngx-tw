@@ -878,6 +878,65 @@ describe('DatePickerComponent', () => {
       expect(described).toBeTruthy();
       expect(described!.startsWith('tw-form-field-hint-')).toBe(true);
     });
+
+    // `[twError match]` filters on FormFieldControl.errors. The date-picker used to leave that
+    // member undefined, so the form-field saw an empty key set and every matched message stayed
+    // `hidden` forever — including the calendar error codes the NG_VALIDATORS apparatus above
+    // exists to produce. These two tests pin the wiring end to end: a matched message shows for
+    // an active key and stays hidden for an inactive one.
+    @Component({
+      imports: [
+        DatePickerComponent,
+        FormFieldComponent,
+        LabelDirective,
+        ErrorDirective,
+        ReactiveFormsModule,
+      ],
+      changeDetection: ChangeDetectionStrategy.OnPush,
+      template: `
+        <tw-form-field>
+          <label twLabel>Ship date</label>
+          <tw-date-picker [formControl]="ctrl" [minDate]="floor" />
+          <span twError match="calendarMinDate" data-testid="min-error">Too early.</span>
+          <span twError match="calendarMaxDate" data-testid="max-error">Too late.</span>
+        </tw-form-field>
+      `,
+    })
+    class MatchedErrorHost {
+      readonly floor = new Date(2026, 3, 15);
+      readonly ctrl = new FormControl<Date | null>(null);
+    }
+
+    async function mountWithMinDateViolation(): Promise<ComponentFixture<MatchedErrorHost>> {
+      const fixture = TestBed.createComponent(MatchedErrorHost);
+      fixture.detectChanges();
+      await fixture.whenStable();
+      fixture.componentInstance.ctrl.setValue(new Date(2026, 3, 10));
+      fixture.componentInstance.ctrl.markAsTouched();
+      fixture.detectChanges();
+      await fixture.whenStable();
+      fixture.detectChanges();
+      return fixture;
+    }
+
+    it('renders a [twError match] message whose key is active on the bound control', async () => {
+      const fixture = await mountWithMinDateViolation();
+      expect('calendarMinDate' in (fixture.componentInstance.ctrl.errors ?? {})).toBe(true);
+      const matched = fixture.nativeElement.querySelector(
+        '[data-testid="min-error"]',
+      ) as HTMLElement;
+      expect(matched).toBeTruthy();
+      expect(matched.classList.contains('hidden')).toBe(false);
+    });
+
+    it('keeps a [twError match] message hidden when its key is not active', async () => {
+      const fixture = await mountWithMinDateViolation();
+      const unmatched = fixture.nativeElement.querySelector(
+        '[data-testid="max-error"]',
+      ) as HTMLElement;
+      expect(unmatched).toBeTruthy();
+      expect(unmatched.classList.contains('hidden')).toBe(true);
+    });
   });
 
   // ── Dev-mode warning ──

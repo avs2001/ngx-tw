@@ -10,7 +10,7 @@ export type CalendarSectionName =
   | 'Multiple selection'
   | 'Constraints (min / max / disabled dates / disabled weekdays)'
   | 'Range length + max selections'
-  | 'Range click behavior (§21.2)'
+  | 'Range click behavior'
   | 'Presets slot'
   | 'Reactive forms'
   | 'Signal Forms';
@@ -55,7 +55,7 @@ export class CalendarPage {
       'Constraints (min / max / disabled dates / disabled weekdays)',
     );
     this.rangeLengthSection = this.section('Range length + max selections');
-    this.rangeClickSection = this.section('Range click behavior (§21.2)');
+    this.rangeClickSection = this.section('Range click behavior');
     this.presetsSection = this.section('Presets slot');
     this.reactiveSection = this.section('Reactive forms');
     this.signalSection = this.section('Signal Forms');

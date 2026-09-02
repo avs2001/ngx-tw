@@ -491,6 +491,12 @@ export class CheckboxComponent
     return matcher.isErrorState(this.ngControl?.control ?? null, form);
   });
 
+  /** @internal Active validation errors map from the bound `NgControl` (or `null` when it reports none / is unbound). Drives `[twError match="…"]` inside a wrapping `tw-form-field`; without it the form-field's key set is permanently empty and every `match`ed error stays hidden. Recomputes on every `_ngControlRev` tick so it reacts to validator transitions that do not flip `VALID`/`INVALID`. */
+  override readonly errors: Signal<Record<string, unknown> | null> = computed(() => {
+    this._ngControlRev();
+    return (this.ngControl?.control?.errors as Record<string, unknown> | null) ?? null;
+  });
+
   /** @internal */
   readonly controlType = 'checkbox';
 
@@ -552,7 +558,12 @@ export class CheckboxComponent
       this.indeterminate.set(false);
     }
     this.onChange(next);
-    this.onTouched();
+    // Deliberately NOT `onTouched()`. Angular's CVA contract registers
+    // `onTouched` as the BLUR notification; calling it here flipped `touched`
+    // the instant the value changed, so a consumer staging error display on
+    // `touched` ("only once they leave the field") got different behaviour from
+    // `tw-checkbox` than from `tw-slider` / `tw-input`. `onBlur()` below is the
+    // only place that fires it.
     this.change.emit(next);
   }
 

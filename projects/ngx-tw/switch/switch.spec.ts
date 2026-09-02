@@ -450,6 +450,48 @@ describe('SwitchComponent CVA', () => {
 
 // ── Signal forms ──
 
+describe('SwitchComponent touched timing', () => {
+  const focusMonitorSpy = {
+    monitor: vi.fn(),
+    stopMonitoring: vi.fn(),
+  };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    TestBed.configureTestingModule({
+      providers: [{ provide: FocusMonitor, useValue: focusMonitorSpy }],
+    });
+  });
+
+  // ── touched timing (FIX-6) ──
+  //
+  // Angular's CVA contract registers `onTouched` as the BLUR notification.
+  // This control used to call it from its CHANGE handler too, so `touched`
+  // flipped with no blur — `tw-switch` behaved differently from `tw-slider` /
+  // `tw-input` for a consumer staging error display on `touched` ("only show
+  // the error once they leave the field"). Both halves are asserted through
+  // REAL DOM events: a direct `onTouched()` call would pass regardless of what
+  // the template does.
+
+  it('does not mark the control touched when the value changes without a blur', () => {
+    const fixture = TestBed.createComponent(ReactiveHost);
+    fixture.detectChanges();
+    getSwitch(fixture).click();
+    fixture.detectChanges();
+    expect(fixture.componentInstance.control.value).toBe(true);
+    expect(fixture.componentInstance.control.touched).toBe(false);
+  });
+
+  it('marks the control touched on blur, even with no value change', () => {
+    const fixture = TestBed.createComponent(ReactiveHost);
+    fixture.detectChanges();
+    getSwitch(fixture).dispatchEvent(new FocusEvent('blur'));
+    fixture.detectChanges();
+    expect(fixture.componentInstance.control.value).toBe(false);
+    expect(fixture.componentInstance.control.touched).toBe(true);
+  });
+});
+
 describe('SwitchComponent signal forms', () => {
   const focusMonitorSpy = {
     monitor: vi.fn(),
@@ -529,5 +571,23 @@ describe('SwitchComponent errorState', () => {
     fixture.detectChanges();
     expect(fixture.componentInstance.control.valid).toBe(true);
     expect(getSwitch(fixture).getAttribute('aria-invalid')).toBe(null);
+  });
+
+  // Guard for FIX-1/#3. `Validators.requiredTrue` on the bound control must
+  // reach `aria-required` without the consumer ALSO writing `[required]="true"`.
+  // Regressing `required` back to a bare `input(false)` still passes every
+  // other test in this file — and every signal-forms test, because
+  // `cvaControlCreate` writes the `required` input directly rather than
+  // reading validators. Only this pair fails.
+  it('derives aria-required from a required validator on the bound control', () => {
+    const fixture = TestBed.createComponent(RequiredHost);
+    fixture.detectChanges();
+    expect(getSwitch(fixture).getAttribute('aria-required')).toBe('true');
+  });
+
+  it('leaves aria-required off when the bound control carries no required validator', () => {
+    const fixture = TestBed.createComponent(ReactiveHost);
+    fixture.detectChanges();
+    expect(getSwitch(fixture).hasAttribute('aria-required')).toBe(false);
   });
 });

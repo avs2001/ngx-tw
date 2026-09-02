@@ -998,6 +998,62 @@ describe('TimelineComponent', () => {
       expect(scrollByMock).toHaveBeenCalledWith({ left: 300, behavior: 'smooth' });
     });
 
+    // Regression guard for pass-4 IDIOM M1. Scroll detection used to run from
+    // a one-shot `afterNextRender` behind an `orientation !== 'horizontal'`
+    // early return, so a timeline mounted vertical and later flipped to
+    // horizontal (the responsive `[orientation]="isWide() ? …"` shape) never
+    // got a ResizeObserver and never measured — both chevrons stayed
+    // invisible and disabled forever.
+    it('sets up scroll detection when orientation flips to horizontal after mount', async () => {
+      const observed: Element[] = [];
+      const callbacks: (() => void)[] = [];
+      class FakeResizeObserver {
+        constructor(cb: () => void) {
+          callbacks.push(cb);
+        }
+        observe(el: Element): void {
+          observed.push(el);
+        }
+        unobserve(): void {}
+        disconnect(): void {}
+      }
+      const globalWithRo = globalThis as unknown as {
+        ResizeObserver?: typeof ResizeObserver;
+      };
+      const original = globalWithRo.ResizeObserver;
+      globalWithRo.ResizeObserver = FakeResizeObserver as unknown as typeof ResizeObserver;
+
+      try {
+        const fixture = TestBed.createComponent(BasicTimelineHost);
+        fixture.detectChanges();
+        await fixture.whenStable();
+        fixture.detectChanges();
+        // Vertical: no viewport, so nothing observed.
+        expect(observed.length).toBe(0);
+
+        fixture.componentRef.setInput('orientation', 'horizontal');
+        fixture.detectChanges();
+        await fixture.whenStable();
+        fixture.detectChanges();
+
+        const vp = viewport(fixture);
+        expect(vp).not.toBeNull();
+        // The load-bearing assertion: the observer exists and is bound to the
+        // viewport that only materialised on the flip.
+        expect(observed).toContain(vp);
+
+        // And the observer actually drives the chevrons.
+        setScrollMetrics(vp!, { scrollLeft: 0, clientWidth: 400, scrollWidth: 1000 });
+        for (const cb of callbacks) cb();
+        fixture.detectChanges();
+        const btns = chevrons(fixture);
+        expect(btns[1].disabled).toBe(false);
+        expect(btns[1].getAttribute('aria-hidden')).toBeNull();
+      } finally {
+        globalWithRo.ResizeObserver = original;
+      }
+    });
+
     it('chevron buttons carry the canonical focus-ring classes', () => {
       const fixture = TestBed.createComponent(HorizontalScrollHost);
       fixture.detectChanges();

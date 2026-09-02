@@ -83,7 +83,7 @@ export const tabTriggerVariants = tv(
 // rows use surface/fg/border tokens which already auto-adapt to dark mode.
 
 /** @internal Active trigger classes for horizontal underline variants, keyed by color. */
-export const UNDERLINE_ACTIVE_HORIZONTAL: Record<TwColor, string> = {
+const UNDERLINE_ACTIVE_HORIZONTAL: Record<TwColor, string> = {
   primary: 'border-b-2 border-primary-border-strong text-primary-fg',
   secondary: 'border-b-2 border-secondary-border-strong text-secondary-fg',
   accent: 'border-b-2 border-accent-border-strong text-accent-fg',
@@ -95,7 +95,7 @@ export const UNDERLINE_ACTIVE_HORIZONTAL: Record<TwColor, string> = {
 };
 
 /** @internal Active trigger classes for vertical underline variants, keyed by color. */
-export const UNDERLINE_ACTIVE_VERTICAL: Record<TwColor, string> = {
+const UNDERLINE_ACTIVE_VERTICAL: Record<TwColor, string> = {
   primary: 'border-r-2 border-primary-border-strong text-primary-fg',
   secondary: 'border-r-2 border-secondary-border-strong text-secondary-fg',
   accent: 'border-r-2 border-accent-border-strong text-accent-fg',
@@ -107,7 +107,7 @@ export const UNDERLINE_ACTIVE_VERTICAL: Record<TwColor, string> = {
 };
 
 /** @internal Active trigger classes for horizontal enclosed variants, keyed by color. */
-export const ENCLOSED_ACTIVE_HORIZONTAL: Record<TwColor, string> = {
+const ENCLOSED_ACTIVE_HORIZONTAL: Record<TwColor, string> = {
   primary: 'bg-surface border border-border border-b-transparent text-primary-fg',
   secondary: 'bg-surface border border-border border-b-transparent text-secondary-fg',
   accent: 'bg-surface border border-border border-b-transparent text-accent-fg',
@@ -119,7 +119,7 @@ export const ENCLOSED_ACTIVE_HORIZONTAL: Record<TwColor, string> = {
 };
 
 /** @internal Active trigger classes for vertical enclosed variants, keyed by color. */
-export const ENCLOSED_ACTIVE_VERTICAL: Record<TwColor, string> = {
+const ENCLOSED_ACTIVE_VERTICAL: Record<TwColor, string> = {
   primary: 'bg-surface border border-border border-r-transparent text-primary-fg',
   secondary: 'bg-surface border border-border border-r-transparent text-secondary-fg',
   accent: 'bg-surface border border-border border-r-transparent text-accent-fg',
@@ -131,7 +131,7 @@ export const ENCLOSED_ACTIVE_VERTICAL: Record<TwColor, string> = {
 };
 
 /** @internal Active trigger classes for pill variants, keyed by color. */
-export const PILL_ACTIVE: Record<TwColor, string> = {
+const PILL_ACTIVE: Record<TwColor, string> = {
   primary: 'bg-surface shadow-sm text-primary-fg',
   secondary: 'bg-surface shadow-sm text-secondary-fg',
   accent: 'bg-surface shadow-sm text-accent-fg',
@@ -143,7 +143,7 @@ export const PILL_ACTIVE: Record<TwColor, string> = {
 };
 
 /** @internal Inactive trigger classes keyed by variant. */
-export const INACTIVE_TRIGGER_CLASSES: Record<TabTriggerVariant, string> = {
+const INACTIVE_TRIGGER_CLASSES: Record<TabTriggerVariant, string> = {
   underline: 'border-transparent',
   enclosed: 'border-transparent bg-surface-muted',
   pill: '',

@@ -24,15 +24,15 @@ import { CodeBlockComponent } from '@cdevhub/ngx-tw/code-block';
           <tbody class="divide-y divide-border-muted">
             <tr>
               <td class="px-4 py-2 font-mono text-xs">min</td>
-              <td class="px-4 py-2 font-mono text-xs text-fg-muted">number</td>
+              <td class="px-4 py-2 font-mono text-xs text-fg-muted">number | undefined</td>
               <td class="px-4 py-2 font-mono text-xs text-fg-muted">0</td>
-              <td class="px-4 py-2 text-fg-muted">Lower bound of the slider scale.</td>
+              <td class="px-4 py-2 text-fg-muted">Lower bound of the slider scale. Accepts <code class="font-mono">undefined</code> so <code class="font-mono">[formField]</code> type-checks under <code class="font-mono">strictTemplates</code>; <code class="font-mono">undefined</code> resolves back to the default.</td>
             </tr>
             <tr>
               <td class="px-4 py-2 font-mono text-xs">max</td>
-              <td class="px-4 py-2 font-mono text-xs text-fg-muted">number</td>
+              <td class="px-4 py-2 font-mono text-xs text-fg-muted">number | undefined</td>
               <td class="px-4 py-2 font-mono text-xs text-fg-muted">100</td>
-              <td class="px-4 py-2 text-fg-muted">Upper bound of the slider scale.</td>
+              <td class="px-4 py-2 text-fg-muted">Upper bound of the slider scale. Accepts <code class="font-mono">undefined</code> for the same reason as <code class="font-mono">min</code>.</td>
             </tr>
             <tr>
               <td class="px-4 py-2 font-mono text-xs">step</td>
@@ -68,7 +68,7 @@ import { CodeBlockComponent } from '@cdevhub/ngx-tw/code-block';
               <td class="px-4 py-2 font-mono text-xs">required</td>
               <td class="px-4 py-2 font-mono text-xs text-fg-muted">boolean</td>
               <td class="px-4 py-2 font-mono text-xs text-fg-muted">false</td>
-              <td class="px-4 py-2 text-fg-muted">Sets aria-required on each thumb for assistive technology.</td>
+              <td class="px-4 py-2 text-fg-muted">Sets aria-required on each thumb for assistive technology. Also inferred from <code class="font-mono">Validators.required</code> on a bound control.</td>
             </tr>
             <tr>
               <td class="px-4 py-2 font-mono text-xs">errorStateMatcher</td>

@@ -174,14 +174,9 @@ test.describe('Calendar', () => {
     },
   );
 
-  test.fixme('@interaction range click behavior: `nearest-edge` drags the closer endpoint', async ({
+  test('@interaction range click behavior: `nearest-edge` drags the closer endpoint', async ({
     page,
   }) => {
-    // Pre-existing drift: the `nearest-edge` range-click behavior moved
-    // into the `rangeBehavior` config object in S19 (D3 in CLAUDE.md).
-    // The demo's Range Click section needs `[rangeBehavior]="..."` wiring
-    // to enable the behavior, and this spec needs to point at that
-    // configured section. Investigate alongside the multi-month fix above.
     const calendar = new CalendarPage(page);
     await calendar.goto();
 

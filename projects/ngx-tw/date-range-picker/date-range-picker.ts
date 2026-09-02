@@ -798,6 +798,22 @@ export class DateRangePickerComponent<D = Date>
     return matcher.isErrorState(this.ngControl?.control ?? null, form);
   });
 
+  /**
+   * @internal Active validation errors map from the bound `NgControl` (or `null` when the
+   * control reports none / is unbound). This is what `[twError match="…"]` filters on inside a
+   * `<tw-form-field>`; without it every `match`-targeted message — including the
+   * `calendarMinDate` / `calendarMaxDate` / `calendarInvalidRange` / `calendarRangeTooShort` /
+   * `calendarRangeTooLong` codes this component's `NG_VALIDATORS` apparatus exists to produce —
+   * stays permanently hidden. (Authoritative key list: `CalendarValidationErrors` in
+   * `calendar.types.ts`.)
+   * Recomputes on every `_ngControlRev` tick so it reacts to validator transitions, including
+   * rules that fire or clear without flipping `VALID`/`INVALID`. Mirrors `input.ts`.
+   */
+  override readonly errors: Signal<Record<string, unknown> | null> = computed(() => {
+    this._ngControlRev();
+    return (this.ngControl?.control?.errors as Record<string, unknown> | null) ?? null;
+  });
+
   /** @internal */
   readonly controlType = 'date-range-picker';
   /** @internal */
@@ -994,17 +1010,16 @@ export class DateRangePickerComponent<D = Date>
       self: true,
       optional: true,
     });
-    // Wire this component as the NgControl's value accessor.
+    // There is deliberately NO `ngControl.valueAccessor = this` here, and none is needed:
+    // registration happens through the static NG_VALUE_ACCESSOR provider on this component,
+    // which `FormControlName` / `NgModel` resolve while constructing on the same element —
+    // long before ngOnInit. An assignment at this point would be a pure no-op on both the
+    // classic and the signal-forms path.
     //
-    // NOTE: this assignment is a belt-and-braces no-op in practice — the static
-    // NG_VALUE_ACCESSOR provider above has already registered this component on
-    // the value-accessor channel, which is what makes `validate()` run at all.
-    // Do NOT read this as evidence the static provider is unnecessary and
-    // remove it: dropping it silently disables every calendar error code, with
-    // no test failure outside the guard spec. See the provider's own comment.
-    if (this.ngControl) {
-      this.ngControl.valueAccessor = this;
-    }
+    // Do NOT read the absence of a runtime assignment as evidence the static provider is
+    // optional. It is the only registration this component has: delete it and `validate()`
+    // is never invoked, so every calendar error code silently disappears with no test failure
+    // outside the guard spec. See the provider's own comment above.
     const ctrl = this.ngControl?.control;
     if (ctrl) {
       const streams = [ctrl.statusChanges, ctrl.valueChanges].filter(

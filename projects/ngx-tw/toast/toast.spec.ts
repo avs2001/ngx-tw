@@ -342,6 +342,200 @@ describe('ToastService', () => {
     });
   });
 
+  // ── Escape-to-dismiss (SC 2.1.1 Keyboard) ──
+  //
+  // `toast-container.ts:125` binds `(keydown.escape)="onEscape(entry.ref, $event)"`.
+  // `entry.ref` is template-context glue: with several toasts stacked, a binding
+  // that resolved to the first entry rather than the one the key landed on would
+  // dismiss the wrong toast and nothing would notice. Every toast is a tab stop
+  // precisely so a keyboard user can reach and dismiss it, so the identity half
+  // of these assertions is the point — not merely "something closed".
+  describe('escape to dismiss', () => {
+    function wrapperFor(ref: { readonly id: string }): HTMLElement {
+      const el = document.querySelector<HTMLElement>(`[data-toast-id="${ref.id}"]`);
+      expect(el).not.toBeNull();
+      return el!;
+    }
+
+    function pressEscape(el: HTMLElement): void {
+      el.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+      TestBed.inject(ApplicationRef).tick();
+    }
+
+    it('dismisses the toast the key landed on and leaves the others alone', async () => {
+      // duration 0 on both, so a timeout can never be what removed either one.
+      const first = toast.show('first toast', { duration: 0 });
+      const second = toast.show('second toast', { duration: 0 });
+      await flushEnter();
+      expect(getAllToasts().length).toBe(2);
+
+      const dismissed = vi.fn();
+      second.afterDismissed().subscribe(dismissed);
+
+      pressEscape(wrapperFor(second));
+      flushLeave();
+
+      expect(dismissed).toHaveBeenCalledTimes(1);
+      expect(dismissed.mock.calls[0][0].reason).toBe('manual');
+      expect(second.state()).toBe('dismissed');
+      expect(first.state()).toBe('visible');
+      const remaining = getAllToasts();
+      expect(remaining.length).toBe(1);
+      expect(remaining[0].textContent).toContain('first toast');
+    });
+
+    it('Escape on the first of two stacked toasts dismisses that one, not the last', async () => {
+      // The mirror case. Together these two pin the binding to the entry the
+      // event fired on: a hard-coded index passes exactly one of them.
+      const first = toast.show('first toast', { duration: 0 });
+      const second = toast.show('second toast', { duration: 0 });
+      await flushEnter();
+
+      pressEscape(wrapperFor(first));
+      flushLeave();
+
+      expect(first.state()).toBe('dismissed');
+      expect(second.state()).toBe('visible');
+      const remaining = getAllToasts();
+      expect(remaining.length).toBe(1);
+      expect(remaining[0].textContent).toContain('second toast');
+    });
+
+    it('Escape does not escape the toast — the event is stopped at the wrapper', async () => {
+      const ref = toast.show('contained', { duration: 0 });
+      await flushEnter();
+      const outer = vi.fn();
+      document.addEventListener('keydown', outer);
+      try {
+        pressEscape(wrapperFor(ref));
+        // `onEscape` calls stopPropagation, so a document-level Escape handler
+        // (a dialog behind the toast, say) must not also fire.
+        expect(outer).not.toHaveBeenCalled();
+      } finally {
+        document.removeEventListener('keydown', outer);
+        flushLeave();
+      }
+    });
+  });
+
+  // ── Swipe to dismiss ──
+  //
+  // `onSwipeEnd` (`toast-container.ts:381`) decides dismiss-vs-snap-back against
+  // `width * SWIPE_DISMISS_FRACTION`. jsdom reports `getBoundingClientRect()` as
+  // all-zero, which makes that threshold 0 and every swipe — however short —
+  // "past" it. A test written without stubbing the rect therefore passes against
+  // a completely broken threshold, so the stub below is load-bearing, not
+  // convenience: with width 400 the threshold is a real 160px and the
+  // above/below pair is falsifiable.
+  //
+  // (This corrects the standing assumption that the swipe path is unreachable
+  // from jsdom. `setPointerCapture` / `releasePointerCapture` are both guarded,
+  // and `PointerEvent` constructs here — only the geometry was missing.)
+  describe('swipe to dismiss', () => {
+    const WIDTH = 400; // threshold = 400 * 0.4 = 160px
+
+    function wrapperFor(ref: { readonly id: string }): HTMLElement {
+      const el = document.querySelector<HTMLElement>(`[data-toast-id="${ref.id}"]`);
+      expect(el).not.toBeNull();
+      // Give the wrapper a real width so the dismiss threshold is non-zero.
+      vi.spyOn(el!, 'getBoundingClientRect').mockReturnValue({
+        x: 0,
+        y: 0,
+        width: WIDTH,
+        height: 60,
+        top: 0,
+        left: 0,
+        right: WIDTH,
+        bottom: 60,
+        toJSON: () => ({}),
+      } as DOMRect);
+      return el!;
+    }
+
+    /** Full gesture: press, drag past the 6px engage gate, release at `dx`. */
+    function swipe(el: HTMLElement, dx: number): void {
+      dispatchPointer(el, 'pointerdown', 0);
+      dispatchPointer(el, 'pointermove', Math.sign(dx) * 20);
+      dispatchPointer(el, 'pointermove', dx);
+      dispatchPointer(el, 'pointerup', dx);
+      TestBed.inject(ApplicationRef).tick();
+    }
+
+    it('a drag past the threshold dismisses with reason "swipe"', async () => {
+      const ref = toast.show('drag me', { duration: 0 });
+      await flushEnter();
+      const dismissed = vi.fn();
+      ref.afterDismissed().subscribe(dismissed);
+
+      swipe(wrapperFor(ref), 200); // 200 >= 160
+      flushLeave();
+
+      expect(dismissed).toHaveBeenCalledTimes(1);
+      expect(dismissed.mock.calls[0][0].reason).toBe('swipe');
+      expect(getAllToasts().length).toBe(0);
+    });
+
+    it('a drag short of the threshold snaps back and keeps the toast', async () => {
+      const ref = toast.show('nearly', { duration: 0 });
+      await flushEnter();
+      const wrapper = wrapperFor(ref);
+
+      dispatchPointer(wrapper, 'pointerdown', 0);
+      dispatchPointer(wrapper, 'pointermove', 40);
+      // Precondition asserted on its own so a failure names its own cause:
+      // the swipe engaged and is tracking.
+      expect(ref.swipeTransform()).toBe('translate3d(40px, 0, 0)');
+
+      dispatchPointer(wrapper, 'pointerup', 40); // 40 < 160
+      TestBed.inject(ApplicationRef).tick();
+
+      expect(ref.state()).toBe('visible');
+      // Snap-back clears the inline transform / opacity the drag applied.
+      expect(ref.swipeTransform()).toBeNull();
+      expect(ref.swipeOpacity()).toBeNull();
+      expect(getAllToasts().length).toBe(1);
+    });
+
+    it('a drag against the stacking edge never dismisses, however far', async () => {
+      // Default position is bottom-right, so only a rightward (positive) drag
+      // may dismiss. A sign error in `swipeDirectionAllowed` shows up here.
+      const ref = toast.show('wrong way', { duration: 0 });
+      await flushEnter();
+
+      swipe(wrapperFor(ref), -320); // twice the threshold, wrong direction
+      TestBed.inject(ApplicationRef).tick();
+
+      expect(ref.state()).toBe('visible');
+      expect(ref.swipeTransform()).toBeNull();
+      expect(getAllToasts().length).toBe(1);
+    });
+
+    it('swipeToDismiss=false never engages the gesture', async () => {
+      const ref = toast.show('locked', { duration: 0, swipeToDismiss: false });
+      await flushEnter();
+
+      swipe(wrapperFor(ref), 320);
+
+      expect(ref.state()).toBe('visible');
+      expect(ref.swipeTransform()).toBeNull();
+      expect(getAllToasts().length).toBe(1);
+    });
+
+    it('a press that starts on an interactive child is not a swipe', async () => {
+      // Pressing the dismiss button must not begin a drag, or the button would
+      // be unusable by pointer.
+      const ref = toast.show('has a button', { duration: 0 });
+      await flushEnter();
+      const wrapper = wrapperFor(ref);
+      const closeBtn = wrapper.querySelector<HTMLElement>('button[aria-label="Dismiss"]');
+      expect(closeBtn).not.toBeNull();
+
+      dispatchPointer(closeBtn!, 'pointerdown', 0);
+      dispatchPointer(wrapper, 'pointermove', 200);
+      expect(ref.swipeTransform()).toBeNull();
+    });
+  });
+
   describe('actions', () => {
     it('renders action button and fires handler(ref) without auto-dismissing', async () => {
       const handler = vi.fn();

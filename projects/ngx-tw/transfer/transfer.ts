@@ -180,6 +180,11 @@ function formatLabel(
   template: string,
   vars: Record<string, string | number>,
 ): string {
+  // Defence in depth. `resolvedLabels()` already filters explicitly-undefined
+  // consumer keys, so a non-string cannot reach here through the public
+  // `labels` input today. The guard exists so a future regression in that
+  // merge degrades to a missing label instead of throwing.
+  if (typeof template !== 'string') return '';
   return template.replace(/\{(\w+)\}/g, (match, key: string) =>
     key in vars ? String(vars[key]) : match,
   );
@@ -222,6 +227,13 @@ const transferVariants = tv(
       // override across two class bindings).
       moveButton:
         'inline-flex items-center justify-center shrink-0 rounded-md border border-border bg-surface text-fg-muted cursor-pointer transition-colors duration-200 motion-reduce:transition-none hover:bg-surface-muted hover:text-fg hover:border-border-strong focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500 disabled:opacity-50 disabled:pointer-events-none disabled:cursor-not-allowed',
+      // Glyph inside the square move button. Glyph sub-scale saturating at
+      // `lg`: 3 / 4 / 5 / 6 / 6, matching `optionCheck`. Previously 4/4/5/5/5,
+      // which left three of the five advertised steps dead. `xl` stops at
+      // 24px rather than the scale's 32px because the glyph lives inside a
+      // 36px `moveButton` (the square-interactive scale saturates at `lg`
+      // too, per CLAUDE.md) — a 32px glyph in a 36px target leaves no optical
+      // padding. Raising one means raising the other.
       moveIcon: 'shrink-0',
       empty:
         'flex items-center justify-center p-4 text-sm text-fg-subtle text-center',
@@ -232,9 +244,9 @@ const transferVariants = tv(
           panelHeader: 'px-2 py-1',
           search: 'px-2 py-1',
           option: 'px-2 py-1 text-xs gap-1.5',
-          optionCheck: 'size-4',
+          optionCheck: 'size-3',
           moveButton: 'size-6',
-          moveIcon: 'size-4',
+          moveIcon: 'size-3',
           empty: 'text-xs',
         },
         sm: {
@@ -257,17 +269,17 @@ const transferVariants = tv(
           panelHeader: 'px-5 py-2.5',
           search: 'px-4 py-2.5',
           option: 'px-4 py-2.5 text-base',
-          optionCheck: 'size-5',
+          optionCheck: 'size-6',
           moveButton: 'size-9',
-          moveIcon: 'size-5',
+          moveIcon: 'size-6',
         },
         xl: {
           panelHeader: 'px-6 py-3',
           search: 'px-4 py-3',
           option: 'px-4 py-3 text-base',
-          optionCheck: 'size-5',
+          optionCheck: 'size-6',
           moveButton: 'size-9',
-          moveIcon: 'size-5',
+          moveIcon: 'size-6',
         },
       },
       checked: {
@@ -628,16 +640,36 @@ export class TransferComponent<T = unknown, K = unknown>
 
   // ── Resolved config ──
 
-  /** @internal */
-  readonly resolvedLabels = computed<Required<TwTransferLabels>>(() => ({
-    ...LABELS_DEFAULTS,
-    ...this.labels(),
-  }));
+  /**
+   * @internal Resolved label record.
+   *
+   * Explicitly-undefined keys are dropped before merging. Root `tsconfig.json`
+   * does not set `exactOptionalPropertyTypes`, so
+   * `[labels]="{ moveAnnouncement: i18n.moved }"` type-checks even when the
+   * i18n bundle has no such key — and a plain spread would then overwrite the
+   * default with `undefined`, which reaches `formatLabel()` and throws
+   * `Cannot read properties of undefined (reading 'replace')`. Same filter
+   * `table.ts` and `timeline.ts` already use; the `Required<>` annotation only
+   * tells the truth once the filter is in place.
+   */
+  readonly resolvedLabels = computed<Required<TwTransferLabels>>(() => {
+    const overrides = Object.fromEntries(
+      Object.entries(this.labels() ?? {}).filter(([, value]) => value !== undefined),
+    );
+    return { ...LABELS_DEFAULTS, ...overrides } as Required<TwTransferLabels>;
+  });
 
-  private readonly resolvedDisplay = computed<Required<TwTransferDisplayConfig>>(() => ({
-    ...DISPLAY_DEFAULTS,
-    ...this.display(),
-  }));
+  /**
+   * @internal Resolved display config. Same explicitly-undefined filter as
+   * `resolvedLabels` — a plain spread let `[display]="{ listHeight: undefined }"`
+   * reach the list's inline `height` as `undefined`, collapsing the panes.
+   */
+  private readonly resolvedDisplay = computed<Required<TwTransferDisplayConfig>>(() => {
+    const overrides = Object.fromEntries(
+      Object.entries(this.display() ?? {}).filter(([, value]) => value !== undefined),
+    );
+    return { ...DISPLAY_DEFAULTS, ...overrides } as Required<TwTransferDisplayConfig>;
+  });
 
   // Behaviour is resolved inline (not via a `Required<>` const) because `filterFn`
   // is legitimately optional and both predicates are generic over `T`.

@@ -90,16 +90,31 @@ const menuItemVariants = tv(
   { twMerge: true },
 );
 
+// Leading icon on a menu item. Follows CLAUDE.md "Icon Sizing" → glyph
+// sub-scale, saturating at `lg`: 3 / 4 / 5 / 6 / 6. Previously 4/4/4/5/5,
+// which collapsed xs/sm/md onto one value and left `xl` indistinguishable
+// from `lg`.
+//
+// `xl` deliberately reuses `size-6` rather than the glyph scale's `size-8`.
+// Menu rows are `flex items-center` on a `min-h-*` floor (see the size ramp
+// above and docs/vertical-rhythm.md §2). At `xl` a 32px glyph plus `py-2.5`
+// (20px) measures 52px against a `min-h-12` floor of 48px, so the floor
+// stops binding — and only for rows that project a glyph, so an `xl` menu
+// would render 52px and 48px rows side by side. Every other step still
+// binds (xs 16<24, sm 24<32, md 32<36, lg 40<44). This is the same
+// saturation CLAUDE.md already codifies for the square-interactive scale,
+// where the breadcrumb overflow trigger reuses `size-9` at both `lg` and
+// `xl`. Raising `xl` here means raising the row floor to match.
 const menuItemIconVariants = tv(
   {
     base: 'shrink-0 text-fg-muted',
     variants: {
       size: {
-        xs: 'size-4',
+        xs: 'size-3',
         sm: 'size-4',
-        md: 'size-4',
-        lg: 'size-5',
-        xl: 'size-5',
+        md: 'size-5',
+        lg: 'size-6',
+        xl: 'size-6',
       },
     },
     defaultVariants: { size: 'md' },
@@ -107,16 +122,20 @@ const menuItemIconVariants = tv(
   { twMerge: true },
 );
 
+// Selection marker (check / radio dot wrapper). This is the box the glyph is
+// centred in, so it rides the same glyph sub-scale as the leading icon —
+// otherwise the check and the icon on adjacent items sit on different scales.
+// Previously 4/4/4/5/5.
 const menuItemIndicatorVariants = tv(
   {
     base: 'shrink-0 flex items-center justify-center',
     variants: {
       size: {
-        xs: 'size-4',
+        xs: 'size-3',
         sm: 'size-4',
-        md: 'size-4',
-        lg: 'size-5',
-        xl: 'size-5',
+        md: 'size-5',
+        lg: 'size-6',
+        xl: 'size-6',
       },
     },
     defaultVariants: { size: 'md' },
@@ -125,8 +144,11 @@ const menuItemIndicatorVariants = tv(
 );
 
 // Submenu indicator (trailing chevron). Keeps the `ml-auto pl-2` layout intent
-// separate from the leading-icon scale; size axis follows the glyph scale per
-// CLAUDE.md "Icon Sizing" so the chevron scales with the parent menu's density.
+// separate from the leading-icon scale, but the size axis is the same
+// CLAUDE.md "Icon Sizing" glyph sub-scale (3/4/5/6/8) the other two menu
+// glyph ramps use, so the chevron tracks the parent menu's density and every
+// step is visually distinct. Previously 3/4/4/5/5, which duplicated `sm`→`md`
+// and `lg`→`xl`.
 const menuItemSubmenuIndicatorVariants = tv(
   {
     base: 'ml-auto pl-2 shrink-0 text-fg-muted',
@@ -134,9 +156,9 @@ const menuItemSubmenuIndicatorVariants = tv(
       size: {
         xs: 'size-3',
         sm: 'size-4',
-        md: 'size-4',
-        lg: 'size-5',
-        xl: 'size-5',
+        md: 'size-5',
+        lg: 'size-6',
+        xl: 'size-6',
       },
     },
     defaultVariants: { size: 'md' },

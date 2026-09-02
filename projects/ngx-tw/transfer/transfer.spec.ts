@@ -324,6 +324,33 @@ describe('TransferComponent', () => {
       expect(fixture.nativeElement.textContent).toContain('0/4');
     });
 
+    // Regression guard for pass-4 API H4. `exactOptionalPropertyTypes` is off,
+    // so `[labels]="{ moveAnnouncement: i18n.moved }"` compiles when the i18n
+    // bundle has no such key. A plain spread let that `undefined` overwrite the
+    // default and reach `formatLabel()`'s `template.replace(...)`, throwing on
+    // the first move. `display` takes the same filter: `listHeight: undefined`
+    // used to reach the list's inline height.
+    it('ignores explicitly-undefined label and display keys instead of throwing', async () => {
+      host.labels.set({
+        moveAnnouncement: undefined,
+        countFormat: undefined,
+        sourceTitle: undefined,
+      });
+      host.display.set({ listHeight: undefined, showSelectAll: undefined });
+      await settle(fixture);
+
+      // Defaults survive the undefined overrides.
+      expect(fixture.nativeElement.textContent).toContain('Source');
+      expect(fixture.nativeElement.textContent).toContain('4 items');
+
+      // And the move path (which formats `moveAnnouncement`) does not throw.
+      optionsOf(listboxes(fixture)[0])[0].click();
+      await settle(fixture);
+      moveButtons(fixture)[0].click();
+      await settle(fixture);
+      expect(host.model.length).toBe(1);
+    });
+
     it('exposes role="listbox" with aria-labelledby and labelled move buttons', async () => {
       // Move one item so both panels have a (non-empty) listbox.
       optionsOf(listboxes(fixture)[0])[0].click();

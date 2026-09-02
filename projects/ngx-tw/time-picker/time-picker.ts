@@ -860,6 +860,20 @@ export class TimePickerComponent<D = Date>
       (this.parentForm as TwFormSubmitted | null);
     return matcher.isErrorState(this.ngControl?.control ?? null, form);
   });
+  /**
+   * @internal Active validation errors map from the bound `NgControl` (or `null` when the
+   * control reports none / is unbound). This is what `[twError match="…"]` filters on inside a
+   * `<tw-form-field>`; without it every `match`-targeted message — including the
+   * `timePickerMin` / `timePickerMax` codes this component's `NG_VALIDATORS` apparatus exists
+   * to produce — stays permanently hidden. Recomputes on every `_ngControlRev` tick so it
+   * reacts to validator transitions, including rules that fire or clear without flipping
+   * `VALID`/`INVALID`. Mirrors `input.ts`.
+   */
+  override readonly errors: Signal<Record<string, unknown> | null> = computed(() => {
+    this._ngControlRev();
+    return (this.ngControl?.control?.errors as Record<string, unknown> | null) ?? null;
+  });
+
   /** @internal */ readonly controlType = 'time-picker';
   /** @internal */
   readonly userAriaDescribedBy: Signal<string | undefined> = computed(() =>

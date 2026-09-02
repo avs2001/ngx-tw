@@ -4,6 +4,11 @@ import { type ComponentFixture, TestBed } from '@angular/core/testing';
 import { FormControl, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
 import { form, FormField, required } from '@angular/forms/signals';
 import { OverlayModule } from '@angular/cdk/overlay';
+import {
+  ErrorDirective,
+  FormFieldComponent,
+  LabelDirective,
+} from '@cdevhub/ngx-tw/form-field';
 import { ComboboxComponent, ComboboxOptionTemplateDirective, ComboboxEmptyTemplateDirective } from './combobox';
 import type {
   TwComboboxOptionSelectedEvent,
@@ -988,6 +993,24 @@ describe('ComboboxComponent', () => {
       expect(fixture.componentInstance.ctrl.valid).toBe(true);
       expect(getInput(fixture).getAttribute('aria-invalid')).toBe(null);
     });
+
+    // Guard for FIX-1/#3. `Validators.required` on the bound control must reach
+    // `aria-required` (and, in a form-field, the `*` marker) without the
+    // consumer ALSO writing `[required]="true"`. Regressing `required` back to
+    // a pass-through of the input still passes every other test in this file —
+    // and every signal-forms test, because `cvaControlCreate` writes the
+    // `required` input directly rather than reading validators.
+    it('derives aria-required from Validators.required on the bound control', () => {
+      const fixture = TestBed.createComponent(RequiredReactiveHost);
+      fixture.detectChanges();
+      expect(getInput(fixture).getAttribute('aria-required')).toBe('true');
+    });
+
+    it('leaves aria-required off when the bound control carries no required validator', () => {
+      const fixture = TestBed.createComponent(ReactiveHost);
+      fixture.detectChanges();
+      expect(getInput(fixture).hasAttribute('aria-required')).toBe(false);
+    });
   });
 
   // ── Slot fallbacks ──
@@ -1395,5 +1418,305 @@ describe('ComboboxComponent', () => {
       expect(fresh).toBeTruthy();
       expect(fresh.querySelectorAll('[role="option"]').length).toBe(4);
     });
+  });
+});
+
+
+// ── form-field interop: required marker + [twError match="…"] ─────
+//
+// Two guards in one host, both for FIX-1.
+//
+// #3: `FormFieldComponent.isRequired` reads `control()?.required()`. While
+// `required` was a pass-through of the `required` INPUT, a `Validators.required`
+// on the bound control never reached it, so the `*` marker silently vanished
+// under reactive/template-driven forms while signal forms showed it (signal
+// forms writes the input directly, never consulting validators).
+//
+// #2: `FormFieldComponent.activeErrorKeys` is built from `control()?.errors?.()`,
+// an OPTIONAL member of `FormFieldControl`. While the combobox omitted it the
+// key set was permanently empty, so every `match`ed error carried
+// `class="hidden"` forever — in all three strategies, including error codes the
+// control itself produces.
+
+@Component({
+  imports: [
+    ComboboxComponent,
+    FormFieldComponent,
+    LabelDirective,
+    ErrorDirective,
+    ReactiveFormsModule,
+  ],
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  template: `
+    <tw-form-field>
+      <label twLabel>Fruit</label>
+      <tw-combobox [options]="options" [formControl]="ctrl" />
+      <span twError match="required" data-testid="matched">Pick a fruit.</span>
+      <span twError match="somethingElse" data-testid="unmatched">Not this one.</span>
+    </tw-form-field>
+  `,
+})
+class ComboboxFormFieldHost {
+  options = OPTIONS;
+  ctrl = new FormControl<string | null>(null, Validators.required);
+}
+
+describe('ComboboxComponent inside tw-form-field', () => {
+  beforeEach(() => {
+    TestBed.configureTestingModule({ imports: [OverlayModule] });
+  });
+
+  /**
+   * "Visible" = present in the DOM AND not carrying `ErrorDirective`'s
+   * `hidden` class. Both halves matter: `match` filtering works by toggling
+   * `hidden`, but the form-field also drops the whole subscript row once it
+   * leaves the error state, so a cleared error disappears rather than hides.
+   */
+  function errorVisible(fixture: ComponentFixture<unknown>, testid: string): boolean {
+    const el = fixture.nativeElement.querySelector(
+      `[data-testid="${testid}"]`,
+    ) as HTMLElement | null;
+    return !!el && !el.classList.contains('hidden');
+  }
+
+  /**
+   * The form-field renders its required marker as
+   * `<span aria-hidden="true">*</span>` inside the label wrapper. The combobox
+   * also carries `aria-hidden` decorations (chevron, spinner), so match on the
+   * marker's text rather than on the attribute alone.
+   */
+  function hasRequiredMarker(fixture: ComponentFixture<unknown>): boolean {
+    const candidates = Array.from(
+      fixture.nativeElement.querySelectorAll('span[aria-hidden="true"]'),
+    ) as HTMLElement[];
+    return candidates.some((el) => el.textContent?.trim() === '*');
+  }
+
+  it('renders the required marker from Validators.required alone', () => {
+    const fixture = TestBed.createComponent(ComboboxFormFieldHost);
+    fixture.detectChanges();
+    expect(hasRequiredMarker(fixture)).toBe(true);
+  });
+
+  it('renders no required marker when the bound control has no required validator', () => {
+    const fixture = TestBed.createComponent(ComboboxFormFieldHost);
+    fixture.componentInstance.ctrl.clearValidators();
+    fixture.componentInstance.ctrl.updateValueAndValidity();
+    fixture.detectChanges();
+    expect(hasRequiredMarker(fixture)).toBe(false);
+  });
+
+  it('shows a match-targeted error once the control reports that key', async () => {
+    const fixture = TestBed.createComponent(ComboboxFormFieldHost);
+    fixture.detectChanges();
+    fixture.componentInstance.ctrl.markAsTouched();
+    fixture.componentInstance.ctrl.updateValueAndValidity();
+    await advance(fixture);
+    expect(fixture.componentInstance.ctrl.errors).toEqual({ required: true });
+    expect(errorVisible(fixture, 'matched')).toBe(true);
+  });
+
+  it('keeps a non-matching error hidden', async () => {
+    const fixture = TestBed.createComponent(ComboboxFormFieldHost);
+    fixture.detectChanges();
+    fixture.componentInstance.ctrl.markAsTouched();
+    fixture.componentInstance.ctrl.updateValueAndValidity();
+    await advance(fixture);
+    expect(errorVisible(fixture, 'unmatched')).toBe(false);
+  });
+
+  it('re-hides the matched error once the validator clears', async () => {
+    const fixture = TestBed.createComponent(ComboboxFormFieldHost);
+    fixture.detectChanges();
+    fixture.componentInstance.ctrl.markAsTouched();
+    fixture.componentInstance.ctrl.updateValueAndValidity();
+    await advance(fixture);
+    expect(errorVisible(fixture, 'matched')).toBe(true);
+    fixture.componentInstance.ctrl.setValue('apple');
+    await advance(fixture);
+    expect(fixture.componentInstance.ctrl.errors).toBe(null);
+    expect(errorVisible(fixture, 'matched')).toBe(false);
+  });
+});
+
+
+// ── F-02: option hover → aria-activedescendant, grouped + filtered ─
+//
+// `combobox-overlay.ts:102` carries
+// `(mouseenter)="onOptionMouseEnter(row.index, row.option.disabled)"`, where
+// `row.index` is a position in `visibleOptions()` — the FILTERED option list —
+// not a position among the rendered rows. The rendered `@for` interleaves
+// group-header rows with option rows, so rendered-row position (`$index`) and
+// `visibleIndex` diverge, and the template carries `row.index` precisely to
+// avoid that.
+//
+// Nothing tested that it stays correct. `mouseenter` appeared ZERO times in
+// this spec before this pass, and `combobox` has no e2e spec at all.
+//
+// The list below is built so a `$index` regression is SILENT rather than loud —
+// every hovered option's `$index` also lands inside `visibleOptions()`, on a
+// DIFFERENT option:
+//
+//   options (7)         query 'al'    visibleIndex   $index (rendered row)
+//   ── Trees ──                       —              0  (group header)
+//   Alder                kept         0              1
+//   Almond               kept         1              2   → $index 2 = Alfalfa
+//   Birch                FILTERED     —              —
+//   ── Herbs ──                       —              3  (group header)
+//   Alfalfa              kept         2              4   → $index 4 = Alpine
+//   Basil                FILTERED     —              —
+//   Aloe                 kept         3              5
+//   Alpine               kept         4              6
+//
+// Both offsets stack: the filter shifts the index and the group headers shift
+// it again. An ungrouped or unfiltered list passes under either indexing
+// scheme, which is why both conditions are in the fixture.
+
+const HOVER_OPTIONS: readonly TestOption[] = [
+  { label: 'Alder', value: 'alder', group: 'Trees' },
+  { label: 'Almond', value: 'almond', group: 'Trees' },
+  { label: 'Birch', value: 'birch', group: 'Trees' },
+  { label: 'Alfalfa', value: 'alfalfa', group: 'Herbs' },
+  { label: 'Basil', value: 'basil', group: 'Herbs' },
+  { label: 'Aloe', value: 'aloe', group: 'Herbs' },
+  { label: 'Alpine', value: 'alpine', group: 'Herbs' },
+];
+
+@Component({
+  imports: [ComboboxComponent],
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  template: `
+    <tw-combobox
+      [options]="options"
+      [(open)]="open"
+      [queryDebounce]="0"
+      aria-label="Plants"
+    />
+  `,
+})
+class HoverGroupedHost {
+  options = HOVER_OPTIONS;
+  open = signal(true);
+}
+
+describe('ComboboxComponent option hover (grouped + filtered)', () => {
+  beforeEach(() => {
+    TestBed.configureTestingModule({ imports: [OverlayModule] });
+  });
+
+  /**
+   * The combobox keeps DOM focus on its input and identifies the active option
+   * by `aria-activedescendant` on that input (the codified
+   * activedescendant-listbox pattern). Reading it there is reading it where a
+   * screen reader does.
+   */
+  function activeDescendant(fixture: ComponentFixture<unknown>): string | null {
+    return getInput(fixture).getAttribute('aria-activedescendant');
+  }
+
+  function optionByLabel(label: string): HTMLElement {
+    const match = getOptions().find((el) => normalizeText(el) === label);
+    if (!match) {
+      throw new Error(
+        `no rendered option labelled "${label}" — got [${getOptions()
+          .map((el) => normalizeText(el))
+          .join(', ')}]`,
+      );
+    }
+    return match;
+  }
+
+  async function openAndFilter(
+    fixture: ComponentFixture<unknown>,
+    query: string,
+  ): Promise<void> {
+    await advance(fixture);
+    typeInto(getInput(fixture), query);
+    await advance(fixture);
+  }
+
+  it('filters to the expected grouped row set', async () => {
+    const fixture = TestBed.createComponent(HoverGroupedHost);
+    await openAndFilter(fixture, 'al');
+    // Precondition for the tests below: Birch and Basil are gone, and two group
+    // headers remain, so rendered-row position != visibleIndex.
+    expect(getOptions().map((el) => normalizeText(el))).toEqual([
+      'Alder',
+      'Almond',
+      'Alfalfa',
+      'Aloe',
+      'Alpine',
+    ]);
+    expect(getOverlayPanel()!.querySelectorAll('[role="group"]').length).toBe(2);
+  });
+
+  it('activates the hovered option in the FIRST group, not the row at its rendered index', async () => {
+    const fixture = TestBed.createComponent(HoverGroupedHost);
+    await openAndFilter(fixture, 'al');
+
+    const almond = optionByLabel('Almond');
+    almond.dispatchEvent(new MouseEvent('mouseenter', { bubbles: false }));
+    await advance(fixture);
+
+    const active = activeDescendant(fixture);
+    expect(active).toBe(almond.id);
+    // Identity, not just id equality: an id-only assertion can match by
+    // coincidence, and this is what makes a `$index` regression legible —
+    // rendered row 2 is Alfalfa.
+    expect(normalizeText(document.getElementById(active!)!)).toBe('Almond');
+  });
+
+  it('activates the hovered option in the SECOND group, where two group headers have accumulated', async () => {
+    const fixture = TestBed.createComponent(HoverGroupedHost);
+    await openAndFilter(fixture, 'al');
+
+    const alfalfa = optionByLabel('Alfalfa');
+    alfalfa.dispatchEvent(new MouseEvent('mouseenter', { bubbles: false }));
+    await advance(fixture);
+
+    const active = activeDescendant(fixture);
+    expect(active).toBe(alfalfa.id);
+    // Rendered row 4 is Alpine — the option a `$index` regression would
+    // announce to a screen reader instead.
+    expect(normalizeText(document.getElementById(active!)!)).toBe('Alfalfa');
+  });
+
+  it('leaves the active option untouched when a disabled option is hovered', async () => {
+    @Component({
+      imports: [ComboboxComponent],
+      changeDetection: ChangeDetectionStrategy.OnPush,
+      template: `
+        <tw-combobox
+          [options]="options"
+          [(open)]="open"
+          [queryDebounce]="0"
+          aria-label="Plants"
+        />
+      `,
+    })
+    class DisabledHoverHost {
+      options: readonly TestOption[] = [
+        { label: 'Alder', value: 'alder', group: 'Trees' },
+        { label: 'Almond', value: 'almond', group: 'Trees' },
+        { label: 'Alfalfa', value: 'alfalfa', group: 'Herbs', disabled: true },
+      ];
+      open = signal(true);
+    }
+
+    const fixture = TestBed.createComponent(DisabledHoverHost);
+    await openAndFilter(fixture, 'al');
+
+    // Park the active option somewhere known first, so "unchanged" is an
+    // assertion about the disabled hover rather than about the opening state.
+    const almond = optionByLabel('Almond');
+    almond.dispatchEvent(new MouseEvent('mouseenter', { bubbles: false }));
+    await advance(fixture);
+    expect(activeDescendant(fixture)).toBe(almond.id);
+
+    const alfalfa = optionByLabel('Alfalfa');
+    alfalfa.dispatchEvent(new MouseEvent('mouseenter', { bubbles: false }));
+    await advance(fixture);
+
+    expect(activeDescendant(fixture)).toBe(almond.id);
   });
 });

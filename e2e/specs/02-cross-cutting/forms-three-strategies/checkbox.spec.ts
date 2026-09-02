@@ -128,6 +128,12 @@ test.describe('Forms · Three strategies · Checkbox', () => {
     const el = checkbox.checkboxIn('signal');
     await el.click();
     await expect(el).toHaveAttribute('aria-checked', 'true');
+
+    // `touched` flips on blur, not on change — aligned with Angular's native
+    // controls in audit pass 4 (previously these controls marked themselves
+    // touched from the change handler, so errors appeared a gesture early).
+    // Blur explicitly before asserting; the click alone no longer suffices.
+    await el.blur();
     await expect(checkbox.readoutIn('signal')).toContainText('touched = true');
 
     await checkbox.buttonIn('signal', 'Reset').click();

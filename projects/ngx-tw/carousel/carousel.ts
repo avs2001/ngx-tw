@@ -64,26 +64,38 @@ export type TwCarouselAutoplayReason =
   | 'visibility'
   | 'manual';
 
-/** Localizable strings for the carousel. */
+/**
+ * Localizable strings for the carousel.
+ *
+ * Every member is optional. This interface only ever reaches consumers through
+ * `input<Partial<TwCarouselLabels>>`, and unset keys fall back to
+ * {@link DEFAULT_CAROUSEL_LABELS} — so a consumer holding an i18n bundle typed
+ * as `TwCarouselLabels` must not be forced to restate every key, and adding a
+ * label in a future minor must not break them on a non-major release.
+ */
 export interface TwCarouselLabels {
   /** Accessible label for the Previous-slide directive host. Default: `'Previous slide'`. */
-  previous: string;
+  previous?: string;
   /** Accessible label for the Next-slide directive host. Default: `'Next slide'`. */
-  next: string;
+  next?: string;
   /** Accessible label for the autoplay pause control. Default: `'Pause autoplay'`. */
-  pauseAutoplay: string;
+  pauseAutoplay?: string;
   /** Accessible label for the autoplay resume control. Default: `'Resume autoplay'`. */
-  resumeAutoplay: string;
+  resumeAutoplay?: string;
   /** Template for indicator-button accessible names. Variable: `{page}` (1-based). Default: `'Go to slide {page}'`. */
-  indicator: string;
+  indicator?: string;
   /** Template for per-slide accessible names with a custom label. Variables: `{index}` (1-based), `{total}`, `{label}`. Default: `'{index} of {total}: {label}'`. */
-  slideOfWithLabel: string;
+  slideOfWithLabel?: string;
   /** Template for per-slide accessible names without a custom label. Variables: `{index}` (1-based), `{total}`. Default: `'{index} of {total}'`. */
-  slideOf: string;
+  slideOf?: string;
 }
 
-/** Default English labels used when consumers do not override via the `labels` input. */
-export const DEFAULT_CAROUSEL_LABELS: Readonly<TwCarouselLabels> = {
+/**
+ * Default English labels used when consumers do not override via the `labels`
+ * input. Typed `Required<TwCarouselLabels>` so readers keep a non-optional
+ * `string` for every key even though the interface itself is all-optional.
+ */
+export const DEFAULT_CAROUSEL_LABELS: Readonly<Required<TwCarouselLabels>> = {
   previous: 'Previous slide',
   next: 'Next slide',
   pauseAutoplay: 'Pause autoplay',
@@ -100,6 +112,12 @@ function formatLabel(
   template: string,
   vars: Readonly<Record<string, string | number>>,
 ): string {
+  // Defence in depth. `resolvedLabels()` already filters explicitly-undefined
+  // consumer keys, so a non-string cannot reach here through the public
+  // `labels` input today. The guard exists so a future regression in that
+  // merge degrades to a missing label instead of throwing inside a `computed`
+  // and taking the render down.
+  if (typeof template !== 'string') return '';
   return template.replace(/\{(\w+)\}/g, (match, key: string) =>
     Object.prototype.hasOwnProperty.call(vars, key) ? String(vars[key]) : match,
   );
@@ -279,11 +297,18 @@ const carouselVariants = tv(
     },
     compoundVariants: [
       // Indicator geometry per variant × size.
+      //
+      // `dots` follows CLAUDE.md's **dot indicator** sub-scale — 2 / 2.5 / 3 /
+      // 3.5 / 4, the five-step 2px cadence `badge-dot` was corrected onto. It
+      // previously rendered 2/2.5/3/3/3, freezing md/lg/xl at 12px so two of
+      // the five advertised steps were dead on the *default* indicator
+      // variant. The active-state `scale-150` is a CSS transform, so it
+      // composes multiplicatively with every base value here.
       { variant: 'dots', size: 'xs', class: { indicator: 'size-2' } },
       { variant: 'dots', size: 'sm', class: { indicator: 'size-2.5' } },
       { variant: 'dots', size: 'md', class: { indicator: 'size-3' } },
-      { variant: 'dots', size: 'lg', class: { indicator: 'size-3' } },
-      { variant: 'dots', size: 'xl', class: { indicator: 'size-3' } },
+      { variant: 'dots', size: 'lg', class: { indicator: 'size-3.5' } },
+      { variant: 'dots', size: 'xl', class: { indicator: 'size-4' } },
 
       { variant: 'lines', size: 'xs', class: { indicator: 'h-1 w-4' } },
       { variant: 'lines', size: 'sm', class: { indicator: 'h-1 w-5' } },
@@ -562,11 +587,24 @@ export class CarouselComponent {
 
   // ── Resolved configuration ─────────────────────────────────────
 
-  /** @internal Resolved label record with English defaults filled in. */
-  readonly resolvedLabels = computed<TwCarouselLabels>(() => ({
-    ...DEFAULT_CAROUSEL_LABELS,
-    ...this.labels(),
-  }));
+  /**
+   * @internal Resolved label record with English defaults filled in.
+   *
+   * Explicitly-undefined keys are dropped before merging. Root `tsconfig.json`
+   * does not set `exactOptionalPropertyTypes`, so `[labels]="{ indicator:
+   * t('carousel.indicator') }"` type-checks even when `t()` returns
+   * `string | undefined` — and a plain spread would then overwrite the default
+   * with `undefined`, which reaches `formatLabel()` and throws
+   * `Cannot read properties of undefined (reading 'replace')` inside a
+   * `computed`, taking the whole render down. Same filter `table.ts` and
+   * `timeline.ts` already use; `Required<>` then guarantees a string per key.
+   */
+  readonly resolvedLabels = computed<Required<TwCarouselLabels>>(() => {
+    const overrides = Object.fromEntries(
+      Object.entries(this.labels() ?? {}).filter(([, value]) => value !== undefined),
+    );
+    return { ...DEFAULT_CAROUSEL_LABELS, ...overrides } as Required<TwCarouselLabels>;
+  });
 
   /** @internal Effective `slidesPerView` clamped to `[0.5, slideCount]`. */
   readonly _effectiveSlidesPerView = computed<number>(() => {

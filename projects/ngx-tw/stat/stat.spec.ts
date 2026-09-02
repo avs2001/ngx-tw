@@ -590,4 +590,86 @@ describe('StatDeltaComponent', () => {
       expect(delta.getAttribute('aria-label')).not.toContain('increased');
     });
   });
+
+  // Regression guard for the frozen accessible name (pass-4 IDIOM H1). Every
+  // other aria-label assertion in this file projects a *static* string, so all
+  // of them passed while the label was sampled once and never updated again.
+  // Mutating the projected text after mount is the load-bearing shape.
+  describe('projected text mutated after mount', () => {
+    let fixture: ComponentFixture<DeltaInputsHost>;
+    let host: DeltaInputsHost;
+
+    beforeEach(async () => {
+      await TestBed.configureTestingModule({ imports: [DeltaInputsHost] }).compileComponents();
+      fixture = TestBed.createComponent(DeltaInputsHost);
+      host = fixture.componentInstance;
+      fixture.detectChanges();
+      await fixture.whenStable();
+      fixture.detectChanges();
+    });
+
+    it('recomposes the aria-label when the projected value changes', async () => {
+      const delta = fixture.nativeElement.querySelector('tw-stat-delta') as HTMLElement;
+      expect(delta.getAttribute('aria-label')).toBe('increased by +12.5%');
+
+      host.text.set('+34.0%');
+      fixture.detectChanges();
+      await fixture.whenStable();
+      fixture.detectChanges();
+
+      expect(delta.textContent).toContain('+34.0%');
+      expect(delta.getAttribute('aria-label')).toBe('increased by +34.0%');
+      expect(delta.getAttribute('aria-label')).not.toContain('+12.5%');
+    });
+
+    it('keeps an explicit aria-label authoritative while projected text changes', async () => {
+      host.ariaLabel.set('Revenue trend');
+      fixture.detectChanges();
+      await fixture.whenStable();
+      fixture.detectChanges();
+
+      host.text.set('+99%');
+      fixture.detectChanges();
+      await fixture.whenStable();
+      fixture.detectChanges();
+
+      const delta = fixture.nativeElement.querySelector('tw-stat-delta') as HTMLElement;
+      expect(delta.getAttribute('aria-label')).toBe('Revenue trend');
+    });
+  });
+
+  describe('projected text that arrives after first render', () => {
+    it('picks up projected text that was empty at first render', async () => {
+      @Component({
+        imports: [StatDeltaComponent],
+        changeDetection: ChangeDetectionStrategy.OnPush,
+        template: `
+          <tw-stat-delta direction="up">
+            @if (loaded()) {
+              <span>+7%</span>
+            }
+          </tw-stat-delta>
+        `,
+      })
+      class LateContentHost {
+        readonly loaded = signal(false);
+      }
+
+      await TestBed.configureTestingModule({ imports: [LateContentHost] }).compileComponents();
+      const lateFixture = TestBed.createComponent(LateContentHost);
+      lateFixture.detectChanges();
+      await lateFixture.whenStable();
+      lateFixture.detectChanges();
+
+      const delta = lateFixture.nativeElement.querySelector('tw-stat-delta') as HTMLElement;
+      expect(delta.getAttribute('aria-label')).toBe('increased');
+
+      lateFixture.componentInstance.loaded.set(true);
+      lateFixture.detectChanges();
+      await lateFixture.whenStable();
+      lateFixture.detectChanges();
+
+      expect(delta.getAttribute('aria-label')).toBe('increased by +7%');
+    });
+  });
 });
