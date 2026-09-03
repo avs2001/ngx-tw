@@ -474,7 +474,7 @@ describe('ItemComponent', () => {
       expect(item.className).toContain('bg-primary-soft');
       expect(item.className).toContain('ring-2');
       expect(item.className).toContain('ring-inset');
-      expect(item.className).toContain('ring-primary-border');
+      expect(item.className).toContain('ring-primary-border-strong');
     });
 
     it('should stack current and interactive focus styling together', () => {
@@ -483,7 +483,7 @@ describe('ItemComponent', () => {
       fixture.detectChanges();
 
       const item: HTMLElement = fixture.nativeElement.querySelector('tw-item');
-      expect(item.className).toContain('ring-primary-border');
+      expect(item.className).toContain('ring-primary-border-strong');
       expect(item.className).toContain('focus-visible:outline-primary-500');
     });
   });

@@ -192,25 +192,24 @@
      `-border` reads as "subtle", but it is NOT decorative the way
      `--color-border-muted` is: it is the alert `outline` variant's only
      boundary (`alert.ts:50`, transparent background), so SC 1.4.11's 3:1
-     applies to it. The four schemes currently disagree about whether they
-     honour that, and the disagreement is deliberate, not drift:
+     applies to it. All four schemes now clear that floor, on both tiers:
 
-       scheme              {role}-border       on surface    3:1?
-       light               {role}-300          1.40 – 1.92    ✗  (all 7 roles)
-       dark                see `_dark.css`     3.42 – 4.22    ✓  (raised 2026-09-03)
-       high-contrast       {hue}-700           4.94 – 10.34   ✓
-       high-contrast-dark  {hue}-300          10.93 – 15.02   ✓
+       scheme              {role}-border         on surface    3:1?
+       light               see `_light.css`      3.76 – 5.05    ✓  (raised 2026-09-04)
+       dark                see `_dark.css`       3.42 – 4.22    ✓  (raised 2026-09-03)
+       high-contrast       {hue}-700             4.94 – 10.34   ✓
+       high-contrast-dark  {hue}-300            10.93 – 15.02   ✓
 
      The ✓/✗ column is ENFORCED — `theme-contrast.spec.ts` recomputes it for
-     every scheme on every run, and `light` is its one dated allowance. The
-     ranges and step names are indicative and were measured on 2026-09-03; if
-     you need a current number, re-run the harness rather than quoting this.
-
-     Light is the outstanding one. Raising it means darkening the default
-     scheme's outline tier across eight colours — a visual-baseline change
-     with its own blast radius, reported for a pass of its own rather than
-     folded into the dark fix. Re-measure any row here with
-     `scratchpad/p6-contrast.mjs <scheme> <baseline>`; do not estimate.
+     every scheme on every run, over `-border` AND `-border-strong`, against
+     both `--color-surface` and the role's own `-soft` fill. Its `KNOWN_FAILING`
+     allowance list is now EMPTY, and the assertion is two-sided: an entry that
+     stops failing turns the list red, so no scheme can carry a permanent
+     exemption. The ranges and step names above are indicative and were measured
+     on 2026-09-04; if you need a current number, re-run the harness rather than
+     quoting this — `docs/research/2026-09-audit/p6-contrast.mjs <scheme>
+     <baseline>` for a whole scheme, `p8-border-steps.mjs <scheme>` for the
+     per-step border table. Do not estimate.
        -fg             colored text on neutral surface (tab labels, links)
        -icon           icon tint on -soft / surface contexts
 
@@ -236,8 +235,8 @@
   --color-primary-solid: var(--color-primary-600);
   --color-primary-solid-hover: var(--color-primary-700);
   --color-primary-solid-fg: var(--color-white);
-  --color-primary-border: var(--color-primary-300);
-  --color-primary-border-strong: var(--color-primary-500);
+  --color-primary-border: var(--color-primary-500);
+  --color-primary-border-strong: var(--color-primary-600);
   --color-primary-fg: var(--color-primary-700);
   --color-primary-icon: var(--color-primary-600);
 
@@ -249,8 +248,8 @@
   --color-secondary-solid: var(--color-secondary-700);
   --color-secondary-solid-hover: var(--color-secondary-800);
   --color-secondary-solid-fg: var(--color-white);
-  --color-secondary-border: var(--color-secondary-300);
-  --color-secondary-border-strong: var(--color-secondary-500);
+  --color-secondary-border: var(--color-secondary-500);
+  --color-secondary-border-strong: var(--color-secondary-600);
   --color-secondary-fg: var(--color-secondary-700);
   --color-secondary-icon: var(--color-secondary-600);
 
@@ -262,8 +261,8 @@
   --color-accent-solid: var(--color-accent-600);
   --color-accent-solid-hover: var(--color-accent-700);
   --color-accent-solid-fg: var(--color-white);
-  --color-accent-border: var(--color-accent-300);
-  --color-accent-border-strong: var(--color-accent-500);
+  --color-accent-border: var(--color-accent-500);
+  --color-accent-border-strong: var(--color-accent-600);
   --color-accent-fg: var(--color-accent-700);
   --color-accent-icon: var(--color-accent-600);
 
@@ -289,8 +288,8 @@
   --color-info-solid: var(--color-info-700);
   --color-info-solid-hover: var(--color-info-800);
   --color-info-solid-fg: var(--color-white);
-  --color-info-border: var(--color-info-300);
-  --color-info-border-strong: var(--color-info-500);
+  --color-info-border: var(--color-info-600);
+  --color-info-border-strong: var(--color-info-700);
   --color-info-fg: var(--color-info-700);
   --color-info-icon: var(--color-info-600);
 
@@ -303,8 +302,8 @@
   --color-success-solid: var(--color-success-700);
   --color-success-solid-hover: var(--color-success-800);
   --color-success-solid-fg: var(--color-white);
-  --color-success-border: var(--color-success-300);
-  --color-success-border-strong: var(--color-success-500);
+  --color-success-border: var(--color-success-700);
+  --color-success-border-strong: var(--color-success-800);
   --color-success-fg: var(--color-success-700);
   --color-success-icon: var(--color-success-600);
 
@@ -318,8 +317,8 @@
   --color-warning-solid: var(--color-warning-500);
   --color-warning-solid-hover: var(--color-warning-600);
   --color-warning-solid-fg: var(--color-warning-950);
-  --color-warning-border: var(--color-warning-300);
-  --color-warning-border-strong: var(--color-warning-500);
+  --color-warning-border: var(--color-warning-700);
+  --color-warning-border-strong: var(--color-warning-800);
   /* -fg uses -800: amber-700/white is 3.4:1 (AA fail). amber-800/white is 6.5:1. */
   --color-warning-fg: var(--color-warning-800);
   --color-warning-icon: var(--color-warning-600);
@@ -332,8 +331,8 @@
   --color-error-solid: var(--color-error-600);
   --color-error-solid-hover: var(--color-error-700);
   --color-error-solid-fg: var(--color-white);
-  --color-error-border: var(--color-error-300);
-  --color-error-border-strong: var(--color-error-500);
+  --color-error-border: var(--color-error-500);
+  --color-error-border-strong: var(--color-error-600);
   --color-error-fg: var(--color-error-700);
   --color-error-icon: var(--color-error-600);
 
