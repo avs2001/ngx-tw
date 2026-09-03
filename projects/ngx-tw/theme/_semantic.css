@@ -201,6 +201,11 @@
        high-contrast       {hue}-700           4.94 – 10.34   ✓
        high-contrast-dark  {hue}-300          10.93 – 15.02   ✓
 
+     The ✓/✗ column is ENFORCED — `theme-contrast.spec.ts` recomputes it for
+     every scheme on every run, and `light` is its one dated allowance. The
+     ranges and step names are indicative and were measured on 2026-09-03; if
+     you need a current number, re-run the harness rather than quoting this.
+
      Light is the outstanding one. Raising it means darkening the default
      scheme's outline tier across eight colours — a visual-baseline change
      with its own blast radius, reported for a pass of its own rather than

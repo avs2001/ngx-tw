@@ -327,16 +327,22 @@ describe('theme border contrast (WCAG 2.2 SC 1.4.11)', () => {
     //
     // Raising dark's `-border` on 2026-09-03 moved `primary` here from 1.67:1 to
     // 2.80:1 — better, still short.
-    const EXPECTED_BELOW_FLOOR: readonly TwResolvedTheme[] = ['light', 'dark'];
+    const EXPECTED_BELOW_FLOOR: readonly TwResolvedTheme[] = ['dark', 'light'];
 
+    // Both sides sorted. `TW_RESOLVED_THEMES` is an ordered, UI-facing list —
+    // `cycleTheme()` walks it, and `'high-contrast-dark'` was *inserted* into
+    // the middle of it rather than appended. Comparing in its order would make
+    // a future reordering fail here with a message about contrast.
     const below = TW_RESOLVED_THEMES.filter((theme) =>
       [...softRingRatios(theme).values()].some((ratio) => ratio < NON_TEXT_FLOOR),
-    );
+    )
+      .slice()
+      .sort();
     expect(
       below,
       'When `item.ts` moves to `ring-{role}-border-strong`, or a scheme raises its ' +
         'soft fill, update EXPECTED_BELOW_FLOOR — and delete it once it is empty.',
-    ).toEqual(EXPECTED_BELOW_FLOOR);
+    ).toEqual([...EXPECTED_BELOW_FLOOR].sort());
   });
 
   it('keeps each `-border` visually distinct from its `-border-strong`', () => {
