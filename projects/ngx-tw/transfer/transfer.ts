@@ -392,7 +392,11 @@ let nextId = 0;
     '[attr.aria-labelledby]': 'resolvedLabelledBy() || null',
     '[attr.aria-describedby]': 'resolvedDescribedBy() || null',
     '[attr.aria-disabled]': 'disabled() || null',
-    '[attr.aria-invalid]': 'errorState() || null',
+    // NOTE: no `aria-invalid` here. ARIA 1.2 does not allow it on `role="group"`
+    // (axe: critical `aria-allowed-attr`). It is carried by the target panel's
+    // content region instead — `value` is `targetKeys`, so that panel is the one
+    // holding the value. `tags-input` and `file-upload` were corrected the same
+    // way in an earlier pass; this component was missed.
     '[attr.data-focused]': 'focused() || null',
   },
   template: `
@@ -442,6 +446,7 @@ let nextId = 0;
             [class]="listClasses()"
             [style.height.px]="listHeightPx()"
             [attr.aria-labelledby]="panel.titleId"
+            [attr.aria-invalid]="panel.side === 'target' && errorState() ? 'true' : null"
             (cdkListboxValueChange)="onCheckedChange(panel.side, $event)"
           >
             @for (row of panel.rows; track row.key) {
@@ -475,7 +480,16 @@ let nextId = 0;
             }
           </div>
         } @else {
-          <div [class]="emptyClasses()" [style.height.px]="listHeightPx()">{{ panel.emptyText }}</div>
+          <!--
+            Also carries aria-invalid: an empty target is exactly when a required
+            transfer is invalid, and the listbox above does not exist to carry it
+            (an empty role=listbox would violate aria-required-children).
+          -->
+          <div
+            [class]="emptyClasses()"
+            [style.height.px]="listHeightPx()"
+            [attr.aria-invalid]="panel.side === 'target' && errorState() ? 'true' : null"
+          >{{ panel.emptyText }}</div>
         }
       </div>
     </ng-template>

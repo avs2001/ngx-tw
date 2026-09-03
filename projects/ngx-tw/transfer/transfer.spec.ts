@@ -420,6 +420,31 @@ describe('TransferComponent', () => {
       expect(host.transfer().required()).toBe(true);
     });
 
+    it('never puts aria-invalid on the role="group" host, and carries it on the target panel', async () => {
+      // ARIA 1.2 does not permit `aria-invalid` on `role="group"`; axe reports it
+      // as a critical `aria-allowed-attr` violation. `tags-input` and
+      // `file-upload` were corrected in an earlier pass and `transfer` was
+      // missed — it shipped the attribute on its group host.
+      //
+      // The target panel carries it instead, because `value` is `targetKeys`.
+      // With an empty target the listbox is not rendered at all (an empty
+      // `role="listbox"` would violate `aria-required-children`), so the empty
+      // region carries it — which is precisely the state a required transfer is
+      // invalid in.
+      host.control.addValidators(Validators.required);
+      host.control.updateValueAndValidity();
+      host.control.markAsTouched();
+      await settle(fixture);
+
+      const groupHost: HTMLElement =
+        fixture.nativeElement.querySelector('[role="group"]');
+      expect(groupHost).not.toBeNull();
+      expect(groupHost.getAttribute('aria-invalid')).toBeNull();
+
+      const invalid = fixture.nativeElement.querySelectorAll('[aria-invalid="true"]');
+      expect(invalid.length).toBe(1);
+    });
+
     it('preserves orphan keys through writeValue and across a move', async () => {
       host.control.setValue(['a', 'ghost']); // 'ghost' has no item in data
       await settle(fixture);
