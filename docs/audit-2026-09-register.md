@@ -1138,7 +1138,9 @@ alias. Keying the Record on the rendered subset (`as const satisfies`) is the du
 | `npm run verify:package` | pass — theme resolves from a clean consumer install |
 | `npm run verify:mcp-index` | **6 warnings** (was 7) — the theme entry point now carries snippets |
 | `npm run e2e:fast` | **936 passed**, 52 skipped, **1 flake** (was 932). The flake is `transfer.spec.ts:58`, which passes 5/5 in isolation — see below |
-| `npm run e2e:visual` | **NOT regenerated, by design** — Linux via `workflow_dispatch` only |
+| `npm run e2e:visual` | **regenerated on Linux via `workflow_dispatch`, then validated** — see below |
+| CI, PR #56 | lint, unit, build, MCP index, npm pack + consumer install, e2e smoke, e2e a11y — all pass |
+| CI, `e2e.yml` dispatched on the branch | **all 9 jobs pass**, including `visual canary` and all four `e2e — full` shards |
 
 **Visual baselines were regenerated on Linux (`workflow_dispatch`), and doing so surfaced a
 capture defect — recorded because it is only half fixed.**
@@ -1166,6 +1168,27 @@ Inspecting the regenerated PNGs (rather than trusting the green job) found that
    produced 43 phantom contrast failures until a 1200ms settle was added. The baseline is stable
    and still guards the rows it does show, so this is a coverage hole, not a false alarm: **the
    surface and foreground token ramps currently have no visual guard.**
+
+**CI gap: the visual canary cannot run on a pull request, so a baseline change is never
+validated before merge.** `e2e.yml:212` gates that job on
+`push || schedule || workflow_dispatch`, and its `push` trigger is scoped to
+`branches: [develop]`. A feature branch therefore gets `skipping` on every PR run, and the first
+thing that genuinely exercises a regenerated baseline is the push to `develop` **after** merge —
+so a bad baseline turns `develop` red rather than the PR that introduced it.
+
+That is backwards for the one artefact this repo already knows is platform-fragile enough to need
+a dedicated regeneration workflow. It also compounds the `--update-snapshots` point above: the
+regeneration job is green by definition, and the only job that could contradict it does not run.
+
+Worked around for pass 5 by dispatching `e2e.yml` manually on the branch — **all 9 jobs passed,
+including `visual canary` and all four `e2e — full` shards**, which is the genuine validation of
+the 17 regenerated baselines. Pass 6 should make this structural: either allow the visual job on
+pull requests that touch `e2e/__screenshots__/`, or add a required check that fails a PR carrying
+baseline changes no visual run has verified. **[measured]**
+
+**The `transfer.spec.ts:58` flake did not reproduce in CI** — all four `e2e — full` shards passed.
+That strengthens the load-dependence diagnosis rather than weakening it: local full-suite
+contention on a laptop is heavier than a 4-way-sharded CI run.
 
 **A third load-dependent e2e flake, new this pass and NOT a regression.**
 `transfer.spec.ts:58` (`expect(focusHome).toBe('listbox')`) failed once under full-suite
