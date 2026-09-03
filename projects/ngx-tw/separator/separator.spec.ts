@@ -122,7 +122,7 @@ describe('SeparatorComponent', () => {
       fixture.detectChanges();
 
       const line = fixture.nativeElement.querySelector('span');
-      expect(line.classList.contains('border-primary-300')).toBe(true);
+      expect(line.classList.contains('border-primary-border')).toBe(true);
     });
 
     it('should use border-border for neutral color', () => {

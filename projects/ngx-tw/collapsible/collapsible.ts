@@ -149,13 +149,13 @@ const collapsibleVariants = tv({
     { variant: 'solid', color: 'error', class: { root: 'bg-error-50', trigger: 'text-error-800 hover:bg-error-100', content: 'text-error-700', icon: 'text-error-600' } },
 
     // ── Outline + color ──
-    { variant: 'outline', color: 'primary', class: { root: 'border-primary-300' } },
-    { variant: 'outline', color: 'secondary', class: { root: 'border-secondary-300' } },
-    { variant: 'outline', color: 'accent', class: { root: 'border-accent-300' } },
-    { variant: 'outline', color: 'info', class: { root: 'border-info-300' } },
-    { variant: 'outline', color: 'success', class: { root: 'border-success-300' } },
-    { variant: 'outline', color: 'warning', class: { root: 'border-warning-300' } },
-    { variant: 'outline', color: 'error', class: { root: 'border-error-300' } },
+    { variant: 'outline', color: 'primary', class: { root: 'border-primary-border' } },
+    { variant: 'outline', color: 'secondary', class: { root: 'border-secondary-border' } },
+    { variant: 'outline', color: 'accent', class: { root: 'border-accent-border' } },
+    { variant: 'outline', color: 'info', class: { root: 'border-info-border' } },
+    { variant: 'outline', color: 'success', class: { root: 'border-success-border' } },
+    { variant: 'outline', color: 'warning', class: { root: 'border-warning-border' } },
+    { variant: 'outline', color: 'error', class: { root: 'border-error-border' } },
   ],
   defaultVariants: {
     variant: 'default',

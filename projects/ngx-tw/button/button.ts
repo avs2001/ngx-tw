@@ -63,21 +63,21 @@ const buttonVariants = tv({
 
     // ===== Primary =====
     { variant: 'solid', color: 'primary', class: 'bg-primary-solid text-on-primary hover:bg-primary-solid-hover' },
-    { variant: 'outline', color: 'primary', class: 'border-primary-300 text-primary-700 hover:bg-primary-50' },
+    { variant: 'outline', color: 'primary', class: 'border-primary-border text-primary-700 hover:bg-primary-50' },
     { variant: 'ghost', color: 'primary', class: 'text-primary-700 hover:bg-primary-50' },
     { variant: 'soft', color: 'primary', class: 'bg-primary-50 text-primary-800 hover:bg-primary-100' },
     { variant: 'link', color: 'primary', class: 'text-primary-700' },
 
     // ===== Secondary =====
     { variant: 'solid', color: 'secondary', class: 'bg-secondary-solid text-on-secondary hover:bg-secondary-solid-hover' },
-    { variant: 'outline', color: 'secondary', class: 'border-secondary-300 text-secondary-700 hover:bg-secondary-50' },
+    { variant: 'outline', color: 'secondary', class: 'border-secondary-border text-secondary-700 hover:bg-secondary-50' },
     { variant: 'ghost', color: 'secondary', class: 'text-secondary-700 hover:bg-secondary-50' },
     { variant: 'soft', color: 'secondary', class: 'bg-secondary-50 text-secondary-800 hover:bg-secondary-100' },
     { variant: 'link', color: 'secondary', class: 'text-secondary-700' },
 
     // ===== Accent =====
     { variant: 'solid', color: 'accent', class: 'bg-accent-solid text-on-accent hover:bg-accent-solid-hover' },
-    { variant: 'outline', color: 'accent', class: 'border-accent-300 text-accent-700 hover:bg-accent-50' },
+    { variant: 'outline', color: 'accent', class: 'border-accent-border text-accent-700 hover:bg-accent-50' },
     { variant: 'ghost', color: 'accent', class: 'text-accent-700 hover:bg-accent-50' },
     { variant: 'soft', color: 'accent', class: 'bg-accent-50 text-accent-800 hover:bg-accent-100' },
     { variant: 'link', color: 'accent', class: 'text-accent-700' },
@@ -91,28 +91,28 @@ const buttonVariants = tv({
 
     // ===== Info =====
     { variant: 'solid', color: 'info', class: 'bg-info-solid text-on-info hover:bg-info-solid-hover' },
-    { variant: 'outline', color: 'info', class: 'border-info-300 text-info-700 hover:bg-info-50' },
+    { variant: 'outline', color: 'info', class: 'border-info-border text-info-700 hover:bg-info-50' },
     { variant: 'ghost', color: 'info', class: 'text-info-700 hover:bg-info-50' },
     { variant: 'soft', color: 'info', class: 'bg-info-50 text-info-800 hover:bg-info-100' },
     { variant: 'link', color: 'info', class: 'text-info-700' },
 
     // ===== Success =====
     { variant: 'solid', color: 'success', class: 'bg-success-solid text-on-success hover:bg-success-solid-hover' },
-    { variant: 'outline', color: 'success', class: 'border-success-300 text-success-700 hover:bg-success-50' },
+    { variant: 'outline', color: 'success', class: 'border-success-border text-success-700 hover:bg-success-50' },
     { variant: 'ghost', color: 'success', class: 'text-success-700 hover:bg-success-50' },
     { variant: 'soft', color: 'success', class: 'bg-success-50 text-success-800 hover:bg-success-100' },
     { variant: 'link', color: 'success', class: 'text-success-700' },
 
     // ===== Warning =====
     { variant: 'solid', color: 'warning', class: 'bg-warning-solid text-on-warning hover:bg-warning-solid-hover' },
-    { variant: 'outline', color: 'warning', class: 'border-warning-300 text-warning-700 hover:bg-warning-50' },
+    { variant: 'outline', color: 'warning', class: 'border-warning-border text-warning-700 hover:bg-warning-50' },
     { variant: 'ghost', color: 'warning', class: 'text-warning-700 hover:bg-warning-50' },
     { variant: 'soft', color: 'warning', class: 'bg-warning-50 text-warning-800 hover:bg-warning-100' },
     { variant: 'link', color: 'warning', class: 'text-warning-700' },
 
     // ===== Error =====
     { variant: 'solid', color: 'error', class: 'bg-error-solid text-on-error hover:bg-error-solid-hover' },
-    { variant: 'outline', color: 'error', class: 'border-error-300 text-error-700 hover:bg-error-50' },
+    { variant: 'outline', color: 'error', class: 'border-error-border text-error-700 hover:bg-error-50' },
     { variant: 'ghost', color: 'error', class: 'text-error-700 hover:bg-error-50' },
     { variant: 'soft', color: 'error', class: 'bg-error-50 text-error-800 hover:bg-error-100' },
     { variant: 'link', color: 'error', class: 'text-error-700' },
