@@ -63,8 +63,14 @@ export interface SliderMark {
 /** Format function for the value displayed in the value bubble, min/max labels, and `aria-valuetext`. */
 export type SliderValueFormatter = (value: number) => string;
 
-/** Identifies which thumb is the interaction target in range mode. */
-type ThumbId = 'single' | 'start' | 'end';
+/**
+ * Identifies which thumb is the interaction target. `'single'` in single-value
+ * mode; `'start'` (lower) and `'end'` (upper) in range mode. Named in the
+ * public signatures of {@link SliderComponent.onThumbPointerDown} and
+ * {@link SliderComponent.onThumbKeyDown}, so it is exported for consumers that
+ * script those handlers directly.
+ */
+export type SliderThumbId = 'single' | 'start' | 'end';
 
 // ── Static color lookups (Tailwind v4 scans class strings statically) ──
 
@@ -501,13 +507,39 @@ export class SliderComponent implements ControlValueAccessor, OnInit {
   /** Accessible name for the end (upper) thumb in range mode. Defaults to `"Maximum"`. */
   readonly ariaLabelEnd = input<string>('Maximum');
 
-  /** Two-way bound slider value. A `number` for single mode, or `[start, end]` for range mode. Updates on every interaction. Defaults to `0`. */
+  /**
+   * Two-way bound slider value. A `number` for single mode, or `[start, end]`
+   * for range mode. Updates on every interaction. Defaults to `0`.
+   *
+   * The two-way binding mints a `valueChange` output, which fires on every
+   * value mutation the user causes — each drag move and each key step, plus the
+   * commit. Note the slider differs from `tw-checkbox` / `tw-switch` /
+   * `tw-radio-group`, where the minted output is the *any-change* channel:
+   * here, a programmatic write from a bound form (`FormControl.setValue`,
+   * `ngModel`) reaches the rendered value through the CVA path without passing
+   * through this model, so it does **not** emit `valueChange`. To observe
+   * programmatic writes, use the form control's own `valueChanges`.
+   *
+   * For the two user-gesture channels, prefer `(input)` for live feedback and
+   * `(change)` for commit — see their docs below.
+   */
   readonly value = model<SliderValue>(0);
 
-  /** Fires continuously while the user drags or holds a key. Payload matches the current `value`. Template event name is `input` — the TS-side identifier is `valueInput` to avoid shadowing the imported `input` factory. */
+  /**
+   * Fires continuously while the user drags or holds a key — the *live* channel,
+   * for previewing a value that is not yet committed. Payload matches the
+   * current `value`. Template event name is `input` — the TS-side identifier is
+   * `valueInput` to avoid shadowing the imported `input` factory. Never fires
+   * for a programmatic write.
+   */
   readonly valueInput = output<SliderValue>({ alias: 'input' });
 
-  /** Fires when the user commits a change (pointer release, key release, or blur after keyboard change). Payload matches the current `value`. */
+  /**
+   * Fires when the user commits a change (pointer release, key release, or blur
+   * after keyboard change) — the *commit* channel, for saving or querying on a
+   * settled value. Payload matches the current `value`. Never fires for a
+   * programmatic write; use `(input)` if you need every intermediate value.
+   */
   readonly change = output<SliderValue>();
 
   /** Per-instance override of the {@link ErrorStateMatcher}. When omitted, the component uses the `TW_ERROR_STATE_MATCHER` token's value. */
@@ -567,11 +599,11 @@ export class SliderComponent implements ControlValueAccessor, OnInit {
   private readonly internalSingle = linkedSignal<number>(() => toNumber(this.value(), this.min()));
 
   /** @internal Which thumb currently has an active pointer gesture (or null). Bound in the template to drive the pressed-thumb styling. */
-  readonly activeThumb = signal<ThumbId | null>(null);
+  readonly activeThumb = signal<SliderThumbId | null>(null);
   /** @internal Which thumb is focused (for bubble visibility). */
-  private readonly focusedThumb = signal<ThumbId | null>(null);
+  private readonly focusedThumb = signal<SliderThumbId | null>(null);
   /** @internal Set of pointer IDs currently captured per-thumb for release tracking. */
-  private readonly capturedPointers = new Map<number, { thumb: ThumbId; target: HTMLElement }>();
+  private readonly capturedPointers = new Map<number, { thumb: SliderThumbId; target: HTMLElement }>();
   /** @internal Tracks whether a keyboard interaction has mutated the value since last blur. */
   private keyboardDirty = false;
 
@@ -763,7 +795,7 @@ export class SliderComponent implements ControlValueAccessor, OnInit {
    * dependency change so each `bubbleClassFor(thumb)` is a single object
    * property read.
    */
-  private readonly bubbleClassMap = computed<Record<ThumbId, string>>(() => {
+  private readonly bubbleClassMap = computed<Record<SliderThumbId, string>>(() => {
     const base = this.variantResult().bubble();
     if (!this.showValue()) {
       return { single: base, start: base, end: base };
@@ -771,7 +803,7 @@ export class SliderComponent implements ControlValueAccessor, OnInit {
     const visibleClass = `${base} ${this.variantResult().bubbleVisible()}`;
     const active = this.activeThumb();
     const focused = this.focusedThumb();
-    const classFor = (thumb: ThumbId): string =>
+    const classFor = (thumb: SliderThumbId): string =>
       active === thumb || focused === thumb ? visibleClass : base;
     return {
       single: classFor('single'),
@@ -781,7 +813,7 @@ export class SliderComponent implements ControlValueAccessor, OnInit {
   });
 
   /** @internal Bubble visibility depends on drag / focus / hover state. */
-  bubbleClassFor(thumb: ThumbId): string {
+  bubbleClassFor(thumb: SliderThumbId): string {
     return this.bubbleClassMap()[thumb];
   }
 
@@ -846,7 +878,7 @@ export class SliderComponent implements ControlValueAccessor, OnInit {
   }
 
   /** Thumb press: capture pointer and begin a drag gesture. */
-  onThumbPointerDown(event: PointerEvent, thumb: ThumbId): void {
+  onThumbPointerDown(event: PointerEvent, thumb: SliderThumbId): void {
     if (this.isDisabled()) return;
     if (event.button !== 0 && event.pointerType === 'mouse') return;
     const target = event.currentTarget as HTMLButtonElement;
@@ -854,7 +886,7 @@ export class SliderComponent implements ControlValueAccessor, OnInit {
     this.beginDrag(thumb, target, event);
   }
 
-  private beginDrag(thumb: ThumbId, thumbEl: HTMLElement, event: PointerEvent): void {
+  private beginDrag(thumb: SliderThumbId, thumbEl: HTMLElement, event: PointerEvent): void {
     event.preventDefault();
     try {
       thumbEl.setPointerCapture(event.pointerId);
@@ -894,7 +926,7 @@ export class SliderComponent implements ControlValueAccessor, OnInit {
   };
 
   /** Keyboard navigation: arrows for step, PageUp/Down for 10% jumps, Home/End for extremes. */
-  onThumbKeyDown(event: KeyboardEvent, thumb: ThumbId): void {
+  onThumbKeyDown(event: KeyboardEvent, thumb: SliderThumbId): void {
     if (this.isDisabled()) return;
     const rtl = this.directionality?.value === 'rtl';
     const range = this.scaleRange();
@@ -980,13 +1012,13 @@ export class SliderComponent implements ControlValueAccessor, OnInit {
     return fmt(value);
   }
 
-  private getThumbValue(thumb: ThumbId): number {
+  private getThumbValue(thumb: SliderThumbId): number {
     if (thumb === 'start') return this.startValue();
     if (thumb === 'end') return this.endValue();
     return this.singleValue();
   }
 
-  private setThumbValue(thumb: ThumbId, raw: number, emitInput: boolean): void {
+  private setThumbValue(thumb: SliderThumbId, raw: number, emitInput: boolean): void {
     const snapped = this.clampAndSnap(raw);
     if (thumb === 'single') {
       if (snapped === this.internalSingle()) return;
@@ -1006,7 +1038,7 @@ export class SliderComponent implements ControlValueAccessor, OnInit {
   }
 
   private updateValueFromClientX(
-    thumb: ThumbId,
+    thumb: SliderThumbId,
     clientX: number,
     focusThumb: boolean,
   ): void {
@@ -1024,13 +1056,13 @@ export class SliderComponent implements ControlValueAccessor, OnInit {
     }
   }
 
-  private thumbElementFor(thumb: ThumbId): HTMLButtonElement | undefined {
+  private thumbElementFor(thumb: SliderThumbId): HTMLButtonElement | undefined {
     if (thumb === 'single') return this.singleThumb()?.nativeElement;
     if (thumb === 'start') return this.startThumb()?.nativeElement;
     return this.endThumb()?.nativeElement;
   }
 
-  private nearestThumbFor(clientX: number): ThumbId {
+  private nearestThumbFor(clientX: number): SliderThumbId {
     if (!this.range()) return 'single';
     const regionEl = this.region().nativeElement;
     const rect = regionEl.getBoundingClientRect();

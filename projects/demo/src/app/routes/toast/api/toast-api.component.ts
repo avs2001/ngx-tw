@@ -196,7 +196,7 @@ import { CodeBlockComponent } from '@cdevhub/ngx-tw/code-block';
               <td class="px-4 py-2 font-mono text-xs">swipeToDismiss</td>
               <td class="px-4 py-2 font-mono text-xs text-fg-muted">boolean</td>
               <td class="px-4 py-2 font-mono text-xs text-fg-muted">true</td>
-              <td class="px-4 py-2 text-fg-muted">Enables horizontal pointer swipe to dismiss; disabled under prefers-reduced-motion.</td>
+              <td class="px-4 py-2 text-fg-muted">Enables horizontal pointer swipe to dismiss. Set false to turn the gesture off. Unaffected by prefers-reduced-motion — the toast tracks the user's own pointer.</td>
             </tr>
             <tr>
               <td class="px-4 py-2 font-mono text-xs">maxVisible</td>

@@ -913,8 +913,14 @@ describe('TabNavComponent', () => {
         imports: [AllEnabledHost],
         providers: [
           {
+            // `valueSignal` is the field the component actually reads (CDK 22+);
+            // `value`/`change` are kept so the mock stays shape-complete.
             provide: Directionality,
-            useValue: { value: 'rtl', change: new Subject<Direction>() },
+            useValue: {
+              value: 'rtl',
+              valueSignal: signal<Direction>('rtl'),
+              change: new Subject<Direction>(),
+            },
           },
         ],
       }).compileComponents();

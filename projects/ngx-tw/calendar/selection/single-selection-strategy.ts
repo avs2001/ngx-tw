@@ -1,6 +1,6 @@
 import { inject, Injectable } from '@angular/core';
 import type { DateRange } from '../calendar.types';
-import { type DateAdapter, DATE_ADAPTER } from '../date-adapter';
+import { type DateAdapter, TW_DATE_ADAPTER } from '../date-adapter';
 import { CalendarSelectionStrategy, type SelectionResult } from './selection-strategy';
 
 /**
@@ -9,7 +9,7 @@ import { CalendarSelectionStrategy, type SelectionResult } from './selection-str
  */
 @Injectable()
 export class SingleSelectionStrategy<D> extends CalendarSelectionStrategy<D, D | null> {
-  private readonly dateAdapter: DateAdapter<D> = inject(DATE_ADAPTER) as DateAdapter<D>;
+  private readonly dateAdapter: DateAdapter<D> = inject(TW_DATE_ADAPTER) as DateAdapter<D>;
 
   select(date: D, _current: D | null): SelectionResult<D, D | null> {
     return { selection: date, isComplete: true };

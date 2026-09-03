@@ -1,5 +1,8 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { TestBed } from '@angular/core/testing';
+// Deliberately the *deprecated* spelling. `WeekSelectionStrategy` now injects
+// `TW_DATE_ADAPTER`, so this suite doubles as an end-to-end proof that the
+// alias is the same token instance. See `calendar-token-alias.spec.ts`.
 import { DATE_ADAPTER, type DateAdapter } from '../date-adapter';
 import { NativeDateAdapter } from '../native-date-adapter';
 import { WeekSelectionStrategy } from './week-selection-strategy';

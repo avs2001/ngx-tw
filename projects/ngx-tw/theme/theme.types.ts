@@ -25,7 +25,7 @@ export const TW_RESOLVED_THEMES = ['light', 'dark', 'high-contrast'] as const sa
  * from {@link DEFAULT_TW_THEME_CONFIG} — so a consumer holding a config object
  * typed as `TwThemeConfig` must not be forced to restate keys they do not
  * override, and adding a member in a future minor must not break them. The
- * resolved value handed to {@link THEME_CONFIG} is `Required<TwThemeConfig>`.
+ * resolved value handed to {@link TW_THEME_CONFIG} is `Required<TwThemeConfig>`.
  */
 export interface TwThemeConfig {
   /** The default theme when no preference is stored. Defaults to `'system'`. */

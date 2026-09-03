@@ -255,13 +255,29 @@ export class SwitchComponent implements ControlValueAccessor, OnInit {
   /** ID of an external element that describes the switch. Mirrored to `aria-describedby`. Defaults to `undefined`. */
   readonly ariaDescribedby = input<string | undefined>(undefined, { alias: 'aria-describedby' });
 
-  /** Two-way bound checked state. Updates when the user toggles via click or Space. Defaults to `false`. */
+  /**
+   * Two-way bound checked state. Updates when the user toggles via click or
+   * Space, **and** when a bound form writes into the control
+   * (`FormControl.setValue`, `ngModel`, `writeValue`). Defaults to `false`.
+   *
+   * The two-way binding mints a `checkedChange` output. That output is the
+   * *any-change* channel: it fires on programmatic writes as well as user
+   * gestures. `(change)` is the *user-gesture-only* channel. Bind
+   * `(checkedChange)` to mirror state; bind `(change)` for analytics or a
+   * confirmation prompt, where a programmatic write must not count as a click.
+   * Writing back into the same form from a `(checkedChange)` handler will echo.
+   */
   readonly checked = model(false);
 
   /** Per-instance override of the {@link ErrorStateMatcher}. When omitted, the switch uses the `TW_ERROR_STATE_MATCHER` token's value. */
   readonly errorStateMatcher = input<ErrorStateMatcher | undefined>(undefined);
 
-  /** Fires after the checked state changes from a user interaction. Does not fire when the value is updated programmatically via `writeValue`. */
+  /**
+   * Fires after the checked state changes from a user interaction (click or
+   * Space). Does **not** fire when the value is updated programmatically via
+   * `writeValue` / `FormControl.setValue` / `ngModel` — for those, bind the
+   * two-way binding's `(checkedChange)` instead, which fires on any change.
+   */
   readonly change = output<boolean>();
 
   private readonly focusMonitor = inject(FocusMonitor);

@@ -385,9 +385,9 @@ import { CodeBlockComponent } from '@cdevhub/ngx-tw/code-block';
       </p>
     </section>
 
-    <!-- COMMAND_PALETTE_REF -->
+    <!-- TW_COMMAND_PALETTE_REF -->
     <section class="mb-10">
-      <h2 class="text-sm font-semibold mb-3">COMMAND_PALETTE_REF</h2>
+      <h2 class="text-sm font-semibold mb-3">TW_COMMAND_PALETTE_REF</h2>
       <p class="text-xs text-fg-muted mb-4 font-mono">Token: CommandPaletteRef</p>
       <p class="text-sm text-fg-muted leading-relaxed max-w-2xl">
         Injection token providing a <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">CommandPaletteRef</code>

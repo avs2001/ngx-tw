@@ -342,13 +342,37 @@ export class CheckboxComponent
   /** Per-instance override of the {@link ErrorStateMatcher}. When omitted, the directive uses the `TW_ERROR_STATE_MATCHER` token's value. */
   readonly errorStateMatcher = input<ErrorStateMatcher | undefined>(undefined);
 
-  /** Two-way bound checked state. Updates when the user toggles via click or Space. Defaults to `false`. */
+  /**
+   * Two-way bound checked state. Updates when the user toggles via click or
+   * Space, **and** when a bound form writes into the control
+   * (`FormControl.setValue`, `ngModel`, `writeValue`). Defaults to `false`.
+   *
+   * The two-way binding mints a `checkedChange` output. That output is the
+   * *any-change* channel: it fires on programmatic writes as well as user
+   * gestures. `(change)` is the *user-gesture-only* channel. Bind
+   * `(checkedChange)` to mirror state; bind `(change)` for analytics or a
+   * confirmation prompt, where a programmatic write must not count as a click.
+   * Writing back into the same form from a `(checkedChange)` handler will echo.
+   */
   readonly checked = model(false);
 
-  /** Two-way bound indeterminate state. When true, the box shows a dash and the host exposes `aria-checked="mixed"`. Any user toggle clears indeterminate and sets `checked` to `true`. Defaults to `false`. */
+  /**
+   * Two-way bound indeterminate state. When true, the box shows a dash and the
+   * host exposes `aria-checked="mixed"`. Any user toggle clears indeterminate
+   * and sets `checked` to `true`. Defaults to `false`.
+   *
+   * Its minted `indeterminateChange` output follows the same rule as
+   * `checkedChange`: it also fires when `writeValue` clears the state, so it is
+   * an any-change channel, not a gesture channel.
+   */
   readonly indeterminate = model(false);
 
-  /** Fires after the checked state changes from a user interaction. Does not fire when the value is updated programmatically via `writeValue`. */
+  /**
+   * Fires after the checked state changes from a user interaction (click or
+   * Space). Does **not** fire when the value is updated programmatically via
+   * `writeValue` / `FormControl.setValue` / `ngModel` — for those, bind the
+   * two-way binding's `(checkedChange)` instead, which fires on any change.
+   */
   readonly change = output<boolean>();
 
   private readonly focusMonitor = inject(FocusMonitor);

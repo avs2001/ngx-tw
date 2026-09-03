@@ -16,7 +16,7 @@ import {
 } from '@angular/cdk/overlay';
 import type { ComponentType } from '@angular/cdk/portal';
 import {
-  SHEET_DATA,
+  TW_SHEET_DATA,
   SheetConfig,
   type SheetScrollStrategy,
   type SheetSide,
@@ -80,7 +80,7 @@ export function openRenderedSheet<R, D, C>(
       sheetRef._attach(cdkRef, container as SheetContainer);
       const providers: StaticProvider[] = [
         { provide: SheetRef, useValue: sheetRef },
-        { provide: SHEET_DATA, useValue: merged.data ?? null },
+        { provide: TW_SHEET_DATA, useValue: merged.data ?? null },
       ];
       if (Array.isArray(merged.providers)) providers.push(...merged.providers);
       return providers;

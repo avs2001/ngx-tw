@@ -1,5 +1,7 @@
 export {
   CalendarSelectionStrategy,
+  TW_CALENDAR_SELECTION_STRATEGY,
+  /** @deprecated Use `TW_CALENDAR_SELECTION_STRATEGY` — same token instance. */
   CALENDAR_SELECTION_STRATEGY,
   type SelectionResult,
 } from './selection-strategy';

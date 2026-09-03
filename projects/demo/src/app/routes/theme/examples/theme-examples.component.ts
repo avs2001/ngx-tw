@@ -2,7 +2,7 @@ import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 import {
   ThemeService,
   ThemeDirective,
-  THEME_CONFIG,
+  TW_THEME_CONFIG,
   TW_THEMES,
   TW_RESOLVED_THEMES,
 } from '@cdevhub/ngx-tw/theme';
@@ -315,7 +315,7 @@ const TOKEN_GROUPS: TokenGroup[] = [
         is for consumers driving their own token CSS: the shipped stylesheet keys off the literal
         <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">data-theme</code>
         and will not react to any other name. The resolved value is readable anywhere via the
-        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">THEME_CONFIG</code>
+        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">TW_THEME_CONFIG</code>
         token — this page's own is below.
       </p>
       <div class="rounded-lg border border-border p-6 bg-surface-raised mb-4">
@@ -377,7 +377,7 @@ const TOKEN_GROUPS: TokenGroup[] = [
 })
 export class ThemeExamples {
   protected readonly themeService = inject(ThemeService);
-  protected readonly config = inject(THEME_CONFIG);
+  protected readonly config = inject(TW_THEME_CONFIG);
   protected readonly themes = TW_THEMES;
   protected readonly resolvedThemes = TW_RESOLVED_THEMES;
   protected readonly tokenGroups = TOKEN_GROUPS;

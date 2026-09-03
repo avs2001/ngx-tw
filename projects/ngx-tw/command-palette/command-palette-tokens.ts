@@ -37,6 +37,14 @@ export interface CommandPaletteRef {
 }
 
 /** Injection token providing a `CommandPaletteRef` to palette overlay content. */
-export const COMMAND_PALETTE_REF = new InjectionToken<CommandPaletteRef>(
-  'COMMAND_PALETTE_REF',
+export const TW_COMMAND_PALETTE_REF = new InjectionToken<CommandPaletteRef>(
+  'TW_COMMAND_PALETTE_REF',
 );
+
+/**
+ * @deprecated Renamed to {@link TW_COMMAND_PALETTE_REF} for consistency with
+ * every other ngx-tw injection token. This is the *same token instance*, not a
+ * copy — providing under either name and injecting under the other resolves —
+ * so the rename is safe to adopt incrementally. Removed in the next major.
+ */
+export const COMMAND_PALETTE_REF = TW_COMMAND_PALETTE_REF;

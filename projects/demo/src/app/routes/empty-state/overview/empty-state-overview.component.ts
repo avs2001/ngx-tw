@@ -76,7 +76,7 @@ import { CodeBlockComponent } from '@cdevhub/ngx-tw/code-block';
         </li>
         <li>
           <a routerLink="/components/card" class="text-primary-600 hover:underline">Card</a>
-          — wrap Empty State in an outlined card when it sits inside a section that needs visual containment.
+          — wrap Empty State in a Card with <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">variant="outline"</code> when it sits inside a section that needs visual containment.
         </li>
         <li>
           <a routerLink="/components/table" class="text-primary-600 hover:underline">Table</a>

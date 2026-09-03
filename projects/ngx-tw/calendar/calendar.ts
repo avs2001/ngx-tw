@@ -69,7 +69,7 @@ import {
   matchesModeShape,
 } from './calendar-cva-utils';
 import { calendarValidator } from './calendar-validators';
-import { type DateAdapter, DATE_ADAPTER } from './date-adapter';
+import { type DateAdapter, TW_DATE_ADAPTER } from './date-adapter';
 import { MonthViewComponent } from './month-view';
 import { YearViewComponent } from './year-view';
 import { YearsViewComponent } from './multi-year-view';
@@ -82,7 +82,7 @@ import {
 } from './calendar.utils';
 import {
   type CalendarSelectionStrategy,
-  CALENDAR_SELECTION_STRATEGY,
+  TW_CALENDAR_SELECTION_STRATEGY,
   MultiSelectionStrategy,
   RangeSelectionStrategy,
   SingleSelectionStrategy,
@@ -324,7 +324,7 @@ export class CalendarComponent<
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   TOut = CalendarValue<M, D>,
 > implements ControlValueAccessor, Validator, OnInit {
-  private readonly dateAdapter: DateAdapter<D> = inject(DATE_ADAPTER) as DateAdapter<D>;
+  private readonly dateAdapter: DateAdapter<D> = inject(TW_DATE_ADAPTER) as DateAdapter<D>;
   private readonly elementRef = inject(ElementRef<HTMLElement>);
   private readonly injector = inject(Injector);
   private readonly destroyRef = inject(DestroyRef);
@@ -349,7 +349,7 @@ export class CalendarComponent<
   private readonly injectedIntl: CalendarIntl =
     inject(CalendarIntl, { optional: true }) ?? new CalendarIntl();
 
-  private readonly injectedStrategy = inject(CALENDAR_SELECTION_STRATEGY, {
+  private readonly injectedStrategy = inject(TW_CALENDAR_SELECTION_STRATEGY, {
     optional: true,
   }) as CalendarSelectionStrategy<D, unknown> | null;
 
@@ -357,7 +357,7 @@ export class CalendarComponent<
 
   /**
    * Built-in strategies instantiated lazily in the host's injection context so
-   * `inject(DATE_ADAPTER)` calls inside each strategy resolve. Range state will
+   * `inject(TW_DATE_ADAPTER)` calls inside each strategy resolve. Range state will
    * migrate into the orchestrator in Phase 6; single / multiple stay here as
    * internals (not exported) via the spec's mode union.
    */

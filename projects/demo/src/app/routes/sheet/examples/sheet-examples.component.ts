@@ -1,7 +1,7 @@
 import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
 import {
   Sheet,
-  SHEET_DATA,
+  TW_SHEET_DATA,
   SheetActionsDirective,
   SheetCloseDirective,
   SheetContentDirective,
@@ -144,7 +144,7 @@ class SheetScrollContent {
 })
 class SheetSuppressContent {}
 
-/** Receives the requested side via SHEET_DATA so one component services all four buttons. */
+/** Receives the requested side via TW_SHEET_DATA so one component services all four buttons. */
 @Component({
   selector: 'app-sheet-side-demo',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -173,7 +173,7 @@ class SheetSuppressContent {}
   `,
 })
 class SheetSideDemoContent {
-  protected readonly data = inject<{ side: SheetSide }>(SHEET_DATA);
+  protected readonly data = inject<{ side: SheetSide }>(TW_SHEET_DATA);
 }
 
 /** Destructive-confirmation sheet — demonstrates SheetIconDirective with a semantic color. */
@@ -212,7 +212,7 @@ class SheetSideDemoContent {
 })
 class SheetDestructiveContent {}
 
-/** Receives the requested size via SHEET_DATA. */
+/** Receives the requested size via TW_SHEET_DATA. */
 @Component({
   selector: 'app-sheet-size-demo',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -241,7 +241,7 @@ class SheetDestructiveContent {}
   `,
 })
 class SheetSizeDemoContent {
-  protected readonly data = inject<{ size: SheetSize }>(SHEET_DATA);
+  protected readonly data = inject<{ size: SheetSize }>(TW_SHEET_DATA);
 }
 
 @Component({

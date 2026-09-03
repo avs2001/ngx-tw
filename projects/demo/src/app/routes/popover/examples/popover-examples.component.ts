@@ -7,8 +7,8 @@ import {
 import {
   PopoverDirective,
   PopoverCloseDirective,
-  POPOVER_DATA,
-  POPOVER_REF,
+  TW_POPOVER_DATA,
+  TW_POPOVER_REF,
   type PopoverPosition,
   type PopoverBackdrop,
   type PopoverRef,
@@ -67,8 +67,8 @@ interface InviteCardData {
   `,
 })
 class InviteCardComponent {
-  protected readonly data = inject<InviteCardData>(POPOVER_DATA);
-  protected readonly ref = inject<PopoverRef>(POPOVER_REF);
+  protected readonly data = inject<InviteCardData>(TW_POPOVER_DATA);
+  protected readonly ref = inject<PopoverRef>(TW_POPOVER_REF);
 
   protected accept(): void {
     this.ref.close();
@@ -351,11 +351,11 @@ class InviteCardComponent {
       <p class="text-sm text-fg-muted leading-relaxed max-w-2xl mb-4">
         Pass a component class when the popover has enough state to deserve its own file. The
         projected component receives the data via
-        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">POPOVER_DATA</code>
+        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">TW_POPOVER_DATA</code>
         and a ref with a
         <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">close()</code>
         method via
-        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">POPOVER_REF</code>.
+        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">TW_POPOVER_REF</code>.
         This is the same pattern the Dialog and Toast services use, so the content can be reused
         across surfaces.
       </p>
@@ -796,8 +796,8 @@ export class PopoverExamples {
   \`,
 })
 class InviteCardComponent {
-  protected readonly data = inject<InviteCardData>(POPOVER_DATA);
-  protected readonly ref  = inject<PopoverRef>(POPOVER_REF);
+  protected readonly data = inject<InviteCardData>(TW_POPOVER_DATA);
+  protected readonly ref  = inject<PopoverRef>(TW_POPOVER_REF);
 
   protected accept(): void {
     // …save, then close

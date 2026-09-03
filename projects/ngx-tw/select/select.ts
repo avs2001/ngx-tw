@@ -178,26 +178,47 @@ const selectVariants = tv(
       valueText: 'flex-1 min-w-0 text-left truncate',
       placeholderText: 'flex-1 min-w-0 text-left truncate text-fg-subtle',
       chevron: 'shrink-0 text-fg-muted transition-transform duration-normal motion-reduce:transition-none',
+      // In-flow placeholder that holds the clear control's slot inside the
+      // trigger's flex row. The control itself is an absolutely positioned
+      // SIBLING of the trigger, because HTML's content model forbids
+      // interactive content inside a `button`. Keeping a same-sized box in flow
+      // means the value text truncates at exactly the same point, and the
+      // `naked` variant's `h-auto` trigger keeps the same 24px floor, as when
+      // the control was itself a flex item. Reserving the space with trailing
+      // padding instead does NOT work: tailwind-merge does not treat `pe-*` as
+      // conflicting with `px-*`, so both would survive the merge.
+      clearSpacer: 'size-6 shrink-0',
       // `size-6` (24px) is the WCAG 2.2 SC 2.5.8 target-size floor and the `xs`
       // step of the square-interactive scale. It does NOT scale with `size`:
-      // the clear sits inside the trigger, whose smallest pinned height is
-      // 24px (`xs` -> `h-6`), so any larger step would overflow the smallest
+      // the clear sits over the trigger, whose smallest pinned height is 24px
+      // (`xs` -> `h-6`), so any larger step would overflow the smallest
       // trigger. The floor is what the success criterion asks for.
+      //
+      // `end-*` (inset-inline-end), never `right-*`: the trigger's flex row
+      // reverses under `dir="rtl"`, so a physical offset would park the control
+      // on the wrong side. Per-size values live in the `size` variant below.
       clearButton:
-        'inline-flex items-center justify-center shrink-0 rounded-md text-fg-muted hover:text-fg hover:bg-surface-muted transition-colors duration-normal motion-reduce:transition-none size-6 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500',
+        'absolute top-1/2 -translate-y-1/2 inline-flex items-center justify-center rounded-md text-fg-muted hover:text-fg hover:bg-surface-muted transition-colors duration-normal motion-reduce:transition-none size-6 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500',
     },
     variants: {
       // Trigger height is PINNED (docs/vertical-rhythm.md §1-3): the box is
       // always one line, so it declares its border-box height and carries no
       // vertical padding. Horizontal padding and the font size are unchanged.
+      //
+      // The `clearButton` offsets place the absolutely positioned control back
+      // over the in-flow `clearSpacer` it replaced. Each is the trigger's
+      // 1px border + its horizontal padding + the chevron's width + `gap-2`,
+      // rounded to the nearest spacing step (so each sits 1px inboard of the
+      // spacer, which is not perceivable). The `naked` variant drops the border
+      // and the padding and takes its own values in `compoundVariants` below.
       size: {
         // xs density: chevron uses `size-3.5` (14px) — half-step that lines up
         // with text-xs inside the compact trigger.
-        xs: { trigger: 'px-2 text-xs h-6', chevron: 'size-3.5' },
-        sm: { trigger: 'px-3 text-sm h-8', chevron: 'size-4' },
-        md: { trigger: 'px-4 text-sm h-9', chevron: 'size-4' },
-        lg: { trigger: 'px-5 text-base h-11', chevron: 'size-5' },
-        xl: { trigger: 'px-6 text-base h-12', chevron: 'size-5' },
+        xs: { trigger: 'px-2 text-xs h-6', chevron: 'size-3.5', clearButton: 'end-8' },
+        sm: { trigger: 'px-3 text-sm h-8', chevron: 'size-4', clearButton: 'end-9' },
+        md: { trigger: 'px-4 text-sm h-9', chevron: 'size-4', clearButton: 'end-10' },
+        lg: { trigger: 'px-5 text-base h-11', chevron: 'size-5', clearButton: 'end-12' },
+        xl: { trigger: 'px-6 text-base h-12', chevron: 'size-5', clearButton: 'end-13' },
       },
       variant: {
         default: {
@@ -260,6 +281,13 @@ const selectVariants = tv(
       { variant: 'default', focused: true, color: 'success', class: { trigger: 'border-success-500' } },
       { variant: 'default', focused: true, color: 'warning', class: { trigger: 'border-warning-500' } },
       { variant: 'default', focused: true, color: 'error', class: { trigger: 'border-error-500' } },
+      // `naked` drops the border and the horizontal padding (`px-0`), so the
+      // clear control's offset collapses to chevron width + `gap-2`.
+      { variant: 'naked', size: 'xs', class: { clearButton: 'end-6' } },
+      { variant: 'naked', size: 'sm', class: { clearButton: 'end-6' } },
+      { variant: 'naked', size: 'md', class: { clearButton: 'end-6' } },
+      { variant: 'naked', size: 'lg', class: { clearButton: 'end-7' } },
+      { variant: 'naked', size: 'xl', class: { clearButton: 'end-7' } },
       {
         variant: 'naked',
         fieldOwnsFocusRing: true,
@@ -450,22 +478,11 @@ function defaultOptionGroup(o: unknown): string | undefined {
       }
 
       @if (showClearButton()) {
-        <span
-          role="button"
-          tabindex="0"
-          [class]="clearButtonClasses()"
-          [attr.aria-label]="'Clear selection'"
-          (click)="onClearClick($event)"
-          (keydown)="onClearKeydown($event)"
-        >
-          <svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true" class="size-3">
-            <path
-              fill-rule="evenodd"
-              d="M10 8.586 4.707 3.293a1 1 0 0 0-1.414 1.414L8.586 10l-5.293 5.293a1 1 0 1 0 1.414 1.414L10 11.414l5.293 5.293a1 1 0 0 0 1.414-1.414L11.414 10l5.293-5.293a1 1 0 0 0-1.414-1.414L10 8.586Z"
-              clip-rule="evenodd"
-            />
-          </svg>
-        </span>
+        <!--
+          Holds the clear control's slot in the flex row. The control itself is
+          rendered after this button, not inside it - see clearSpacer above.
+        -->
+        <span [class]="clearSpacerClasses()" aria-hidden="true"></span>
       }
 
       <svg
@@ -481,6 +498,30 @@ function defaultOptionGroup(o: unknown): string | undefined {
         />
       </svg>
     </button>
+
+    @if (showClearButton()) {
+      <!--
+        A real, native button and a SIBLING of the trigger: HTML's content model
+        for button is "no interactive content descendant", so the previous
+        role="button" tabindex="0" span nested inside the trigger was invalid.
+        It sits after the trigger in DOM order, so the tab order is unchanged.
+      -->
+      <button
+        type="button"
+        [class]="clearButtonClasses()"
+        aria-label="Clear selection"
+        (click)="onClearClick($event)"
+        (keydown)="onClearKeydown($event)"
+      >
+        <svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true" class="size-3">
+          <path
+            fill-rule="evenodd"
+            d="M10 8.586 4.707 3.293a1 1 0 0 0-1.414 1.414L8.586 10l-5.293 5.293a1 1 0 1 0 1.414 1.414L10 11.414l5.293 5.293a1 1 0 0 0 1.414-1.414L11.414 10l5.293-5.293a1 1 0 0 0-1.414-1.414L10 8.586Z"
+            clip-rule="evenodd"
+          />
+        </svg>
+      </button>
+    }
 
     <span hidden>
       <ng-content />
@@ -841,6 +882,8 @@ export class SelectComponent<T = unknown>
   readonly chevronClasses = computed(() => this.variantResult().chevron());
   /** @internal */
   readonly clearButtonClasses = computed(() => this.variantResult().clearButton());
+  /** @internal */
+  readonly clearSpacerClasses = computed(() => this.variantResult().clearSpacer());
 
   /** @internal */
   readonly optionSizeClass = computed(() => {
@@ -1149,7 +1192,14 @@ export class SelectComponent<T = unknown>
     this.toggle();
   }
 
-  /** @internal */
+  /**
+   * @internal
+   *
+   * `stopPropagation` + `preventDefault` are load-bearing even now that the
+   * control is a sibling of the trigger rather than nested inside it: inside a
+   * `tw-form-field` the click still bubbles to the field's control wrapper,
+   * which calls `onContainerClick()` and would open the panel on a clear.
+   */
   onClearClick(event: MouseEvent): void {
     event.stopPropagation();
     event.preventDefault();
@@ -1157,7 +1207,15 @@ export class SelectComponent<T = unknown>
     this.focusTrigger();
   }
 
-  /** @internal */
+  /**
+   * @internal
+   *
+   * A native `button` already activates on Enter and Space in a browser, so
+   * this looks redundant — it is not. `preventDefault()` here suppresses that
+   * native activation, so the two paths cannot both fire, and jsdom never
+   * synthesises a click from a key event at all, which makes this the only
+   * keyboard path a unit spec can exercise.
+   */
   onClearKeydown(event: KeyboardEvent): void {
     if (event.key === 'Enter' || event.key === ' ') {
       event.preventDefault();
@@ -1476,7 +1534,7 @@ export class SelectComponent<T = unknown>
 
     this.overlayInstance.leaving.set(true);
 
-    (this.elementRef.nativeElement.querySelector('button') as HTMLButtonElement | null)?.focus();
+    this.triggerButtonRef()?.nativeElement.focus();
 
     this.closeTimer = setTimeout(() => {
       this.closeTimer = null;
@@ -1576,7 +1634,10 @@ export class SelectComponent<T = unknown>
     if (!this.overlayRef) return;
     const width = this.panelWidth();
     if (width === 'trigger') {
-      const button = (this.elementRef.nativeElement.querySelector('button') as HTMLButtonElement | null);
+      // The view query, NOT `querySelector('button')`: the clear control is now
+      // a second button inside the host, and measuring the wrong one would
+      // silently corrupt `panelWidth="trigger"`.
+      const button = this.triggerButtonRef()?.nativeElement ?? null;
       const rect = (button ?? this.elementRef.nativeElement).getBoundingClientRect();
       this.overlayRef.updateSize({ width: rect.width });
     } else if (width === 'auto') {
@@ -1696,8 +1757,7 @@ export class SelectComponent<T = unknown>
   /** @internal */
   onContainerClick(event: MouseEvent): void {
     if (this.isDisabled()) return;
-    const btn = (this.elementRef.nativeElement.querySelector('button') as HTMLButtonElement | null);
-    btn?.focus();
+    this.triggerButtonRef()?.nativeElement.focus();
     if (!event.defaultPrevented) {
       this.openPanel();
     }

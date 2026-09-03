@@ -1,6 +1,10 @@
 import { TestBed } from '@angular/core/testing';
 import { DateTime } from 'luxon';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+// `TZ_OVERRIDE` is deliberately the *deprecated* spelling. `LuxonDateAdapter`
+// now injects `TW_TZ_OVERRIDE`, so this suite doubles as an end-to-end proof
+// that the alias is the same token instance. See
+// `../calendar-token-alias.spec.ts`.
 import { NativeDateAdapter, TZ_OVERRIDE } from '@cdevhub/ngx-tw/calendar';
 import { LuxonDateAdapter } from './luxon-date-adapter';
 

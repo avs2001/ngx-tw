@@ -180,8 +180,12 @@ class InviteToastComponent {
         pauses the auto-dismiss timer while the toast is hovered or keyboard-focused so users can
         finish reading long messages.
         <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">swipeToDismiss</code>
-        lets pointer users drag a toast off-screen — disabled automatically under
-        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">prefers-reduced-motion</code>.
+        lets pointer users drag a toast off-screen; pass
+        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">swipeToDismiss: false</code>
+        to turn the gesture off for a given toast. It stays available under
+        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">prefers-reduced-motion</code>
+        — the toast follows the user's own pointer, so it is direct manipulation rather than
+        decorative motion. Reduced motion shortens the enter and leave animations only.
       </p>
       <div class="rounded-lg border border-border p-6 bg-surface-raised mb-4 space-y-4">
         <div>

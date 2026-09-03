@@ -737,3 +737,100 @@ describe('SliderComponent signal forms', () => {
     expect(fixture.componentInstance.sliderForm.volume().touched()).toBe(true);
   });
 });
+
+// ── Output-channel split (F-6) ─────────────────────────────────────
+//
+// The slider ships three value channels and the split between them is real:
+//   `(input)`  — live, fires on every drag move and key step
+//   `(change)` — commit, fires on pointer release / key release / blur
+//   `valueChange` — the output Angular mints from the `value` model()
+// Both hand-written channels are USER-GESTURE-ONLY: a programmatic write from a
+// bound form reaches the rendered value through `writeValue()` and must not look
+// like an interaction. These tests pin that, and pin that `(change)` does not
+// fire mid-drag — which is the whole reason `(input)` exists.
+//
+// Deliberately NOT asserted: whether `valueChange` fires for a programmatic
+// write. It does not today, because `writeValue()` sets only the internal
+// linkedSignals and never `this.value` — but that is a defect (the model goes
+// stale, and a later `min`/`max` change recomputes the linkedSignals from the
+// stale model and discards the written value), not a contract. Pinning it would
+// turn fixing the defect into a red test. See the pass-6 report.
+//
+// Non-vacuity: move `this.change.emit(current)` from `commitValue()` into
+// `setThumbValue()` and the mid-drag assertion fails; call `this.onChange` /
+// emit from `writeValue()` and the programmatic test fails.
+
+@Component({
+  imports: [SliderComponent, ReactiveFormsModule],
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  template: `
+    <tw-slider
+      label="Split"
+      [formControl]="control"
+      (input)="inputSpy($event)"
+      (change)="changeSpy($event)"
+    />
+  `,
+})
+class OutputSplitHost {
+  readonly control = new FormControl<number>(20, { nonNullable: true });
+  readonly inputSpy = vi.fn();
+  readonly changeSpy = vi.fn();
+}
+
+describe('SliderComponent output-channel split', () => {
+  const focusMonitorSpy = {
+    monitor: vi.fn().mockReturnValue(NEVER),
+    stopMonitoring: vi.fn(),
+  };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    focusMonitorSpy.monitor = vi.fn().mockReturnValue(NEVER);
+    focusMonitorSpy.stopMonitoring = vi.fn();
+    TestBed.configureTestingModule({
+      providers: [{ provide: FocusMonitor, useValue: focusMonitorSpy }],
+    });
+  });
+
+  it('fires NEITHER input nor change for a programmatic FormControl.setValue', () => {
+    const fixture = TestBed.createComponent(OutputSplitHost);
+    fixture.detectChanges();
+    const host = fixture.componentInstance;
+    host.inputSpy.mockClear();
+    host.changeSpy.mockClear();
+
+    host.control.setValue(70);
+    fixture.detectChanges();
+
+    // The write still reaches the rendered thumb…
+    expect(getThumbs(fixture)[0].getAttribute('aria-valuenow')).toBe('70');
+    // …but neither gesture channel fires.
+    expect(host.inputSpy).not.toHaveBeenCalled();
+    expect(host.changeSpy).not.toHaveBeenCalled();
+  });
+
+  it('fires input during the drag and change only on release', () => {
+    const fixture = TestBed.createComponent(BasicHost);
+    fixture.componentInstance.value.set(0);
+    fixture.detectChanges();
+    mockRegionRect(fixture, { left: 0, width: 100 });
+    const host = fixture.componentInstance;
+
+    dispatchPointer(getRegion(fixture), 'pointerdown', 40);
+    fixture.detectChanges();
+    dispatchPointer(getThumbs(fixture)[0], 'pointermove', 60);
+    fixture.detectChanges();
+
+    // Live channel has fired for both positions; commit channel has not fired at all.
+    expect(host.inputSpy).toHaveBeenCalledWith(40);
+    expect(host.inputSpy).toHaveBeenCalledWith(60);
+    expect(host.changeSpy).not.toHaveBeenCalled();
+
+    dispatchPointer(getThumbs(fixture)[0], 'pointerup', 60);
+    fixture.detectChanges();
+
+    expect(host.changeSpy).toHaveBeenCalledTimes(1);
+    expect(host.changeSpy).toHaveBeenCalledWith(60);
+  });
+});

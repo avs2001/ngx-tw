@@ -20,9 +20,9 @@ import { CodeBlockComponent } from '@cdevhub/ngx-tw/code-block';
         through either a
         <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">TemplateRef</code>
         or a component class via the
-        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">POPOVER_DATA</code>
+        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">TW_POPOVER_DATA</code>
         /
-        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">POPOVER_REF</code>
+        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">TW_POPOVER_REF</code>
         injection tokens.
       </p>
     </section>
@@ -157,7 +157,7 @@ import { CodeBlockComponent } from '@cdevhub/ngx-tw/code-block';
         <li>5 sizes and 8 optional semantic color accents</li>
         <li>Template or component content via CDK Portals</li>
         <li>Template context with <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">$implicit</code> (data) and a <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">close</code> function</li>
-        <li>Component content receives <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">POPOVER_DATA</code> and <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">POPOVER_REF</code> via DI</li>
+        <li>Component content receives <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">TW_POPOVER_DATA</code> and <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">TW_POPOVER_REF</code> via DI</li>
         <li><code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">[twPopoverClose]</code> helper directive for dismissing from inside projected content</li>
         <li>Two-way bindable open state via <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">[(twPopoverOpen)]</code></li>
         <li>Programmatic control through the directive instance via <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">exportAs="twPopover"</code></li>
@@ -208,8 +208,8 @@ export class PopoverOverview {
   protected readonly importSnippet = `import {
   PopoverDirective,
   PopoverCloseDirective,
-  POPOVER_DATA,
-  POPOVER_REF,
+  TW_POPOVER_DATA,
+  TW_POPOVER_REF,
   type PopoverRef,
 } from '@cdevhub/ngx-tw/popover';`;
 }

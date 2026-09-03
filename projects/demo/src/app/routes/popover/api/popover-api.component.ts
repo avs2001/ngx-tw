@@ -114,7 +114,7 @@ import { CodeBlockComponent } from '@cdevhub/ngx-tw/code-block';
               <td class="px-4 py-2 font-mono text-xs">twPopoverData</td>
               <td class="px-4 py-2 font-mono text-xs text-fg-muted">unknown</td>
               <td class="px-4 py-2 font-mono text-xs text-fg-muted">undefined</td>
-              <td class="px-4 py-2 text-fg-muted">Arbitrary data passed to template context or component via <code class="font-mono">POPOVER_DATA</code> token.</td>
+              <td class="px-4 py-2 text-fg-muted">Arbitrary data passed to template context or component via <code class="font-mono">TW_POPOVER_DATA</code> token.</td>
             </tr>
             <tr>
               <td class="px-4 py-2 font-mono text-xs">twPopoverPanelClass</td>
@@ -213,7 +213,7 @@ import { CodeBlockComponent } from '@cdevhub/ngx-tw/code-block';
       <p class="text-sm text-fg-muted leading-relaxed max-w-2xl">
         Convenience directive that dismisses the enclosing popover when the host element is
         clicked. Drop it on any button or link inside projected popover content — it injects
-        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">POPOVER_REF</code>
+        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">TW_POPOVER_REF</code>
         and calls
         <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">close()</code>
         for you, so cancel and confirm buttons stay declarative.
@@ -234,12 +234,12 @@ import { CodeBlockComponent } from '@cdevhub/ngx-tw/code-block';
           </thead>
           <tbody class="divide-y divide-border-muted">
             <tr>
-              <td class="px-4 py-2 font-mono text-xs">POPOVER_DATA</td>
+              <td class="px-4 py-2 font-mono text-xs">TW_POPOVER_DATA</td>
               <td class="px-4 py-2 font-mono text-xs text-fg-muted">unknown</td>
               <td class="px-4 py-2 text-fg-muted">Injected in component content; carries the <code class="font-mono">twPopoverData</code> value.</td>
             </tr>
             <tr>
-              <td class="px-4 py-2 font-mono text-xs">POPOVER_REF</td>
+              <td class="px-4 py-2 font-mono text-xs">TW_POPOVER_REF</td>
               <td class="px-4 py-2 font-mono text-xs text-fg-muted">PopoverRef</td>
               <td class="px-4 py-2 text-fg-muted">Injected in component content; provides a <code class="font-mono">close()</code> method for dismissing from inside.</td>
             </tr>

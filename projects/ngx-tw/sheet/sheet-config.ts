@@ -101,9 +101,27 @@ export class SheetConfig<D = unknown, R = unknown> extends CdkDialogConfig<D, R>
 }
 
 /** Injection token carrying the `data` value passed via {@link SheetConfig.data}. */
-export const SHEET_DATA = new InjectionToken<unknown>('SHEET_DATA');
+export const TW_SHEET_DATA = new InjectionToken<unknown>('TW_SHEET_DATA');
 
 /** Injection token for application-wide default sheet options. Set via `provideSheet()`. */
-export const SHEET_DEFAULT_OPTIONS = new InjectionToken<Partial<SheetConfig>>(
-  'SHEET_DEFAULT_OPTIONS',
+export const TW_SHEET_DEFAULT_OPTIONS = new InjectionToken<Partial<SheetConfig>>(
+  'TW_SHEET_DEFAULT_OPTIONS',
 );
+
+/**
+ * @deprecated Renamed to {@link TW_SHEET_DATA} for consistency with every other
+ * ngx-tw injection token — and with `TW_DIALOG_DATA`, its direct counterpart.
+ * This is the *same token instance*, not a copy — providing under either name
+ * and injecting under the other resolves — so the rename is safe to adopt
+ * incrementally. Removed in the next major.
+ */
+export const SHEET_DATA = TW_SHEET_DATA;
+
+/**
+ * @deprecated Renamed to {@link TW_SHEET_DEFAULT_OPTIONS} for consistency with
+ * every other ngx-tw injection token — and with `TW_DIALOG_DEFAULT_OPTIONS`,
+ * its direct counterpart. This is the *same token instance*, not a copy —
+ * providing under either name and injecting under the other resolves — so the
+ * rename is safe to adopt incrementally. Removed in the next major.
+ */
+export const SHEET_DEFAULT_OPTIONS = TW_SHEET_DEFAULT_OPTIONS;

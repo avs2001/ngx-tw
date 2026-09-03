@@ -2,6 +2,10 @@ import { TestBed } from '@angular/core/testing';
 import { PLATFORM_ID } from '@angular/core';
 import { DOCUMENT } from '@angular/common';
 import { ThemeService } from './theme.service';
+// `THEME_CONFIG` is deliberately the *deprecated* spelling: `provideTheme()`
+// now provides `TW_THEME_CONFIG`, so the read at the bottom of this file
+// doubles as an end-to-end proof that the alias is the same token instance.
+// See `theme-token-alias.spec.ts`.
 import { provideTheme, THEME_CONFIG } from './theme.config';
 import { DEFAULT_TW_THEME_CONFIG } from './theme.types';
 import type { TwTheme } from './theme.types';

@@ -7,7 +7,7 @@ import {
   type OnInit,
 } from '@angular/core';
 import { _IdGenerator } from '@angular/cdk/a11y';
-import { POPOVER_REF } from './popover-tokens';
+import { TW_POPOVER_REF } from './popover-tokens';
 
 /**
  * Popover title. Registers its ID with the enclosing popover overlay's
@@ -27,7 +27,7 @@ import { POPOVER_REF } from './popover-tokens';
 export class PopoverTitleDirective implements OnInit, OnDestroy {
   private readonly generatedId = inject(_IdGenerator).getId('tw-popover-title-');
   private readonly elementRef = inject<ElementRef<HTMLElement>>(ElementRef);
-  private readonly popoverRef = inject(POPOVER_REF, { optional: true });
+  private readonly popoverRef = inject(TW_POPOVER_REF, { optional: true });
 
   /** Custom id for the title element. Defaults to a generated unique id. */
   readonly id = input<string>(this.generatedId);

@@ -166,9 +166,9 @@ import { CodeBlockComponent } from '@cdevhub/ngx-tw/code-block';
       </div>
     </section>
 
-    <!-- THEME_CONFIG -->
+    <!-- TW_THEME_CONFIG -->
     <section class="mb-10">
-      <h2 class="text-sm font-semibold mb-3">THEME_CONFIG</h2>
+      <h2 class="text-sm font-semibold mb-3">TW_THEME_CONFIG</h2>
       <p class="text-xs text-fg-muted mb-4 font-mono">Token: InjectionToken&lt;Required&lt;TwThemeConfig&gt;&gt;</p>
       <p class="text-sm text-fg-muted leading-relaxed max-w-2xl">
         Carries the configuration provideTheme() resolved at bootstrap, with every key filled in
@@ -201,7 +201,7 @@ export class ThemeApi {
 type TwResolvedTheme = 'light' | 'dark' | 'high-contrast';
 
 // Every key is optional. provideTheme() fills the unset ones from
-// DEFAULT_TW_THEME_CONFIG, so the injected THEME_CONFIG value always
+// DEFAULT_TW_THEME_CONFIG, so the injected TW_THEME_CONFIG value always
 // carries all four settings.
 interface TwThemeConfig {
   defaultTheme?: TwTheme;               // default: 'system'

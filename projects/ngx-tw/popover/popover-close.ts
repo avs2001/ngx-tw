@@ -1,5 +1,5 @@
 import { Directive, inject } from '@angular/core';
-import { POPOVER_REF } from './popover-tokens';
+import { TW_POPOVER_REF } from './popover-tokens';
 
 /**
  * Convenience directive that closes the enclosing popover when the host element is clicked.
@@ -17,7 +17,7 @@ import { POPOVER_REF } from './popover-tokens';
   },
 })
 export class PopoverCloseDirective {
-  private readonly popoverRef = inject(POPOVER_REF, { optional: true });
+  private readonly popoverRef = inject(TW_POPOVER_REF, { optional: true });
 
   protected closePopover(): void {
     this.popoverRef?.close();

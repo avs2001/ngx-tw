@@ -62,7 +62,16 @@ export class TwDialogRef<R = unknown, C = unknown> {
     this.state = this.stateSignal.asReadonly();
   }
 
-  /** The Tailwind container instance, or `null` until the dialog has attached. */
+  /**
+   * The Tailwind container instance, or `null` until the dialog has attached.
+   * `null` is the normal value for the first tick after `open()` returns,
+   * because the render layer is loaded through a dynamic `import()`.
+   *
+   * Only `state`, `animationStateChanged`, `enterAnimationDuration` and
+   * `exitAnimationDuration` are supported reads; the `_`-prefixed members are
+   * library-internal wiring and may change without a major bump. Prefer
+   * {@link state} and {@link afterOpened} on the ref itself.
+   */
   get containerInstance(): DialogContainer | null {
     return this.container;
   }

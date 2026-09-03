@@ -209,7 +209,7 @@ const TITLE_LEVELS: EmptyStateTitleLevel[] = [1, 2, 3, 4, 5, 6];
       </p>
 
       <div class="rounded-lg border border-border p-6 bg-surface-raised mb-4">
-        <tw-card variant="outlined">
+        <tw-card variant="outline">
           <div twCardBody>
             <tw-empty-state
               title="No team members"
@@ -474,7 +474,7 @@ export class EmptyStateExamples {
   </span>
 </tw-empty-state>`;
 
-  protected readonly cardSnippet = `<tw-card variant="outlined">
+  protected readonly cardSnippet = `<tw-card variant="outline">
   <div twCardBody>
     <tw-empty-state
       title="No team members"

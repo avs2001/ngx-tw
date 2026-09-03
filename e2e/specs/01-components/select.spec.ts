@@ -302,13 +302,17 @@ test.describe('Select', () => {
     const select = new SelectPage(page);
     await select.goto();
 
-    const trigger = select.triggerIn(select.searchableSection, 'Country');
     const readout = select.outputByTestId('output-searchable');
     await expect(readout).toContainText('selected = de');
 
-    // Clear button is a span[role="button"] inside the trigger with
-    // aria-label="Clear selection".
-    await trigger.getByRole('button', { name: 'Clear selection' }).click();
+    // The clear control is a native button and a SIBLING of the trigger (HTML
+    // forbids interactive content inside a button), so it is scoped to the
+    // section rather than to the trigger. The content model itself is asserted
+    // in `select.spec.ts` ("renders the clear control as a native button
+    // OUTSIDE the trigger"), not here.
+    await select.searchableSection
+      .getByRole('button', { name: 'Clear selection' })
+      .click();
     await expect(readout).toContainText('selected = null');
   });
 
