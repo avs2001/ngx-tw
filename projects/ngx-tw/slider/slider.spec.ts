@@ -70,6 +70,22 @@ class ReactiveHost {
   control = new FormControl<number>(20, { nonNullable: true });
 }
 
+/**
+ * Reactive control plus bindable bounds. Exists to exercise a `min`/`max` change
+ * *after* a programmatic `writeValue`, which is the only way to observe whether
+ * the written value survives a re-derivation of the internal thumb signals.
+ */
+@Component({
+  imports: [SliderComponent, ReactiveFormsModule],
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  template: `<tw-slider label="Bounded reactive" [formControl]="control" [min]="min()" [max]="max()" />`,
+})
+class BoundedReactiveHost {
+  control = new FormControl<number>(20, { nonNullable: true });
+  min = signal(0);
+  max = signal(100);
+}
+
 @Component({
   imports: [SliderComponent, FormsModule],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -833,4 +849,54 @@ describe('SliderComponent output-channel split', () => {
     expect(host.changeSpy).toHaveBeenCalledTimes(1);
     expect(host.changeSpy).toHaveBeenCalledWith(60);
   });
+
+  // ── A programmatic write must survive a bounds change ──
+  //
+  // `writeValue()` sets the internal thumb `linkedSignal`s and never the `value`
+  // model. Those linkedSignals derive from `value()`, so any later re-derivation
+  // recomputes from a model that a CVA write never updated — the written value is
+  // silently discarded and the slider snaps back to the model's stale answer
+  // (its `0` default, then clamped to the new `min`).
+  //
+  // A `min`/`max` change is the reachable trigger: it re-runs the computation.
+  // Nothing in the suite bound `min` alongside a `formControl`, which is why this
+  // shipped. Non-vacuous: on the unfixed component the first assertion passes and
+  // the second reports 10 — the new `min` — instead of 20.
+  describe('programmatic write vs. bounds change', () => {
+    it('keeps a control-written value when min moves below it', async () => {
+      const fixture = TestBed.configureTestingModule({
+        imports: [BoundedReactiveHost],
+      }).createComponent(BoundedReactiveHost);
+      fixture.detectChanges();
+      await fixture.whenStable();
+      fixture.detectChanges();
+
+      expect(getThumbs(fixture)[0].getAttribute('aria-valuenow')).toBe('20');
+
+      // 10 is still below the written 20, so clamping cannot legitimately move it.
+      fixture.componentInstance.min.set(10);
+      fixture.detectChanges();
+      await fixture.whenStable();
+      fixture.detectChanges();
+
+      expect(getThumbs(fixture)[0].getAttribute('aria-valuenow')).toBe('20');
+    });
+
+    it('keeps a control-written value when max moves above it', async () => {
+      const fixture = TestBed.configureTestingModule({
+        imports: [BoundedReactiveHost],
+      }).createComponent(BoundedReactiveHost);
+      fixture.detectChanges();
+      await fixture.whenStable();
+      fixture.detectChanges();
+
+      fixture.componentInstance.max.set(200);
+      fixture.detectChanges();
+      await fixture.whenStable();
+      fixture.detectChanges();
+
+      expect(getThumbs(fixture)[0].getAttribute('aria-valuenow')).toBe('20');
+    });
+  });
+
 });

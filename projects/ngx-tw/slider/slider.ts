@@ -20,10 +20,11 @@ import {
   isDevMode,
   linkedSignal,
   model,
-  type OnInit,
   output,
   signal,
+  type OnInit,
   type Signal,
+  untracked,
   viewChild,
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
@@ -578,7 +579,18 @@ export class SliderComponent implements ControlValueAccessor, OnInit {
   /** @internal Internal values during drag / interaction, independent of external model. */
   private readonly internalStart = linkedSignal<number>(() => toRange(this.value())[0]);
   private readonly internalEnd = linkedSignal<number>(() => toRange(this.value())[1]);
-  private readonly internalSingle = linkedSignal<number>(() => toNumber(this.value(), this.min()));
+  // `min()` is read untracked deliberately. It is only the fallback for a
+  // non-numeric `value`, but tracking it made a bounds change re-run this
+  // computation — and `writeValue()` sets this signal directly without ever
+  // writing the `value` model, so the re-derivation recomputed from a model the
+  // CVA write never updated and silently discarded the written value. A
+  // reactive-forms slider whose `min` moved lost its value and snapped to the
+  // new bound. Clamping is unaffected: `singleValue` clamps on read, so a
+  // bounds change still constrains what is displayed and emitted — it just no
+  // longer destroys what was stored.
+  private readonly internalSingle = linkedSignal<number>(() =>
+    toNumber(this.value(), untracked(() => this.min())),
+  );
 
   /** @internal Which thumb currently has an active pointer gesture (or null). Bound in the template to drive the pressed-thumb styling. */
   readonly activeThumb = signal<SliderThumbId | null>(null);
