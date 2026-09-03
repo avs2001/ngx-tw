@@ -172,7 +172,17 @@ jobs:
     if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch' || github.event_name == 'push'
     runs-on: ubuntu-latest
     needs: [build-lib]
-    timeout-minutes: 15
+    # 25, not 15. This job has measured 8m42s / 9m20s / 9m33s / 10m24s across
+    # recent runs — and then hit the 15m wall once on 2026-09-04 with 387 tests
+    # passed and ZERO failures, purely on runner variance. A timed-out job
+    # reports as "cancelled", which reads like something benign rather than a
+    # red gate, so the cost is not just a re-run: it is a plausible-looking
+    # non-failure on the one job whose whole purpose is catching a11y
+    # regressions. The sweep also grows with every component added to
+    # `e2e/support/routes.ts`, so a 30% margin was going to expire on its own.
+    # The full-suite shards below already budget 30m for comparable work; this
+    # brings the a11y job to the same ~2.5x margin.
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
