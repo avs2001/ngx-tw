@@ -992,8 +992,10 @@ renames):
    14 files**, with the `statusChanges`/`ngSubmit` half **byte-identical at all 15** (~450 lines
    recoverable). `FormFieldControl` declares the contract and none of the mechanics. Target: a
    `wireErrorState()` injection-context function in `core/`, modelled on the existing
-   `onFormReset`. Precedent that it works: `TextareaDirective extends InputDirective` is the only
-   control without a copy.
+   `onFormReset`. **Caveat, added pass 6:** `onFormReset` is a *structural* precedent only — it has
+   **zero importers**, is absent from `core/index.ts`, and never ships. It is what the shape looks
+   like, not evidence the shape works. The load-bearing precedent is `TextareaDirective extends
+   InputDirective`, the only form control without a copy of the block, because it inherits one.
 4. **`select` and `combobox` bypass `PickerOverlayCoordinator` entirely** (only the two date
    pickers use it) and re-implement 7 methods, 5 identical modulo the anchor element. **Ordering
    constraint: P5-6 and P5-7 had to land first** — they are bugs in the exact reopen path this
