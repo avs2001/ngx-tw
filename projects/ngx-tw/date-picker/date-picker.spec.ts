@@ -1319,4 +1319,39 @@ describe('DatePickerComponent', () => {
       expect(fixture.componentInstance.shipModel().shipDate).toBeInstanceOf(Date);
     });
   });
+
+  // ── aria-required derived from the bound control ──
+  //
+  // The trigger bound `aria-required` to `requiredInput()` — the raw input — while
+  // the JSDoc promised `Validators.required` on a bound `NgControl` was "also
+  // honoured". It was, for the form-field `*` marker (which reads the derived
+  // `required` signal), but never for assistive tech on the trigger itself.
+  // `select` and `combobox` already bound the derived signal; both date pickers
+  // and `time-picker` did not.
+  //
+  // Non-vacuous: revert the binding to `requiredInput()` and this goes red, since
+  // the host never sets the `required` input.
+  describe('aria-required from the bound control', () => {
+    beforeEach(() => {
+      TestBed.resetTestingModule();
+      TestBed.configureTestingModule({ providers: [provideNativeDateAdapter()] });
+    });
+
+    it('exposes aria-required when the control carries Validators.required', async () => {
+      const fixture = TestBed.createComponent(ReactiveHost);
+      fixture.detectChanges();
+      await fixture.whenStable();
+      fixture.detectChanges();
+
+      // The attribute lives on the `role="combobox"` text input, not on the
+      // calendar button `getTrigger()` returns — the button is the popup trigger,
+      // the input is the control that owns the value.
+      const input: HTMLInputElement = fixture.nativeElement.querySelector(
+        'tw-date-picker input[role="combobox"]',
+      );
+      expect(input).not.toBeNull();
+      expect(input.getAttribute('aria-required')).toBe('true');
+    });
+  });
+
 });

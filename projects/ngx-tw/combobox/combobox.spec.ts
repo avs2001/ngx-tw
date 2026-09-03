@@ -562,6 +562,27 @@ describe('ComboboxComponent', () => {
       vi.useRealTimers();
     });
 
+    // DOM focus never leaves the `<input>` — the active option is identified by
+    // `aria-activedescendant` alone. `PickerOverlayCoordinator` traps focus by
+    // default (the modal date pickers need it), so `combobox` opts out with
+    // `focusTrap: false`. CDK's `FocusTrap` inserts two tabbable
+    // `.cdk-focus-trap-anchor` siblings around the pane, which would put two
+    // extra tab stops around a panel that holds nothing focusable.
+    //
+    // Non-vacuous: drop `focusTrap: false` from `combobox.ts`'s
+    // `coordinator.open()` call and the anchors appear, turning this red.
+    it('does not trap focus around the panel', async () => {
+      const fixture = TestBed.createComponent(BasicHost);
+      fixture.detectChanges();
+      fixture.componentInstance.open.set(true);
+      await advance(fixture);
+      const panel = getOverlayPanel();
+      expect(panel).toBeTruthy();
+      const pane = panel!.closest('.cdk-overlay-pane') as HTMLElement;
+      const anchors = pane.parentElement!.querySelectorAll(':scope > .cdk-focus-trap-anchor');
+      expect(anchors.length).toBe(0);
+    });
+
     it('aria-required reflects the required input', () => {
       const fixture = TestBed.createComponent(BasicHost);
       fixture.componentInstance.required.set(true);
