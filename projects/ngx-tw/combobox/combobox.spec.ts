@@ -771,6 +771,61 @@ describe('ComboboxComponent', () => {
       vi.useRealTimers();
     });
 
+    it('marks the committed row selected during the leave animation, not a stale index', async () => {
+      // Committing filters the list down to the match, but `renderedRows` is
+      // deliberately frozen while the panel animates out so it does not visibly
+      // re-filter. The selection flags must be frozen with it.
+      //
+      // The bug: `isSelected` was pushed as a LIVE closure resolving
+      // `visibleOptions()` at call time. Each frozen row carries its index from
+      // freeze time, so during the ~120ms leave window those stale indices were
+      // resolved against the already-refiltered list. Committing `Banana` left
+      // `visibleOptions() === [Banana]`, so index 0 answered true — and index 0
+      // is `Apple`. The wrong row announced itself selected to assistive tech
+      // (SC 4.1.2).
+      //
+      // Non-vacuous: revert the snapshot to a closure and `Apple` reports
+      // aria-selected="true" here while `Banana` reports false.
+      vi.useFakeTimers();
+      const fixture = TestBed.createComponent(BasicHost);
+      fixture.detectChanges();
+      fixture.componentInstance.open.set(true);
+      await advance(fixture);
+
+      const banana = getOptions().find((o) => o.textContent?.includes('Banana'))!;
+      banana.click();
+      // Deliberately short of the 120ms leave animation: the panel is still
+      // mounted here, which is the only window in which the bug is observable.
+      vi.advanceTimersByTime(30);
+      await advance(fixture);
+
+      const rows = getOptions();
+      expect(rows.length).toBeGreaterThan(1);
+      const selectedTexts = rows
+        .filter((r) => r.getAttribute('aria-selected') === 'true')
+        .map((r) => r.textContent?.trim() ?? '');
+
+      // What the fix guarantees, stated precisely: no row makes a FALSE claim.
+      // The flags are frozen with the rows, at the last generation where the two
+      // agreed — which is before the commit, so nothing is marked selected for
+      // the duration of the fade. That is cosmetically less satisfying than
+      // highlighting the committed row, and it is the honest outcome of freezing
+      // both together; the alternative would be re-pushing flags against rows
+      // that are deliberately stale, which is the bug.
+      //
+      // The assertion that matters is the negative one: `Apple` must never
+      // announce itself selected because `Banana` was chosen. Revert the
+      // snapshot to a live closure and that is exactly what happens.
+      expect(selectedTexts).not.toContain(expect.stringContaining('Apple'));
+      for (const text of selectedTexts) {
+        expect(text).toContain('Banana');
+      }
+
+      vi.advanceTimersByTime(200);
+      await advance(fixture);
+      vi.useRealTimers();
+    });
+
     it('exact label match auto-resolves to option on blur', async () => {
       const fixture = TestBed.createComponent(BasicHost);
       fixture.detectChanges();

@@ -194,6 +194,16 @@ function getHost(fixture: ComponentFixture<unknown>): HTMLElement {
   return fixture.nativeElement.querySelector('tw-date-range-picker') as HTMLElement;
 }
 
+/** Binds `startAt` and nothing else, so the calendar's anchor has exactly one source. */
+@Component({
+  imports: [DateRangePickerComponent],
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  template: `<tw-date-range-picker [startAt]="startAt()" aria-label="Anchored" />`,
+})
+class StartAtHost {
+  startAt = signal<Date | null>(null);
+}
+
 function getTrigger(fixture: ComponentFixture<unknown>): HTMLButtonElement {
   return fixture.nativeElement.querySelector(
     'tw-date-range-picker button[role="combobox"]',
@@ -1239,6 +1249,37 @@ describe('DateRangePickerComponent', () => {
       fixture.detectChanges();
 
       expect(getTrigger(fixture).getAttribute('aria-required')).toBeNull();
+    });
+  });
+
+
+  // ── startAt anchors the calendar ──
+  //
+  // `startAt` was declared at date-range-picker.ts:400 and read NOWHERE — the
+  // overlay derived its anchor solely from `pendingRange`, so the calendar always
+  // opened on today's month and a consumer setting `startAt` got silence.
+  // `date-picker` forwarded it correctly; the range picker was missed.
+  //
+  // Non-vacuous by construction: no value is bound, so `pendingRange` is null and
+  // `startAt` is the ONLY thing that can move the calendar off today. Revert the
+  // forwarding and the header reads the current month instead.
+  describe('startAt', () => {
+    it('anchors the calendar to startAt when no range is selected', async () => {
+      const fixture = TestBed.createComponent(StartAtHost);
+      // A fixed month far from "today" in either direction, so the assertion
+      // cannot pass by coincidence whenever the suite happens to run.
+      fixture.componentInstance.startAt.set(new Date(2019, 6, 15));
+      await advance(fixture);
+
+      getTrigger(fixture).click();
+      await advance(fixture);
+
+      const headerButtons = document.querySelectorAll(
+        'tw-calendar-header button',
+      ) as NodeListOf<HTMLButtonElement>;
+      const periodText = headerButtons[1]?.textContent?.trim() ?? '';
+      expect(periodText).toContain('2019');
+      expect(periodText).toMatch(/Jul/i);
     });
   });
 
