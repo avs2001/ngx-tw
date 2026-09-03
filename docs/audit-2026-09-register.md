@@ -1447,11 +1447,25 @@ Three consequences, each learned the hard way:
 
 | Component | Decision | Evidence |
 |---|---|---|
-| `tooltip/testing` | **kept** | clean across 5 consecutive full-suite runs after switching its waits to direct DOM reads |
+| `tooltip/testing` | **withdrawn** | kept on the strength of 5 consecutive green LOCAL runs, then failed in CI — see the correction below |
 | `popover/testing` | **withdrawn** | 3 tests hung at the full 15000ms budget in ~1 run in 3 |
 | `command-palette` `closes with Escape` | **removed** | hung ~1 in 3; already on `develop`. Escape dismissal stays covered in `command-palette.spec.ts` directly against the component, and `close()`'s JSDoc records the gap |
 
-**14 harness entry points ship** (13 from pass 6 plus `tooltip`, minus `popover`).
+**13 harness entry points ship** — pass 6's set, minus `popover` and `tooltip`.
+
+### Correction, made the same day: local green is not evidence for this failure class
+
+`tooltip/testing` was kept on **5 consecutive green local runs** and then failed the very first
+`ci.yml` run on `develop`, with the same three tests hanging at the full 15000ms budget. It was
+withdrawn.
+
+The mistake is worth more than the fix: a load-dependent hang is a function of **contention**, and
+a developer machine running one suite is not the environment that decides. Five local runs felt
+like strong evidence and were the wrong evidence. For this class, **CI is the authority** — and it
+was one push away the whole time.
+
+This also cost a red `develop`: `28dd6a4` and `e1452fd` both failed `ci.yml` while `e2e.yml` stayed
+green, so the trunk was broken between those commits and this correction.
 
 The markers are the durable half: locatability is solved permanently, so restoring `popover/testing`
 later is a spec problem, not a library one.
