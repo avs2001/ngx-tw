@@ -90,36 +90,36 @@ const FILL_SOFT: Record<TwColor, string> = {
 };
 
 const FILL_OUTLINE_BORDER: Record<TwColor, string> = {
-  primary: 'border-primary-500',
-  secondary: 'border-secondary-500',
-  accent: 'border-accent-500',
+  primary: 'border-primary-border',
+  secondary: 'border-secondary-border',
+  accent: 'border-accent-border',
   neutral: 'border-fg',
-  info: 'border-info-500',
-  success: 'border-success-500',
-  warning: 'border-warning-500',
-  error: 'border-error-500',
+  info: 'border-info-border',
+  success: 'border-success-border',
+  warning: 'border-warning-border',
+  error: 'border-error-border',
 };
 
 const THUMB_BORDER: Record<TwColor, string> = {
-  primary: 'border-primary-500',
-  secondary: 'border-secondary-500',
-  accent: 'border-accent-500',
+  primary: 'border-primary-border',
+  secondary: 'border-secondary-border',
+  accent: 'border-accent-border',
   neutral: 'border-fg',
-  info: 'border-info-500',
-  success: 'border-success-500',
-  warning: 'border-warning-500',
-  error: 'border-error-500',
+  info: 'border-info-border',
+  success: 'border-success-border',
+  warning: 'border-warning-border',
+  error: 'border-error-border',
 };
 
 const FOCUS_RING: Record<TwColor, string> = {
-  primary: 'focus-visible:outline-primary-500',
-  secondary: 'focus-visible:outline-secondary-500',
-  accent: 'focus-visible:outline-accent-500',
+  primary: 'focus-visible:outline-primary-border',
+  secondary: 'focus-visible:outline-secondary-border',
+  accent: 'focus-visible:outline-accent-border',
   neutral: 'focus-visible:outline-fg',
-  info: 'focus-visible:outline-info-500',
-  success: 'focus-visible:outline-success-500',
-  warning: 'focus-visible:outline-warning-500',
-  error: 'focus-visible:outline-error-500',
+  info: 'focus-visible:outline-info-border',
+  success: 'focus-visible:outline-success-border',
+  warning: 'focus-visible:outline-warning-border',
+  error: 'focus-visible:outline-error-border',
 };
 
 // ── tv() config ──────────────────────────────────────────────────

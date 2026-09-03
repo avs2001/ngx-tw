@@ -167,16 +167,16 @@ const DEFAULT_LABELS: Readonly<Required<TwPaginatorLabels>> = {
 // resolve to the canonical solid-fg slot per `theme/_semantic.css` lines 284-296.
 
 const PAGE_BUTTON_ACTIVE_BG: Record<TwColor, string> = {
-  primary: 'bg-primary-600 hover:bg-primary-700 border-primary-600 focus-visible:outline-primary-500',
-  secondary: 'bg-secondary-600 hover:bg-secondary-700 border-secondary-600 focus-visible:outline-secondary-500',
-  accent: 'bg-accent-600 hover:bg-accent-700 border-accent-600 focus-visible:outline-accent-500',
+  primary: 'bg-primary-600 hover:bg-primary-700 border-primary-600 focus-visible:outline-primary-border',
+  secondary: 'bg-secondary-600 hover:bg-secondary-700 border-secondary-600 focus-visible:outline-secondary-border',
+  accent: 'bg-accent-600 hover:bg-accent-700 border-accent-600 focus-visible:outline-accent-border',
   neutral: 'bg-fg hover:bg-fg border-fg focus-visible:outline-fg',
-  info: 'bg-info-600 hover:bg-info-700 border-info-600 focus-visible:outline-info-500',
-  success: 'bg-success-600 hover:bg-success-700 border-success-600 focus-visible:outline-success-500',
+  info: 'bg-info-600 hover:bg-info-700 border-info-600 focus-visible:outline-info-border',
+  success: 'bg-success-600 hover:bg-success-700 border-success-600 focus-visible:outline-success-border',
   // Warning keeps -500 because the amber-500/amber-950 pairing meets contrast — see
   // `theme/_semantic.css` warning role comment ("yellow signage convention").
-  warning: 'bg-warning-500 hover:bg-warning-600 border-warning-500 focus-visible:outline-warning-500',
-  error: 'bg-error-600 hover:bg-error-700 border-error-600 focus-visible:outline-error-500',
+  warning: 'bg-warning-500 hover:bg-warning-600 border-warning-500 focus-visible:outline-warning-border',
+  error: 'bg-error-600 hover:bg-error-700 border-error-600 focus-visible:outline-error-border',
 };
 
 const PAGE_BUTTON_ACTIVE_FG: Record<TwColor, string> = {

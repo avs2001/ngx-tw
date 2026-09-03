@@ -256,14 +256,14 @@ const selectVariants = tv(
       },
     },
     compoundVariants: [
-      { variant: 'default', focused: true, color: 'primary', class: { trigger: 'border-primary-500' } },
-      { variant: 'default', focused: true, color: 'secondary', class: { trigger: 'border-secondary-500' } },
-      { variant: 'default', focused: true, color: 'accent', class: { trigger: 'border-accent-500' } },
+      { variant: 'default', focused: true, color: 'primary', class: { trigger: 'border-primary-border' } },
+      { variant: 'default', focused: true, color: 'secondary', class: { trigger: 'border-secondary-border' } },
+      { variant: 'default', focused: true, color: 'accent', class: { trigger: 'border-accent-border' } },
       { variant: 'default', focused: true, color: 'neutral', class: { trigger: 'border-border-strong' } },
-      { variant: 'default', focused: true, color: 'info', class: { trigger: 'border-info-500' } },
-      { variant: 'default', focused: true, color: 'success', class: { trigger: 'border-success-500' } },
-      { variant: 'default', focused: true, color: 'warning', class: { trigger: 'border-warning-500' } },
-      { variant: 'default', focused: true, color: 'error', class: { trigger: 'border-error-500' } },
+      { variant: 'default', focused: true, color: 'info', class: { trigger: 'border-info-border' } },
+      { variant: 'default', focused: true, color: 'success', class: { trigger: 'border-success-border' } },
+      { variant: 'default', focused: true, color: 'warning', class: { trigger: 'border-warning-border' } },
+      { variant: 'default', focused: true, color: 'error', class: { trigger: 'border-error-border' } },
       // `naked` drops the border and the horizontal padding (`px-0`), so the
       // clear control's offset collapses to chevron width + `gap-2`.
       { variant: 'naked', size: 'xs', class: { clearButton: 'end-6' } },

@@ -271,24 +271,24 @@ const formFieldVariants = tv({
     { size: 'xl', labelFloated: true, class: { label: 'text-sm' } },
 
     // ── Outline + focused → colored border ──
-    { appearance: 'outline', focused: true, color: 'primary', class: { controlWrapper: 'border-primary-500' } },
-    { appearance: 'outline', focused: true, color: 'secondary', class: { controlWrapper: 'border-secondary-500' } },
-    { appearance: 'outline', focused: true, color: 'accent', class: { controlWrapper: 'border-accent-500' } },
+    { appearance: 'outline', focused: true, color: 'primary', class: { controlWrapper: 'border-primary-border' } },
+    { appearance: 'outline', focused: true, color: 'secondary', class: { controlWrapper: 'border-secondary-border' } },
+    { appearance: 'outline', focused: true, color: 'accent', class: { controlWrapper: 'border-accent-border' } },
     { appearance: 'outline', focused: true, color: 'neutral', class: { controlWrapper: 'border-border-strong' } },
-    { appearance: 'outline', focused: true, color: 'info', class: { controlWrapper: 'border-info-500' } },
-    { appearance: 'outline', focused: true, color: 'success', class: { controlWrapper: 'border-success-500' } },
-    { appearance: 'outline', focused: true, color: 'warning', class: { controlWrapper: 'border-warning-500' } },
-    { appearance: 'outline', focused: true, color: 'error', class: { controlWrapper: 'border-error-500' } },
+    { appearance: 'outline', focused: true, color: 'info', class: { controlWrapper: 'border-info-border' } },
+    { appearance: 'outline', focused: true, color: 'success', class: { controlWrapper: 'border-success-border' } },
+    { appearance: 'outline', focused: true, color: 'warning', class: { controlWrapper: 'border-warning-border' } },
+    { appearance: 'outline', focused: true, color: 'error', class: { controlWrapper: 'border-error-border' } },
 
     // ── Filled + focused → colored bottom border ──
-    { appearance: 'filled', focused: true, color: 'primary', class: { controlWrapper: 'border-b-2 border-primary-500' } },
-    { appearance: 'filled', focused: true, color: 'secondary', class: { controlWrapper: 'border-b-2 border-secondary-500' } },
-    { appearance: 'filled', focused: true, color: 'accent', class: { controlWrapper: 'border-b-2 border-accent-500' } },
+    { appearance: 'filled', focused: true, color: 'primary', class: { controlWrapper: 'border-b-2 border-primary-border' } },
+    { appearance: 'filled', focused: true, color: 'secondary', class: { controlWrapper: 'border-b-2 border-secondary-border' } },
+    { appearance: 'filled', focused: true, color: 'accent', class: { controlWrapper: 'border-b-2 border-accent-border' } },
     { appearance: 'filled', focused: true, color: 'neutral', class: { controlWrapper: 'border-b-2 border-border-strong' } },
-    { appearance: 'filled', focused: true, color: 'info', class: { controlWrapper: 'border-b-2 border-info-500' } },
-    { appearance: 'filled', focused: true, color: 'success', class: { controlWrapper: 'border-b-2 border-success-500' } },
-    { appearance: 'filled', focused: true, color: 'warning', class: { controlWrapper: 'border-b-2 border-warning-500' } },
-    { appearance: 'filled', focused: true, color: 'error', class: { controlWrapper: 'border-b-2 border-error-500' } },
+    { appearance: 'filled', focused: true, color: 'info', class: { controlWrapper: 'border-b-2 border-info-border' } },
+    { appearance: 'filled', focused: true, color: 'success', class: { controlWrapper: 'border-b-2 border-success-border' } },
+    { appearance: 'filled', focused: true, color: 'warning', class: { controlWrapper: 'border-b-2 border-warning-border' } },
+    { appearance: 'filled', focused: true, color: 'error', class: { controlWrapper: 'border-b-2 border-error-border' } },
 
     // ── Floated label + focused → colored label ──
     { labelFloated: true, focused: true, color: 'primary', class: { label: 'text-primary-600' } },
@@ -307,8 +307,8 @@ const formFieldVariants = tv({
     { appearance: 'filled', labelFloated: false, class: { labelWrapper: 'top-[calc(50%+0.5rem)]' } },
 
     // ── Invalid overrides (declared last so twMerge lets them win) ──
-    { invalid: true, appearance: 'outline', class: { controlWrapper: 'border-error-500' } },
-    { invalid: true, appearance: 'filled', class: { controlWrapper: 'border-b-2 border-error-500' } },
+    { invalid: true, appearance: 'outline', class: { controlWrapper: 'border-error-border' } },
+    { invalid: true, appearance: 'filled', class: { controlWrapper: 'border-b-2 border-error-border' } },
     { invalid: true, labelFloated: true, class: { label: 'text-error-600' } },
   ],
   defaultVariants: {

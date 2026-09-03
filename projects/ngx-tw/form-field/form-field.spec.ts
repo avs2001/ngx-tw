@@ -286,7 +286,7 @@ describe('FormFieldComponent', () => {
         fixture.detectChanges();
         await fixture.whenStable();
         const wrapper = controlWrapper(fixture);
-        expect(wrapper.className).toContain(`border-${color}-500`);
+        expect(wrapper.className).toContain(`border-${color}-border`);
       });
     }
 
@@ -812,7 +812,7 @@ describe('FormFieldComponent', () => {
       fixture.componentInstance.fake().errorState.set(true);
       fixture.detectChanges();
       await fixture.whenStable();
-      expect(controlWrapper(fixture).className).toContain('border-error-500');
+      expect(controlWrapper(fixture).className).toContain('border-error-border');
     });
 
     it('applies a thicker error bottom border on the filled appearance when errorState is true', async () => {
@@ -821,7 +821,7 @@ describe('FormFieldComponent', () => {
       fixture.detectChanges();
       await fixture.whenStable();
       expect(controlWrapper(fixture).className).toContain('border-b-2');
-      expect(controlWrapper(fixture).className).toContain('border-error-500');
+      expect(controlWrapper(fixture).className).toContain('border-error-border');
     });
   });
 

@@ -106,7 +106,7 @@ const switchVariants = tv(
       {
         errorState: true,
         checked: false,
-        class: { track: 'bg-error-100 ring-1 ring-inset ring-error-300' },
+        class: { track: 'bg-error-100 ring-1 ring-inset ring-error-border-strong' },
       },
     ],
     defaultVariants: {

@@ -88,14 +88,14 @@ const tagsInputVariants = tv(
         xl: { root: 'text-base', removeButton: 'size-8 -my-1.5 -mr-1.5', removeIcon: 'size-4' },
       },
       color: {
-        primary: { root: 'focus-within:outline-primary-500' },
-        secondary: { root: 'focus-within:outline-secondary-500' },
-        accent: { root: 'focus-within:outline-accent-500' },
+        primary: { root: 'focus-within:outline-primary-border' },
+        secondary: { root: 'focus-within:outline-secondary-border' },
+        accent: { root: 'focus-within:outline-accent-border' },
         neutral: { root: 'focus-within:outline-border-strong' },
-        info: { root: 'focus-within:outline-info-500' },
-        success: { root: 'focus-within:outline-success-500' },
-        warning: { root: 'focus-within:outline-warning-500' },
-        error: { root: 'focus-within:outline-error-500' },
+        info: { root: 'focus-within:outline-info-border' },
+        success: { root: 'focus-within:outline-success-border' },
+        warning: { root: 'focus-within:outline-warning-border' },
+        error: { root: 'focus-within:outline-error-border' },
       },
       disabled: {
         true: { root: 'opacity-50 pointer-events-none cursor-not-allowed' },
@@ -148,7 +148,7 @@ const tagsInputVariants = tv(
       {
         inFormField: false,
         errorState: true,
-        class: { root: 'border-error-500 focus-within:outline-error-500' },
+        class: { root: 'border-error-border focus-within:outline-error-border' },
       },
     ],
     defaultVariants: {
