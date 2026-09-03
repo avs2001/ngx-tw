@@ -972,6 +972,10 @@ The mechanism was decided once and applied uniformly: normalise in a `computed()
 
 ## Open — carried to pass 6
 
+> **Superseded.** Pass 6 closed all but a handful of these. Read the **Pass 6** section's
+> "Open — carried to pass 7" instead; this list is kept for the reasoning behind each item,
+> not as a work queue. Items still open there are renumbered.
+
 **Approved but deliberately not landed this pass** (maintainer scoped pass 5 to defects + variant
 renames):
 
@@ -1225,3 +1229,153 @@ declarations were verified string-equal to `_semantic.css`, so a light-mode page
 by construction. The variant renames resolve to byte-identical class strings, asserted by
 string-equality specs. No baseline shift is *expected* — but that is an expectation, not a
 measurement, and the Linux job is the only thing that can confirm it.
+
+---
+
+# Pass 6 — 2026-09-03, closing the open list
+
+Scope set by the maintainer: **address every gap the register carries.** Where an item needed a
+decision rather than a fix, the decision was taken up front: adopt `@angular/aria` incrementally
+worst-first; author a dark high-contrast ramp; land all four large refactors.
+
+Method: four parallel fix agents partitioned by file ownership, then three more for the refactors
+(which each got their own commit so a regression stays attributable), then three for harnesses.
+The `Register:` discipline from pass 4 was kept.
+
+**Pass 5's open list of 21 items is now closed except where noted below.** Do not re-derive it.
+
+## Tier 1 — landed
+
+| # | Item | Evidence |
+|---|---|---|
+| P6-1 | **All 12 non-conforming injection tokens gained a `TW_` prefix** with deprecated aliases. Every alias is `export const OLD = TW_NEW` — a reference to the *same instance*. A second `new InjectionToken` under the old name would be a second DI key, so a consumer providing one and a component injecting the other would silently miss each other, and **no test would catch it**. Six alias specs assert the bidirectional DI round-trip; `avatar`'s asserts the rendered class, because that component injects optionally and a split graph would not throw — it would quietly render `size-6` instead of `size-16`. | **[measured]** |
+| P6-2 | **`wireErrorState()`** — the CVA + `NgControl` + error-state + `required` block was duplicated at 15 class sites across 14 files. Now one `core/` injection-context helper; **−298 production lines**. Per-site differences are parameters, not flattened: `requiredTrue` on the boolean controls, `RadioComponent` delegating `errorState` to its parent group, nine controls tracking a focus signal. CVA registration untouched. | **[measured]** |
+| P6-3 | **`select` + `combobox` migrated onto `PickerOverlayCoordinator`**, −145 lines, existing specs unchanged. Chose dispose-on-close over a reuse mode on evidence: neither subscribes to `positionChanges`, so the `tooltip` hazard has no analogue, and a reused strategy resolves its origin **once** with no `setOrigin()` — porting reuse into `core/` would have carried that gap into shared code. | **[measured]** |
+| P6-4 | **`carousel` decomposed**, 1695 → 1147 lines across five files. Every moved region diffs byte-identical; the only content change is one `const` becoming exported. **1147 is the intended floor**, not unfinished work. | **[measured]** |
+| P6-5 | **Dark high-contrast ramp** (`_high-contrast-dark.css`). `'system'` now composes `prefers-color-scheme` and `prefers-contrast` as independent axes into the full 2×2, removing pass 5's compromise. | **[measured]** |
+| P6-6 | **`select`'s clear control** is now a native `<button>` sibling of the trigger over an in-flow spacer, with **logical** (`end-*`) offsets — a physical offset would have shipped an RTL bug in the same pass as an RTL fix. The old `role="button" tabindex="0"` span inside the trigger was a content-model violation axe provably cannot see. | **[verified]** |
+| P6-7 | **`aria-required` fixed on all three pickers.** `date-picker` and `date-range-picker` bound the raw input while their JSDoc promised the bound control was honoured; **`time-picker` had no `aria-required` binding at all**. On `time-picker` it went on the three `role="spinbutton"` inputs, not the `role="group"` wrapper, which does not permit it. Pass 4's P4-5 fixed this class for five components and missed all three pickers. | **[measured]** |
+| P6-8 | **Seven `{role}-border` tokens failed SC 1.4.11 in shipped dark** (1.95–2.84:1 against a 3:1 floor), now 3.42–4.22. The earlier report sampled two of the seven; fixing two would have shipped a visibly non-uniform ramp for no gain. The fix had **no guard** — axe tests text only — so a spec now resolves each scheme's token graph to sRGB and asserts the floor. | **[measured]** |
+| P6-9 | **`transfer` had `aria-invalid` on its `role="group"` host** — pass 1's F9 class, corrected in `tags-input`/`file-upload` and missed here. Moved to the target panel, which owns the value, **including the empty region**: an empty target is exactly when a required transfer is invalid, and the listbox is not rendered there. | **[measured]** |
+| P6-10 | **`slider` silently discarded a control-written value.** `writeValue()` sets the internal thumb signals and never the model; `internalSingle` is a `linkedSignal` deriving from `value()` that also read `min()`, so any bounds change recomputed from a model the CVA write never updated. A reactive slider holding 20 whose `min` moved to 10 reported **10**. `min()` is now read untracked. | **[measured]** |
+| P6-11 | **`combobox` announced the wrong row selected during its leave animation.** `renderedRows` is frozen while the panel animates out, but `isSelected` was pushed as a **live closure** resolving `visibleOptions()` at call time — so frozen indices met a refiltered list and committing `Banana` marked `Apple` selected. SC 4.1.2. | **[measured]** |
+| P6-12 | **`date-range-picker.startAt` was a dead input** — declared, read nowhere. The calendar always opened on today's month. `date-picker` forwarded it correctly. | **[measured]** |
+| P6-13 | **13 component test harnesses** ship as nested `testing/` entry points. | **[measured]** |
+| P6-14 | **The visual canary now runs on pull requests** that touch `e2e/__screenshots__/**`, via a scope-detection job. It previously ran only on `push` to `develop`, so a regenerated baseline was first exercised **after** merge. | **[measured]** |
+| P6-15 | **`--update-snapshots` now runs in `=all` mode.** The default `changed` mode had silently kept three baselines that had lost content, because the diff fell under `maxDiffPixelRatio`. | **[measured]** |
+| P6-16 | **Five visual baselines had silently lost content.** Playwright never paints the off-viewport slice of an element taller than the viewport — the painted band was exactly 720px, one viewport. Fixed with a region-capture helper. | **[measured]** |
+| P6-17 | **`test.fixme` mechanism landed.** Every suppressed body was **run** rather than reasoned about: 9 became `test.fail()` (they execute, so they go red the day the bug is fixed), 23 got a dated registry, 1 was stale — and **2 pass but vacuously** (`toBeHidden()` also passes for an unattached element; an SPA `goto` to a nonexistent route does not throw) and were correctly not promoted. | **[measured]** |
+| P6-18 | **All four load-dependent flakes closed.** Three e2e ones as a class via a shared `pollUntil`; the fourth was a **Vitest unit spec** (`menu` type-ahead, a real 250ms sleep) that the e2e fix could not reach. Fixed with virtual time, not a wider budget — and it now fails in 26ms instead of hanging for 5000ms. | **[measured]** |
+
+## The pass's real lesson: harnesses are a defect-finding instrument
+
+Three of the defects above (P6-11, P6-12, and the `transfer` one in P6-9) were found **while building
+harnesses**, not by any audit lens. Writing a harness forces you to be a real consumer — to name
+what you can observe and drive — and that is a different question from "is this code correct".
+`startAt` had survived five audit passes because nothing ever tried to *use* it.
+
+The corollary is where the remaining harness value is: the components a harness could **not** be
+written for cleanly are the ones with API gaps.
+
+## Corrections to this pass's own work
+
+- **My "bounded poll" pattern was unsound and I shipped it before catching it.** A deadline checked
+  *between* awaits cannot bound a single await that never returns. Harness calls route through
+  `fixture.whenStable()`, which under zoneless can wait on a re-scheduled timer — so the poll
+  **hung** the suite instead of failing it. Do not reintroduce it.
+- **The brief I gave the harness agents was wrong about overlay loaders.** A harness should resolve
+  its panel through the protected `documentRootLocatorFactory()`, so consumers use the ordinary
+  fixture loader. The exception is `dialog`/`sheet`, which are service-opened and have no
+  fixture-resident host at all — my correction was itself too broad.
+- **A grep-driven instruction would have unstyled a table.** I told an agent to rewrite
+  `variant: 'bordered'` → `'outline'` in a demo file where `bordered` is canonical on
+  `TwTableVariant` with no alias. It declined, with evidence.
+- **My proposed `ThemeDirective` reconciliation was not non-breaking**, as I claimed. Making the
+  directive read `THEME_CONFIG` silently no-ops `[twTheme]` for consumers who renamed `attribute`.
+- **`@angular/aria` peer-pins `@angular/cdk` at an exact version** — verified empirically
+  (`npm i @angular/cdk@22.0.5 @angular/aria@22.1.5` → `ERESOLVE`). The decision to adopt was taken
+  before this was known. See below.
+
+## Corrections to earlier passes
+
+- **`docs/tree-shaking-audit.md` justified keeping `core/form-reset.ts` on the grounds that
+  `calendar.ts:1151` references it. It does not** — zero references at any line. `calendar` hand
+  -rolls the same `FormResetEvent` subscription at `:816`. The helper has had **zero importers
+  across six passes**, and produced a misattribution cascade across seven e2e specs and three docs,
+  including two skipped tests that *blamed* it. **[measured]**
+- **`library-review/done/theme.md:255` recorded a decision not to rename `THEME_CONFIG` because it
+  was "already correctly prefixed". It was not.** Struck through rather than deleted, so the next
+  reviewer does not re-derive the same wrong objection.
+- The register's own `wireErrorState` entry cited `onFormReset` as *precedent that the shape works*.
+  It is a **structural** precedent only.
+
+## Open — carried to pass 7
+
+1. **`@angular/aria`: the decision needs revisiting.** The pilot on `command-palette` was
+   **rejected on evidence** — `ngListbox` models *selection*, a palette is an *action list*, and
+   neither `selectionMode` supplies activation (`follow` registers no Enter handler in
+   single-select; `explicit` maps Enter to `toggleOne()`, so Enter twice *deselects*, breaking the
+   documented `[closeOnSelect]="false"` mode). Two costs surfaced after the decision was taken:
+   the **exact CDK peer pin**, and **`KeyboardEventManager` defaulting to `stopPropagation: true`**
+   for every key it registers — so any aria widget inside a CDK overlay swallows that overlay's
+   Escape. That rules out every overlay-hosted target. Nothing was installed. Suggested first
+   targets if still wanted: `transfer` (already `CdkListbox`, no overlay) or `tabs`/`tab-nav` —
+   but both are lateral CDK→aria moves with **no hand-rolled code to delete**, so the honest pitch
+   is "get onto the framework's forward path", not "delete hand-rolled navigation".
+2. **A trigger-marker convention** (`data-tw-*` or a host class) on `twMenuTrigger`, `twPopover`,
+   `twTooltip`. All three take a required `TemplateRef`, so they are **always property-bound and
+   Angular emits no attribute** — they cannot be located by their own selector. Material solves
+   this with `.mat-mdc-menu-trigger`. One line each; unblocks the two withdrawn harnesses, deletes
+   ~40 lines of `popover` guard code, and closes `tooltip`'s coverage hole. **Public API, so it is
+   a maintainer decision.**
+3. **`popover/testing` and `tooltip/testing` are withdrawn**, pending item 2. Both hung the suite
+   at the 5000ms budget under contention while passing in isolation; both burn real time on a
+   hard-coded 120ms leave animation. A harness whose specs hang is worse than no harness.
+4. **No `testing/` entry point reaches the MCP index** — `build-mcp-index.mjs` derives entry points
+   from `public-api.ts`, which nested testing entry points are correctly absent from. Confirmed
+   independently by two agents; `CalendarHarness` was already invisible before this pass.
+5. **`_light.css` fails the same 3:1 border floor worse than dark did** (1.40–1.92, all seven
+   roles). Not fixed: it darkens the default scheme's outline tier in the scheme every visual
+   baseline is captured in. Recorded as a dated, self-invalidating allowance.
+6. **`item.ts`'s selected ring still fails** and the theme layer cannot fix it — clearing 3:1 on the
+   soft fill collapses the two border tiers. Needs `ring-{role}-border-strong` in the component.
+   Measured per-role: 7/8 roles in light, 4/8 in dark.
+7. **CLAUDE.md's "zero `dark:` variants, greppable as a lint rule" is subtly false.** A
+   documentation comment in `file-upload.ts` survives into the shipped bundle and Tailwind's
+   scanner resurrects the dead utility it documents; `docs/library-review/done/calendar.md` is
+   also scanned, and `segmented-control-examples.component.ts` ships a live `dark:ring-primary-800`.
+   Chain verified end to end.
+8. **`transfer` has no per-panel marker** — panels are one template rendered twice. Its harness
+   matches on a derived title id, and its select-all locator (`div:has(> [id$="-source-title"])`)
+   is the one structural rather than semantic selector in the harness set.
+9. **`file-upload` cannot expose `attach()`** — `HTMLInputElement.files` is read-only to script and
+   CDK's `TestElement` has no operation for it. Only `Object.defineProperty` works, and that exists
+   solely in Testbed, so an `attach()` built on it would silently do nothing elsewhere. The harness
+   seeds through the bound control instead, so the gap is visible in the test.
+10. **`DatePickerHarness` cannot drive a projected `[slot=trigger]`** — `hasCustomTrigger()`
+    suppresses both the input and the popup button, and no stable hook exists.
+11. **Reopening inside the leave window silently no-ops on every overlay picker** —
+    `PickerOverlayCoordinator.open()` returns `null` while `overlayRef` is set, leaving
+    `aria-expanded="true"` with the outgoing panel, then open with no panel at all.
+12. **`core/form-reset.ts` should be deleted or adopted.** Zero importers, absent from
+    `core/index.ts`, never ships. Either export it and migrate `calendar.ts:816-830`, or remove it.
+13. **`ThemeDirective` and `ThemeService` disagree on the attribute** — the directive hard-codes
+    `data-theme`, the service honours `config.attribute`. Three consumers exist and two ignore
+    `attribute`. JSDoc deprecation is the recommended route; the obvious fix is breaking.
+14. Remaining smaller items: **Escape-dismiss split across nine overlay shapes**; **28 files
+    hand-rolling `let nextId = 0`** against four using CDK's `_IdGenerator`; **six genuinely
+    hand-rolled list navigations** with no path now that aria is rejected.
+
+## Verification state at hand-off
+
+| Gate | Result |
+|---|---|
+| `npm run build:lib` | pass — 56 entry points + **13 `testing/`** |
+| `npx ng build demo` | pass |
+| `npm run test:ci` | **3518 passed**, 4 skipped (95 files) + 4 demo — stable across three consecutive runs |
+| `npm run lint` | **0 errors, 79 warnings** — all in `e2e/` |
+| `npm run verify:package` | pass |
+| `npm run verify:mcp-index` | 6 warnings |
+| `npm run e2e:fast` | **950 passed, 0 flakes** (was 936 / 1) |
+| CI `e2e.yml` (dispatched) | **all 9 jobs pass**, including the visual canary and all four full-suite shards |
+
