@@ -239,7 +239,7 @@ describe('CollapsibleComponent', () => {
         fixture.detectChanges();
 
         const root = fixture.nativeElement.querySelector('tw-collapsible');
-        expect(root.className).toContain(`border-${color}-300`);
+        expect(root.className).toContain(`border-${color}-border`);
       });
     }
 

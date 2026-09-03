@@ -178,11 +178,11 @@ describe('CardComponent', () => {
         fixture.componentInstance.color.set(color);
         fixture.detectChanges();
         const card: HTMLElement = fixture.nativeElement.querySelector('tw-card');
-        expect(card.className).toContain(`border-${color}-300`);
+        expect(card.className).toContain(`border-${color}-border`);
 
         for (const otherColor of TINTABLE_COLORS) {
           if (otherColor === color) continue;
-          expect(card.className).not.toContain(`border-${otherColor}-300`);
+          expect(card.className).not.toContain(`border-${otherColor}-border`);
         }
       });
     }
@@ -193,7 +193,7 @@ describe('CardComponent', () => {
       fixture.detectChanges();
       const card: HTMLElement = fixture.nativeElement.querySelector('tw-card');
       for (const color of TINTABLE_COLORS) {
-        expect(card.className).not.toContain(`border-${color}-300`);
+        expect(card.className).not.toContain(`border-${color}-border`);
       }
     });
 
@@ -202,7 +202,7 @@ describe('CardComponent', () => {
       fixture.componentInstance.color.set('error');
       fixture.detectChanges();
       const card: HTMLElement = fixture.nativeElement.querySelector('tw-card');
-      expect(card.className).not.toContain('border-error-300');
+      expect(card.className).not.toContain('border-error-border');
     });
 
     it('should not apply color border on ghost variant', () => {
@@ -210,7 +210,7 @@ describe('CardComponent', () => {
       fixture.componentInstance.color.set('primary');
       fixture.detectChanges();
       const card: HTMLElement = fixture.nativeElement.querySelector('tw-card');
-      expect(card.className).not.toContain('border-primary-300');
+      expect(card.className).not.toContain('border-primary-border');
     });
   });
 
@@ -402,8 +402,8 @@ describe('CardComponent', () => {
       fixture.detectChanges();
 
       const card: HTMLElement = fixture.nativeElement.querySelector('tw-card');
-      const matches = card.className.match(/\bborder-[a-z]+-\d{3}\b/g) ?? [];
-      expect(matches).toEqual(['border-primary-300']);
+      const matches = card.className.match(/\bborder-[a-z]+-border\b/g) ?? [];
+      expect(matches).toEqual(['border-primary-border']);
     });
   });
 
@@ -417,7 +417,7 @@ describe('CardComponent', () => {
   //
   // Non-vacuous: delete the `outlined` entry from `VARIANT_ALIASES` and
   // `'outlined'` falls through to `tv()` unrecognised, which drops
-  // `bg-surface border border-border` and the compound `border-primary-300`
+  // `bg-surface border border-border` and the compound `border-primary-border`
   // row — the two strings diverge and this fails.
   //
   // `color` is deliberately set to a non-neutral value: card has no
@@ -449,7 +449,7 @@ describe('CardComponent', () => {
     });
 
     it('"outlined" still picks up the compound color border', () => {
-      expect(classesFor('outlined', 'success')).toContain('border-success-300');
+      expect(classesFor('outlined', 'success')).toContain('border-success-border');
     });
 
     it('"outlined" still paints the outline surface (not bare base classes)', () => {

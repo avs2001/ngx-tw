@@ -103,17 +103,17 @@ const badgeVariants = tv({
     // green-600 on white fail AA (3.85:1 / 3.3:1); the `-solid` slots map to
     // `-700` where needed so every color meets the body-text threshold.
     { variant: 'solid', color: 'primary', class: { root: 'bg-primary-solid text-primary-solid-fg' } },
-    { variant: 'outline', color: 'primary', class: { root: 'border-primary-300 text-primary-700' } },
+    { variant: 'outline', color: 'primary', class: { root: 'border-primary-border text-primary-700' } },
     { variant: 'soft', color: 'primary', class: { root: 'bg-primary-50 text-primary-800' } },
 
     // ===== Secondary =====
     { variant: 'solid', color: 'secondary', class: { root: 'bg-secondary-solid text-secondary-solid-fg' } },
-    { variant: 'outline', color: 'secondary', class: { root: 'border-secondary-300 text-secondary-700' } },
+    { variant: 'outline', color: 'secondary', class: { root: 'border-secondary-border text-secondary-700' } },
     { variant: 'soft', color: 'secondary', class: { root: 'bg-secondary-50 text-secondary-800' } },
 
     // ===== Accent =====
     { variant: 'solid', color: 'accent', class: { root: 'bg-accent-solid text-accent-solid-fg' } },
-    { variant: 'outline', color: 'accent', class: { root: 'border-accent-300 text-accent-700' } },
+    { variant: 'outline', color: 'accent', class: { root: 'border-accent-border text-accent-700' } },
     { variant: 'soft', color: 'accent', class: { root: 'bg-accent-50 text-accent-800' } },
 
     // ===== Neutral ===== (surface/fg tokens auto-adapt to dark mode)
@@ -123,22 +123,22 @@ const badgeVariants = tv({
 
     // ===== Info =====
     { variant: 'solid', color: 'info', class: { root: 'bg-info-solid text-info-solid-fg' } },
-    { variant: 'outline', color: 'info', class: { root: 'border-info-300 text-info-700' } },
+    { variant: 'outline', color: 'info', class: { root: 'border-info-border text-info-700' } },
     { variant: 'soft', color: 'info', class: { root: 'bg-info-50 text-info-800' } },
 
     // ===== Success =====
     { variant: 'solid', color: 'success', class: { root: 'bg-success-solid text-success-solid-fg' } },
-    { variant: 'outline', color: 'success', class: { root: 'border-success-300 text-success-700' } },
+    { variant: 'outline', color: 'success', class: { root: 'border-success-border text-success-700' } },
     { variant: 'soft', color: 'success', class: { root: 'bg-success-50 text-success-800' } },
 
     // ===== Warning =====
     { variant: 'solid', color: 'warning', class: { root: 'bg-warning-solid text-warning-solid-fg' } },
-    { variant: 'outline', color: 'warning', class: { root: 'border-warning-300 text-warning-700' } },
+    { variant: 'outline', color: 'warning', class: { root: 'border-warning-border text-warning-700' } },
     { variant: 'soft', color: 'warning', class: { root: 'bg-warning-50 text-warning-800' } },
 
     // ===== Error =====
     { variant: 'solid', color: 'error', class: { root: 'bg-error-solid text-error-solid-fg' } },
-    { variant: 'outline', color: 'error', class: { root: 'border-error-300 text-error-700' } },
+    { variant: 'outline', color: 'error', class: { root: 'border-error-border text-error-700' } },
     { variant: 'soft', color: 'error', class: { root: 'bg-error-50 text-error-800' } },
 
     // ===== Reduced left padding when avatar is present =====
