@@ -27,6 +27,13 @@ defects misrepresents the codebase.
   no legacy control flow, no `.mutate(`, no `@angular/animations`, no NgModules. **[reported]**
 - **No raw Tailwind palette colours** anywhere in shipped source — the semantic-token rule holds
   library-wide. No `transition-all`, no forbidden shadows, no forbidden radii. **[measured]**
+  > **Read with pass 8.** Still true, and narrower than it sounds: it rules out `blue-500`, not
+  > `primary-300`. A component naming a semantic *scale step* instead of a semantic *slot* passes
+  > this sweep and every other one the register runs — and pass 8 measured 14 of 28 such
+  > `border|ring|outline-{role}-{step}` utilities below the 3:1 non-text floor.
+
+- **[Pass 8]** Now that `light` is raised, **all four schemes clear SC 1.4.11 on both coloured
+  border tiers**, enforced by `theme-contrast.spec.ts` with an empty allowance list. **[measured]**
 - **56/56 secondary entry points** correctly registered in all four required places. **[reported]**
 - **All four `NG_VALIDATORS` controls ship the mandated guard spec**, and each genuinely asserts
   an error code reaching a bound `FormControl` — not just a successful mount. **[reported]**
@@ -1627,6 +1634,11 @@ slots. `alert` and the tab triggers were already on the slots; `badge`, `button`
   collides it with `--color-fg-muted` and collapses the two foreground tiers, the same shape of
   problem the border tiers had here. Reproduce with `p6-contrast.mjs light dark`.
 - The raw-scale sweep above.
+- **The alert `outline` variant has no visual baseline** — the `alert-colors` scene captures the
+  `soft` variant, which `theme-contrast.spec.ts`'s header already noted in a different context. So
+  the *primary consumer* of every `{role}-border` token is unphotographed, which is why a change
+  to all seven moved exactly one baseline. Adding an `alert-variants` scene would make the next
+  border change self-evidencing.
 
 ## Open — carried forward
 
@@ -1649,3 +1661,16 @@ hand-rolled list navigations with no migration target now that `@angular/aria` i
 | `npm run lint` | 0 errors, 79 warnings — all in `e2e/` |
 | `npm run verify:package` | pass |
 | `npm run verify:mcp-index` | 6 warnings |
+| `ci.yml` (dispatched on the branch) | pass |
+| `e2e.yml` (dispatched on the branch) | pass |
+| Visual baselines | 3 of 22 moved; **1 real** — `tabs-variants-light`, a 1px band at the active-tab underline, `#2b7fff`→`#155dfc` (blue-500→blue-600). The other two are ±1-unit antialiasing noise. No baseline changed dimensions, so nothing lost content — the pass-6 failure mode was checked for and is absent. |
+
+**`e2e.yml` green is not coverage of this change, and should not be read as such.** The visual suite
+has 22 baselines, and the Semantic Tokens swatch grid paints only the *neutral* `--color-border*`
+trio — none of the seven coloured tokens. One 1px tab underline is the entire baseline coverage of
+what pass 8 moved. The real evidence is direct inspection in the browser at `localhost:4600`: the
+alert `outline` variant in situ (its boundary now reads as deliberate rather than a pale wash), and
+a side-by-side of old-vs-new for the two judgment calls — the two border tiers stay clearly
+separable at adjacent steps, and the solid-indicator rim collapse is confined to the four roles
+predicted, where the `ring-4 ring-{role}-soft` halo already carries the emphasis. `success` and
+`warning` in fact keep the *widest* tier gap of the eight roles.
