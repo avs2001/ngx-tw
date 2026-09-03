@@ -314,7 +314,7 @@ let nextDateRangePickerId = 0;
       [attr.aria-label]="triggerAccessibleName() || null"
       [attr.aria-labelledby]="ariaLabelledby() || null"
       [attr.aria-describedby]="describedBy() || null"
-      [attr.aria-required]="requiredInput() || null"
+      [attr.aria-required]="required() || null"
       [attr.aria-invalid]="errorState() || null"
       [attr.aria-disabled]="isDisabled() || null"
       [attr.data-variant]="resolvedVariant()"
@@ -1000,11 +1000,22 @@ export class DateRangePickerComponent<D = Date>
     // is never invoked, so every calendar error code silently disappears with no test failure
     // outside the guard spec. See the provider's own comment above.
     //
-    // NOTE: unlike `date-picker` and `time-picker`, this component does NOT call
-    // `errorWiring.bump()` after the deferred lookup. That asymmetry predates the
-    // `wireErrorState` extraction and was preserved verbatim by it. `connect()`
-    // subscribes but never bumps, so anything read off `ngControl` before this
-    // point keeps its `null`-era value until the first status/value emission.
+    // Bump the revision so any control-derived signal that was already read while
+    // `ngControl` was still `null` recomputes. `date-picker` and `time-picker` have
+    // always done this; this component's omission was an asymmetry preserved
+    // verbatim through the `wireErrorState` extraction.
+    //
+    // Honest scope, measured rather than assumed: **no test distinguishes this
+    // line.** Removing it leaves the whole suite green, including the
+    // `aria-required from the bound control` guard below. `required` and its
+    // siblings are `computed()`, and a `computed()` is lazy — nothing reads them
+    // before `ngOnInit` runs, so in every path exercised today there is no stale
+    // cache to invalidate and the bump is a no-op. It is kept for symmetry with
+    // the two sibling pickers, and as a guard against a future eager read (a
+    // parent querying `required` during its own first pass would cache the
+    // `null`-era answer permanently). Do not cite it as a bug fix.
+    this.errorWiring.bump();
+
     this.errorWiring.connect();
   }
 

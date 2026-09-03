@@ -1001,4 +1001,54 @@ describe('TimePickerComponent standalone accessible name', () => {
     expect(group.getAttribute('aria-label')).toBe('Explicit name');
     expect(group.getAttribute('aria-labelledby')).toBeNull();
   });
+
+  // ── aria-required on the spinbutton fields ──
+  //
+  // `time-picker`'s `required` input JSDoc promised it "exposes
+  // aria-required=\"true\"" — and the component had **no `aria-required` binding
+  // anywhere**. The input was inert for assistive tech in every strategy, and the
+  // control-derived half never surfaced either.
+  //
+  // The attribute goes on the three `role="spinbutton"` inputs, NOT on the
+  // `role="group"` wrapper: `group` does not permit `aria-required`, and putting
+  // it there is a critical axe `aria-allowed-attr` violation. That exact mistake
+  // shipped once before in `file-upload` and was fixed by moving the attribute to
+  // the control that owns the value.
+  //
+  // Non-vacuous: nothing rendered `aria-required` at all before this change, so
+  // every assertion below fails on the previous tree.
+  describe('aria-required', () => {
+    beforeEach(() => {
+      TestBed.resetTestingModule();
+      TestBed.configureTestingModule({ providers: [provideNativeDateAdapter()] });
+    });
+
+    it('exposes aria-required on every spinbutton when the control is required', async () => {
+      const fixture = TestBed.createComponent(ReactiveHost);
+      fixture.detectChanges();
+      await fixture.whenStable();
+      fixture.detectChanges();
+
+      const spinbuttons: HTMLInputElement[] = Array.from(
+        fixture.nativeElement.querySelectorAll('input[role="spinbutton"]'),
+      );
+      expect(spinbuttons.length).toBeGreaterThan(0);
+      for (const el of spinbuttons) {
+        expect(el.getAttribute('aria-required')).toBe('true');
+      }
+    });
+
+    it('never puts aria-required on the role="group" wrapper', async () => {
+      const fixture = TestBed.createComponent(ReactiveHost);
+      fixture.detectChanges();
+      await fixture.whenStable();
+      fixture.detectChanges();
+
+      const group: HTMLElement | null =
+        fixture.nativeElement.querySelector('[role="group"]');
+      expect(group).not.toBeNull();
+      expect(group?.getAttribute('aria-required')).toBeNull();
+    });
+  });
+
 });

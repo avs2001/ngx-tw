@@ -500,6 +500,70 @@ New boolean inputs that default to `true` MUST carry their justification in the 
 - Use Angular CDK's a11y utilities: `FocusMonitor`, `FocusTrap`, `LiveAnnouncer`, `AriaDescriber`.
 - Every interactive component must define keyboard behavior.
 
+## `@angular/aria` — adoption position
+
+`@angular/aria` (published and stable on the 22.x line) ships headless directives for eight WAI-ARIA
+patterns — Accordion, Combobox, Grid, Listbox, Menu, Tabs, Toolbar, Tree — that own keyboard
+interaction, ARIA attributes, focus management and roving-tabindex / activedescendant. This library
+hand-rolls or CDK-composes all eight. **The position is: adopt incrementally, worst-first — at most
+one component per release, never a sweep.** It is currently used nowhere and declared in no
+`package.json`.
+
+**Pilot outcome: `command-palette` was evaluated and REJECTED (2026-09-03).** Evidence in
+`scratchpad/p6-aria-pilot-report.md`. The four findings below outlive that pilot and govern any
+future adoption — do not rediscover them.
+
+**1. `ngListbox` models *selection*; an action list is not one.** `Listbox.value` is a
+`ModelSignal<V[]>` and every activation path routes through it. Neither selection mode supplies
+activation: `selectionMode="follow"` selects on each arrow key *and registers no `Enter` handler at
+all* in single-select (there is no `followFocus && !multi` branch), while `selectionMode="explicit"`
+maps Enter to `toggleOne()` — so Enter twice on the same row deselects instead of re-running.
+A component whose rows *fire and dismiss* (command palette,
+action list) has no selection to model, and **there is no configuration in which "the active row is
+`aria-selected`" and "Enter runs the row" both hold**. So the first question for any candidate is:
+**does it have a genuine selection or expansion model, or does it fire and dismiss?** Fire-and-dismiss
+means `ngListbox` is the wrong pattern — `ngMenu` or the hand-rolled navigation is correct.
+
+**2. `@angular/aria`'s `KeyboardEventManager` defaults to `stopPropagation: true`** (and
+`preventDefault: true`) for *every* key it registers, applied whenever the matcher fires — even when
+the handler is a no-op in the current configuration (an expanded combobox registers `Escape` and
+swallows it under `alwaysExpanded`). CDK's overlay keyboard channel is a **bubble-phase listener on
+`document.body`** (`_renderer.listen('body', 'keydown', …)`), so **an `@angular/aria` widget inside a
+CDK overlay swallows the keys that overlay's own `overlayRef.keydownEvents()` needs, Escape
+included.** Nearly every overlay-bearing component here drives close-on-Escape through that channel —
+dialog, select, combobox, menu, popover, command-palette, the pickers. The event still reaches other
+listeners on the *same element* (`stopPropagation` is not `stopImmediatePropagation`), so a template
+`(keydown)` on the host is a workaround — but needing one means the directive is no longer owning the
+keyboard, which was the reason to adopt it. **Treat "is this widget inside a CDK overlay?" as the
+second gate.**
+
+**3. `@angular/aria` peer-depends on `@angular/cdk` at an *exact* version**, not a range
+(`@angular/aria@22.1.5` → `@angular/cdk@"22.1.5"`; verified across 22.0.5, 22.0.7 and 22.1.5 —
+`npm i @angular/cdk@22.0.5 @angular/aria@22.1.5` fails with `ERESOLVE`). A published library that
+declares `@angular/aria` as a peer imposes lockstep CDK on **every** consumer of **every** entry
+point, including those importing only `tw-button`. Any adoption must declare it **optional** via
+`peerDependenciesMeta` (as `luxon` and `lucide` already are), declare it in **both**
+`projects/ngx-tw/package.json` and the root `package.json` (see the undeclared-peer trap in **Library
+Structure**), and re-verify with `grep -l "from '@angular/aria'" dist/ngx-tw/fesm2022/*.mjs` after a
+build.
+
+**4. The flat-DOM / `tv()`-slot conventions are *not* the obstacle** — the pilot expected them to be
+and they were not, so do not reject a good candidate for this reason. `ngListbox` / `ngOption` are
+attribute directives that sit on existing elements; neither binds `class`, so `[class]` bindings and
+`tv()` slots survive intact; `ngOption` exposes an `active()` signal via `exportAs` plus an
+`[attr.data-active]` styling hook; `ngOption` resolves its listbox through DI, so `role="group"`
+wrappers between them are fine; and `SortedCollection` orders options by `compareDocumentPosition`,
+so grouped and `@for`-rendered rows order correctly. The two real DOM costs are that
+`ng-template[ngComboboxPopup]` adds a `DeferredContent` rendering layer, and that a `Listbox` in
+`focusMode="activedescendant"` sets its own `tabindex="0"` (overridable with `[tabindex]="-1"`).
+
+**Building a new a11y-pattern component?** Evaluate `@angular/aria` first — it is the right default
+for a *new* Accordion / Listbox / Menu / Tabs / Toolbar / Tree / Grid that owns its own DOM focus, is
+**not** inside a CDK overlay, and has a real selection or expansion model. Outside that envelope,
+prefer CDK primitives, and record the reason here rather than leaving the next author to rediscover
+points 1–3. Note also that `@angular/aria` ships **no RadioGroup** pattern (its only "radio" is
+`menuitemradio` inside `ngMenu`), so `radio` and `segmented-control` have no migration target at all.
+
 ## Testing
 
 Tests use **Vitest** (default in Angular v22 via `@angular/build:unit-test`). No additional setup packages are needed for new projects. Test files live next to source: `button.spec.ts` beside `button.ts`.

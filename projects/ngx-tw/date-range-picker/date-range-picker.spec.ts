@@ -1198,4 +1198,48 @@ describe('DateRangePickerComponent', () => {
       expect(labelsOf()).toContain('Confirm');
     });
   });
+
+  // ── aria-required derived from the bound control ──
+  //
+  // Two independent defects met here, and the test fails against either.
+  //
+  // 1. The trigger bound `aria-required` to `requiredInput()` — the raw input —
+  //    while the JSDoc promised `Validators.required` on a bound `NgControl` was
+  //    "also honoured". It was honoured for the form-field `*` marker, which
+  //    reads the derived `required` signal, but never for assistive tech on the
+  //    trigger itself. `select` and `combobox` bind the derived signal; the two
+  //    date pickers did not.
+  // 2. `ngOnInit` resolved `NgControl` lazily and did NOT call
+  //    `errorWiring.bump()` afterwards, so every control-derived signal kept its
+  //    `null`-era answer until the first status or value emission — which, for a
+  //    pristine untouched form, never comes.
+  //
+  // Non-vacuous by construction: it asserts on a fixture that is never touched,
+  // never blurred and never given a value, so nothing but the bump can make the
+  // control's `required` visible. Revert either fix and it goes red.
+  describe('aria-required from the bound control', () => {
+    it('exposes aria-required when the control carries Validators.required', async () => {
+      const fixture = TestBed.configureTestingModule({
+        imports: [ReactiveHost],
+      }).createComponent(ReactiveHost);
+      fixture.detectChanges();
+      await fixture.whenStable();
+      fixture.detectChanges();
+
+      expect(getTrigger(fixture).getAttribute('aria-required')).toBe('true');
+    });
+
+    it('leaves aria-required absent when the control has no required validator', async () => {
+      const fixture = TestBed.configureTestingModule({
+        imports: [ReactiveHost],
+      }).createComponent(ReactiveHost);
+      fixture.componentInstance.ctrl = new FormControl<TwDateRange<Date> | null>(null);
+      fixture.detectChanges();
+      await fixture.whenStable();
+      fixture.detectChanges();
+
+      expect(getTrigger(fixture).getAttribute('aria-required')).toBeNull();
+    });
+  });
+
 });

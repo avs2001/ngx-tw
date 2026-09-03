@@ -58,6 +58,15 @@ export interface PickerOpenConfig<TOverlay> {
   readonly panelClass: string;
   /** Viewport margin forwarded to the CDK position-strategy. Defaults to `8`. */
   readonly viewportMargin?: number;
+  /**
+   * Whether keyboard focus is trapped inside the overlay while it is open.
+   * Defaults to `true`, which suits modal picker panels that move DOM focus
+   * into the overlay. Pass `false` for `aria-activedescendant` surfaces
+   * (`tw-select`, `tw-combobox`) where DOM focus deliberately stays on the
+   * trigger: the trap's capturing anchor elements would otherwise sit in the
+   * tab order around a panel that holds no focusable content.
+   */
+  readonly focusTrap?: boolean;
 }
 
 /** Synchronous return shape of {@link PickerOverlayCoordinator.open}. */
@@ -75,18 +84,23 @@ export interface PickerOpenResult<TOverlay> {
 /**
  * Coordinator that owns the CDK `OverlayRef`, focus trap, panel-id, and
  * animation timing for an overlay-bearing form control. Consumed by
- * `DatePickerComponent` and `DateRangePickerComponent`; both pickers register
- * the coordinator at the component level (`providers: [PickerOverlayCoordinator]`)
- * so each picker instance owns its own coordinator state.
+ * `DatePickerComponent`, `DateRangePickerComponent`, `SelectComponent` and
+ * `ComboboxComponent`; every consumer registers the coordinator at the
+ * component level (`providers: [PickerOverlayCoordinator]`) so each instance
+ * owns its own coordinator state.
  *
  * Per the library "no `providedIn: 'root'` for services" rule (see
  * `.claude/CLAUDE.md` → "What NOT To Do"): the coordinator holds per-overlay
  * `OverlayRef` / `FocusTrap` state and MUST be component-scoped.
  *
  * Scope of responsibility:
- * - Create / dispose the CDK `OverlayRef`.
+ * - Create / dispose the CDK `OverlayRef`. The ref is **disposed** on close and
+ *   rebuilt on the next open, so every creation-time value (`positions`,
+ *   `scrollStrategy`, `panelClass`, and the position strategy's origin) is
+ *   re-read on every open. Nothing here is frozen at first open.
  * - Attach a `ComponentPortal` and return the instance.
- * - Set up / tear down a `FocusTrap` around the overlay element.
+ * - Set up / tear down a `FocusTrap` around the overlay element, unless the
+ *   consumer opts out via `focusTrap: false`.
  * - Emit `opened$` after the enter animation completes (closes the
  *   synchronous-emit bug previously present in both pickers).
  * - Expose `backdropClick$` / `overlayKeydown$` / `escape$` streams scoped
@@ -95,7 +109,11 @@ export interface PickerOpenResult<TOverlay> {
  *   never touch a detached `OverlayRef` (mirrors the S14 command-palette
  *   pattern).
  *
- * Out of scope (stays in the consuming picker):
+ * Out of scope (stays in the consuming component):
+ * - Panel width. `select` / `combobox` size their panel from a trigger
+ *   measurement that only they can make (which of several host children is the
+ *   measurable trigger differs per component), so they call
+ *   `ref()?.updateSize(...)` themselves and own their `ResizeObserver`.
  * - "Restore previous value on close" — semantics differ per picker.
  * - Per-picker portal callbacks (calendar selection, action-bar buttons).
  * - View-mode change-detection nudges (the range-picker calls
@@ -169,7 +187,9 @@ export class PickerOverlayCoordinator {
     this.attachedSignal.set(true);
     this.openedSignal.set(false);
 
-    this.setupFocusTrap();
+    if (config.focusTrap !== false) {
+      this.setupFocusTrap();
+    }
     this.scheduleOpenedEmission();
 
     return {

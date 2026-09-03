@@ -359,6 +359,7 @@ export type TimePickerValidationErrors = Partial<{
         [attr.aria-valuenow]="hourValueNow()"
         [attr.aria-valuetext]="hourValueText()"
         [attr.aria-invalid]="errorState() || null"
+        [attr.aria-required]="required() || null"
         [attr.aria-disabled]="isDisabled() || null"
         (keydown)="onFieldKeydown($event, 'hour')"
         (beforeinput)="onBeforeInput($event, 'hour')"
@@ -387,6 +388,7 @@ export type TimePickerValidationErrors = Partial<{
         [attr.aria-valuenow]="minuteValueNow()"
         [attr.aria-valuetext]="minuteValueText()"
         [attr.aria-invalid]="errorState() || null"
+        [attr.aria-required]="required() || null"
         [attr.aria-disabled]="isDisabled() || null"
         (keydown)="onFieldKeydown($event, 'minute')"
         (beforeinput)="onBeforeInput($event, 'minute')"
@@ -416,6 +418,7 @@ export type TimePickerValidationErrors = Partial<{
           [attr.aria-valuenow]="secondValueNow()"
           [attr.aria-valuetext]="secondValueText()"
           [attr.aria-invalid]="errorState() || null"
+          [attr.aria-required]="required() || null"
           [attr.aria-disabled]="isDisabled() || null"
           (keydown)="onFieldKeydown($event, 'second')"
           (beforeinput)="onBeforeInput($event, 'second')"
@@ -840,7 +843,12 @@ export class TimePickerComponent<D = Date>
   /** @internal */ readonly focused: Signal<boolean> = this.focusedSignal.asReadonly();
   /** @internal */ readonly empty: Signal<boolean> = this.isEmpty;
   /** @internal */ readonly disabled: Signal<boolean> = this.isDisabled;
-  /** @internal */ readonly required: Signal<boolean> = this.errorWiring.required;
+  /**
+   * Whether the control is required — the `required` input OR `Validators.required`
+   * on a bound `NgControl`. Bound to `aria-required` on each spinbutton field, not on
+   * the `role="group"` wrapper, which does not permit the attribute.
+   */
+  readonly required: Signal<boolean> = this.errorWiring.required;
   /** @internal */
   readonly errorState: Signal<boolean> = this.errorWiring.errorState;
   /**

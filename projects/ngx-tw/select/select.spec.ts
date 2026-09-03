@@ -1119,6 +1119,27 @@ describe('SelectComponent', () => {
       expect(getTriggerButton(a).id).not.toBe(getTriggerButton(b).id);
     });
 
+    // The panel is an `aria-activedescendant` listbox: DOM focus stays on the
+    // trigger, or on the search input inside the panel. `PickerOverlayCoordinator`
+    // traps focus by default (the modal date pickers need it), so `select` opts
+    // out with `focusTrap: false`. CDK's `FocusTrap` inserts two tabbable
+    // `.cdk-focus-trap-anchor` siblings around the pane, which would put two
+    // extra tab stops around a panel whose options are not focusable at all.
+    //
+    // Non-vacuous: drop `focusTrap: false` from `select.ts`'s `coordinator.open()`
+    // call and the anchors appear, turning this red.
+    it('does not trap focus around the panel', async () => {
+      const fixture = TestBed.createComponent(BasicHost);
+      fixture.detectChanges();
+      getTriggerButton(fixture).click();
+      await advance(fixture);
+      const panel = getOverlayPanel();
+      expect(panel).toBeTruthy();
+      const pane = panel!.closest('.cdk-overlay-pane') as HTMLElement;
+      const anchors = pane.parentElement!.querySelectorAll(':scope > .cdk-focus-trap-anchor');
+      expect(anchors.length).toBe(0);
+    });
+
     it('wires aria-controls to the listbox id', async () => {
       const fixture = TestBed.createComponent(BasicHost);
       fixture.detectChanges();
