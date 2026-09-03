@@ -1,0 +1,367 @@
+/* ===== Dark high-contrast theme =====
+   The dark-based counterpart to `_high-contrast.css`, added so
+   `prefers-contrast: more` can COMPOSE with `prefers-color-scheme: dark`
+   instead of overriding it. Before it existed, `ThemeService` had to refuse to
+   resolve `'system'` to high contrast whenever the OS also asked for dark,
+   because the only high-contrast scheme was light-based and honouring the
+   contrast preference would have thrown a dark-mode user onto a white surface.
+   That compromise is gone; `detectSystemTheme()` now resolves the two
+   preferences independently.
+
+   ── Activation ──
+   `[data-theme="high-contrast-dark"]` only. There is deliberately NO
+   `@media (prefers-contrast: more) and (prefers-color-scheme: dark)` branch:
+   `_high-contrast.css` ships no `prefers-contrast` branch either, so adding
+   one here would make contrast auto-apply without JavaScript for one of the
+   two high-contrast schemes and not the other. Both schemes are reached the
+   same way — an explicit `data-theme`, written either by `ThemeService` or by
+   the consumer. (The `prefers-color-scheme` branch in `_dark.css` exists for a
+   different reason: plain dark mode is the one scheme that must work with no
+   JavaScript at all.)
+
+   ── Dependency in `_dark.css` ──
+   `_dark.css`'s media branch is
+   `:root:not([data-theme="light"]):not([data-theme="high-contrast"]):not([data-theme="high-contrast-dark"])`,
+   specificity 0,4,0. That third `:not()` is load-bearing for THIS file: the
+   block below is a bare attribute selector at 0,1,0, so on a dark-preferring
+   OS a `<html data-theme="high-contrast-dark">` would otherwise match the dark
+   media block and lose to it no matter what the import order is. Source order
+   cannot fix a specificity loss. If that `:not()` is ever removed, this whole
+   scheme silently degrades to plain dark on exactly the machines it was
+   written for.
+
+   ── Import order ──
+   Imported AFTER `_dark.css` and BEFORE `_high-contrast.css`. Only the second
+   half is load-bearing, and for the same reason `_light.css` has to come
+   first: `_high-contrast.css`'s `@media (forced-colors: active)` list names
+   `[data-theme="high-contrast-dark"]` at the identical 0,1,0 specificity, and
+   source order is the only tie-breaker — the forced-colors remap has to win.
+   Sitting after `_dark.css` is grouping, not cascade: this is the dark
+   family's contrast variant and it is read alongside the `:not()` above.
+
+   ── Derivation ──
+   The METHOD is mirrored from `_high-contrast.css`, not the values.
+
+     - `_high-contrast.css` shifts the light ramp one palette step DARKER
+       (slot 50 → `-100`, … 900 → `-950`, saturating at `-950`). Normal dark is
+       the plain inversion (50 → `-950` … 950 → `-50`); this file is that
+       inversion shifted one step LIGHTER (50 → `-900`, … 900 → `-50`,
+       saturating at `-50`).
+     - Light high contrast collapses `surface` / `-raised` / `-overlay` onto
+       pure white; this collapses them onto pure black.
+     - Foreground and border move to the opposite extreme: `fg` → white,
+       `border-strong` → white, with `fg-muted` / `fg-subtle` / `border` at
+       `gray-200` / `gray-300` / `gray-300` (the mirror of light's `gray-800` /
+       `gray-700` / `gray-700`).
+     - Slots invert the same way: `-soft` → `{c}-950`, `-soft-fg` → `{c}-50`,
+       `-solid` → `{c}-200` with a black foreground, `-border-strong` →
+       `{c}-100` so a 1px outline stays visible against `-soft`.
+
+   `surface-sunken` / `surface-muted` are mirrored EXACTLY, including the fact
+   that `_high-contrast.css` orders them the opposite way round from its own
+   base scheme (`muted` one step off the surface, `sunken` two). That looks like
+   an authoring slip and is not — it is a fix, and the dark ramp needs the same
+   one. `neutral-soft` resolves to `surface-muted` and `neutral-soft-hover` to
+   `surface-sunken`, so the ordering decides which way a hover moves. Measured
+   separation from the base surface:
+
+                       muted/surface  sunken/surface   hover moves
+       light               1.10           1.04         TOWARD surface  ✗
+       dark                1.37           1.00         TOWARD surface  ✗
+       high-contrast       1.04           1.10         away            ✓
+       high-contrast-dark  1.04           1.18         away            ✓
+
+   Both normal schemes invert the hover — a `neutral-soft` chip slides toward
+   the page background when you point at it, and in `dark` it lands exactly on
+   it (1.00). `_high-contrast.css` is the only shipped scheme that gets this
+   right, and this file is the second. An earlier draft used `_dark.css`'s
+   ordering instead, on the reasoning that `bg-surface-muted` needs to stay
+   visible against a pure-black surface; that bought 1.43 muted/surface
+   separation and inherited the inverted hover, which is the worse trade. The
+   `-muted` surface being near-invisible on its own is the same property light
+   high contrast has (1.04) — what carries those affordances in both schemes is
+   `border-*`, at 14.27:1 here.
+
+   One place deviates from the pure mirror: `warning-solid` keeps the
+   yellow-signage convention `_high-contrast.css` uses — a light amber with
+   near-black amber text, not the generic `-solid` rule.
+
+   ── Measured ──
+   90 foreground/background pairings (fg × every surface, border and
+   border-strong × surface, `primary-500` × surface for the canonical focus
+   ring, and per role: soft-fg/soft, soft-fg-muted/soft, soft-fg/soft-hover,
+   solid-fg/solid, solid-fg/solid-hover, fg/surface, icon/surface,
+   border/surface, border-strong/soft) were computed from the Tailwind v4
+   oklch palette through sRGB to WCAG relative luminance.
+
+     - 0 of 90 fall below their WCAG AA floor (4.5:1 text, 3:1 non-text).
+     - The weakest pairing in the whole scheme is 7.96:1
+       (`primary-500` on `surface`, the focus ring, floor 3:1); every one of
+       the other 89 is higher. The scheme therefore clears AAA (7:1)
+       everywhere, matching what `_high-contrast.css` targets.
+     - 88 of 90 also beat the same pairing measured on `_dark.css`. The two
+       that do not are `fg on surface-sunken` and `neutral-soft-fg on
+       neutral-soft-hover`, both 17.75:1 here against 19.28:1 there — and both
+       are an artifact of the comparison, not a regression. `_dark.css` scores
+       higher on those only because its `surface-sunken` IS its `surface`
+       (separation 1.00, an invisible well); this scheme pays 1.5 points of an
+       already ~4x-AAA ratio to have a recessed surface that can actually be
+       seen. Do not "fix" them by collapsing `sunken` back onto `surface`.
+
+   `border-muted` is not measured: `_semantic.css` documents it as the purely
+   decorative divider that SC 1.4.11 exempts. It is still raised to `gray-500`,
+   mirroring what light high contrast does with the same token.
+
+   ── forced-colors ──
+   No dark counterpart to `_high-contrast.css`'s `@media (forced-colors:
+   active)` block is needed. That block remaps tokens onto system keywords
+   (`Canvas`, `CanvasText`, `GrayText`, `Highlight`) whose values the OS
+   supplies, so it is scheme-agnostic by construction — it just needs this
+   scheme's selector in its list, which it has.
+
+   ── Parity ──
+   The 195 declarations below are exactly the key set `_light.css`, `_dark.css`
+   and `_high-contrast.css` declare; `theme-token-parity.spec.ts` enforces it.
+   The seven scheme-invariant `@theme` tokens
+   (`--color-overlay-control{,-hover}`, `--shadow-table-sticky{,-cell-start,
+   -cell-end}`, `--text-2xs{,--line-height}`) are omitted here exactly as the
+   other three omit them. */
+
+[data-theme="high-contrast-dark"] {
+  /* ===== Surface ===== */
+  --color-surface: var(--color-black);
+  --color-surface-raised: var(--color-black);
+  --color-surface-overlay: var(--color-black);
+  --color-surface-sunken: var(--color-gray-900);
+  --color-surface-muted: var(--color-gray-950);
+
+  /* ===== Foreground ===== */
+  --color-fg: var(--color-white);
+  --color-fg-muted: var(--color-gray-200);
+  --color-fg-subtle: var(--color-gray-300);
+
+  /* ===== Border ===== */
+  --color-border: var(--color-gray-300);
+  --color-border-muted: var(--color-gray-500);
+  --color-border-strong: var(--color-white);
+
+  /* ===== Primary ===== */
+  --color-primary-50: var(--color-blue-900);
+  --color-primary-100: var(--color-blue-800);
+  --color-primary-200: var(--color-blue-700);
+  --color-primary-300: var(--color-blue-600);
+  --color-primary-400: var(--color-blue-500);
+  --color-primary-500: var(--color-blue-400);
+  --color-primary-600: var(--color-blue-300);
+  --color-primary-700: var(--color-blue-200);
+  --color-primary-800: var(--color-blue-100);
+  --color-primary-900: var(--color-blue-50);
+  --color-primary-950: var(--color-blue-50);
+
+  /* ===== Secondary ===== */
+  --color-secondary-50: var(--color-slate-900);
+  --color-secondary-100: var(--color-slate-800);
+  --color-secondary-200: var(--color-slate-700);
+  --color-secondary-300: var(--color-slate-600);
+  --color-secondary-400: var(--color-slate-500);
+  --color-secondary-500: var(--color-slate-400);
+  --color-secondary-600: var(--color-slate-300);
+  --color-secondary-700: var(--color-slate-200);
+  --color-secondary-800: var(--color-slate-100);
+  --color-secondary-900: var(--color-slate-50);
+  --color-secondary-950: var(--color-slate-50);
+
+  /* ===== Accent ===== */
+  --color-accent-50: var(--color-violet-900);
+  --color-accent-100: var(--color-violet-800);
+  --color-accent-200: var(--color-violet-700);
+  --color-accent-300: var(--color-violet-600);
+  --color-accent-400: var(--color-violet-500);
+  --color-accent-500: var(--color-violet-400);
+  --color-accent-600: var(--color-violet-300);
+  --color-accent-700: var(--color-violet-200);
+  --color-accent-800: var(--color-violet-100);
+  --color-accent-900: var(--color-violet-50);
+  --color-accent-950: var(--color-violet-50);
+
+  /* ===== Neutral ===== */
+  --color-neutral-50: var(--color-gray-900);
+  --color-neutral-100: var(--color-gray-800);
+  --color-neutral-200: var(--color-gray-700);
+  --color-neutral-300: var(--color-gray-600);
+  --color-neutral-400: var(--color-gray-500);
+  --color-neutral-500: var(--color-gray-400);
+  --color-neutral-600: var(--color-gray-300);
+  --color-neutral-700: var(--color-gray-200);
+  --color-neutral-800: var(--color-gray-100);
+  --color-neutral-900: var(--color-gray-50);
+  --color-neutral-950: var(--color-gray-50);
+
+  /* ===== Info ===== */
+  --color-info-50: var(--color-sky-900);
+  --color-info-100: var(--color-sky-800);
+  --color-info-200: var(--color-sky-700);
+  --color-info-300: var(--color-sky-600);
+  --color-info-400: var(--color-sky-500);
+  --color-info-500: var(--color-sky-400);
+  --color-info-600: var(--color-sky-300);
+  --color-info-700: var(--color-sky-200);
+  --color-info-800: var(--color-sky-100);
+  --color-info-900: var(--color-sky-50);
+  --color-info-950: var(--color-sky-50);
+
+  /* ===== Success ===== */
+  --color-success-50: var(--color-green-900);
+  --color-success-100: var(--color-green-800);
+  --color-success-200: var(--color-green-700);
+  --color-success-300: var(--color-green-600);
+  --color-success-400: var(--color-green-500);
+  --color-success-500: var(--color-green-400);
+  --color-success-600: var(--color-green-300);
+  --color-success-700: var(--color-green-200);
+  --color-success-800: var(--color-green-100);
+  --color-success-900: var(--color-green-50);
+  --color-success-950: var(--color-green-50);
+
+  /* ===== Warning ===== */
+  --color-warning-50: var(--color-amber-900);
+  --color-warning-100: var(--color-amber-800);
+  --color-warning-200: var(--color-amber-700);
+  --color-warning-300: var(--color-amber-600);
+  --color-warning-400: var(--color-amber-500);
+  --color-warning-500: var(--color-amber-400);
+  --color-warning-600: var(--color-amber-300);
+  --color-warning-700: var(--color-amber-200);
+  --color-warning-800: var(--color-amber-100);
+  --color-warning-900: var(--color-amber-50);
+  --color-warning-950: var(--color-amber-50);
+
+  /* ===== Error ===== */
+  --color-error-50: var(--color-red-900);
+  --color-error-100: var(--color-red-800);
+  --color-error-200: var(--color-red-700);
+  --color-error-300: var(--color-red-600);
+  --color-error-400: var(--color-red-500);
+  --color-error-500: var(--color-red-400);
+  --color-error-600: var(--color-red-300);
+  --color-error-700: var(--color-red-200);
+  --color-error-800: var(--color-red-100);
+  --color-error-900: var(--color-red-50);
+  --color-error-950: var(--color-red-50);
+
+  /* ===== Role slot tokens ===== */
+
+  /* Primary */
+  --color-primary-soft: var(--color-blue-950);
+  --color-primary-soft-hover: var(--color-blue-900);
+  --color-primary-soft-fg: var(--color-blue-50);
+  --color-primary-soft-fg-muted: var(--color-blue-100);
+  --color-primary-solid: var(--color-blue-200);
+  --color-primary-solid-hover: var(--color-blue-100);
+  --color-primary-solid-fg: var(--color-black);
+  --color-primary-border: var(--color-blue-300);
+  --color-primary-border-strong: var(--color-blue-100);
+  --color-primary-fg: var(--color-blue-100);
+  --color-primary-icon: var(--color-blue-200);
+
+  /* Secondary */
+  --color-secondary-soft: var(--color-slate-950);
+  --color-secondary-soft-hover: var(--color-slate-900);
+  --color-secondary-soft-fg: var(--color-slate-50);
+  --color-secondary-soft-fg-muted: var(--color-slate-100);
+  --color-secondary-solid: var(--color-slate-200);
+  --color-secondary-solid-hover: var(--color-slate-100);
+  --color-secondary-solid-fg: var(--color-black);
+  --color-secondary-border: var(--color-slate-300);
+  --color-secondary-border-strong: var(--color-slate-100);
+  --color-secondary-fg: var(--color-slate-100);
+  --color-secondary-icon: var(--color-slate-200);
+
+  /* Accent */
+  --color-accent-soft: var(--color-violet-950);
+  --color-accent-soft-hover: var(--color-violet-900);
+  --color-accent-soft-fg: var(--color-violet-50);
+  --color-accent-soft-fg-muted: var(--color-violet-100);
+  --color-accent-solid: var(--color-violet-200);
+  --color-accent-solid-hover: var(--color-violet-100);
+  --color-accent-solid-fg: var(--color-black);
+  --color-accent-border: var(--color-violet-300);
+  --color-accent-border-strong: var(--color-violet-100);
+  --color-accent-fg: var(--color-violet-100);
+  --color-accent-icon: var(--color-violet-200);
+
+  /* Neutral */
+  --color-neutral-soft: var(--color-surface-muted);
+  --color-neutral-soft-hover: var(--color-surface-sunken);
+  --color-neutral-soft-fg: var(--color-white);
+  --color-neutral-soft-fg-muted: var(--color-gray-200);
+  --color-neutral-solid: var(--color-white);
+  --color-neutral-solid-hover: var(--color-gray-200);
+  --color-neutral-solid-fg: var(--color-black);
+  --color-neutral-border: var(--color-gray-300);
+  --color-neutral-border-strong: var(--color-white);
+  --color-neutral-fg: var(--color-white);
+  --color-neutral-icon: var(--color-gray-200);
+
+  /* Info */
+  --color-info-soft: var(--color-sky-950);
+  --color-info-soft-hover: var(--color-sky-900);
+  --color-info-soft-fg: var(--color-sky-50);
+  --color-info-soft-fg-muted: var(--color-sky-100);
+  --color-info-solid: var(--color-sky-200);
+  --color-info-solid-hover: var(--color-sky-100);
+  --color-info-solid-fg: var(--color-black);
+  --color-info-border: var(--color-sky-300);
+  --color-info-border-strong: var(--color-sky-100);
+  --color-info-fg: var(--color-sky-100);
+  --color-info-icon: var(--color-sky-200);
+
+  /* Success */
+  --color-success-soft: var(--color-green-950);
+  --color-success-soft-hover: var(--color-green-900);
+  --color-success-soft-fg: var(--color-green-50);
+  --color-success-soft-fg-muted: var(--color-green-100);
+  --color-success-solid: var(--color-green-200);
+  --color-success-solid-hover: var(--color-green-100);
+  --color-success-solid-fg: var(--color-black);
+  --color-success-border: var(--color-green-300);
+  --color-success-border-strong: var(--color-green-100);
+  --color-success-fg: var(--color-green-100);
+  --color-success-icon: var(--color-green-200);
+
+  /* Warning */
+  --color-warning-soft: var(--color-amber-950);
+  --color-warning-soft-hover: var(--color-amber-900);
+  --color-warning-soft-fg: var(--color-amber-50);
+  --color-warning-soft-fg-muted: var(--color-amber-100);
+  --color-warning-solid: var(--color-amber-200);
+  --color-warning-solid-hover: var(--color-amber-100);
+  --color-warning-solid-fg: var(--color-amber-950);
+  --color-warning-border: var(--color-amber-300);
+  --color-warning-border-strong: var(--color-amber-100);
+  --color-warning-fg: var(--color-amber-100);
+  --color-warning-icon: var(--color-amber-200);
+
+  /* Error */
+  --color-error-soft: var(--color-red-950);
+  --color-error-soft-hover: var(--color-red-900);
+  --color-error-soft-fg: var(--color-red-50);
+  --color-error-soft-fg-muted: var(--color-red-100);
+  --color-error-solid: var(--color-red-200);
+  --color-error-solid-hover: var(--color-red-100);
+  --color-error-solid-fg: var(--color-black);
+  --color-error-border: var(--color-red-300);
+  --color-error-border-strong: var(--color-red-100);
+  --color-error-fg: var(--color-red-100);
+  --color-error-icon: var(--color-red-200);
+
+  /* ===== Legacy on-role aliases ===== */
+  --color-on-primary: var(--color-primary-solid-fg);
+  --color-on-secondary: var(--color-secondary-solid-fg);
+  --color-on-accent: var(--color-accent-solid-fg);
+  --color-on-neutral: var(--color-neutral-solid-fg);
+  --color-on-info: var(--color-info-solid-fg);
+  --color-on-success: var(--color-success-solid-fg);
+  --color-on-warning: var(--color-warning-solid-fg);
+  --color-on-error: var(--color-error-solid-fg);
+}

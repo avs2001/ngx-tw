@@ -17,21 +17,16 @@ import {
 } from '@angular/core';
 import {
   type ControlValueAccessor,
-  FormGroupDirective,
   NgControl,
-  NgForm,
   Validators,
 } from '@angular/forms';
 import { FocusMonitor } from '@angular/cdk/a11y';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { merge } from 'rxjs';
 import { tv } from 'tailwind-variants';
 import {
   type ErrorStateMatcher,
-  TW_ERROR_STATE_MATCHER,
   type TwColor,
-  type TwFormSubmitted,
   type TwSize,
+  wireErrorState,
 } from '@cdevhub/ngx-tw/core';
 
 /** Position of the label relative to the switch control. */
@@ -219,20 +214,23 @@ export class SwitchComponent implements ControlValueAccessor, OnInit {
   readonly requiredInput = input(false, { alias: 'required' });
 
   /**
+   * @internal Shared `errorState` / `required` / `errors` derivation — see
+   * `wireErrorState`. Declared here, above `required`, because class field
+   * initializers run in declaration order.
+   */
+  private readonly errorWiring = wireErrorState({
+    ngControl: () => this.ngControl,
+    matcher: () => this.errorStateMatcher(),
+    required: () => this.requiredInput(),
+    // A switch bound with `Validators.requiredTrue` is required too.
+    requiredValidators: [Validators.required, Validators.requiredTrue],
+  });
+
+  /**
    * @internal Resolved required state: the `required` input OR'd with
    * `Validators.required` / `Validators.requiredTrue` on a bound `NgControl`.
-   * The OR (rather than a validator-only read) is what keeps signal forms
-   * working — `cvaControlCreate` writes the `required` *input* directly from the
-   * field state and never consults validators, so the input arm carries that
-   * branch while the validator arm carries reactive/template-driven forms.
    */
-  readonly required: Signal<boolean> = computed(() => {
-    this._ngControlRev();
-    if (this.requiredInput()) return true;
-    const ctrl = this.ngControl?.control;
-    if (!ctrl) return false;
-    return ctrl.hasValidator(Validators.required) || ctrl.hasValidator(Validators.requiredTrue);
-  });
+  readonly required: Signal<boolean> = this.errorWiring.required;
 
   /** Optional inline label rendered next to the switch. Use default content projection for rich label content instead. */
   readonly label = input<string | undefined>(undefined);
@@ -284,15 +282,10 @@ export class SwitchComponent implements ControlValueAccessor, OnInit {
   private readonly elementRef = inject(ElementRef<HTMLElement>);
   private readonly destroyRef = inject(DestroyRef);
   private readonly ngControl = inject(NgControl, { optional: true, self: true });
-  private readonly parentForm = inject(NgForm, { optional: true });
-  private readonly parentFormGroup = inject(FormGroupDirective, { optional: true });
-  private readonly defaultMatcher = inject(TW_ERROR_STATE_MATCHER);
 
   private onChange: (value: boolean) => void = () => {};
   private onTouched: () => void = () => {};
   private readonly cvaDisabled = signal(false);
-  private readonly _ngControlRev = signal(0);
-  private readonly _formSubmitRev = signal(0);
 
   private readonly uid = nextId++;
   readonly hostId = `tw-switch-${this.uid}`;
@@ -320,15 +313,7 @@ export class SwitchComponent implements ControlValueAccessor, OnInit {
   readonly isDisabled = computed(() => this.disabled() || this.cvaDisabled());
 
   /** Whether the switch is in an error state per the configured `ErrorStateMatcher`. Reads the bound `NgControl.invalid` through the matcher. */
-  readonly errorState: Signal<boolean> = computed(() => {
-    this._ngControlRev();
-    this._formSubmitRev();
-    const matcher = this.errorStateMatcher() ?? this.defaultMatcher;
-    const form: TwFormSubmitted | null =
-      (this.parentFormGroup as TwFormSubmitted | null) ??
-      (this.parentForm as TwFormSubmitted | null);
-    return matcher.isErrorState(this.ngControl?.control ?? null, form);
-  });
+  readonly errorState: Signal<boolean> = this.errorWiring.errorState;
 
   readonly internalChecked = linkedSignal(() => this.checked());
 
@@ -413,7 +398,7 @@ export class SwitchComponent implements ControlValueAccessor, OnInit {
   /** @internal Called on host blur to notify forms the control has been touched and recompute errorState. */
   onBlur(): void {
     this.onTouched();
-    this._ngControlRev.update((n) => n + 1);
+    this.errorWiring.bump();
   }
 
   // ── ControlValueAccessor ──────────────────────────────────
@@ -445,26 +430,9 @@ export class SwitchComponent implements ControlValueAccessor, OnInit {
     });
 
     // NgControl's `control` is set by the parent FormControl* directive before
-    // children's `ngOnInit`. Subscribe here so errorState reacts to status/value
+    // children's `ngOnInit`. Connect here so errorState reacts to status/value
     // changes on the bound control.
-    const ctrl = this.ngControl?.control;
-    if (ctrl) {
-      const streams = [ctrl.statusChanges, ctrl.valueChanges].filter(
-        (s): s is NonNullable<typeof s> => !!s,
-      );
-      if (streams.length) {
-        merge(...streams)
-          .pipe(takeUntilDestroyed(this.destroyRef))
-          .subscribe(() => this._ngControlRev.update((n) => n + 1));
-      }
-    }
-
-    const submit = this.parentFormGroup?.ngSubmit ?? this.parentForm?.ngSubmit;
-    if (submit) {
-      submit
-        .pipe(takeUntilDestroyed(this.destroyRef))
-        .subscribe(() => this._formSubmitRev.update((n) => n + 1));
-    }
+    this.errorWiring.connect();
   }
 
   private hasAccessibleNameHint(): boolean {

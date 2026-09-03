@@ -13,6 +13,11 @@ export type {
   ErrorStateMatcher,
   TwFormSubmitted,
 } from './error-state-matcher';
+export { wireErrorState } from './error-state-wiring';
+export type {
+  ErrorStateWiring,
+  ErrorStateWiringOptions,
+} from './error-state-wiring';
 export { TW_SORT_HANDLE } from './sort-handle';
 export type { TwSortHandle } from './sort-handle';
 export { buildSelectLikePositions } from './overlay/positions';

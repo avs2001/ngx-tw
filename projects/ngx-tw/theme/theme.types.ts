@@ -1,20 +1,37 @@
 /**
- * The user-selectable theme. `'system'` defers to the OS: `prefers-color-scheme:
- * dark` selects `'dark'`, and `prefers-contrast: more` selects
- * `'high-contrast'` when dark is *not* also requested — the shipped
- * high-contrast scheme is light-based, so contrast never overrides a dark
- * preference.
+ * The user-selectable theme. `'system'` defers to the OS, resolving
+ * `prefers-color-scheme` and `prefers-contrast` as two independent axes: dark
+ * plus increased contrast lands on `'high-contrast-dark'`, light plus increased
+ * contrast on `'high-contrast'`.
  */
-export type TwTheme = 'light' | 'dark' | 'high-contrast' | 'system';
+export type TwTheme = 'light' | 'dark' | 'high-contrast' | 'high-contrast-dark' | 'system';
 
-/** The theme actually applied to the DOM after resolving `'system'` against the OS preference. */
-export type TwResolvedTheme = 'light' | 'dark' | 'high-contrast';
+/**
+ * The theme actually applied to the DOM after resolving `'system'` against the
+ * OS preference.
+ *
+ * The two axes are appearance (light / dark) and contrast (normal / increased),
+ * so the four values are their product: `'high-contrast'` is the light-based
+ * increased-contrast scheme and `'high-contrast-dark'` the dark-based one.
+ */
+export type TwResolvedTheme = 'light' | 'dark' | 'high-contrast' | 'high-contrast-dark';
 
 /** Ordered list of every {@link TwTheme} value, used by `cycleTheme()` and for UI iteration. */
-export const TW_THEMES = ['light', 'dark', 'high-contrast', 'system'] as const satisfies readonly TwTheme[];
+export const TW_THEMES = [
+  'light',
+  'dark',
+  'high-contrast',
+  'high-contrast-dark',
+  'system',
+] as const satisfies readonly TwTheme[];
 
 /** Ordered list of every {@link TwResolvedTheme} value (i.e. {@link TW_THEMES} minus `'system'`). */
-export const TW_RESOLVED_THEMES = ['light', 'dark', 'high-contrast'] as const satisfies readonly TwResolvedTheme[];
+export const TW_RESOLVED_THEMES = [
+  'light',
+  'dark',
+  'high-contrast',
+  'high-contrast-dark',
+] as const satisfies readonly TwResolvedTheme[];
 
 /**
  * Runtime configuration for {@link provideTheme}; controls storage, attribute
@@ -42,7 +59,14 @@ export interface TwThemeConfig {
   target?: 'documentElement' | 'body';
 }
 
-/** Composite snapshot of `ThemeService` state — selected, resolved, system, and boolean flags. */
+/**
+ * Composite snapshot of `ThemeService` state — selected, resolved, system, and
+ * boolean flags.
+ *
+ * The three flags are **not** mutually exclusive: `'high-contrast-dark'` sets
+ * both {@link isDark} and {@link isHighContrast}, because it is dark *and*
+ * high contrast. Branch on {@link resolvedTheme} when you need one case.
+ */
 export interface TwThemeState {
   /** The user-selected theme — may be `'system'`. */
   readonly theme: TwTheme;
@@ -50,11 +74,11 @@ export interface TwThemeState {
   readonly resolvedTheme: TwResolvedTheme;
   /** The OS appearance preference detected via `prefers-color-scheme` and `prefers-contrast`. */
   readonly systemTheme: TwResolvedTheme;
-  /** True when {@link resolvedTheme} is `'dark'`. */
+  /** True when {@link resolvedTheme} is a dark scheme — `'dark'` or `'high-contrast-dark'`. */
   readonly isDark: boolean;
-  /** True when {@link resolvedTheme} is `'light'`. */
+  /** True when {@link resolvedTheme} is exactly `'light'`; the light-based `'high-contrast'` does not set it. */
   readonly isLight: boolean;
-  /** True when {@link resolvedTheme} is `'high-contrast'`. */
+  /** True when {@link resolvedTheme} is an increased-contrast scheme — `'high-contrast'` or `'high-contrast-dark'`. */
   readonly isHighContrast: boolean;
 }
 

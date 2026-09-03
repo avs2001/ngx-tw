@@ -1,11 +1,10 @@
-export {
-  CarouselComponent,
-  CarouselSlideComponent,
-  CarouselIndicatorsComponent,
-  CarouselPrevDirective,
-  CarouselNextDirective,
-  DEFAULT_CAROUSEL_LABELS,
-} from './carousel';
+export { CarouselComponent, CarouselSlideComponent } from './carousel';
+
+export { CarouselIndicatorsComponent } from './carousel-indicators';
+
+export { CarouselNextDirective, CarouselPrevDirective } from './carousel-nav';
+
+export { DEFAULT_CAROUSEL_LABELS } from './carousel-labels';
 
 export type {
   TwCarouselIndicatorVariant,
@@ -14,4 +13,4 @@ export type {
   TwCarouselSlideChangeEvent,
   TwCarouselAutoplayReason,
   TwCarouselLabels,
-} from './carousel';
+} from './carousel.types';

@@ -25,13 +25,7 @@ import {
   ViewContainerRef,
 } from '@angular/core';
 import { NgTemplateOutlet } from '@angular/common';
-import {
-  type ControlValueAccessor,
-  FormGroupDirective,
-  NgControl,
-  NgForm,
-  Validators,
-} from '@angular/forms';
+import { type ControlValueAccessor, NgControl } from '@angular/forms';
 import {
   type FlexibleConnectedPositionStrategy,
   Overlay,
@@ -41,17 +35,16 @@ import { ComponentPortal } from '@angular/cdk/portal';
 import { Platform } from '@angular/cdk/platform';
 import { FocusMonitor, LiveAnnouncer } from '@angular/cdk/a11y';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { merge, Subscription } from 'rxjs';
+import { Subscription } from 'rxjs';
 import { tv } from 'tailwind-variants';
 import {
   buildSelectLikePositions,
   consumeOverlayEscape,
   type ErrorStateMatcher,
   resolveSelectScrollStrategy,
-  TW_ERROR_STATE_MATCHER,
   type TwColor,
-  type TwFormSubmitted,
   type TwSize,
+  wireErrorState,
 } from '@cdevhub/ngx-tw/core';
 import {
   type FormFieldControl,
@@ -668,9 +661,6 @@ export class SelectComponent<T = unknown>
   private readonly platform = inject(Platform);
   private readonly formField = inject(TW_FORM_FIELD, { optional: true });
   private readonly ngControl = inject(NgControl, { optional: true, self: true });
-  private readonly parentForm = inject(NgForm, { optional: true });
-  private readonly parentFormGroup = inject(FormGroupDirective, { optional: true });
-  private readonly defaultMatcher = inject(TW_ERROR_STATE_MATCHER);
 
   // ── Identity ──
 
@@ -695,8 +685,13 @@ export class SelectComponent<T = unknown>
   /** @internal */
   readonly focusedSignal = signal(false);
   private readonly cvaDisabled = signal(false);
-  private readonly _ngControlRev = signal(0);
-  private readonly _formSubmitRev = signal(0);
+
+  /** @internal Shared `errorState` / `required` / `errors` derivation — see `wireErrorState`. */
+  private readonly errorWiring = wireErrorState({
+    ngControl: () => this.ngControl,
+    matcher: () => this.errorStateMatcher(),
+    required: () => this.requiredInput(),
+  });
   private readonly describedByIdsSignal = signal<readonly string[]>([]);
   private readonly labelledByIdsSignal = signal<readonly string[]>([]);
 
@@ -943,26 +938,11 @@ export class SelectComponent<T = unknown>
    * directly from the field state and never consults validators. The OR keeps
    * both branches true at once.
    */
-  readonly required: Signal<boolean> = computed(() => {
-    this._ngControlRev();
-    if (this.requiredInput()) return true;
-    return !!this.ngControl?.control?.hasValidator(Validators.required);
-  });
-  /** @internal Active validation errors map from the bound `NgControl` (or `null` when it reports none / is unbound). Drives `[twError match="…"]` inside a wrapping `tw-form-field`; without it the form-field's key set is permanently empty and every `match`ed error stays hidden. Recomputes on every `_ngControlRev` tick so it reacts to validator transitions that do not flip `VALID`/`INVALID`. */
-  readonly errors: Signal<Record<string, unknown> | null> = computed(() => {
-    this._ngControlRev();
-    return (this.ngControl?.control?.errors as Record<string, unknown> | null) ?? null;
-  });
+  readonly required: Signal<boolean> = this.errorWiring.required;
+  /** @internal Active validation errors map from the bound `NgControl`. Drives `[twError match="…"]` inside a wrapping `tw-form-field`; without it the form-field's key set is permanently empty and every `match`ed error stays hidden. */
+  readonly errors: Signal<Record<string, unknown> | null> = this.errorWiring.errors;
   /** @internal Error-state per the configured `ErrorStateMatcher`. Reads the bound `NgControl.invalid` through the matcher. */
-  readonly errorState: Signal<boolean> = computed(() => {
-    this._ngControlRev();
-    this._formSubmitRev();
-    const matcher = this.errorStateMatcher() ?? this.defaultMatcher;
-    const form: TwFormSubmitted | null =
-      (this.parentFormGroup as TwFormSubmitted | null) ??
-      (this.parentForm as TwFormSubmitted | null);
-    return matcher.isErrorState(this.ngControl?.control ?? null, form);
-  });
+  readonly errorState: Signal<boolean> = this.errorWiring.errorState;
   /** @internal */
   readonly controlType = 'select';
   /** @internal */
@@ -1097,7 +1077,7 @@ export class SelectComponent<T = unknown>
           if (wasFocused) {
             // Blur often flips `touched` on the bound `NgControl`; bump the
             // revision so `errorState` recomputes.
-            this._ngControlRev.update((n) => n + 1);
+            this.errorWiring.bump();
           }
         }
       });
@@ -1767,23 +1747,6 @@ export class SelectComponent<T = unknown>
     // NgControl's `control` is set by the parent FormControl* directive before
     // children's `ngOnInit`. Subscribe here so errorState reacts to status/value
     // changes on the bound control.
-    const ctrl = this.ngControl?.control;
-    if (ctrl) {
-      const streams = [ctrl.statusChanges, ctrl.valueChanges].filter(
-        (s): s is NonNullable<typeof s> => !!s,
-      );
-      if (streams.length) {
-        merge(...streams)
-          .pipe(takeUntilDestroyed(this.destroyRef))
-          .subscribe(() => this._ngControlRev.update((n) => n + 1));
-      }
-    }
-
-    const submit = this.parentFormGroup?.ngSubmit ?? this.parentForm?.ngSubmit;
-    if (submit) {
-      submit
-        .pipe(takeUntilDestroyed(this.destroyRef))
-        .subscribe(() => this._formSubmitRev.update((n) => n + 1));
-    }
+    this.errorWiring.connect();
   }
 }

@@ -11,7 +11,7 @@ import { CodeBlockComponent } from '@cdevhub/ngx-tw/code-block';
       <h2 class="text-sm font-semibold mb-3">Description</h2>
       <p class="text-sm text-fg-muted leading-relaxed max-w-2xl">
         The theme entry point ships the library's default semantic-token stylesheet plus the
-        runtime API that switches between its three schemes.
+        runtime API that switches between its four schemes.
         <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">ThemeService</code>
         owns the selected theme, resolves
         <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">'system'</code>
@@ -84,17 +84,23 @@ import { CodeBlockComponent } from '@cdevhub/ngx-tw/code-block';
     <section>
       <h2 class="text-sm font-semibold mb-3">Key Features</h2>
       <ul class="list-disc list-inside text-sm text-fg-muted space-y-1.5">
-        <li>4 selectable themes:
+        <li>5 selectable themes:
           <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">light</code>,
           <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">dark</code>,
           <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">high-contrast</code>,
+          <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">high-contrast-dark</code>,
           <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">system</code>
+          &mdash; appearance and contrast are independent axes, so the two high-contrast
+          schemes are the light-based and dark-based halves of one setting
         </li>
         <li>Automatic OS appearance detection via
           <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">prefers-color-scheme</code>
           and
           <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">prefers-contrast</code>,
-          re-resolved live when either setting changes
+          composed rather than ranked &mdash; an OS asking for dark and increased contrast
+          together resolves to
+          <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">high-contrast-dark</code>,
+          and either setting re-resolves live when it changes
         </li>
         <li>An explicit selection is persisted to
           <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">localStorage</code>
@@ -108,7 +114,9 @@ import { CodeBlockComponent } from '@cdevhub/ngx-tw/code-block';
           <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">isDark</code> /
           <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">isLight</code> /
           <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">isHighContrast</code>
-          helpers and a composite
+          helpers &mdash; two axes, not three cases, so the first and last are both true under
+          <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">high-contrast-dark</code>
+          &mdash; and a composite
           <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">state()</code>
           snapshot
         </li>
@@ -119,7 +127,7 @@ import { CodeBlockComponent } from '@cdevhub/ngx-tw/code-block';
         <li><code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">[twTheme]</code>
           scopes a fixed theme to one subtree, independent of the document theme
         </li>
-        <li>All three schemes define the same 195 colour tokens, so no component has a hole in
+        <li>All four schemes define the same 195 colour tokens, so no component has a hole in
           dark or high contrast
         </li>
       </ul>
@@ -148,6 +156,6 @@ export const appConfig: ApplicationConfig = {
   TW_RESOLVED_THEMES,
 } from '@cdevhub/ngx-tw/theme';`;
 
-  protected readonly stylesheetSnippet = `/* styles.css — pulls in the semantic tokens for all three schemes */
+  protected readonly stylesheetSnippet = `/* styles.css — pulls in the semantic tokens for all four schemes */
 @import '@cdevhub/ngx-tw/theme/index.css';`;
 }

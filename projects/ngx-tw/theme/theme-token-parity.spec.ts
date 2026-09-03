@@ -7,21 +7,24 @@ import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
+import { TW_RESOLVED_THEMES } from './theme.types';
 
 /**
- * Drift guard for the theme's four hand-duplicated token blocks.
+ * Drift guard for the theme's five hand-duplicated token blocks.
  *
  * `_semantic.css` defines the canonical token set inside Tailwind's `@theme`,
  * which compiles to `:root, :host`. A `<div data-theme="…">` matches neither,
  * so every scheme additionally ships an element-agnostic `[data-theme=…]`
  * block, and dark ships a second copy under `@media (prefers-color-scheme:
  * dark)` because CSS cannot apply one rule body through both a selector and a
- * media query. That leaves four blocks that must be edited in lock-step:
+ * media query. Four schemes plus that duplicate leaves five blocks that must
+ * be edited in lock-step:
  *
- *   1. `_light.css`          → `[data-theme="light"]`
- *   2. `_dark.css`           → `[data-theme="dark"]`
- *   3. `_dark.css`           → `@media (prefers-color-scheme: dark)`
- *   4. `_high-contrast.css`  → `[data-theme="high-contrast"]`
+ *   1. `_light.css`              → `[data-theme="light"]`
+ *   2. `_dark.css`               → `[data-theme="dark"]`
+ *   3. `_dark.css`               → `@media (prefers-color-scheme: dark)`
+ *   4. `_high-contrast.css`      → `[data-theme="high-contrast"]`
+ *   5. `_high-contrast-dark.css` → `[data-theme="high-contrast-dark"]`
  *
  * Three of those files say in prose "keep these in lock-step" and nothing
  * enforced it. A token added to one block and forgotten in another does not
@@ -79,6 +82,7 @@ const HIGH_CONTRAST = block(
   '[data-theme="high-contrast"]',
   '@media (forced-colors: active)',
 );
+const HIGH_CONTRAST_DARK = block('_high-contrast-dark.css', '[data-theme="high-contrast-dark"]');
 const FORCED_COLORS = block('_high-contrast.css', '@media (forced-colors: active)');
 
 const BLOCKS = [
@@ -86,6 +90,7 @@ const BLOCKS = [
   ['_dark.css [data-theme="dark"]', DARK_EXPLICIT],
   ['_dark.css @media (prefers-color-scheme: dark)', DARK_MEDIA],
   ['_high-contrast.css [data-theme="high-contrast"]', HIGH_CONTRAST],
+  ['_high-contrast-dark.css [data-theme="high-contrast-dark"]', HIGH_CONTRAST_DARK],
 ] as const;
 
 const keysOf = (b: readonly (readonly [string, string])[]): string[] => b.map(([k]) => k);
@@ -107,7 +112,7 @@ describe('theme token parity', () => {
     }
   });
 
-  it('declares the same token set in all four scheme blocks', () => {
+  it('declares the same token set in every scheme block', () => {
     const expected = [...new Set(keysOf(LIGHT))].sort();
     for (const [name, b] of BLOCKS) {
       const actual = [...new Set(keysOf(b))].sort();
@@ -121,10 +126,49 @@ describe('theme token parity', () => {
   });
 
   it("keeps _dark.css's two blocks byte-identical, values included", () => {
-    // These two are literal copies of one another — unlike the light/dark/
-    // high-contrast trio, whose *values* are supposed to differ. `_dark.css`
-    // says "Keep the two blocks in lock-step"; this is that sentence, enforced.
+    // These two are literal copies of one another — unlike the four scheme
+    // blocks, whose *values* are supposed to differ. `_dark.css` says "Keep
+    // the two blocks in lock-step"; this is that sentence, enforced.
     expect(DARK_MEDIA).toEqual(DARK_EXPLICIT);
+  });
+
+  it("excludes every explicitly-tagged scheme from _dark.css's media branch", () => {
+    // `:root:not(…)` in that branch is specificity 0,4,0 while each scheme's
+    // own block is a bare `[data-theme=…]` at 0,1,0. So on a dark-preferring
+    // OS the media branch outranks every other scheme regardless of import
+    // order, and a scheme missing from the `:not()` list silently renders as
+    // plain dark on exactly the machines it exists for. Source order cannot
+    // fix a specificity loss, which is why this is checked and not just
+    // written down.
+    const css = stripComments(readFileSync(join(HERE, '_dark.css'), 'utf8'));
+    const start = css.indexOf('@media (prefers-color-scheme: dark)');
+    const selector = css.slice(start, css.indexOf('{', css.indexOf('{', start) + 1));
+    const excluded = [...selector.matchAll(/:not\(\s*\[data-theme="([a-z-]+)"\]\s*\)/g)].map(
+      (m) => m[1],
+    );
+    const missing = TW_RESOLVED_THEMES.filter((t) => t !== 'dark' && !excluded.includes(t));
+    expect(
+      missing,
+      "_dark.css's prefers-color-scheme branch does not opt these schemes out, so they lose to it",
+    ).toEqual([]);
+  });
+
+  it('lists every resolved scheme in the forced-colors remap', () => {
+    // Same specificity story from the other side: the remap's selector list
+    // names each scheme at 0,1,0, the identical specificity as that scheme's
+    // own block, so the tie is broken by source order alone (hence
+    // `_high-contrast.css` importing last). A scheme absent from this list
+    // keeps its author colors under Windows High Contrast while the others
+    // yield to the system palette.
+    const css = stripComments(readFileSync(join(HERE, '_high-contrast.css'), 'utf8'));
+    const start = css.indexOf('@media (forced-colors: active)');
+    const selector = css.slice(start, css.indexOf('{', css.indexOf('{', start) + 1));
+    const listed = [...selector.matchAll(/\[data-theme="([a-z-]+)"\]/g)].map((m) => m[1]);
+    const missing = TW_RESOLVED_THEMES.filter((t) => !listed.includes(t));
+    expect(
+      missing,
+      '@media (forced-colors: active) omits these schemes, so they keep author colors under Windows HCM',
+    ).toEqual([]);
   });
 
   it('remaps only tokens the schemes actually declare in the forced-colors block', () => {

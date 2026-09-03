@@ -27,23 +27,15 @@ import {
   viewChild,
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import {
-  type ControlValueAccessor,
-  FormGroupDirective,
-  NgControl,
-  NgForm,
-  Validators,
-} from '@angular/forms';
+import { type ControlValueAccessor, NgControl } from '@angular/forms';
 import { FocusMonitor } from '@angular/cdk/a11y';
 import { Directionality } from '@angular/cdk/bidi';
-import { merge } from 'rxjs';
 import { tv } from 'tailwind-variants';
 import {
   type ErrorStateMatcher,
-  TW_ERROR_STATE_MATCHER,
   type TwColor,
   type TwSize,
-  type TwFormSubmitted,
+  wireErrorState,
 } from '@cdevhub/ngx-tw/core';
 
 /** Visual style of the slider fill. */
@@ -452,18 +444,24 @@ export class SliderComponent implements ControlValueAccessor, OnInit {
   readonly requiredInput = input(false, { alias: 'required' });
 
   /**
-   * @internal Resolved required state: the `required` input OR'd with
-   * `Validators.required` on a bound `NgControl`. The OR (rather than a
-   * validator-only read) is what keeps signal forms working — `cvaControlCreate`
-   * writes the `required` *input* directly from the field state and never
-   * consults validators, so the input arm carries that branch while the
-   * validator arm carries reactive/template-driven forms.
+   * @internal Shared `errorState` / `required` / `errors` derivation — see
+   * `wireErrorState`. Declared here, above `required`, because class field
+   * initializers run in declaration order.
    */
-  readonly required: Signal<boolean> = computed(() => {
-    this._ngControlRev();
-    if (this.requiredInput()) return true;
-    return !!this.ngControl?.control?.hasValidator(Validators.required);
+  private readonly errorWiring = wireErrorState({
+    ngControl: () => this.ngControl,
+    matcher: () => this.errorStateMatcher(),
+    required: () => this.requiredInput(),
+    // Read focus so blur-driven `touched` transitions repaint the error
+    // border even when the underlying control's status/value didn't change.
+    track: [() => this.focusedThumb()],
   });
+
+  /**
+   * @internal Resolved required state: the `required` input OR'd with
+   * `Validators.required` on a bound `NgControl`.
+   */
+  readonly required: Signal<boolean> = this.errorWiring.required;
 
   /** When true, the slider selects a `[start, end]` range and renders two thumbs. Defaults to `false`. */
   readonly range = input(false);
@@ -550,26 +548,10 @@ export class SliderComponent implements ControlValueAccessor, OnInit {
   private readonly destroyRef = inject(DestroyRef);
   private readonly directionality = inject(Directionality, { optional: true });
   private readonly ngControl = inject(NgControl, { optional: true, self: true });
-  private readonly parentForm = inject(NgForm, { optional: true });
-  private readonly parentFormGroup = inject(FormGroupDirective, { optional: true });
-  private readonly defaultMatcher = inject(TW_ERROR_STATE_MATCHER);
 
-  private readonly _ngControlRev = signal(0);
-  private readonly _formSubmitRev = signal(0);
 
   /** Whether the form control is in an error state per the configured `ErrorStateMatcher`. */
-  readonly errorState: Signal<boolean> = computed(() => {
-    this._ngControlRev();
-    this._formSubmitRev();
-    // Read focus so blur-driven `touched` transitions repaint the error
-    // border even when the underlying control's status/value didn't change.
-    this.focusedThumb();
-    const matcher = this.errorStateMatcher() ?? this.defaultMatcher;
-    const form: TwFormSubmitted | null =
-      (this.parentFormGroup as TwFormSubmitted | null) ??
-      (this.parentForm as TwFormSubmitted | null);
-    return matcher.isErrorState(this.ngControl?.control ?? null, form);
-  });
+  readonly errorState: Signal<boolean> = this.errorWiring.errorState;
 
   private readonly region = viewChild.required<ElementRef<HTMLElement>>('region');
   private readonly startThumb = viewChild<ElementRef<HTMLButtonElement>>('startThumb');
@@ -1151,24 +1133,7 @@ export class SliderComponent implements ControlValueAccessor, OnInit {
     // changes or the parent form is submitted. `ngOnInit` is the natural
     // mount point — by here, the parent `FormControl*` directive's
     // `ngOnChanges` has already populated `ngControl.control`.
-    const ctrl = this.ngControl?.control;
-    if (ctrl) {
-      const streams = [ctrl.statusChanges, ctrl.valueChanges].filter(
-        (s): s is NonNullable<typeof s> => !!s,
-      );
-      if (streams.length) {
-        merge(...streams)
-          .pipe(takeUntilDestroyed(this.destroyRef))
-          .subscribe(() => this._ngControlRev.update((v) => v + 1));
-      }
-    }
-
-    const submit = this.parentFormGroup?.ngSubmit ?? this.parentForm?.ngSubmit;
-    if (submit) {
-      submit
-        .pipe(takeUntilDestroyed(this.destroyRef))
-        .subscribe(() => this._formSubmitRev.update((v) => v + 1));
-    }
+    this.errorWiring.connect();
 
     this.destroyRef.onDestroy(() => {
       this.focusMonitor.stopMonitoring(this.elementRef);

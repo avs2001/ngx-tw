@@ -18,24 +18,17 @@ import {
   viewChild,
   viewChildren,
 } from '@angular/core';
-import {
-  type ControlValueAccessor,
-  FormGroupDirective,
-  NgControl,
-  NgForm,
-  Validators,
-} from '@angular/forms';
+import { type ControlValueAccessor, NgControl } from '@angular/forms';
 import { FocusMonitor, LiveAnnouncer } from '@angular/cdk/a11y';
 import { Directionality } from '@angular/cdk/bidi';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { isObservable, merge } from 'rxjs';
+import { isObservable } from 'rxjs';
 import { tv } from 'tailwind-variants';
 import {
   type ErrorStateMatcher,
-  TW_ERROR_STATE_MATCHER,
   type TwColor,
-  type TwFormSubmitted,
   type TwSize,
+  wireErrorState,
 } from '@cdevhub/ngx-tw/core';
 import {
   FormFieldControl,
@@ -343,9 +336,6 @@ export class TagsInputComponent<T = string>
   private readonly elementRef = inject(ElementRef<HTMLElement>);
   private readonly destroyRef = inject(DestroyRef);
   private readonly ngControl = inject(NgControl, { optional: true, self: true });
-  private readonly parentForm = inject(NgForm, { optional: true });
-  private readonly parentFormGroup = inject(FormGroupDirective, { optional: true });
-  private readonly defaultMatcher = inject(TW_ERROR_STATE_MATCHER);
   private readonly formField = inject(TW_FORM_FIELD, { optional: true });
   /**
    * Optional so a consumer that never imports `BidiModule` still gets a working
@@ -368,8 +358,14 @@ export class TagsInputComponent<T = string>
   protected readonly activeChipIndex = signal<number | null>(null);
   private readonly cvaDisabled = signal(false);
   private readonly _focused = signal(false);
-  private readonly _ngControlRev = signal(0);
-  private readonly _formSubmitRev = signal(0);
+
+  /** @internal Shared `errorState` / `required` / `errors` derivation — see `wireErrorState`. */
+  private readonly errorWiring = wireErrorState({
+    ngControl: () => this.ngControl,
+    matcher: () => this.errorStateMatcher(),
+    required: () => this.requiredInput(),
+    track: [() => this._focused()],
+  });
   private readonly describedByIdsSignal = signal<readonly string[]>([]);
   private readonly labelledByIdsSignal = signal<readonly string[]>([]);
   /** Nonce bumped only on explicit focus intent — keeps the focus effect from stealing focus on unrelated renders. */
@@ -402,29 +398,13 @@ export class TagsInputComponent<T = string>
   );
 
   /** @internal */
-  readonly required: Signal<boolean> = computed(() => {
-    this._ngControlRev();
-    if (this.requiredInput()) return true;
-    return !!this.ngControl?.control?.hasValidator(Validators.required);
-  });
+  readonly required: Signal<boolean> = this.errorWiring.required;
 
   /** @internal */
-  readonly errorState: Signal<boolean> = computed(() => {
-    this._ngControlRev();
-    this._formSubmitRev();
-    this._focused();
-    const matcher = this.errorStateMatcher() ?? this.defaultMatcher;
-    const form: TwFormSubmitted | null =
-      (this.parentFormGroup as TwFormSubmitted | null) ??
-      (this.parentForm as TwFormSubmitted | null);
-    return matcher.isErrorState(this.ngControl?.control ?? null, form);
-  });
+  readonly errorState: Signal<boolean> = this.errorWiring.errorState;
 
   /** @internal Active validation errors map from the bound control, for `[twError match="…"]` filtering. */
-  override readonly errors = computed<Record<string, unknown> | null>(() => {
-    this._ngControlRev();
-    return (this.ngControl?.control?.errors as Record<string, unknown> | null) ?? null;
-  });
+  override readonly errors = this.errorWiring.errors;
 
   /** @internal */
   readonly controlType = 'tags-input';
@@ -809,7 +789,7 @@ export class TagsInputComponent<T = string>
             this.commitInput();
           }
           this.onTouched();
-          this._ngControlRev.update((n) => n + 1);
+          this.errorWiring.bump();
           // Reset roving so the next Tab into the control lands on the input.
           this.activeChipIndex.set(null);
         }
@@ -817,24 +797,7 @@ export class TagsInputComponent<T = string>
     }
     this.destroyRef.onDestroy(() => this.focusMonitor.stopMonitoring(this.elementRef));
 
-    const ctrl = this.ngControl?.control;
-    if (ctrl) {
-      const streams = [ctrl.statusChanges, ctrl.valueChanges].filter(
-        (s): s is NonNullable<typeof s> => !!s,
-      );
-      if (streams.length) {
-        merge(...streams)
-          .pipe(takeUntilDestroyed(this.destroyRef))
-          .subscribe(() => this._ngControlRev.update((n) => n + 1));
-      }
-    }
-
-    const submit = this.parentFormGroup?.ngSubmit ?? this.parentForm?.ngSubmit;
-    if (submit) {
-      submit
-        .pipe(takeUntilDestroyed(this.destroyRef))
-        .subscribe(() => this._formSubmitRev.update((n) => n + 1));
-    }
+    this.errorWiring.connect();
   }
 
   // ── Helpers ──

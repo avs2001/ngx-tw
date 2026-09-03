@@ -3,16 +3,30 @@
 /* ===== Dark variant binding =====
    Re-binds Tailwind's `dark:` variant so it activates on the same condition
    that flips the semantic tokens in `_dark.css`:
-     1. an explicit `[data-theme="dark"]` ancestor, OR
+     1. an explicit `[data-theme="dark"]` or `[data-theme="high-contrast-dark"]`
+        ancestor, OR
      2. `prefers-color-scheme: dark` AND no explicit `data-theme` opt-out,
    and in BOTH cases only while no nearer `[data-theme="light"]` /
    `[data-theme="high-contrast"]` ancestor has opted the subtree back out.
 
+   `high-contrast-dark` counts as dark here because it IS dark — a subtree
+   scoped to it must keep the same `dark:` utilities a `dark` subtree gets, or
+   consumer overrides silently stop applying inside it.
+
    Without this binding `dark:` defaults to `@media (prefers-color-scheme: dark)`,
    which drifts from the `[data-theme="dark"]` selector — producing inverted
    token state but un-inverted dark utilities (or vice versa) whenever OS
-   preference disagrees with the consumer's chosen theme. Keep this rule in
-   lock-step with the activation predicates in `_dark.css` and `_light.css`.
+   preference disagrees with the consumer's chosen theme.
+
+   Keep this rule in lock-step with the activation predicates in `_dark.css`
+   and `_light.css` — with ONE deliberate divergence, stated here so a later
+   pass does not "fix" it into a bug. `_dark.css`'s media branch excludes
+   `[data-theme="high-contrast-dark"]` roots, because a root asking for the
+   dark high-contrast TOKENS must not be handed the plain dark ones. The media
+   branch below does NOT exclude them, because a root asking for dark high
+   contrast is still asking for dark, and `dark:` utilities must keep applying
+   there. The two predicates answer different questions — "which token set" and
+   "is this dark" — and only agree on three of the four schemes.
 
    The `:not(:where(…))` exclusions carry zero specificity, so they cannot
    change how a consumer's own `dark:` utility resolves against their other
@@ -24,22 +38,34 @@
      such a subtree is still handled, because the explicit branch above matches
      it independently.
    - The explicit branch can only exclude a light/high-contrast boundary that
-     sits *below* the dark one (`[data-theme="dark"] [data-theme="light"] *`).
+     sits *below* a dark one (`[data-theme="dark"] [data-theme="light"] *`).
      The plain form would also strip `dark:` from a dark subtree nested inside
      a light one, where it is correct — CSS has no "nearest themed ancestor"
      combinator, and inherited custom properties get that semantic for free
      while selectors do not. The residual gap is depth-3 alternation
      (dark → light → dark), which is no worse than before this rule existed.
 
+     With two dark schemes and two light ones that exclusion is a 2×2 product,
+     so it is written with nested `:where()` groups rather than four spelled-out
+     descendant pairs. `:where()` contributes zero specificity and the whole
+     thing already sits inside a zero-specificity `:not(:where(…))`, so the
+     grouped form is exactly equivalent to the enumeration — just not four times
+     as long.
+
    The library ships no `dark:` variants of its own, so this is consumer-facing
    only. */
 @custom-variant dark {
-  &:where([data-theme="dark"], [data-theme="dark"] *):not(
+  &:where(
+      [data-theme="dark"],
+      [data-theme="dark"] *,
+      [data-theme="high-contrast-dark"],
+      [data-theme="high-contrast-dark"] *
+    ):not(
       :where(
-        [data-theme="dark"] [data-theme="light"],
-        [data-theme="dark"] [data-theme="light"] *,
-        [data-theme="dark"] [data-theme="high-contrast"],
-        [data-theme="dark"] [data-theme="high-contrast"] *
+        :where([data-theme="dark"], [data-theme="high-contrast-dark"])
+          :where([data-theme="light"], [data-theme="high-contrast"]),
+        :where([data-theme="dark"], [data-theme="high-contrast-dark"])
+          :where([data-theme="light"], [data-theme="high-contrast"]) *
       )
     ) {
     @slot;
@@ -91,12 +117,24 @@
 @import "./_semantic.css";
 
 /* Theme overrides.
-   `_light.css` must stay FIRST of the three: its `[data-theme="light"]` block
-   has the same specificity as the `[data-theme="light"]` entry in
-   `_high-contrast.css`'s `@media (forced-colors: active)` list, which has to
-   win, and source order is the only tie-breaker. */
+   `_high-contrast.css` must stay LAST of the four, and every other scheme file
+   before it. Each scheme's own block is a bare `[data-theme=…]` at specificity
+   0,1,0, and `_high-contrast.css`'s `@media (forced-colors: active)` list
+   names all four of them at that same 0,1,0 — so source order is the only
+   tie-breaker and the forced-colors remap has to come last to win. That is why
+   `_light.css` leads and why `_high-contrast-dark.css` sits above
+   `_high-contrast.css` rather than below it.
+
+   Between the first three the order is grouping, not cascade: `[data-theme]`
+   values are matched exactly, so no two scheme blocks can ever apply to the
+   same element. `_high-contrast-dark.css` sits next to `_dark.css` because it
+   is the dark family's contrast variant, and because `_dark.css`'s
+   `prefers-color-scheme` branch has to exclude it by name — that branch is
+   0,4,0 and would otherwise outrank it. See the header of
+   `_high-contrast-dark.css`. */
 @import "./_light.css";
 @import "./_dark.css";
+@import "./_high-contrast-dark.css";
 @import "./_high-contrast.css";
 
 /* Base/reset */

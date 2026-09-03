@@ -152,7 +152,12 @@ describe('ThemeService', () => {
     expect(service.resolvedTheme()).toBe('light');
   });
 
-  it('should have mutually exclusive isDark, isLight, isHighContrast', () => {
+  // `isDark` / `isHighContrast` answer two independent questions — appearance
+  // and contrast — so they are deliberately NOT mutually exclusive since
+  // `'high-contrast-dark'` exists. `isLight` stays exactly `=== 'light'`: the
+  // light-based `'high-contrast'` does not set it, and widening it would
+  // change what a shipped scheme reports to consumers already reading it.
+  it('reports isDark / isLight / isHighContrast per axis, not per scheme', () => {
     setup({ defaultTheme: 'dark' });
 
     expect(service.isDark()).toBe(true);
@@ -168,6 +173,15 @@ describe('ThemeService', () => {
     expect(service.isDark()).toBe(false);
     expect(service.isLight()).toBe(false);
     expect(service.isHighContrast()).toBe(true);
+
+    // Both axes at once. Under the pre-`high-contrast-dark` flags — strict
+    // `=== 'dark'` / `=== 'high-contrast'` equality — every one of these three
+    // read `false`, which would have painted light-surface chart colours onto
+    // a dark surface for anyone branching on `isDark()`.
+    service.setTheme('high-contrast-dark');
+    expect(service.isDark()).toBe(true);
+    expect(service.isLight()).toBe(false);
+    expect(service.isHighContrast()).toBe(true);
   });
 
   it('should cycle through all themes in order', () => {
@@ -178,6 +192,8 @@ describe('ThemeService', () => {
     expect(service.theme()).toBe('dark');
     service.cycleTheme();
     expect(service.theme()).toBe('high-contrast');
+    service.cycleTheme();
+    expect(service.theme()).toBe('high-contrast-dark');
     service.cycleTheme();
     expect(service.theme()).toBe('system');
     service.cycleTheme();
@@ -253,12 +269,46 @@ describe('ThemeService', () => {
     expect(service.isHighContrast()).toBe(true);
   });
 
-  // The deliberate tradeoff: the shipped high-contrast scheme is light-based,
-  // so contrast must NOT override a dark preference or dark+contrast users
-  // would be moved onto a white surface.
-  it('keeps dark when the OS asks for both dark and more contrast', () => {
+  // The two OS preferences are independent axes and compose into the full 2×2.
+  // This used to resolve to plain `'dark'`: while `_high-contrast.css` was the
+  // only high-contrast ramp and it is light-based, honouring contrast here
+  // would have moved a dark+contrast user onto a white surface, so contrast
+  // was suppressed whenever dark was also asked for. `_high-contrast-dark.css`
+  // removed that constraint. Against that older `detectSystemTheme()` — `if
+  // (prefersDark) return 'dark'` before the contrast check — this test reads
+  // `'dark'` and fails on all four assertions below.
+  it('resolves system to high-contrast-dark when the OS asks for dark AND more contrast', () => {
     setup({ defaultTheme: 'system', prefersDark: true, prefersContrast: true });
+    expect(service.systemTheme()).toBe('high-contrast-dark');
+    expect(service.resolvedTheme()).toBe('high-contrast-dark');
+    expect(service.isDark()).toBe(true);
+    expect(service.isHighContrast()).toBe(true);
+  });
+
+  it('writes the dark high-contrast scheme onto the document like any other', () => {
+    setup({ defaultTheme: 'system', prefersDark: true, prefersContrast: true });
+    TestBed.flushEffects();
+    expect(doc.documentElement.getAttribute('data-theme')).toBe('high-contrast-dark');
+  });
+
+  it('composes the two axes live in both directions', () => {
+    // Each axis flipped on its own must move the resolution along that axis
+    // only. Under the old ranking the second assertion read `'dark'` (contrast
+    // suppressed) and the fourth `'dark'` as well, so this fails twice.
+    const { media } = setup({ defaultTheme: 'system' });
+    expect(service.resolvedTheme()).toBe('light');
+
+    media(CONTRAST_QUERY).emit(true);
+    expect(service.resolvedTheme()).toBe('high-contrast');
+
+    media(DARK_QUERY).emit(true);
+    expect(service.resolvedTheme()).toBe('high-contrast-dark');
+
+    media(CONTRAST_QUERY).emit(false);
     expect(service.resolvedTheme()).toBe('dark');
+
+    media(DARK_QUERY).emit(false);
+    expect(service.resolvedTheme()).toBe('light');
   });
 
   it('re-resolves live when the contrast preference changes', () => {
@@ -279,8 +329,10 @@ describe('ThemeService', () => {
     const { media } = setup({ defaultTheme: 'system', prefersContrast: true });
     expect(service.resolvedTheme()).toBe('high-contrast');
 
+    // The contrast preference is still set, so the colour-scheme tick moves
+    // the appearance axis only — it must not drop back to plain `'dark'`.
     media(DARK_QUERY).emit(true);
-    expect(service.resolvedTheme()).toBe('dark');
+    expect(service.resolvedTheme()).toBe('high-contrast-dark');
 
     media(DARK_QUERY).emit(false);
     expect(service.resolvedTheme()).toBe('high-contrast');

@@ -2,9 +2,20 @@
    Two activation paths, identical body:
    1. `[data-theme="dark"]` — explicit opt-in. Always wins.
    2. `@media (prefers-color-scheme: dark)` against a root that has NOT been
-      explicitly tagged with `data-theme="light"` or `data-theme="high-contrast"`.
+      explicitly tagged with `data-theme="light"`, `data-theme="high-contrast"`
+      or `data-theme="high-contrast-dark"`.
       This gives pre-hydration screens, SSG snapshots, and consumers that skip
       `provideTheme()` automatic OS-driven dark mode without JavaScript.
+
+      Each `:not()` in that branch is doing real work, not defensive padding.
+      The branch is `:root:not(…):not(…):not(…)` — specificity 0,4,0 — while
+      every scheme's own block is a bare `[data-theme=…]` at 0,1,0. So on a
+      dark-preferring OS this rule beats all three of them regardless of import
+      order, and the only way an explicitly-tagged root can keep its own scheme
+      is to be excluded here by name. `high-contrast-dark` was added to that
+      list when `_high-contrast-dark.css` landed; dropping it does not break
+      loudly, it silently serves plain dark to exactly the users that scheme
+      exists for.
 
    The body is duplicated rather than aliased because CSS does not allow a
    single rule body to be applied via both a selector and a media query. Keep
@@ -274,7 +285,9 @@
 }
 
 @media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]):not([data-theme="high-contrast"]) {
+  :root:not([data-theme="light"]):not([data-theme="high-contrast"]):not(
+      [data-theme="high-contrast-dark"]
+    ) {
     /* ===== Surface ===== */
     --color-surface: var(--color-gray-950);
     --color-surface-raised: var(--color-gray-900);

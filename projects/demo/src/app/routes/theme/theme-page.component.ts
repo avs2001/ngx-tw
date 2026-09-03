@@ -34,7 +34,7 @@ import {
           </svg>
         </div>
         <h1 twItemTitle>Theme</h1>
-        <p twItemDescription>Manages light, dark, and high-contrast modes with system preference detection.</p>
+        <p twItemDescription>Manages light, dark, and two high-contrast modes with system preference detection.</p>
       </tw-item>
 
       <nav twTabNav aria-label="Theme documentation tabs" class="mb-8">

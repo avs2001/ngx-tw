@@ -223,12 +223,16 @@ const TOKEN_GROUPS: TokenGroup[] = [
         writes the theme attribute onto its own host, so everything inside that element resolves
         its tokens from the named scheme regardless of what the document is set to. Use it for a
         fixed-appearance region — a print or email preview, a marketing hero that must stay dark,
-        or a side-by-side comparison like this one. It takes a resolved theme only:
+        or a side-by-side comparison like this one. The four panes below are every resolved
+        scheme, rendered simultaneously inside whatever theme the page is currently set to — the
+        fastest way to eyeball how a change lands in
+        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">high-contrast-dark</code>
+        without switching your OS settings. It takes a resolved theme only:
         <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">'system'</code>
         is not a valid value, because a scoped region has no OS preference of its own to follow.
       </p>
       <div class="rounded-lg border border-border p-6 bg-surface-raised mb-4">
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
           @for (rt of resolvedThemes; track rt) {
             <div [twTheme]="rt" class="rounded-lg border border-border bg-surface p-4">
               <h3 class="text-sm font-semibold text-fg mb-2">{{ rt }}</h3>
@@ -272,6 +276,21 @@ const TOKEN_GROUPS: TokenGroup[] = [
         picker. Everything is a signal, so a
         <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">computed()</code>
         that reads one recomputes when the OS preference changes.
+      </p>
+      <p class="text-sm text-fg-muted leading-relaxed max-w-2xl mb-4">
+        The three boolean helpers answer two questions, not one, so they are not mutually
+        exclusive:
+        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">isDark()</code>
+        is the appearance axis and
+        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">isHighContrast()</code>
+        the contrast axis, and
+        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">'high-contrast-dark'</code>
+        sets both. Use
+        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">isDark()</code>
+        for anything that has to sit on the page background, such as a chart grid colour, and
+        branch on
+        <code class="font-mono text-xs bg-surface-muted px-1 py-0.5 rounded">resolvedTheme()</code>
+        when you genuinely need one scheme.
       </p>
       <div class="rounded-lg border border-border p-6 bg-surface-raised mb-4">
         <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
@@ -405,7 +424,8 @@ export class ThemeToggle {
 
 <button type="button" (click)="themeService.cycleTheme()">Cycle Theme</button>`;
 
-  protected readonly scopedSubtreesSnippet = `@for (rt of resolvedThemes; track rt) {
+  protected readonly scopedSubtreesSnippet = `// resolvedThemes = TW_RESOLVED_THEMES
+@for (rt of resolvedThemes; track rt) {
   <div [twTheme]="rt" class="rounded-lg border border-border bg-surface p-4">
     <h3 class="text-sm font-semibold text-fg mb-2">{{ rt }}</h3>
     <p class="text-sm text-fg-muted">Sample text content for the {{ rt }} theme.</p>
@@ -425,11 +445,14 @@ export class ChartPanel {
   );
 }`;
 
-  protected readonly readingThemeStateHtmlSnippet = `@if (themeService.isHighContrast()) {
+  protected readonly readingThemeStateHtmlSnippet = `<!-- Both can be true at once: 'high-contrast-dark' is dark AND high contrast. -->
+@if (themeService.isHighContrast()) {
   <p>High-contrast mode is active.</p>
-} @else {
-  <p>Resolved theme: {{ themeService.resolvedTheme() }}</p>
-}`;
+}
+@if (themeService.isDark()) {
+  <p>The surface underneath is dark.</p>
+}
+<p>Resolved theme: {{ themeService.resolvedTheme() }}</p>`;
 
   protected readonly providerConfigurationSnippet = `// app.config.ts
 import { ApplicationConfig } from '@angular/core';

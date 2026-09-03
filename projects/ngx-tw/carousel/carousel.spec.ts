@@ -3,14 +3,12 @@ import { TestBed, type ComponentFixture } from '@angular/core/testing';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { TwSize } from '@cdevhub/ngx-tw/core';
 
-import {
-  CarouselComponent,
-  CarouselIndicatorsComponent,
-  CarouselNextDirective,
-  CarouselPrevDirective,
-  CarouselSlideComponent,
-  DEFAULT_CAROUSEL_LABELS,
-} from './carousel';
+// Import paths only — every symbol below is the same class it always was, and
+// `index.ts` still re-exports all six under the same names.
+import { CarouselComponent, CarouselSlideComponent } from './carousel';
+import { CarouselIndicatorsComponent } from './carousel-indicators';
+import { CarouselNextDirective, CarouselPrevDirective } from './carousel-nav';
+import { DEFAULT_CAROUSEL_LABELS } from './carousel-labels';
 
 // ── Test scaffolding ──────────────────────────────────────────────
 //

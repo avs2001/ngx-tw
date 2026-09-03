@@ -53,13 +53,7 @@ import {
   type Signal,
   TemplateRef,
 } from '@angular/core';
-import {
-  type ControlValueAccessor,
-  FormGroupDirective,
-  NgControl,
-  NgForm,
-  Validators,
-} from '@angular/forms';
+import { type ControlValueAccessor, NgControl } from '@angular/forms';
 import {
   CdkListbox,
   CdkOption,
@@ -68,13 +62,11 @@ import {
 import { FocusMonitor, LiveAnnouncer } from '@angular/cdk/a11y';
 import { Platform } from '@angular/cdk/platform';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { merge } from 'rxjs';
 import { tv } from 'tailwind-variants';
 import {
   type ErrorStateMatcher,
-  TW_ERROR_STATE_MATCHER,
-  type TwFormSubmitted,
   type TwSize,
+  wireErrorState,
 } from '@cdevhub/ngx-tw/core';
 import {
   FormFieldControl,
@@ -604,9 +596,6 @@ export class TransferComponent<T = unknown, K = unknown>
   private readonly focusMonitor = inject(FocusMonitor);
   private readonly liveAnnouncer = inject(LiveAnnouncer);
   private readonly ngControl = inject(NgControl, { optional: true, self: true });
-  private readonly parentForm = inject(NgForm, { optional: true });
-  private readonly parentFormGroup = inject(FormGroupDirective, { optional: true });
-  private readonly defaultMatcher = inject(TW_ERROR_STATE_MATCHER);
   private readonly platform = inject(Platform);
 
   // ── Identity ──
@@ -627,8 +616,14 @@ export class TransferComponent<T = unknown, K = unknown>
 
   private readonly cvaDisabled = signal(false);
   private readonly _focused = signal(false);
-  private readonly _ngControlRev = signal(0);
-  private readonly _formSubmitRev = signal(0);
+
+  /** @internal Shared `errorState` / `required` / `errors` derivation — see `wireErrorState`. */
+  private readonly errorWiring = wireErrorState({
+    ngControl: () => this.ngControl,
+    matcher: () => this.errorStateMatcher(),
+    required: () => this.requiredInput(),
+    track: [() => this._focused()],
+  });
   private readonly describedByIdsSignal = signal<readonly string[]>([]);
   private readonly labelledByIdsSignal = signal<readonly string[]>([]);
 
@@ -1135,29 +1130,13 @@ export class TransferComponent<T = unknown, K = unknown>
   );
 
   /** @internal */
-  readonly required: Signal<boolean> = computed(() => {
-    this._ngControlRev();
-    if (this.requiredInput()) return true;
-    return !!this.ngControl?.control?.hasValidator(Validators.required);
-  });
+  readonly required: Signal<boolean> = this.errorWiring.required;
 
   /** @internal */
-  readonly errorState: Signal<boolean> = computed(() => {
-    this._ngControlRev();
-    this._formSubmitRev();
-    this._focused();
-    const matcher = this.errorStateMatcher() ?? this.defaultMatcher;
-    const form: TwFormSubmitted | null =
-      (this.parentFormGroup as TwFormSubmitted | null) ??
-      (this.parentForm as TwFormSubmitted | null);
-    return matcher.isErrorState(this.ngControl?.control ?? null, form);
-  });
+  readonly errorState: Signal<boolean> = this.errorWiring.errorState;
 
   /** @internal Active validation errors from the bound control, for `[twError match="…"]` filtering. */
-  override readonly errors = computed<Record<string, unknown> | null>(() => {
-    this._ngControlRev();
-    return (this.ngControl?.control?.errors as Record<string, unknown> | null) ?? null;
-  });
+  override readonly errors = this.errorWiring.errors;
 
   /** @internal */
   readonly controlType = 'transfer';
@@ -1247,29 +1226,12 @@ export class TransferComponent<T = unknown, K = unknown>
         this._focused.set(!!origin);
         if (wasFocused && !origin) {
           this.onTouched();
-          this._ngControlRev.update((n) => n + 1);
+          this.errorWiring.bump();
         }
       });
     this.destroyRef.onDestroy(() => this.focusMonitor.stopMonitoring(this.elementRef));
 
     // React to status/value changes on the bound control so errorState recomputes.
-    const ctrl = this.ngControl?.control;
-    if (ctrl) {
-      const streams = [ctrl.statusChanges, ctrl.valueChanges].filter(
-        (s): s is NonNullable<typeof s> => !!s,
-      );
-      if (streams.length) {
-        merge(...streams)
-          .pipe(takeUntilDestroyed(this.destroyRef))
-          .subscribe(() => this._ngControlRev.update((n) => n + 1));
-      }
-    }
-
-    const submit = this.parentFormGroup?.ngSubmit ?? this.parentForm?.ngSubmit;
-    if (submit) {
-      submit
-        .pipe(takeUntilDestroyed(this.destroyRef))
-        .subscribe(() => this._formSubmitRev.update((n) => n + 1));
-    }
+    this.errorWiring.connect();
   }
 }
