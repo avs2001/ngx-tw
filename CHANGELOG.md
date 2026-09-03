@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 _Nothing yet._
 
+## 0.6.1 — 2026-09-03
+
+### Bug Fixes
+
+- **theme:** raise light's coloured border tokens to clear SC 1.4.11 ([93bfe51](https://github.com/avs2001/ngx-tw/commit/93bfe5104f3848215cf3d3e57726c482a1423e23))
+
 ## 0.6.0 — 2026-09-03
 
 ### Features
