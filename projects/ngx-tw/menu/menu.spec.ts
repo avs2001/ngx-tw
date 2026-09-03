@@ -735,22 +735,34 @@ describe('Menu', () => {
       expect(getMenuPanel()).toBeNull();
     });
 
-    it('should type-ahead to the first item starting with the typed letter', async () => {
-      const fixture = TestBed.configureTestingModule({
-        imports: [KeyboardMenuHost, OverlayModule],
-      }).createComponent(KeyboardMenuHost);
-      fixture.detectChanges();
+    it('should type-ahead to the first item starting with the typed letter', () => {
+      // CDK's typeahead debounce is 200ms. This used to sleep a real 250ms, which
+      // made the test the library's last load-dependent flake: it passed alone and
+      // timed out against the 5000ms budget under full-suite contention, including
+      // once in CI. Virtual time removes the race rather than widening the budget —
+      // a longer sleep would only move the threshold. CLAUDE.md prescribes
+      // `vi.useFakeTimers()` here; `fakeAsync`/`tick` are unsupported by the Vitest
+      // runner. RxJS's async scheduler drives `debounceTime` through `setInterval`,
+      // which Vitest's fake timers patch, so advancing virtual time flushes it.
+      vi.useFakeTimers();
+      try {
+        const fixture = TestBed.configureTestingModule({
+          imports: [KeyboardMenuHost, OverlayModule],
+        }).createComponent(KeyboardMenuHost);
+        fixture.detectChanges();
 
-      openMenu(fixture);
-      const panel = getMenuPanel()!;
-      dispatchKey(panel, 's');
-      // CDK's typeahead debounce is 200ms — wait it out then flush change detection.
-      await new Promise((resolve) => setTimeout(resolve, 250));
-      fixture.detectChanges();
+        openMenu(fixture);
+        const panel = getMenuPanel()!;
+        dispatchKey(panel, 's');
+        vi.advanceTimersByTime(250);
+        fixture.detectChanges();
 
-      const items = queryItems();
-      // "Strawberry" is items[2]
-      expect(document.activeElement).toBe(items[2]);
+        const items = queryItems();
+        // "Strawberry" is items[2]
+        expect(document.activeElement).toBe(items[2]);
+      } finally {
+        vi.useRealTimers();
+      }
     });
   });
 
