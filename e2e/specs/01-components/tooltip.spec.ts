@@ -1,5 +1,6 @@
 import { expect, test } from '../../fixtures/base';
 import { TooltipPage } from '../../pages/tooltip.page';
+import { OVERLAY_SETTLE_TIMEOUT_MS } from '../../support/timing';
 
 test.describe.configure({ mode: 'parallel' });
 
@@ -80,7 +81,7 @@ test.describe('Tooltip', () => {
     await t.disabledTrigger.hover();
     // Give the host a chance to schedule a (would-be) show; nothing should
     // attach because the directive short-circuits on disabled.
-    await expect(t.tooltips).toHaveCount(0);
+    await expect(t.tooltips).toHaveCount(0, { timeout: OVERLAY_SETTLE_TIMEOUT_MS });
 
     await t.enabledTrigger.hover();
     await t.waitForOpen();
