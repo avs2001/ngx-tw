@@ -247,12 +247,23 @@
    (`Canvas`, `CanvasText`, `Highlight`, `GrayText`, etc.). We remap the
    library's structural tokens to the matching system colors so components
    keep their semantic shape, and disable `forced-color-adjust` on interactive
-   affordances so the browser applies system colors uniformly. */
+   affordances so the browser applies system colors uniformly.
+
+   The block is scheme-agnostic by construction — every value below is a system
+   keyword the OS supplies, so there is nothing light- or dark-specific to
+   duplicate per scheme. What it does need is one selector per scheme: each
+   scheme's own `[data-theme=…]` block has the identical 0,1,0 specificity, so
+   a scheme missing from this list keeps its author colors under Windows High
+   Contrast while the others yield. Every entry is also why import order
+   matters — see `index.css`. `theme-token-parity.spec.ts` asserts this list
+   carries one entry per `TW_RESOLVED_THEMES` member, so adding a scheme
+   without adding it here fails the unit suite. */
 @media (forced-colors: active) {
   :root,
   [data-theme="light"],
   [data-theme="dark"],
-  [data-theme="high-contrast"] {
+  [data-theme="high-contrast"],
+  [data-theme="high-contrast-dark"] {
     /* Surfaces collapse to the system canvas. */
     --color-surface: Canvas;
     --color-surface-raised: Canvas;

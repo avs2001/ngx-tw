@@ -17,23 +17,14 @@ import {
   signal,
   type Signal,
 } from '@angular/core';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import {
-  type ControlValueAccessor,
-  FormGroupDirective,
-  NgControl,
-  NgForm,
-  Validators,
-} from '@angular/forms';
+import { type ControlValueAccessor, NgControl } from '@angular/forms';
 import { FocusMonitor } from '@angular/cdk/a11y';
-import { merge } from 'rxjs';
 import { tv } from 'tailwind-variants';
 import {
   type ErrorStateMatcher,
-  TW_ERROR_STATE_MATCHER,
   type TwColor,
-  type TwFormSubmitted,
   type TwSize,
+  wireErrorState,
 } from '@cdevhub/ngx-tw/core';
 
 /** Visual style of the selected radio indicator. */
@@ -340,15 +331,19 @@ export class RadioComponent implements ControlValueAccessor, OnInit {
   private readonly destroyRef = inject(DestroyRef);
   private readonly parent = inject(forwardRef(() => RadioGroupComponent), { optional: true });
   private readonly ngControl = inject(NgControl, { optional: true, self: true });
-  private readonly parentForm = inject(NgForm, { optional: true });
-  private readonly parentFormGroup = inject(FormGroupDirective, { optional: true });
-  private readonly defaultMatcher = inject(TW_ERROR_STATE_MATCHER);
 
   private onChange: (value: boolean) => void = () => {};
   private onTouched: () => void = () => {};
   private readonly cvaDisabled = signal(false);
-  private readonly _ngControlRev = signal(0);
-  private readonly _formSubmitRev = signal(0);
+
+  /** @internal Shared `errorState` derivation — see `wireErrorState`. */
+  private readonly errorWiring = wireErrorState({
+    ngControl: () => this.ngControl,
+    matcher: () => this.errorStateMatcher(),
+    // A radio inside a group inherits the group's error state verbatim,
+    // including `false`; standalone it falls through to the matcher.
+    errorStateOverride: () => (this.parent ? this.parent.errorState() : undefined),
+  });
 
   private readonly uid = nextRadioId++;
   readonly hostId = `tw-radio-${this.uid}`;
@@ -387,16 +382,7 @@ export class RadioComponent implements ControlValueAccessor, OnInit {
   );
 
   /** Whether the radio is in an error state per the configured `ErrorStateMatcher`. Inherits from the parent group when wrapped; falls back to its own NgControl when standalone. */
-  readonly errorState: Signal<boolean> = computed(() => {
-    this._ngControlRev();
-    this._formSubmitRev();
-    if (this.parent) return this.parent.errorState();
-    const matcher = this.errorStateMatcher() ?? this.defaultMatcher;
-    const form: TwFormSubmitted | null =
-      (this.parentFormGroup as TwFormSubmitted | null) ??
-      (this.parentForm as TwFormSubmitted | null);
-    return matcher.isErrorState(this.ngControl?.control ?? null, form);
-  });
+  readonly errorState: Signal<boolean> = this.errorWiring.errorState;
 
   /** Roving tabindex: in a group, only the selected (or first enabled if none selected) radio is focusable. Standalone radios are always focusable unless disabled. */
   readonly isFocusable = computed(() => {
@@ -514,7 +500,7 @@ export class RadioComponent implements ControlValueAccessor, OnInit {
     } else {
       this.onTouched();
       // Blur flips `touched` on `NgControl`; bump the revision so `errorState` recomputes.
-      this._ngControlRev.update((n) => n + 1);
+      this.errorWiring.bump();
     }
   }
 
@@ -551,24 +537,7 @@ export class RadioComponent implements ControlValueAccessor, OnInit {
 
     // Track validator status/value changes on a bound NgControl so `errorState`
     // re-evaluates when status flips. Mirrors `input.ts`'s pattern.
-    const ctrl = this.ngControl?.control;
-    if (ctrl) {
-      const streams = [ctrl.statusChanges, ctrl.valueChanges].filter(
-        (s): s is NonNullable<typeof s> => !!s,
-      );
-      if (streams.length) {
-        merge(...streams)
-          .pipe(takeUntilDestroyed(this.destroyRef))
-          .subscribe(() => this._ngControlRev.update((n) => n + 1));
-      }
-    }
-
-    const submit = this.parentFormGroup?.ngSubmit ?? this.parentForm?.ngSubmit;
-    if (submit) {
-      submit
-        .pipe(takeUntilDestroyed(this.destroyRef))
-        .subscribe(() => this._formSubmitRev.update((n) => n + 1));
-    }
+    this.errorWiring.connect();
   }
 
   private hasAccessibleNameHint(): boolean {
@@ -650,18 +619,21 @@ export class RadioGroupComponent<T = unknown> implements ControlValueAccessor, O
   readonly requiredInput = input(false, { alias: 'required' });
 
   /**
-   * @internal Resolved required state: the `required` input OR'd with
-   * `Validators.required` on a bound `NgControl`. The OR (rather than a
-   * validator-only read) is what keeps signal forms working —
-   * `cvaControlCreate` writes the `required` *input* directly from the field
-   * state and never consults validators, so the input arm carries that branch
-   * while the validator arm carries reactive/template-driven forms.
+   * @internal Shared `errorState` / `required` / `errors` derivation — see
+   * `wireErrorState`. Declared here, above `required`, because class field
+   * initializers run in declaration order.
    */
-  readonly required: Signal<boolean> = computed(() => {
-    this._ngControlRev();
-    if (this.requiredInput()) return true;
-    return !!this.ngControl?.control?.hasValidator(Validators.required);
+  private readonly errorWiring = wireErrorState({
+    ngControl: () => this.ngControl,
+    matcher: () => this.errorStateMatcher(),
+    required: () => this.requiredInput(),
   });
+
+  /**
+   * @internal Resolved required state: the `required` input OR'd with
+   * `Validators.required` on a bound `NgControl`.
+   */
+  readonly required: Signal<boolean> = this.errorWiring.required;
 
   /** Optional form-association name. Propagated to each child radio's host `name` attribute so standard HTML form semantics still apply. */
   readonly name = input<string | undefined>(undefined);
@@ -707,31 +679,18 @@ export class RadioGroupComponent<T = unknown> implements ControlValueAccessor, O
   private readonly elementRef = inject(ElementRef<HTMLElement>);
   private readonly destroyRef = inject(DestroyRef);
   private readonly ngControl = inject(NgControl, { optional: true, self: true });
-  private readonly parentForm = inject(NgForm, { optional: true });
-  private readonly parentFormGroup = inject(FormGroupDirective, { optional: true });
-  private readonly defaultMatcher = inject(TW_ERROR_STATE_MATCHER);
 
   readonly hostId = `tw-radio-group-${nextGroupId++}`;
 
   private onChange: (value: T | null) => void = () => {};
   private onTouched: () => void = () => {};
   private readonly cvaDisabled = signal(false);
-  private readonly _ngControlRev = signal(0);
-  private readonly _formSubmitRev = signal(0);
 
   /** Effective disabled state — input OR CVA disabled. */
   readonly isDisabled = computed(() => this.disabled() || this.cvaDisabled());
 
   /** Group-level error state per the configured `ErrorStateMatcher`. Reads the bound `NgControl.invalid` through the matcher; child radios inherit from this when wrapped in the group. */
-  readonly errorState: Signal<boolean> = computed(() => {
-    this._ngControlRev();
-    this._formSubmitRev();
-    const matcher = this.errorStateMatcher() ?? this.defaultMatcher;
-    const form: TwFormSubmitted | null =
-      (this.parentFormGroup as TwFormSubmitted | null) ??
-      (this.parentForm as TwFormSubmitted | null);
-    return matcher.isErrorState(this.ngControl?.control ?? null, form);
-  });
+  readonly errorState: Signal<boolean> = this.errorWiring.errorState;
 
   readonly activeValue = linkedSignal(() => this.value());
 
@@ -784,7 +743,7 @@ export class RadioGroupComponent<T = unknown> implements ControlValueAccessor, O
   /** @internal Called by child radios on blur — propagates to CVA onTouched and bumps the errorState revision so a blur on a child radio refreshes the group's `aria-invalid`. */
   notifyTouched(): void {
     this.onTouched();
-    this._ngControlRev.update((n) => n + 1);
+    this.errorWiring.bump();
   }
 
   /** @internal Handles roving-focus keyboard navigation (Arrow keys, Space) across the radios in the group. */
@@ -888,23 +847,6 @@ export class RadioGroupComponent<T = unknown> implements ControlValueAccessor, O
     // NgControl's `control` is set by the parent FormControl* directive before
     // children's `ngOnInit`. Subscribe here so errorState reacts to status/value
     // changes on the bound control.
-    const ctrl = this.ngControl?.control;
-    if (ctrl) {
-      const streams = [ctrl.statusChanges, ctrl.valueChanges].filter(
-        (s): s is NonNullable<typeof s> => !!s,
-      );
-      if (streams.length) {
-        merge(...streams)
-          .pipe(takeUntilDestroyed(this.destroyRef))
-          .subscribe(() => this._ngControlRev.update((n) => n + 1));
-      }
-    }
-
-    const submit = this.parentFormGroup?.ngSubmit ?? this.parentForm?.ngSubmit;
-    if (submit) {
-      submit
-        .pipe(takeUntilDestroyed(this.destroyRef))
-        .subscribe(() => this._formSubmitRev.update((n) => n + 1));
-    }
+    this.errorWiring.connect();
   }
 }

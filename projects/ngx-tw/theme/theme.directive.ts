@@ -12,10 +12,11 @@ export class ThemeDirective {
    * Scopes a subtree to a specific resolved theme by writing `data-theme` on
    * the host. Required.
    *
-   * Works in every direction: each scheme ships an element-agnostic
-   * `[data-theme="…"]` block (`_light.css`, `_dark.css`,
-   * `_high-contrast.css`), so a `'light'` pane inside a dark page re-resolves
-   * the tokens rather than inheriting the ancestor's.
+   * Works in every direction: each of the four schemes ships an
+   * element-agnostic `[data-theme="…"]` block (`_light.css`, `_dark.css`,
+   * `_high-contrast.css`, `_high-contrast-dark.css`), so a `'light'` pane
+   * inside a dark page re-resolves the tokens rather than inheriting the
+   * ancestor's.
    *
    * The attribute name is the literal `data-theme` that the shipped CSS keys
    * off — it deliberately ignores `provideTheme({ attribute })`, since a

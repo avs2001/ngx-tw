@@ -10,8 +10,11 @@ import { DEFAULT_TW_THEME_CONFIG } from './theme.types';
  * `data-theme` — and `provideTheme`'s environment initializer does not change
  * that. The CSS `@media (prefers-color-scheme: dark)` fallback covers users
  * who never chose a theme; the flash is what an *explicit* choice that
- * disagrees with the OS looks like (light chosen on a dark machine, or
- * `'high-contrast'` chosen at all).
+ * disagrees with the OS looks like — light chosen on a dark machine, or
+ * either high-contrast scheme chosen on a machine not already asking for
+ * increased contrast (the CSS has a `prefers-color-scheme` branch but
+ * deliberately no `prefers-contrast` one, so neither contrast scheme is
+ * reachable without an explicit `data-theme`).
  *
  * The string is built from {@link DEFAULT_TW_THEME_CONFIG}, so the storage key
  * and attribute cannot drift from what `ThemeService` actually uses — that

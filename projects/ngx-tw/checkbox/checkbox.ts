@@ -18,21 +18,18 @@ import {
 } from '@angular/core';
 import {
   type ControlValueAccessor,
-  FormGroupDirective,
   NgControl,
-  NgForm,
   Validators,
 } from '@angular/forms';
 import { FocusMonitor } from '@angular/cdk/a11y';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { isObservable, merge } from 'rxjs';
+import { isObservable } from 'rxjs';
 import { tv } from 'tailwind-variants';
 import {
   type ErrorStateMatcher,
-  TW_ERROR_STATE_MATCHER,
   type TwColor,
-  type TwFormSubmitted,
   type TwSize,
+  wireErrorState,
 } from '@cdevhub/ngx-tw/core';
 import { FormFieldControl, TW_FORM_FIELD_CONTROL } from '@cdevhub/ngx-tw/form-field';
 
@@ -379,17 +376,22 @@ export class CheckboxComponent
   private readonly elementRef = inject(ElementRef<HTMLElement>);
   private readonly destroyRef = inject(DestroyRef);
   private readonly ngControl = inject(NgControl, { optional: true, self: true });
-  private readonly parentForm = inject(NgForm, { optional: true });
-  private readonly parentFormGroup = inject(FormGroupDirective, { optional: true });
-  private readonly defaultMatcher = inject(TW_ERROR_STATE_MATCHER);
 
   private onChange: (value: boolean) => void = () => {};
   private onTouched: () => void = () => {};
   private readonly cvaDisabled = signal(false);
 
   private readonly _focused = signal(false);
-  private readonly _ngControlRev = signal(0);
-  private readonly _formSubmitRev = signal(0);
+
+  /** @internal Shared `errorState` / `required` / `errors` derivation — see `wireErrorState`. */
+  private readonly errorWiring = wireErrorState({
+    ngControl: () => this.ngControl,
+    matcher: () => this.errorStateMatcher(),
+    required: () => this.requiredInput(),
+    // A checkbox bound with `Validators.requiredTrue` is required too.
+    requiredValidators: [Validators.required, Validators.requiredTrue],
+    track: [() => this._focused()],
+  });
   private readonly describedByIdsSignal = signal<readonly string[]>([]);
   private readonly labelledByIdsSignal = signal<readonly string[]>([]);
 
@@ -495,31 +497,13 @@ export class CheckboxComponent
   readonly empty: Signal<boolean> = computed(() => false);
 
   /** @internal */
-  readonly required: Signal<boolean> = computed(() => {
-    this._ngControlRev();
-    if (this.requiredInput()) return true;
-    const ctrl = this.ngControl?.control;
-    if (!ctrl) return false;
-    return ctrl.hasValidator(Validators.required) || ctrl.hasValidator(Validators.requiredTrue);
-  });
+  readonly required: Signal<boolean> = this.errorWiring.required;
 
   /** @internal */
-  readonly errorState: Signal<boolean> = computed(() => {
-    this._ngControlRev();
-    this._formSubmitRev();
-    this._focused();
-    const matcher = this.errorStateMatcher() ?? this.defaultMatcher;
-    const form: TwFormSubmitted | null =
-      (this.parentFormGroup as TwFormSubmitted | null) ??
-      (this.parentForm as TwFormSubmitted | null);
-    return matcher.isErrorState(this.ngControl?.control ?? null, form);
-  });
+  readonly errorState: Signal<boolean> = this.errorWiring.errorState;
 
-  /** @internal Active validation errors map from the bound `NgControl` (or `null` when it reports none / is unbound). Drives `[twError match="…"]` inside a wrapping `tw-form-field`; without it the form-field's key set is permanently empty and every `match`ed error stays hidden. Recomputes on every `_ngControlRev` tick so it reacts to validator transitions that do not flip `VALID`/`INVALID`. */
-  override readonly errors: Signal<Record<string, unknown> | null> = computed(() => {
-    this._ngControlRev();
-    return (this.ngControl?.control?.errors as Record<string, unknown> | null) ?? null;
-  });
+  /** @internal Active validation errors map from the bound `NgControl`. Drives `[twError match="…"]` inside a wrapping `tw-form-field`; without it the form-field's key set is permanently empty and every `match`ed error stays hidden. */
+  override readonly errors: Signal<Record<string, unknown> | null> = this.errorWiring.errors;
 
   /** @internal */
   readonly controlType = 'checkbox';
@@ -603,7 +587,7 @@ export class CheckboxComponent
   /** @internal Called on host blur to notify forms the control has been touched and recompute errorState. */
   onBlur(): void {
     this.onTouched();
-    this._ngControlRev.update((n) => n + 1);
+    this.errorWiring.bump();
   }
 
   // ── ControlValueAccessor ──────────────────────────────────
@@ -663,7 +647,7 @@ export class CheckboxComponent
             // Blur often flips `touched` on the bound `NgControl`; notify forms
             // and bump the revision so `errorState` recomputes.
             this.onTouched();
-            this._ngControlRev.update((n) => n + 1);
+            this.errorWiring.bump();
           }
         });
     }
@@ -672,26 +656,9 @@ export class CheckboxComponent
     });
 
     // NgControl's `control` is set by the parent FormControl* directive before
-    // children's `ngOnInit`. Subscribe here so errorState reacts to status/value
+    // children's `ngOnInit`. Connect here so errorState reacts to status/value
     // changes on the bound control.
-    const ctrl = this.ngControl?.control;
-    if (ctrl) {
-      const streams = [ctrl.statusChanges, ctrl.valueChanges].filter(
-        (s): s is NonNullable<typeof s> => !!s,
-      );
-      if (streams.length) {
-        merge(...streams)
-          .pipe(takeUntilDestroyed(this.destroyRef))
-          .subscribe(() => this._ngControlRev.update((n) => n + 1));
-      }
-    }
-
-    const submit = this.parentFormGroup?.ngSubmit ?? this.parentForm?.ngSubmit;
-    if (submit) {
-      submit
-        .pipe(takeUntilDestroyed(this.destroyRef))
-        .subscribe(() => this._formSubmitRev.update((n) => n + 1));
-    }
+    this.errorWiring.connect();
   }
 
   private hasAccessibleNameHint(): boolean {

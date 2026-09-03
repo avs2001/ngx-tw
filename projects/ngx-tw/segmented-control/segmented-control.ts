@@ -3,7 +3,6 @@ import {
   Component,
   computed,
   contentChildren,
-  DestroyRef,
   ElementRef,
   forwardRef,
   inject,
@@ -15,24 +14,15 @@ import {
   signal,
   type Signal,
 } from '@angular/core';
-import {
-  type ControlValueAccessor,
-  FormGroupDirective,
-  NgControl,
-  NgForm,
-  Validators,
-} from '@angular/forms';
+import { type ControlValueAccessor, NgControl } from '@angular/forms';
 import { Directionality } from '@angular/cdk/bidi';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { merge } from 'rxjs';
 import { tv } from 'tailwind-variants';
 import {
   type ErrorStateMatcher,
-  TW_ERROR_STATE_MATCHER,
   type TwColor,
-  type TwFormSubmitted,
   type TwOrientation,
   type TwSize,
+  wireErrorState,
 } from '@cdevhub/ngx-tw/core';
 
 /** Visual style of the active indicator. */
@@ -355,11 +345,7 @@ export class SegmentedControlComponent implements ControlValueAccessor, OnInit {
   readonly options = contentChildren(SegmentedControlOptionComponent);
 
   private readonly elementRef = inject(ElementRef<HTMLElement>);
-  private readonly destroyRef = inject(DestroyRef);
   private readonly ngControl = inject(NgControl, { optional: true, self: true });
-  private readonly parentForm = inject(NgForm, { optional: true });
-  private readonly parentFormGroup = inject(FormGroupDirective, { optional: true });
-  private readonly defaultMatcher = inject(TW_ERROR_STATE_MATCHER);
   /**
    * Optional so a consumer that never imports `BidiModule` still gets a working
    * control — arrow navigation falls back to LTR when the token is absent. Read
@@ -371,8 +357,13 @@ export class SegmentedControlComponent implements ControlValueAccessor, OnInit {
   private onChange: (value: string | null) => void = () => {};
   private onTouched: () => void = () => {};
   private readonly cvaDisabled = signal(false);
-  private readonly _ngControlRev = signal(0);
-  private readonly _formSubmitRev = signal(0);
+
+  /** @internal Shared `errorState` / `required` / `errors` derivation — see `wireErrorState`. */
+  private readonly errorWiring = wireErrorState({
+    ngControl: () => this.ngControl,
+    matcher: () => this.errorStateMatcher(),
+    required: () => this.requiredInput(),
+  });
 
   constructor() {
     // Material-style CVA wiring: declare ourselves as the value accessor on any
@@ -399,22 +390,10 @@ export class SegmentedControlComponent implements ControlValueAccessor, OnInit {
    * consults validators, so the input arm carries that branch while the
    * validator arm carries reactive/template-driven forms.
    */
-  readonly required: Signal<boolean> = computed(() => {
-    this._ngControlRev();
-    if (this.requiredInput()) return true;
-    return !!this.ngControl?.control?.hasValidator(Validators.required);
-  });
+  readonly required: Signal<boolean> = this.errorWiring.required;
 
   /** @internal Whether the control is in an error state per the configured `ErrorStateMatcher`. Reads the bound `NgControl.invalid` through the matcher and drives `aria-invalid` on the radiogroup host. */
-  readonly errorState: Signal<boolean> = computed(() => {
-    this._ngControlRev();
-    this._formSubmitRev();
-    const matcher = this.errorStateMatcher() ?? this.defaultMatcher;
-    const form: TwFormSubmitted | null =
-      (this.parentFormGroup as TwFormSubmitted | null) ??
-      (this.parentForm as TwFormSubmitted | null);
-    return matcher.isErrorState(this.ngControl?.control ?? null, form);
-  });
+  readonly errorState: Signal<boolean> = this.errorWiring.errorState;
 
   readonly activeValue = linkedSignal(() => this.value());
 
@@ -476,7 +455,7 @@ export class SegmentedControlComponent implements ControlValueAccessor, OnInit {
     const next = event.relatedTarget as Node | null;
     if (next && this.elementRef.nativeElement.contains(next)) return;
     this.onTouched();
-    this._ngControlRev.update((n) => n + 1);
+    this.errorWiring.bump();
   }
 
   // ── Keyboard navigation ──
@@ -590,23 +569,6 @@ export class SegmentedControlComponent implements ControlValueAccessor, OnInit {
     // NgControl's `control` is set by the parent FormControl* directive before
     // children's `ngOnInit`. Subscribe here so `errorState` reacts to
     // status/value changes on the bound control.
-    const ctrl = this.ngControl?.control;
-    if (ctrl) {
-      const streams = [ctrl.statusChanges, ctrl.valueChanges].filter(
-        (s): s is NonNullable<typeof s> => !!s,
-      );
-      if (streams.length) {
-        merge(...streams)
-          .pipe(takeUntilDestroyed(this.destroyRef))
-          .subscribe(() => this._ngControlRev.update((n) => n + 1));
-      }
-    }
-
-    const submit = this.parentFormGroup?.ngSubmit ?? this.parentForm?.ngSubmit;
-    if (submit) {
-      submit
-        .pipe(takeUntilDestroyed(this.destroyRef))
-        .subscribe(() => this._formSubmitRev.update((n) => n + 1));
-    }
+    this.errorWiring.connect();
   }
 }

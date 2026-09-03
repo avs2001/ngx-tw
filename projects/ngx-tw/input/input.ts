@@ -17,22 +17,15 @@ import {
   type WritableSignal,
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import {
-  FormGroupDirective,
-  NgControl,
-  NgForm,
-  Validators,
-} from '@angular/forms';
+import { NgControl } from '@angular/forms';
 import { FocusMonitor } from '@angular/cdk/a11y';
 import { AutofillMonitor } from '@angular/cdk/text-field';
 import { Platform } from '@angular/cdk/platform';
-import { merge } from 'rxjs';
 import { tv } from 'tailwind-variants';
 import {
   type ErrorStateMatcher,
-  TW_ERROR_STATE_MATCHER,
-  type TwFormSubmitted,
   type TwSize,
+  wireErrorState,
 } from '@cdevhub/ngx-tw/core';
 import {
   FormFieldControl,
@@ -159,7 +152,7 @@ let nextInputId = 0;
  *   and provide under `TW_FORM_FIELD_CONTROL`.
  * - Swap value storage for an existing `<input twInput>` (masked input,
  *   date parser, etc.) → provide {@link TW_INPUT_VALUE_ACCESSOR}.
- * - Change when errors show → override {@link TW_ERROR_STATE_MATCHER} at any
+ * - Change when errors show → override `TW_ERROR_STATE_MATCHER` at any
  *   injector level, or pass `errorStateMatcher` per instance.
  *
  * Forms integration is inherited: Angular's native value accessors attach to
@@ -198,11 +191,6 @@ export class InputDirective
     optional: true,
     self: true,
   });
-  private readonly parentForm = inject(NgForm, { optional: true });
-  private readonly parentFormGroup = inject(FormGroupDirective, {
-    optional: true,
-  });
-  private readonly defaultMatcher = inject(TW_ERROR_STATE_MATCHER);
   private readonly valueAccessor = inject(TW_INPUT_VALUE_ACCESSOR, {
     optional: true,
     self: true,
@@ -262,8 +250,14 @@ export class InputDirective
   private readonly _value = signal<string>(this._readInitialValue());
   private readonly _focused = signal(false);
   private readonly _autofilled = signal(false);
-  private readonly _ngControlRev = signal(0);
-  private readonly _formSubmitRev = signal(0);
+
+  /** @internal Shared `errorState` / `required` / `errors` derivation — see `wireErrorState`. */
+  private readonly errorWiring = wireErrorState({
+    ngControl: () => this.ngControl,
+    matcher: () => this.errorStateMatcher(),
+    required: () => this.requiredInput(),
+    track: [() => this._focused()],
+  });
 
   // ── FormFieldControl signals ──
 
@@ -286,34 +280,18 @@ export class InputDirective
 
   /** @internal */
   readonly disabled = computed(() => {
-    this._ngControlRev();
+    this.errorWiring.rev();
     return this.disabledInput() || !!this.ngControl?.disabled;
   });
 
   /** @internal */
-  readonly required = computed(() => {
-    this._ngControlRev();
-    if (this.requiredInput()) return true;
-    return !!this.ngControl?.control?.hasValidator(Validators.required);
-  });
+  readonly required = this.errorWiring.required;
 
   /** @internal */
-  readonly errorState = computed(() => {
-    this._ngControlRev();
-    this._formSubmitRev();
-    this._focused();
-    const matcher = this.errorStateMatcher() ?? this.defaultMatcher;
-    const form: TwFormSubmitted | null =
-      (this.parentFormGroup as TwFormSubmitted | null) ??
-      (this.parentForm as TwFormSubmitted | null);
-    return matcher.isErrorState(this.ngControl?.control ?? null, form);
-  });
+  readonly errorState = this.errorWiring.errorState;
 
-  /** @internal Active validation errors map from the bound `NgControl` (or `null` when the control reports none / is unbound). Recomputes on every `_ngControlRev` tick so `[twError match="…"]` reacts to validator transitions, including rules that fire/clear without flipping `VALID`/`INVALID`. */
-  override readonly errors = computed<Record<string, unknown> | null>(() => {
-    this._ngControlRev();
-    return (this.ngControl?.control?.errors as Record<string, unknown> | null) ?? null;
-  });
+  /** @internal Active validation errors map from the bound `NgControl`, for `[twError match="…"]` filtering. */
+  override readonly errors = this.errorWiring.errors;
 
   /** @internal */
   readonly classes = computed(() =>
@@ -338,7 +316,7 @@ export class InputDirective
         if (wasFocused && !origin) {
           // Blur often flips `touched` on the bound `NgControl`; bump the
           // revision signal so `errorState` recomputes.
-          this._ngControlRev.update((n) => n + 1);
+          this.errorWiring.bump();
         }
       });
     this.destroyRef.onDestroy(() =>
@@ -390,26 +368,9 @@ export class InputDirective
     }
 
     // NgControl's `control` is set by the parent `FormControl*` directive's
-    // own `ngOnChanges`, which runs before children's `ngOnInit`. Subscribe
+    // own `ngOnChanges`, which runs before children's `ngOnInit`. Connect
     // here so `statusChanges`/`valueChanges` are actually available.
-    const ctrl = this.ngControl?.control;
-    if (ctrl) {
-      const streams = [ctrl.statusChanges, ctrl.valueChanges].filter(
-        (s): s is NonNullable<typeof s> => !!s,
-      );
-      if (streams.length) {
-        merge(...streams)
-          .pipe(takeUntilDestroyed(this.destroyRef))
-          .subscribe(() => this._ngControlRev.update((n) => n + 1));
-      }
-    }
-
-    const submit = this.parentFormGroup?.ngSubmit ?? this.parentForm?.ngSubmit;
-    if (submit) {
-      submit
-        .pipe(takeUntilDestroyed(this.destroyRef))
-        .subscribe(() => this._formSubmitRev.update((n) => n + 1));
-    }
+    this.errorWiring.connect();
   }
 
   /** Moves focus to the underlying element. */

@@ -26,19 +26,14 @@ import {
 import {
   type AbstractControl,
   type ControlValueAccessor,
-  FormGroupDirective,
   NG_VALIDATORS,
   NG_VALUE_ACCESSOR,
   NgControl,
-  NgForm,
   type ValidationErrors,
   type Validator,
-  Validators,
 } from '@angular/forms';
 import { Overlay } from '@angular/cdk/overlay';
 import { FocusMonitor, LiveAnnouncer } from '@angular/cdk/a11y';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { merge } from 'rxjs';
 import { tv } from 'tailwind-variants';
 import {
   buildSelectLikePositions,
@@ -47,10 +42,9 @@ import {
   type RangeBehaviorConfig,
   resolveSelectScrollStrategy,
   type TimePickerFormat,
-  TW_ERROR_STATE_MATCHER,
   type TwColor,
-  type TwFormSubmitted,
   type TwSize,
+  wireErrorState,
 } from '@cdevhub/ngx-tw/core';
 import {
   FormFieldControl,
@@ -576,9 +570,6 @@ export class DateRangePickerComponent<D = Date>
   // constructor pulls the validator set — eager `inject(NgControl, {self})`
   // would resolve to this component while it is still being created).
   private ngControl: NgControl | null = null;
-  private readonly parentForm = inject(NgForm, { optional: true });
-  private readonly parentFormGroup = inject(FormGroupDirective, { optional: true });
-  private readonly defaultMatcher = inject(TW_ERROR_STATE_MATCHER);
 
   // ── View refs ──
 
@@ -608,8 +599,16 @@ export class DateRangePickerComponent<D = Date>
   private readonly lastValueBeforeOpen = signal<TwDateRange<D> | null>(null);
   private readonly pendingRange = signal<TwDateRange<D> | null>(null);
   private readonly currentView = signal<CalendarViewState>('day');
-  private readonly _ngControlRev = signal(0);
-  private readonly _formSubmitRev = signal(0);
+
+  /** @internal Shared `errorState` / `required` / `errors` derivation — see `wireErrorState`. */
+  private readonly errorWiring = wireErrorState({
+    ngControl: () => this.ngControl,
+    matcher: () => this.errorStateMatcher(),
+    required: () => this.requiredInput(),
+    track: [() => this.focusedSignal()],
+    // An unparseable entry or an out-of-range date is an error regardless of validator status.
+    errorStateOverride: () => (this.parseError() || this.rangeError() ? true : undefined),
+  });
 
   private onChange: (value: TwDateRange<D> | null) => void = () => {};
   private onTouched: () => void = () => {};
@@ -633,7 +632,7 @@ export class DateRangePickerComponent<D = Date>
 
   /** @internal */
   readonly isDisabled = computed(() => {
-    this._ngControlRev();
+    this.errorWiring.rev();
     return this.disabledInput() || this.cvaDisabled() || !!this.ngControl?.disabled;
   });
 
@@ -778,24 +777,10 @@ export class DateRangePickerComponent<D = Date>
   /** @internal */
   readonly disabled: Signal<boolean> = this.isDisabled;
   /** @internal */
-  readonly required: Signal<boolean> = computed(() => {
-    this._ngControlRev();
-    if (this.requiredInput()) return true;
-    return !!this.ngControl?.control?.hasValidator(Validators.required);
-  });
+  readonly required: Signal<boolean> = this.errorWiring.required;
 
   /** @internal */
-  readonly errorState: Signal<boolean> = computed(() => {
-    this._ngControlRev();
-    this._formSubmitRev();
-    this.focusedSignal();
-    if (this.parseError() || this.rangeError()) return true;
-    const matcher = this.errorStateMatcher() ?? this.defaultMatcher;
-    const form: TwFormSubmitted | null =
-      (this.parentFormGroup as TwFormSubmitted | null) ??
-      (this.parentForm as TwFormSubmitted | null);
-    return matcher.isErrorState(this.ngControl?.control ?? null, form);
-  });
+  readonly errorState: Signal<boolean> = this.errorWiring.errorState;
 
   /**
    * @internal Active validation errors map from the bound `NgControl` (or `null` when the
@@ -805,13 +790,8 @@ export class DateRangePickerComponent<D = Date>
    * `calendarRangeTooLong` codes this component's `NG_VALIDATORS` apparatus exists to produce —
    * stays permanently hidden. (Authoritative key list: `CalendarValidationErrors` in
    * `calendar.types.ts`.)
-   * Recomputes on every `_ngControlRev` tick so it reacts to validator transitions, including
-   * rules that fire or clear without flipping `VALID`/`INVALID`. Mirrors `input.ts`.
    */
-  override readonly errors: Signal<Record<string, unknown> | null> = computed(() => {
-    this._ngControlRev();
-    return (this.ngControl?.control?.errors as Record<string, unknown> | null) ?? null;
-  });
+  override readonly errors: Signal<Record<string, unknown> | null> = this.errorWiring.errors;
 
   /** @internal */
   readonly controlType = 'date-range-picker';
@@ -988,7 +968,7 @@ export class DateRangePickerComponent<D = Date>
         this.focusedSignal.set(!!origin);
         if (wasFocused && !origin) {
           this.onTouched();
-          this._ngControlRev.update((n) => n + 1);
+          this.errorWiring.bump();
         }
       });
 
@@ -1019,24 +999,13 @@ export class DateRangePickerComponent<D = Date>
     // optional. It is the only registration this component has: delete it and `validate()`
     // is never invoked, so every calendar error code silently disappears with no test failure
     // outside the guard spec. See the provider's own comment above.
-    const ctrl = this.ngControl?.control;
-    if (ctrl) {
-      const streams = [ctrl.statusChanges, ctrl.valueChanges].filter(
-        (s): s is NonNullable<typeof s> => !!s,
-      );
-      if (streams.length) {
-        merge(...streams)
-          .pipe(takeUntilDestroyed(this.destroyRef))
-          .subscribe(() => this._ngControlRev.update((n) => n + 1));
-      }
-    }
-
-    const submit = this.parentFormGroup?.ngSubmit ?? this.parentForm?.ngSubmit;
-    if (submit) {
-      submit
-        .pipe(takeUntilDestroyed(this.destroyRef))
-        .subscribe(() => this._formSubmitRev.update((n) => n + 1));
-    }
+    //
+    // NOTE: unlike `date-picker` and `time-picker`, this component does NOT call
+    // `errorWiring.bump()` after the deferred lookup. That asymmetry predates the
+    // `wireErrorState` extraction and was preserved verbatim by it. `connect()`
+    // subscribes but never bumps, so anything read off `ngControl` before this
+    // point keeps its `null`-era value until the first status/value emission.
+    this.errorWiring.connect();
   }
 
   // ── Public imperative API ──

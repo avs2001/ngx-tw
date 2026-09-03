@@ -15,7 +15,7 @@ import { TW_THEMES, type TwTheme, type TwResolvedTheme, type TwThemeState } from
 /** OS colour-scheme query backing `'system'` resolution. */
 const DARK_QUERY = '(prefers-color-scheme: dark)';
 
-/** OS contrast query backing `'system'` → `'high-contrast'` resolution. */
+/** OS contrast query backing `'system'` → `'high-contrast'` / `'high-contrast-dark'` resolution. */
 const CONTRAST_QUERY = '(prefers-contrast: more)';
 
 /**
@@ -26,7 +26,8 @@ const CONTRAST_QUERY = '(prefers-contrast: more)';
  *
  * The selected {@link theme} may be `'system'` (defer to the OS); the
  * {@link resolvedTheme} computed from it is always one of `'light'`,
- * `'dark'`, or `'high-contrast'` — never `'system'`. Register via
+ * `'dark'`, `'high-contrast'`, or `'high-contrast-dark'` — never `'system'`.
+ * Register via
  * {@link provideTheme} in the app's environment providers; `provideTheme`
  * also constructs the service at bootstrap, so injecting it is only needed
  * to read or change the theme.
@@ -68,12 +69,40 @@ export class ThemeService implements OnDestroy {
     return t === 'system' ? this.systemTheme() : t;
   });
 
-  /** True when the resolved theme is `'dark'`. */
-  readonly isDark = computed(() => this.resolvedTheme() === 'dark');
-  /** True when the resolved theme is `'light'`. */
+  /**
+   * True when the resolved theme is a **dark** scheme — `'dark'` or
+   * `'high-contrast-dark'`.
+   *
+   * It answers the appearance question, not "which scheme": the canonical use
+   * is picking a colour that has to sit on the page background (a chart grid,
+   * a canvas fill), and dark high contrast needs the dark answer there just as
+   * much as plain dark does. It is therefore **not** mutually exclusive with
+   * {@link isHighContrast}; branch on {@link resolvedTheme} for one case.
+   */
+  readonly isDark = computed(() => {
+    const t = this.resolvedTheme();
+    return t === 'dark' || t === 'high-contrast-dark';
+  });
+  /**
+   * True when the resolved theme is exactly `'light'`.
+   *
+   * Deliberately narrower than {@link isDark}'s mirror image: the light-based
+   * `'high-contrast'` does **not** set it, because widening it would change
+   * what a shipped scheme reports to consumers already reading this flag.
+   * Use `!isDark()` for the appearance question.
+   */
   readonly isLight = computed(() => this.resolvedTheme() === 'light');
-  /** True when the resolved theme is `'high-contrast'`. */
-  readonly isHighContrast = computed(() => this.resolvedTheme() === 'high-contrast');
+  /**
+   * True when the resolved theme is an **increased-contrast** scheme —
+   * `'high-contrast'` or `'high-contrast-dark'`.
+   *
+   * It answers the contrast question, so it can be true at the same time as
+   * {@link isDark}.
+   */
+  readonly isHighContrast = computed(() => {
+    const t = this.resolvedTheme();
+    return t === 'high-contrast' || t === 'high-contrast-dark';
+  });
 
   /** Snapshot of the full theme state — selected, resolved, system, and boolean flags. */
   readonly state = computed<TwThemeState>(() => ({
@@ -129,10 +158,11 @@ export class ThemeService implements OnDestroy {
    * Writes the configured theme attribute onto an arbitrary element, scoping
    * that subtree to the given theme.
    *
-   * Each of the three schemes ships an element-agnostic `[data-theme=…]` block
-   * (`_light.css`, `_dark.css`, `_high-contrast.css`), so the tokens really do
-   * re-resolve on the element and cascade into its descendants — including
-   * back to `'light'` from inside a dark page.
+   * Each of the four schemes ships an element-agnostic `[data-theme=…]` block
+   * (`_light.css`, `_dark.css`, `_high-contrast.css`,
+   * `_high-contrast-dark.css`), so the tokens really do re-resolve on the
+   * element and cascade into its descendants — including back to `'light'`
+   * from inside a dark page.
    *
    * Caveat: those CSS blocks key off the literal `data-theme` attribute. If
    * `provideTheme({ attribute })` renamed it, this method writes the renamed
@@ -164,16 +194,18 @@ export class ThemeService implements OnDestroy {
   /**
    * Resolves `'system'` against the OS.
    *
-   * `prefers-contrast: more` selects `'high-contrast'` — but only when the OS
-   * is not also asking for dark. The library ships a single high-contrast
-   * scheme and it is light-based (`_high-contrast.css` maps every surface to
-   * white/`gray-50` and `--color-fg` to black), so letting contrast win
-   * unconditionally would move users who run dark + increased contrast — a
-   * common pairing — from a dark surface to a white one. Adding a dark-based
-   * high-contrast ramp is the fix that lets the two preferences compose
-   * instead of one overriding the other; until it exists, this branch only
-   * *adds* behaviour for users who would otherwise have been given plain
-   * light, and never takes dark away from anyone.
+   * The two preferences are treated as independent axes and composed, not
+   * ranked: `prefers-color-scheme` picks the appearance and
+   * `prefers-contrast: more` picks the contrast, giving the full 2×2 —
+   * `light` / `dark` / `high-contrast` / `high-contrast-dark`.
+   *
+   * This is only correct because the library ships **both** high-contrast
+   * ramps. While `_high-contrast.css` was the only one, contrast had to be
+   * suppressed whenever the OS also asked for dark, or a user running dark +
+   * increased contrast — a common pairing — would have been moved from a dark
+   * surface onto a white one. `_high-contrast-dark.css` removed that
+   * constraint, so the ranking is gone; if a future change ever drops one of
+   * the two ramps, this method has to go back to ranking them.
    *
    * Both queries are minted here (not in the constructor) because the
    * `systemTheme` field initialiser calls this before the constructor body
@@ -184,8 +216,8 @@ export class ThemeService implements OnDestroy {
     if (!this.isBrowser) return 'light';
     const prefersDark = (this.darkQuery ??= window.matchMedia(DARK_QUERY)).matches;
     const prefersMoreContrast = (this.contrastQuery ??= window.matchMedia(CONTRAST_QUERY)).matches;
-    if (prefersDark) return 'dark';
-    return prefersMoreContrast ? 'high-contrast' : 'light';
+    if (prefersMoreContrast) return prefersDark ? 'high-contrast-dark' : 'high-contrast';
+    return prefersDark ? 'dark' : 'light';
   }
 
   private applyToDocument(theme: TwResolvedTheme): void {

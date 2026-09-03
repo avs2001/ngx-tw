@@ -86,17 +86,17 @@ import { CodeBlockComponent } from '@cdevhub/ngx-tw/code-block';
             <tr>
               <td class="px-4 py-2 font-mono text-xs">isDark()</td>
               <td class="px-4 py-2 font-mono text-xs text-fg-muted">Signal&lt;boolean&gt;</td>
-              <td class="px-4 py-2 text-fg-muted">True when the resolved theme is 'dark'.</td>
+              <td class="px-4 py-2 text-fg-muted">True when the resolved theme is a dark scheme, meaning 'dark' or 'high-contrast-dark'.</td>
             </tr>
             <tr>
               <td class="px-4 py-2 font-mono text-xs">isLight()</td>
               <td class="px-4 py-2 font-mono text-xs text-fg-muted">Signal&lt;boolean&gt;</td>
-              <td class="px-4 py-2 text-fg-muted">True when the resolved theme is 'light'.</td>
+              <td class="px-4 py-2 text-fg-muted">True when the resolved theme is exactly 'light', which the light-based 'high-contrast' does not set.</td>
             </tr>
             <tr>
               <td class="px-4 py-2 font-mono text-xs">isHighContrast()</td>
               <td class="px-4 py-2 font-mono text-xs text-fg-muted">Signal&lt;boolean&gt;</td>
-              <td class="px-4 py-2 text-fg-muted">True when the resolved theme is 'high-contrast'.</td>
+              <td class="px-4 py-2 text-fg-muted">True when the resolved theme is an increased-contrast scheme, meaning 'high-contrast' or 'high-contrast-dark'.</td>
             </tr>
             <tr>
               <td class="px-4 py-2 font-mono text-xs">state()</td>
@@ -197,8 +197,12 @@ import { CodeBlockComponent } from '@cdevhub/ngx-tw/code-block';
   `,
 })
 export class ThemeApi {
-  protected readonly typesSnippet = `type TwTheme = 'light' | 'dark' | 'high-contrast' | 'system';
-type TwResolvedTheme = 'light' | 'dark' | 'high-contrast';
+  protected readonly typesSnippet = `// Appearance (light | dark) and contrast (normal | increased) are independent
+// axes, so the resolved values are their 2x2 product.
+type TwTheme =
+  | 'light' | 'dark' | 'high-contrast' | 'high-contrast-dark' | 'system';
+type TwResolvedTheme =
+  | 'light' | 'dark' | 'high-contrast' | 'high-contrast-dark';
 
 // Every key is optional. provideTheme() fills the unset ones from
 // DEFAULT_TW_THEME_CONFIG, so the injected TW_THEME_CONFIG value always
@@ -210,7 +214,8 @@ interface TwThemeConfig {
   target?: 'documentElement' | 'body';  // default: 'documentElement'
 }
 
-// Composite snapshot returned by ThemeService.state().
+// Composite snapshot returned by ThemeService.state(). The three flags are
+// NOT mutually exclusive: 'high-contrast-dark' sets isDark and isHighContrast.
 interface TwThemeState {
   readonly theme: TwTheme;
   readonly resolvedTheme: TwResolvedTheme;

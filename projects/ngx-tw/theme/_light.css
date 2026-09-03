@@ -19,8 +19,9 @@
       `_semantic.css` and is deliberately NOT duplicated here. Edit
       `_semantic.css`, then regenerate this block from it.
 
-   2. The 195 declarations below are exactly the key set that `_dark.css` and
-      `_high-contrast.css` define. The seven `@theme` tokens omitted
+   2. The 195 declarations below are exactly the key set that `_dark.css`,
+      `_high-contrast.css` and `_high-contrast-dark.css` define. The seven
+      `@theme` tokens omitted
       (`--color-overlay-control{,-hover}`,
       `--shadow-table-sticky{,-cell-start,-cell-end}`,
       `--text-2xs{,--line-height}`) are scheme-invariant by design and are
@@ -32,7 +33,8 @@
 
    Import order matters: this file must come BEFORE `_high-contrast.css`,
    whose `@media (forced-colors: active)` block names `[data-theme="light"]`
-   at the same specificity and has to win. `_dark.css`'s
+   at the same specificity and has to win — the same constraint that puts
+   `_high-contrast-dark.css` above `_high-contrast.css` too. `_dark.css`'s
    `prefers-color-scheme` branch already excludes `[data-theme="light"]`
    roots, so those two never fight. */
 
