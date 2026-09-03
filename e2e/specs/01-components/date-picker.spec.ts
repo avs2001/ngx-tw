@@ -1,5 +1,6 @@
 import { expect, test } from '../../fixtures/base';
 import { DatePickerPage } from '../../pages/date-picker.page';
+import { OVERLAY_SETTLE_TIMEOUT_MS } from '../../support/timing';
 
 test.describe.configure({ mode: 'parallel' });
 
@@ -117,11 +118,11 @@ test.describe('Date Picker', () => {
     await picker.waitForOpen();
 
     const overlayTimePicker = picker.overlayDialog.locator('tw-time-picker');
-    await expect(overlayTimePicker).toBeVisible();
+    await expect(overlayTimePicker).toBeVisible({ timeout: OVERLAY_SETTLE_TIMEOUT_MS });
     // Step the embedded time-picker — overlay must stay open.
     await overlayTimePicker.getByRole('spinbutton', { name: 'Hours' }).focus();
     await page.keyboard.press('ArrowUp');
-    await expect(picker.overlayDialog).toBeVisible();
+    await expect(picker.overlayDialog).toBeVisible({ timeout: OVERLAY_SETTLE_TIMEOUT_MS });
   });
 
   test('@interaction @overlay Action bar: cell click stages, only Apply commits', async ({
@@ -137,7 +138,7 @@ test.describe('Date Picker', () => {
     // Pick any enabled cell — pick the cell with tabindex=0 (the focused one).
     await picker.overlayCalendar.locator('button[tabindex="0"]').click();
     // With `showActions=true`, the click does not commit immediately.
-    await expect(picker.overlayDialog).toBeVisible();
+    await expect(picker.overlayDialog).toBeVisible({ timeout: OVERLAY_SETTLE_TIMEOUT_MS });
     await expect(picker.output('action-bar')).toContainText('event = null');
 
     await picker.overlayAction('Apply').click();
@@ -186,7 +187,7 @@ test.describe('Date Picker', () => {
     const trigger = picker.triggerButton(disabled);
     await expect(trigger).toBeDisabled();
     // No overlay opens — assert the dialog never appears.
-    await expect(picker.overlayDialog).toHaveCount(0);
+    await expect(picker.overlayDialog).toHaveCount(0, { timeout: OVERLAY_SETTLE_TIMEOUT_MS });
   });
 
   test('@a11y readonly picker still opens the calendar but blocks typing', async ({

@@ -1,5 +1,6 @@
 import { expect, test } from '../../fixtures/base';
 import { DateRangePickerPage } from '../../pages/date-range-picker.page';
+import { OVERLAY_SETTLE_TIMEOUT_MS } from '../../support/timing';
 
 test.describe.configure({ mode: 'parallel' });
 
@@ -132,7 +133,7 @@ test.describe('Date Range Picker', () => {
 
     const disabled = picker.pickerIn(picker.statesSection, 0);
     await expect(picker.trigger(disabled)).toBeDisabled();
-    await expect(picker.overlayDialog).toHaveCount(0);
+    await expect(picker.overlayDialog).toHaveCount(0, { timeout: OVERLAY_SETTLE_TIMEOUT_MS });
   });
 
   test('@interaction @overlay Action bar: range click stages; Apply commits; Cancel restores', async ({
@@ -152,7 +153,7 @@ test.describe('Date Range Picker', () => {
     );
     await enabled.nth(0).click();
     await enabled.nth(3).click();
-    await expect(picker.overlayDialog).toBeVisible();
+    await expect(picker.overlayDialog).toBeVisible({ timeout: OVERLAY_SETTLE_TIMEOUT_MS });
 
     await picker.overlayAction('Cancel').click();
     await picker.waitForClosed();

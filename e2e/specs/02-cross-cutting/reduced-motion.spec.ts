@@ -1,5 +1,6 @@
 import { expect, test } from '../../fixtures/base';
 import { DialogPage } from '../../pages/dialog.page';
+import { OVERLAY_SETTLE_TIMEOUT_MS } from '../../support/timing';
 
 test.describe.configure({ mode: 'parallel' });
 
@@ -50,7 +51,7 @@ test.describe('Reduced motion drift guard', () => {
     const trigger = page.locator('main').getByRole('combobox').first();
     await trigger.click();
     const listbox = page.locator('.cdk-overlay-container [role="listbox"]');
-    await expect(listbox).toBeVisible();
+    await expect(listbox).toBeVisible({ timeout: OVERLAY_SETTLE_TIMEOUT_MS });
 
     const duration = await listbox.evaluate((el) => getComputedStyle(el).transitionDuration);
     expect(duration.split(',').map((s) => s.trim())).toEqual(

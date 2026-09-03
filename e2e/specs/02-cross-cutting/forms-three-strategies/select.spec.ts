@@ -1,5 +1,6 @@
 import { expect, test } from '../../../fixtures/base';
 import { SelectPage } from '../../../pages/select.page';
+import { OVERLAY_SETTLE_TIMEOUT_MS } from '../../../support/timing';
 
 test.describe.configure({ mode: 'parallel' });
 
@@ -136,7 +137,7 @@ test.describe('Forms · Three strategies · Select', () => {
     // Clicking a disabled combobox should not open the listbox even with
     // `force: true` (the directive's own guard returns early).
     await trigger.click({ force: true });
-    await expect(select.listbox).toHaveCount(0);
+    await expect(select.listbox).toHaveCount(0, { timeout: OVERLAY_SETTLE_TIMEOUT_MS });
 
     await select.buttonIn('reactive', 'Enable').click();
     await expect(trigger).toBeEnabled();

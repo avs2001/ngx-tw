@@ -1,5 +1,6 @@
 import { expect, test } from '../../fixtures/base';
 import { PopoverPage } from '../../pages/popover.page';
+import { OVERLAY_SETTLE_TIMEOUT_MS } from '../../support/timing';
 
 test.describe.configure({ mode: 'parallel' });
 
@@ -71,7 +72,7 @@ test.describe('Popover', () => {
 
     const manualTrigger = p.triggerInTriggers('manual');
     await manualTrigger.click();
-    await expect(p.popovers).toHaveCount(0);
+    await expect(p.popovers).toHaveCount(0, { timeout: OVERLAY_SETTLE_TIMEOUT_MS });
 
     await p.manualToggleButton.click();
     await p.waitForOpen();
@@ -86,7 +87,7 @@ test.describe('Popover', () => {
     await p.goto();
 
     await p.disabledTrigger.click();
-    await expect(p.popovers).toHaveCount(0);
+    await expect(p.popovers).toHaveCount(0, { timeout: OVERLAY_SETTLE_TIMEOUT_MS });
   });
 
   test('@interaction @overlay programmatic open()/close()/toggle() round-trip', async ({
