@@ -259,6 +259,12 @@ for (const scheme of ['light', 'dark'] as const) {
       await waitForRoute(page, scheme);
       const swatches = section(page, 'Semantic Tokens');
       await expect(swatches).toBeVisible();
+      // The shell's `sticky top-0` header (shell.ts:510) paints over the top of
+      // this section once the theme page's tabbed shell pushes it down the page.
+      // Playwright element screenshots capture the page *region*, so the sticky
+      // chrome — including a `backdrop-blur-md` — lands inside the frame and
+      // clips the SURFACE and FOREGROUND rows this baseline exists to guard.
+      await page.addStyleTag({ content: 'header.sticky { display: none !important; }' });
       await expect(swatches).toHaveScreenshot(`theme-swatches.${scheme}.png`, {
         maxDiffPixelRatio: DIFF,
       });
