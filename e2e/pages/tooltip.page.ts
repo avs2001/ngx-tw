@@ -1,4 +1,5 @@
 import { expect, type Locator, type Page } from '@playwright/test';
+import { OVERLAY_SETTLE_TIMEOUT_MS } from '../support/timing';
 
 export type TooltipSize = 'sm' | 'md' | 'lg';
 export type TooltipMainPosition = 'top' | 'bottom' | 'left' | 'right';
@@ -47,11 +48,11 @@ export class TooltipPage {
   }
 
   async waitForOpen(): Promise<void> {
-    await expect(this.topTooltip).toBeVisible();
+    await expect(this.topTooltip).toBeVisible({ timeout: OVERLAY_SETTLE_TIMEOUT_MS });
   }
 
   async waitForClosed(): Promise<void> {
-    await expect(this.tooltips).toHaveCount(0);
+    await expect(this.tooltips).toHaveCount(0, { timeout: OVERLAY_SETTLE_TIMEOUT_MS });
   }
 
   positionTrigger(pos: string): Locator {

@@ -7,14 +7,20 @@ test.describe.configure({ mode: 'parallel' });
  * Three-strategy contract — `Date Range Picker`.
  *
  * Per chapter 04 §Date Range Picker + chapter 08 §2: the range-picker is in
- * the **overlay-deferred-form-control family**. The new `onFormReset` hook
- * clears state without re-emitting `valueChange`. `selectionCleared` only
- * fires mid-draft.
+ * the **overlay-deferred-form-control family**.
  *
- * Signal Forms reset path is BLOCKED — `onFormReset` subscribes to
- * `NgControl.events`, which Signal Forms does not expose. The
- * `selectionCleared` mid-draft assertion needs a spy hook the demo doesn't
- * expose — covered by unit spec (`date-range-picker.spec.ts:700`).
+ * **How reset actually works here.** Through the plain CVA path:
+ * `DateRangePickerComponent.writeValue(null)` (`date-range-picker.ts:1465`)
+ * clears `internalValue`, `value` and the parse/range error flags. It does NOT
+ * go through `core/form-reset.ts`'s `onFormReset` helper — no component in the
+ * library imports it, and it is not exported from `core/index.ts`. Earlier
+ * revisions of this file attributed the behaviour to it; corrected in audit
+ * pass 6.
+ *
+ * The Signal Forms reset test stays suppressed because the demo's Signal Forms
+ * section renders no reset surface. The `selectionCleared` mid-draft assertion
+ * needs an emission spy the demo does not expose — covered by the unit spec
+ * (`date-range-picker.spec.ts:700`).
  */
 test.describe('Forms · Three strategies · Date Range Picker', () => {
   // ──────────────────────────────────────────────────────────────────
@@ -56,7 +62,7 @@ test.describe('Forms · Three strategies · Date Range Picker', () => {
     await expect(picker.output('reactive-forms')).toContainText('"status": "VALID"');
   });
 
-  test('@forms @reactive reactive: `reset()` clears the trigger via onFormReset', async ({
+  test('@forms @reactive reactive: `reset()` clears the trigger via writeValue(null)', async ({
     page,
   }) => {
     const picker = new DateRangePickerPage(page);
@@ -69,7 +75,7 @@ test.describe('Forms · Three strategies · Date Range Picker', () => {
 
     await picker.reactiveSection.getByRole('button', { name: 'Clear', exact: true }).click();
     // Overlay-deferred-reset contract (chapter 05 §5.1, chapter 08 §2):
-    //   onFormReset clears UI state WITHOUT re-emitting `valueChange` /
+    //   writeValue(null) clears UI state WITHOUT re-emitting `valueChange` /
     //   `dateChange`. The unit spec (`date-range-picker.spec.ts:700-820`)
     //   asserts the negative-emission contract; E2E asserts the DOM clear.
     await expect(picker.output('reactive-forms')).toContainText('"value": null');
@@ -99,16 +105,19 @@ test.describe('Forms · Three strategies · Date Range Picker', () => {
   });
 
   test.fixme(
-    '@forms @signal signal-forms: reset clears the trigger (BLOCKED — onFormReset has no Signal Forms events stream)',
+    '[fixme:forms/date-range-picker-signal-reset] @forms @signal signal-forms: reset clears the trigger',
     async () => {
-      // BLOCKED (chapter 08 §2): `onFormReset` uses `NgControl.events`,
+      // BLOCKED — but not for the reason this comment used to give (it
+      // blamed `onFormReset`, which this picker does not use; see the file
+      // header). The demo's Signal Forms section renders no reset control.
+      // Historical text follows: `onFormReset` uses `NgControl.events`,
       // which Signal Forms' FieldState control does not expose. Reset
       // cleanup does not fire under Signal Forms today.
     },
   );
 
   test.fixme(
-    '@forms @reactive `selectionCleared` only fires mid-draft (needs spy hook in demo)',
+    '[fixme:forms/date-range-picker-selection-cleared] @forms @reactive `selectionCleared` only fires mid-draft',
     async () => {
       // BLOCKED — chapter 08 §2(c): assertion requires observing the
       // `selectionCleared` output count, which the demo does not surface

@@ -1,5 +1,10 @@
+/* eslint playwright/expect-expect: ["warn", { "assertFunctionNames": ["expect", "pollUntil"] }] --
+   `pollUntil` (support/timing.ts) wraps `expect.poll`, so a test that asserts only
+   through it still asserts; without this the rule reports it as assertion-free. */
 import { expect, test } from '../../fixtures/base';
 import { DialogPage, type DialogSize } from '../../pages/dialog.page';
+import { pollUntil } from '../../support/timing';
+import { EXPECTED_FAILURE_TIMEOUT_MS } from '../../support/fixme-registry';
 
 test.describe.configure({ mode: 'parallel' });
 
@@ -54,10 +59,11 @@ test.describe('Dialog', () => {
 
     // Focus must land somewhere inside the dialog after the enter animation
     // settles. CDK's autoFocus targets the first focusable element.
-    const focusedInside = await page.evaluate(
+    await pollUntil(
+      page,
       () => !!document.activeElement?.closest('tw-dialog-container'),
-    );
-    expect(focusedInside, 'focus did not land inside the dialog').toBe(true);
+      'focus did not land inside the dialog',
+    ).toBe(true);
 
     await page.keyboard.press('Escape');
     await dialog.waitForClosed();
@@ -230,9 +236,13 @@ test.describe('Dialog', () => {
     await expect(dialog.lifecycleLog).toHaveText('opened → beforeClosed → afterClosed');
   });
 
-  test.fixme(
+  // `test.fail()`, not `test.fixme`: this body fails on a real assertion, so
+  // Playwright runs it and turns the suite RED the day it starts passing —
+  // the self-expiry a `test.fixme` can never have. See `support/fixme-registry.ts`.
+  test.fail(
     '@interaction @overlay BUG: body scroll is locked by the default block scroll strategy',
     async ({ page }) => {
+      test.setTimeout(EXPECTED_FAILURE_TIMEOUT_MS);
       // BUG (ngx-tw/dialog#scroll-lock-shell-layout): CDK's
       // `BlockScrollStrategy` only engages when `<html>` overflows. The
       // demo shell uses `<main class="overflow-y-auto">` as its scroll
@@ -337,10 +347,11 @@ test.describe('Dialog', () => {
 
     for (let i = 0; i < FOCUS_TRAP_TAB_COUNT; i++) {
       await page.keyboard.press('Tab');
-      const stillInside = await page.evaluate(
+      await pollUntil(
+        page,
         () => !!document.activeElement?.closest('tw-dialog-container'),
-      );
-      expect(stillInside, `Tab #${i + 1} let focus escape the dialog`).toBe(true);
+        `Tab #${i + 1} let focus escape the dialog`,
+      ).toBe(true);
     }
 
     await page.keyboard.press('Escape');

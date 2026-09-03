@@ -1,4 +1,5 @@
 import { expect, type Locator, type Page } from '@playwright/test';
+import { OVERLAY_SETTLE_TIMEOUT_MS } from '../support/timing';
 
 /**
  * Section labels rendered as `<h2>` headings inside
@@ -92,11 +93,11 @@ export class DateRangePickerPage {
   }
 
   async waitForOpen(): Promise<void> {
-    await expect(this.overlayDialog).toBeVisible();
+    await expect(this.overlayDialog).toBeVisible({ timeout: OVERLAY_SETTLE_TIMEOUT_MS });
   }
 
   async waitForClosed(): Promise<void> {
-    await expect(this.overlayDialog).toHaveCount(0);
+    await expect(this.overlayDialog).toHaveCount(0, { timeout: OVERLAY_SETTLE_TIMEOUT_MS });
   }
 
   /** A specific day cell by its long-form aria-label (e.g. "June 15, 2025"). */

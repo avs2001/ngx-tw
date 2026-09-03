@@ -1,4 +1,5 @@
 import { expect, type Locator, type Page } from '@playwright/test';
+import { OVERLAY_SETTLE_TIMEOUT_MS } from '../support/timing';
 
 export class PopoverPage {
   readonly main: Locator;
@@ -49,11 +50,11 @@ export class PopoverPage {
   }
 
   async waitForOpen(): Promise<void> {
-    await expect(this.topPopover).toBeVisible();
+    await expect(this.topPopover).toBeVisible({ timeout: OVERLAY_SETTLE_TIMEOUT_MS });
   }
 
   async waitForClosed(): Promise<void> {
-    await expect(this.popovers).toHaveCount(0);
+    await expect(this.popovers).toHaveCount(0, { timeout: OVERLAY_SETTLE_TIMEOUT_MS });
   }
 
   triggerInTriggers(label: 'click' | 'focus' | 'manual'): Locator {

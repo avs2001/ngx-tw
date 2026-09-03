@@ -2,6 +2,7 @@ import type { Page } from '@playwright/test';
 import { expect, test } from '../../fixtures/base';
 import { formatViolations, partitionViolations, runAxe } from '../../support/a11y';
 import type { RuleBacklog } from '../../support/a11y';
+import { OUTLET_READY_TIMEOUT_MS } from '../../support/timing';
 
 test.describe.configure({ mode: 'parallel' });
 
@@ -158,7 +159,7 @@ for (const component of OVERLAY_COMPONENTS) {
 
   test(`@a11y @openstate ${url} — open state scans clean`, async ({ page }) => {
     await page.goto(url);
-    await expect(page.getByRole('heading', { level: 1 })).toBeVisible({ timeout: 20_000 });
+    await expect(page.getByRole('heading', { level: 1 })).toBeVisible({ timeout: OUTLET_READY_TIMEOUT_MS });
 
     const opened = await openFirstPopup(page);
     // Not a soft skip: every component in this list documents a popup

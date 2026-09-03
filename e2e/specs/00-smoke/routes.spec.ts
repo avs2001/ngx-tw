@@ -1,6 +1,7 @@
 import { expect, test } from '../../fixtures/base';
 import type { Page } from '@playwright/test';
 import { COMPONENTS, SERVICES, SUBROUTES } from '../../support/routes';
+import { OUTLET_READY_TIMEOUT_MS } from '../../support/timing';
 
 test.describe.configure({ mode: 'parallel' });
 
@@ -18,13 +19,6 @@ const PAGES: readonly PageEntry[] = [
   ),
 ];
 
-/**
- * First-hit lazy-chunk compilation can take well over the default 5 s expect
- * timeout under parallel load (the demo's largest example files are 600+
- * lines). Bump the per-assertion timeout for outlet-readiness checks so we
- * fail only on truly broken pages, not slow ones.
- */
-const OUTLET_READY_TIMEOUT_MS = 20_000;
 
 /**
  * Console-error patterns that are expected and unrelated to library health.

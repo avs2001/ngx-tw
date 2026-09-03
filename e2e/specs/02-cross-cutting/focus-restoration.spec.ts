@@ -21,7 +21,7 @@ test.describe.configure({ mode: 'parallel' });
  */
 test.describe('Focus restoration', () => {
   test.fixme(
-    '@keyboard route nav: focus moves to the new page landing target',
+    '[fixme:focus-restoration/route-nav-landing] @keyboard route nav: focus moves to the new page landing target',
     async ({ page }) => {
       // chapter 05 §5.3: zero `NavigationEnd` listeners exist today.
       // Lift this fixme once the shell wires:
@@ -41,7 +41,7 @@ test.describe('Focus restoration', () => {
   );
 
   test.fixme(
-    '@keyboard route nav: History.back() restores focus to the originating link',
+    '[fixme:focus-restoration/history-back] @keyboard route nav: History.back() restores focus to the originating link',
     async ({ page }) => {
       // chapter 05 §5.3 P2: needs the same shell affordance as above plus
       // an explicit "focus the link that caused the nav" branch on `popstate`.
@@ -53,8 +53,10 @@ test.describe('Focus restoration', () => {
       await page.goBack();
       await page.waitForURL(/\/components\/button/);
 
-      const restored = await sidebarLink.evaluate((el) => el === document.activeElement);
-      expect(restored).toBe(true);
+      // `toBeFocused` auto-retries; a one-shot `evaluate` comparing against
+      // `document.activeElement` samples a single instant and races router
+      // navigation. See `support/timing.ts`.
+      await expect(sidebarLink).toBeFocused();
     },
   );
 
@@ -72,8 +74,7 @@ test.describe('Focus restoration', () => {
     await page.keyboard.press('Escape');
     await dialog.waitForClosed();
 
-    const restored = await trigger.evaluate((el) => el === document.activeElement);
-    expect(restored, 'focus did not return to the dialog trigger').toBe(true);
+    await expect(trigger, 'focus did not return to the dialog trigger').toBeFocused();
   });
 
   test('@keyboard @overlay focus returns to dialog trigger after backdrop close', async ({
@@ -88,10 +89,10 @@ test.describe('Focus restoration', () => {
     await dialog.backdrop.click({ position: { x: 5, y: 5 } });
     await dialog.waitForClosed();
 
-    const restored = await trigger.evaluate((el) => el === document.activeElement);
-    expect(restored, 'focus did not return to the dialog trigger after backdrop close').toBe(
-      true,
-    );
+    await expect(
+      trigger,
+      'focus did not return to the dialog trigger after backdrop close',
+    ).toBeFocused();
   });
 
   test('@keyboard @overlay focus returns to select trigger after Esc close', async ({
@@ -109,7 +110,6 @@ test.describe('Focus restoration', () => {
     await page.keyboard.press('Escape');
     await select.waitForClosed();
 
-    const restored = await trigger.evaluate((el) => el === document.activeElement);
-    expect(restored, 'focus did not return to the select trigger').toBe(true);
+    await expect(trigger, 'focus did not return to the select trigger').toBeFocused();
   });
 });

@@ -19,7 +19,9 @@ test.describe.configure({ mode: 'parallel' });
  * - `disabled` vs `readonly` semantics differ: `readonly` keeps fields
  *   focusable; `disabled` blocks every interaction.
  * - Clear button (`showClear`, `clearLabel`).
- * - `onFormReset` covered in the forms-three-strategies suite.
+ * - form reset (via `writeValue(null)`) covered in the forms-three-strategies
+ *   suite. NOTE: this line used to name `onFormReset`; no component imports
+ *   that helper. Corrected in audit pass 6.
  */
 test.describe('Time Picker', () => {
   test('@interaction renders the format-demo section with the documented spinbuttons', async ({
@@ -155,7 +157,7 @@ test.describe('Time Picker', () => {
   });
 
   test.fixme(
-    '@a11y locale: meridiem labels switch per locale (NEEDS-DEMO-WIRING)',
+    '[fixme:time-picker/meridiem-locale] @a11y locale: meridiem labels switch per locale (NEEDS-DEMO-WIRING)',
     async () => {
       // `TimePickerIntl` (provided via `provideTimePickerIntl`) now controls
       // the AM/PM labels, group label, and announcements — i18n support has

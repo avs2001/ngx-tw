@@ -176,7 +176,7 @@ test.describe('Command Palette', () => {
   });
 
   test.fixme(
-    '@interaction @overlay [twCommandPaletteTrigger] declarative trigger directive',
+    '[fixme:command-palette/trigger-directive] @interaction @overlay [twCommandPaletteTrigger] declarative trigger directive',
     async () => {
       // BLOCKED: command-palette-trigger.ts is exported but not wired into
       // any demo example (see REVIEW.md §8.1, chapter 04 §Command Palette

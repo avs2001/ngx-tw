@@ -63,6 +63,72 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
+      # ──────────────────────────────────────────────────────────────
+      # `test.fixme` registry guard.
+      #
+      # `e2e/support/fixme-registry.ts` makes a suppression expire:
+      # `fixmeTitle(id)` throws at collection time for an unregistered id, and
+      # `specs/00-smoke/fixme-registry.spec.ts` fails once `reviewBy` passes.
+      # Neither can catch the two directions below, which need to read the
+      # source tree — and a spec cannot `import 'node:fs'` because
+      # `@types/node` is not a dependency of this workspace (the same gap the
+      # audit register records against `scripts/verify-theme-parity.mjs`). So
+      # the source scan lives here, where a shell has no such problem. It runs
+      # before the Playwright install so it fails in seconds, not minutes.
+      # ──────────────────────────────────────────────────────────────
+      - name: Guard — every test.fixme carries a registry id, every id is used
+        run: |
+          python3 - <<'PY'
+          import re, sys
+          from pathlib import Path
+
+          # The two conditional in-body `test.fixme(cond, msg)` calls in this
+          # file gate the ARIA_CONTROLS_BACKLOG / ACCESSIBLE_NAME_BACKLOG sets.
+          # They take a boolean, not a title, and their expiry already lives in
+          # those backlogs — so they are exempt by design, not by oversight.
+          EXEMPT = {'e2e/specs/03-accessibility/explicit-assertions.spec.ts'}
+
+          specs = sorted(Path('e2e/specs').rglob('*.spec.ts'))
+          bare, used = [], set()
+          for path in specs:
+              text = path.read_text()
+              if str(path) in EXEMPT:
+                  continue
+              lines = text.split('\n')
+              for n, line in enumerate(lines):
+                  if not re.match(r'^\s*test\.fixme\(', line):
+                      continue
+                  window = '\n'.join(lines[n:n + 3])
+                  match = re.search(r"fixmeTitle\('([^']+)'\)", window)
+                  if match:
+                      used.add(match.group(1))
+                  else:
+                      bare.append(f'{path}:{n + 1}')
+
+          registry = Path('e2e/support/fixme-registry.ts').read_text()
+          declared = set(re.findall(r"^\s*id: '([^']+)',", registry, re.M))
+
+          problems = []
+          if bare:
+              problems.append(
+                  'test.fixme call sites with no registry id (use '
+                  "fixmeTitle('<area>/<slug>')):\n  " + '\n  '.join(bare))
+          orphans = sorted(declared - used)
+          if orphans:
+              problems.append(
+                  'registry entries no call site references — delete them:\n  '
+                  + '\n  '.join(orphans))
+          unknown = sorted(used - declared)
+          if unknown:
+              problems.append(
+                  'ids used by a call site but missing from the registry:\n  '
+                  + '\n  '.join(unknown))
+
+          if problems:
+              print('\n\n'.join(problems))
+              sys.exit(1)
+          print(f'fixme registry OK — {len(used)} suppressions, all registered, no orphans.')
+          PY
       - uses: actions/setup-node@v4
         with:
           node-version-file: .nvmrc
@@ -204,14 +270,85 @@ jobs:
       - run: echo "All full-suite shards passed."
 
   # ────────────────────────────────────────────────────────────────────
-  # Visual regression — runs on merge + weekly
+  # Visual regression — runs on merge + weekly, PLUS any PR that touches a
+  # baseline PNG.
+  #
+  # Why this gate exists (audit pass 5 → 6). The visual job used to run only
+  # on `push`/`schedule`/`workflow_dispatch`, and the workflow's `push`
+  # trigger is scoped to `develop`. A feature branch therefore got `skipping`
+  # on every PR run, so the first thing that genuinely exercised a
+  # regenerated baseline was the push to `develop` AFTER merge — a bad
+  # baseline turned `develop` red rather than the PR that introduced it.
+  #
+  # That compounds a second property: `e2e-update-baselines.yml` runs
+  # `--update-snapshots`, which makes that job pass BY DEFINITION — it
+  # records whatever renders. The job that writes baselines always passed
+  # and the only job that could contradict it never ran on the PR.
+  #
+  # Why detection instead of "just run it on every PR": the CI-minutes
+  # argument in this file's header is real — the visual job is a 15-minute
+  # budget with its own browser install, and 99% of PRs do not touch a PNG.
+  # `visual-baseline-scope` below is a checkout + one `git diff` (~15 s), so
+  # steady-state PR cost is unchanged while a baseline-touching PR gets the
+  # full sweep against the COMMITTED baselines — the one run that
+  # `--update-snapshots` cannot fake.
+  #
+  # Why a job-level condition and not a workflow-level `paths:` filter: a
+  # `paths:` filter on the `pull_request` trigger gates the WHOLE workflow,
+  # which would stop `e2e-smoke` and `e2e-a11y` — the two required PR
+  # checks — from running on any PR that does not touch a screenshot.
   # ────────────────────────────────────────────────────────────────────
+
+  visual-baseline-scope:
+    name: e2e — visual baseline scope
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      baselines-changed: ${{ steps.detect.outputs.baselines-changed }}
+    steps:
+      # `fetch-depth: 2` is enough: on a `pull_request` event the checked-out
+      # ref is `refs/pull/N/merge`, whose first parent is the base-branch tip.
+      # `HEAD^1..HEAD` is therefore exactly the PR's own diff, with no full
+      # clone and no extra action dependency.
+      - uses: actions/checkout@v4
+        if: github.event_name == 'pull_request'
+        with:
+          fetch-depth: 2
+      - name: Detect baseline changes
+        id: detect
+        run: |
+          set -uo pipefail
+          if [[ "${{ github.event_name }}" != "pull_request" ]]; then
+            # push / schedule / workflow_dispatch run the visual job on their
+            # own trigger conditions; nothing to detect.
+            echo "baselines-changed=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          if ! changed="$(git diff --name-only HEAD^1 HEAD -- e2e/__screenshots__ 2>/dev/null)"; then
+            # Fail SAFE, not open: if the merge-base is unavailable for any
+            # reason we run the visual job rather than silently skipping the
+            # only check that can contradict a regenerated baseline.
+            echo "Could not diff against the base ref — running the visual job anyway."
+            echo "baselines-changed=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          if [[ -n "$changed" ]]; then
+            echo "Baseline PNGs changed in this PR:"
+            echo "$changed"
+            echo "baselines-changed=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "No baseline PNGs changed in this PR."
+            echo "baselines-changed=false" >> "$GITHUB_OUTPUT"
+          fi
 
   e2e-visual:
     name: e2e — visual canary (chromium)
-    if: github.event_name == 'push' || (github.event_name == 'schedule' && github.event.schedule == '0 4 * * 0') || github.event_name == 'workflow_dispatch'
+    # `visual-baseline-scope` deliberately carries no `if:` — a SKIPPED
+    # dependency propagates the skip to every job that `needs` it, which
+    # would silently disable the visual job on push/schedule too.
+    if: github.event_name == 'push' || (github.event_name == 'schedule' && github.event.schedule == '0 4 * * 0') || github.event_name == 'workflow_dispatch' || needs.visual-baseline-scope.outputs.baselines-changed == 'true'
     runs-on: ubuntu-latest
-    needs: [build-lib]
+    needs: [build-lib, visual-baseline-scope]
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4

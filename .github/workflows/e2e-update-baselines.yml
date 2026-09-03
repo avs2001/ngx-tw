@@ -11,6 +11,17 @@ name: e2e — update visual baselines
 #   - Baselines MUST be regenerated on the same OS/browser that the visual
 #     job runs against (Linux + chromium). Regenerating on macOS or another
 #     platform produces wrong baselines that fail again immediately.
+#
+# THIS JOB PASSES BY DEFINITION. `--update-snapshots` records whatever
+# renders, so "N passed" here is not evidence of correctness — it is only
+# evidence that the capture ran. The check that can contradict it is
+# `e2e.yml`'s `e2e — visual canary` job running against the COMMITTED
+# baselines. Since audit pass 6 that job runs on any pull request whose diff
+# touches `e2e/__screenshots__/**` (see `visual-baseline-scope` in
+# `e2e.yml`), so the push this workflow makes to a PR branch re-triggers it
+# automatically. Always read the resulting PNGs before merging anyway — pass
+# 5 shipped a baseline that had silently lost the two token rows it existed
+# to guard, and the green regeneration job said nothing.
 
 on:
   workflow_dispatch:

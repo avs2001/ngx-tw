@@ -1,6 +1,11 @@
+/* eslint playwright/expect-expect: ["warn", { "assertFunctionNames": ["expect", "pollUntil"] }] --
+   `pollUntil` (support/timing.ts) wraps `expect.poll`, so a test that asserts only
+   through it still asserts; without this the rule reports it as assertion-free. */
 import { expect, test } from '../../fixtures/base';
 import { ButtonPage } from '../../pages/button.page';
 import { DialogPage } from '../../pages/dialog.page';
+import { pollUntil } from '../../support/timing';
+import { EXPECTED_FAILURE_TIMEOUT_MS } from '../../support/fixme-registry';
 
 test.describe.configure({ mode: 'parallel' });
 
@@ -53,9 +58,13 @@ test.describe('Keyboard · cross-cutting journey', () => {
     expect(tabbedLabels).toEqual(visualOrder.map((s) => s.trim()));
   });
 
-  test.fixme(
+  // `test.fail()`, not `test.fixme`: this body fails on a real assertion, so
+  // Playwright runs it and turns the suite RED the day it starts passing —
+  // the self-expiry a `test.fixme` can never have. See `support/fixme-registry.ts`.
+  test.fail(
     '@keyboard skip link jumps focus to <main> (demo shell does not ship one yet)',
     async ({ page }) => {
+      test.setTimeout(EXPECTED_FAILURE_TIMEOUT_MS);
       // chapter 05 §5.2: the shell-side fix is paired with §5.3's
       // focus-restoration P2 — file together. Until then, this test is a
       // placeholder documenting the expected behaviour.
@@ -148,17 +157,17 @@ test.describe('Keyboard · cross-cutting journey', () => {
     // Tab 30× — focus must remain inside the dialog container.
     for (let i = 0; i < 30; i++) {
       await page.keyboard.press('Tab');
-      const inside = await page.evaluate(
+      await pollUntil(
+        page,
         () => !!document.activeElement?.closest('tw-dialog-container'),
-      );
-      expect(inside, `focus escaped the dialog at iteration ${i}`).toBe(true);
+        `focus escaped the dialog at iteration ${i}`,
+      ).toBe(true);
     }
 
     await page.keyboard.press('Escape');
     await dialog.waitForClosed();
 
     // CDK FocusTrap returns focus to the trigger element.
-    const restored = await trigger.evaluate((el) => el === document.activeElement);
-    expect(restored, 'focus did not return to the trigger after dialog close').toBe(true);
+    await expect(trigger, 'focus did not return to the trigger after dialog close').toBeFocused();
   });
 });

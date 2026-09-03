@@ -1,5 +1,6 @@
 import { expect, test } from '../../../fixtures/base';
 import { InputPage } from '../../../pages/input.page';
+import { EXPECTED_FAILURE_TIMEOUT_MS } from '../../../support/fixme-registry';
 
 test.describe.configure({ mode: 'parallel' });
 
@@ -122,9 +123,13 @@ test.describe('Forms · Three strategies · Input', () => {
     await expect(input.readoutIn('reactive')).toContainText('disabled = false');
   });
 
-  test.fixme(
+  // `test.fail()`, not `test.fixme`: this body fails on a real assertion, so
+  // Playwright runs it and turns the suite RED the day it starts passing —
+  // the self-expiry a `test.fixme` can never have. See `support/fixme-registry.ts`.
+  test.fail(
     '@forms @reactive reactive: `markAsTouched()` surfaces the error region (chapter 05 §5.1)',
     async ({ page }) => {
+      test.setTimeout(EXPECTED_FAILURE_TIMEOUT_MS);
       // BUG (ngx-tw/input#mark-as-touched-not-recomputed): the
       // `InputDirective.errorState` signal recomputes when `_ngControlRev`
       // bumps, but the directive only bumps it from `statusChanges` /

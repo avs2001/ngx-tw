@@ -1,4 +1,5 @@
 import { expect, type Locator, type Page } from '@playwright/test';
+import { OVERLAY_SETTLE_TIMEOUT_MS } from '../support/timing';
 
 /**
  * Page Object for the command-palette examples route. The overlay renders
@@ -44,11 +45,11 @@ export class CommandPalettePage {
   }
 
   async waitForOpen(): Promise<void> {
-    await expect(this.topOverlay).toBeVisible();
+    await expect(this.topOverlay).toBeVisible({ timeout: OVERLAY_SETTLE_TIMEOUT_MS });
   }
 
   async waitForClosed(): Promise<void> {
-    await expect(this.overlays).toHaveCount(0);
+    await expect(this.overlays).toHaveCount(0, { timeout: OVERLAY_SETTLE_TIMEOUT_MS });
   }
 
   /** The search input rendered inside the open overlay. */

@@ -146,9 +146,11 @@ test.describe('Forms · Three strategies · Select', () => {
   test('@forms @reactive reactive: reset() clears the trigger and the readout via the CVA path', async ({
     page,
   }) => {
-    // Per chapter 04 §Select: select.ts does NOT use onFormReset. The
-    // standard CVA writeValue(null) is what handles `formControl.reset()`.
-    // Assert both observable surfaces clear.
+    // `select.ts` clears through the standard CVA path: `formControl.reset()`
+    // reaches the accessor as `writeValue(null)` (`select.ts:1650`). Nothing in
+    // the library uses `core/form-reset.ts`'s `onFormReset` helper — this file
+    // was the only one of six that already said so, and audit pass 6 corrected
+    // the other five to match. Assert both observable surfaces clear.
     const select = new SelectPage(page);
     await select.goto();
 

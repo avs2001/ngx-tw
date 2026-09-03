@@ -1,5 +1,6 @@
 import { expect, test } from '../../fixtures/base';
 import { DialogPage } from '../../pages/dialog.page';
+import { EXPECTED_FAILURE_TIMEOUT_MS } from '../../support/fixme-registry';
 
 /**
  * Mobile / touch — chapter 05 §5.6.
@@ -24,7 +25,7 @@ test.describe('Mobile / touch (mobile-chrome only)', () => {
   });
 
   test.fixme(
-    '@mobile sidebar drawer collapses below md breakpoint',
+    '[fixme:mobile/sidebar-drawer] @mobile sidebar drawer collapses below md breakpoint',
     async ({ page }) => {
       // chapter 05 §5.6: `shell.ts` sidebar has zero responsive variants
       // (`md:` / `lg:` returns nothing). At Pixel 7 (412 × 915) the
@@ -62,7 +63,11 @@ test.describe('Mobile / touch (mobile-chrome only)', () => {
     await expect(tooltip).toHaveCount(0);
   });
 
-  test.fixme('@mobile @overlay date-picker overlay fits inside the viewport', async ({ page }) => {
+  // `test.fail()`, not `test.fixme`: this body fails on a real assertion, so
+  // Playwright runs it and turns the suite RED the day it starts passing —
+  // the self-expiry a `test.fixme` can never have. See `support/fixme-registry.ts`.
+  test.fail('@mobile @overlay date-picker overlay fits inside the viewport', async ({ page }) => {
+    test.setTimeout(EXPECTED_FAILURE_TIMEOUT_MS);
     // The date-picker's overlay never reaches `visible` on Pixel 7: the
     // first button matched by the demo (`/open calendar|date/i`) is the
     // playground's reset action, not the trigger, so `click()` doesn't

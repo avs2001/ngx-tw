@@ -8,16 +8,18 @@ test.describe.configure({ mode: 'parallel' });
  *
  * Per chapter 04 §Time Picker + chapter 08 §2: the time-picker is in the
  * **overlay-deferred-form-control family** alongside date-picker and
- * date-range-picker. The new `onFormReset` helper subscribes to
- * `NgControl.events` and clears UI state without re-emitting `valueChange`
- * on the null path.
+ * date-range-picker.
  *
- * **Calendar / Signal Forms gap (chapter 05 §5.1, chapter 08 §2):** the
- * `onFormReset` helper relies on `ngControl.control.events`. Signal Forms'
- * control type does not expose an `events` stream, so reset cleanup under
- * Signal Forms does not fire today. The Signal Forms reset test is
- * `test.fixme` until either the helper supports the Signal Forms control or
- * the demo wires its own reset hook.
+ * **How reset actually works here.** Through the plain CVA path:
+ * `TimePickerComponent.writeValue(null)` (`time-picker.ts:1464`) clears
+ * `internalValue`, `value` and the three text segments. It does NOT go through
+ * `core/form-reset.ts`'s `onFormReset` helper — no component in the library
+ * imports it, and it is not exported from `core/index.ts`. Earlier revisions of
+ * this file attributed the behaviour to it; corrected in audit pass 6.
+ *
+ * The Signal Forms reset test stays suppressed because the demo's Signal Forms
+ * section renders no reset surface, not because of an events stream.
+ * Registry: `forms/time-picker-signal-reset`.
  *
  * Inputs are observed via the `<input role="spinbutton" aria-valuenow="…">`
  * native attributes — the closest stable contract a consumer sees.
@@ -77,7 +79,7 @@ test.describe('Forms · Three strategies · Time Picker', () => {
     // The "Clear" button calls `alarmCtrl.reset(null)` (see demo source).
     // Overlay-deferred reset contract (chapter 05 §5.1 + chapter 08 §2):
     //   1. DOM clears.
-    //   2. The reset path goes through `onFormReset`, which clears UI state
+    //   2. The reset path goes through `writeValue(null)`, which clears UI state
     //      *without* re-emitting `valueChange`. We assert (1) directly. The
     //      negative-valueChange assertion is verified via unit specs
     //      (date-picker.spec.ts, time-picker.spec.ts) since E2E has no spy
@@ -108,9 +110,12 @@ test.describe('Forms · Three strategies · Time Picker', () => {
   });
 
   test.fixme(
-    '@forms @signal signal-forms: reset clears the spinbuttons (BLOCKED — onFormReset has no Signal Forms events stream)',
+    '[fixme:forms/time-picker-signal-reset] @forms @signal signal-forms: reset clears the spinbuttons',
     async () => {
-      // BLOCKED (chapter 05 §5.1, chapter 08 §2): `onFormReset` subscribes to
+      // BLOCKED — but not for the reason this comment used to give (it
+      // blamed `onFormReset`, which the time-picker does not use; see the
+      // file header). The demo's Signal Forms section renders no reset
+      // control. Historical text follows for reference: `onFormReset` subscribes to
       // `ngControl.control.events`, which Signal Forms' FieldState control
       // does not expose. The reset path therefore does not fire for
       // signal-forms-bound pickers. Demo has no Reset button in the

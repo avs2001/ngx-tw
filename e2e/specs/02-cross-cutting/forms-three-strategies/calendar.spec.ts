@@ -9,12 +9,18 @@ test.describe.configure({ mode: 'parallel' });
  * Calendar exposes **two** strategies in the demo: reactive forms and
  * signal forms. There is no template-driven section.
  *
- * **Reset semantics (chapter 05 §5.1, chapter 08 §2):** `calendar.ts`
- * subscribes to `ngControl.control.events` directly (not via the
- * `onFormReset` helper used by date/time pickers). Signal Forms' control
- * lacks an `events` stream, so calendar's reset cleanup **does not fire
- * under Signal Forms** today. The Signal Forms reset assertion is
- * `test.fixme` until the underlying gap is addressed.
+ * **Reset semantics.** Calendar is the one control in the library that really
+ * does subscribe to `ngControl.control.events` and filter `FormResetEvent`
+ * (`calendar.ts:824`). It hand-rolls that; it does not call
+ * `core/form-reset.ts`'s `onFormReset`, which no component imports and which
+ * `core/index.ts` does not export — the "helper used by date/time pickers"
+ * this comment used to claim never existed in any component. Those pickers
+ * clear through plain `writeValue(null)`. Corrected in audit pass 6.
+ *
+ * The consequence for calendar is real and unchanged: Signal Forms' FieldState
+ * exposes no `events` stream, so the `if (ctrl?.events)` guard at
+ * `calendar.ts:824` never opens and reset cleanup does not fire under Signal
+ * Forms. Registry: `forms/calendar-signal-reset`.
  */
 test.describe('Forms · Three strategies · Calendar', () => {
   // ──────────────────────────────────────────────────────────────────
@@ -93,7 +99,7 @@ test.describe('Forms · Three strategies · Calendar', () => {
   });
 
   test.fixme(
-    '@forms @signal signal-forms: reset clears the selection (BLOCKED — calendar.events guard skips Signal Forms)',
+    '[fixme:forms/calendar-signal-reset] @forms @signal signal-forms: reset clears the selection',
     async () => {
       // BLOCKED — chapter 05 §5.1, chapter 08 §2: `calendar.ts` handles
       // `FormResetEvent` directly with an `if (ctrl?.events)` guard. Signal

@@ -1,5 +1,6 @@
 import { expect, test } from '../../fixtures/base';
 import type { BrowserContext, Locator, Page } from '@playwright/test';
+import { OUTLET_READY_TIMEOUT_MS } from '../../support/timing';
 
 test.describe.configure({ mode: 'parallel' });
 
@@ -41,11 +42,6 @@ test.beforeEach(async ({ context, browserName }, testInfo) => {
 /** Standard maxDiffPixelRatio for canary snapshots — absorbs subpixel noise. */
 const DIFF = 0.01;
 
-/**
- * First-hit lazy-chunk compilation can take well past the default 5s
- * expect timeout — same threshold the smoke + a11y specs use.
- */
-const OUTLET_READY_TIMEOUT_MS = 20_000;
 
 /** Wait for the route's outlet to mount (H1 + theme attribute reflect). */
 async function waitForRoute(page: Page, scheme: 'light' | 'dark'): Promise<void> {
@@ -131,6 +127,52 @@ function section(page: Page, heading: string): Locator {
   });
 }
 
+/**
+ * Prepare an in-page region for capture. Call this immediately before every
+ * `toHaveScreenshot` on a *page element* (not on an overlay pane / the CDK
+ * overlay container, which are viewport-anchored and unaffected).
+ *
+ * It fixes two capture defects that both silently *delete* content from a
+ * baseline rather than failing — the worst possible failure mode for a
+ * regression guard, because the PNG stays stable and keeps passing while
+ * guarding less and less.
+ *
+ * **1. The off-viewport slice of a tall element is never painted.** Playwright
+ * scrolls the target into view and captures its box, but the part of the box
+ * that does not intersect the viewport at that moment comes back blank white.
+ * Audit pass 5 measured this on `theme-swatches` (a 1284px section against the
+ * 720px `Desktop Chrome` viewport): a ~270px band at the top, where the
+ * `Semantic Tokens` heading and the SURFACE and FOREGROUND token rows live,
+ * plus a ~290px band at the bottom — exactly one viewport-height of real
+ * content in the middle, blank on both sides. Pass 5 hypothesised an unsettled
+ * enter animation; that is **falsified** — the painted band is viewport-height
+ * exact, and growing the viewport (below) restores every row with no extra
+ * wait. Four other baselines had silently lost content the same way:
+ * `alert-colors`, `button-colors`, `card-variants`, `tabs-variants`.
+ *
+ * **2. The shell's `sticky top-0 z-30` header (`shell.ts:510`) paints into the
+ * frame.** An element screenshot captures the page *region*, so once a section
+ * is scrolled under the sticky chrome the header — `backdrop-blur-md` and all —
+ * lands inside the box and covers the section's own heading.
+ *
+ * Hiding the header removes it from normal flow, which shifts the page's scroll
+ * geometry but not the captured section's own layout; growing the viewport does
+ * not change the 1280px layout width, and `installStabilityHooks` has already
+ * zeroed scrollbar width, so neither step can reflow the subject.
+ */
+async function prepareRegionCapture(page: Page, target: Locator): Promise<void> {
+  await page.addStyleTag({ content: 'header.sticky { display: none !important; }' });
+  const box = await target.boundingBox();
+  const viewport = page.viewportSize();
+  if (!box || !viewport) return;
+  // +32px of slack so a sub-pixel box height can never leave a 1px unpainted
+  // strip at the bottom edge.
+  const needed = Math.ceil(box.height) + 32;
+  if (needed > viewport.height) {
+    await page.setViewportSize({ width: viewport.width, height: needed });
+  }
+}
+
 for (const scheme of ['light', 'dark'] as const) {
   test.describe(`@visual ${scheme} scheme`, () => {
     test.beforeEach(async ({ context }) => {
@@ -142,6 +184,7 @@ for (const scheme of ['light', 'dark'] as const) {
       await waitForRoute(page, scheme);
       const variants = section(page, 'Variants');
       await expect(variants).toBeVisible();
+      await prepareRegionCapture(page, variants);
       await expect(variants).toHaveScreenshot(`button-variants.${scheme}.png`, {
         maxDiffPixelRatio: DIFF,
       });
@@ -152,6 +195,7 @@ for (const scheme of ['light', 'dark'] as const) {
       await waitForRoute(page, scheme);
       const colors = section(page, 'Colors');
       await expect(colors).toBeVisible();
+      await prepareRegionCapture(page, colors);
       await expect(colors).toHaveScreenshot(`button-colors.${scheme}.png`, {
         maxDiffPixelRatio: DIFF,
       });
@@ -162,6 +206,7 @@ for (const scheme of ['light', 'dark'] as const) {
       await waitForRoute(page, scheme);
       const colors = section(page, 'Colors');
       await expect(colors).toBeVisible();
+      await prepareRegionCapture(page, colors);
       await expect(colors).toHaveScreenshot(`alert-colors.${scheme}.png`, {
         maxDiffPixelRatio: DIFF,
       });
@@ -172,6 +217,7 @@ for (const scheme of ['light', 'dark'] as const) {
       await waitForRoute(page, scheme);
       const variants = section(page, 'Variants');
       await expect(variants).toBeVisible();
+      await prepareRegionCapture(page, variants);
       await expect(variants).toHaveScreenshot(`card-variants.${scheme}.png`, {
         maxDiffPixelRatio: DIFF,
       });
@@ -182,6 +228,7 @@ for (const scheme of ['light', 'dark'] as const) {
       await waitForRoute(page, scheme);
       const variants = section(page, 'Variants');
       await expect(variants).toBeVisible();
+      await prepareRegionCapture(page, variants);
       await expect(variants).toHaveScreenshot(`tabs-variants.${scheme}.png`, {
         maxDiffPixelRatio: DIFF,
       });
@@ -192,6 +239,7 @@ for (const scheme of ['light', 'dark'] as const) {
       await waitForRoute(page, scheme);
       const colors = section(page, 'Colors');
       await expect(colors).toBeVisible();
+      await prepareRegionCapture(page, colors);
       await expect(colors).toHaveScreenshot(`select-closed.${scheme}.png`, {
         maxDiffPixelRatio: DIFF,
       });
@@ -259,12 +307,10 @@ for (const scheme of ['light', 'dark'] as const) {
       await waitForRoute(page, scheme);
       const swatches = section(page, 'Semantic Tokens');
       await expect(swatches).toBeVisible();
-      // The shell's `sticky top-0` header (shell.ts:510) paints over the top of
-      // this section once the theme page's tabbed shell pushes it down the page.
-      // Playwright element screenshots capture the page *region*, so the sticky
-      // chrome — including a `backdrop-blur-md` — lands inside the frame and
-      // clips the SURFACE and FOREGROUND rows this baseline exists to guard.
-      await page.addStyleTag({ content: 'header.sticky { display: none !important; }' });
+      // This is the capture that exposed both defects `prepareRegionCapture`
+      // fixes: at 1284px it is the tallest region in the canary, and the theme
+      // page's tabbed shell pushes it under the sticky header.
+      await prepareRegionCapture(page, swatches);
       await expect(swatches).toHaveScreenshot(`theme-swatches.${scheme}.png`, {
         maxDiffPixelRatio: DIFF,
       });

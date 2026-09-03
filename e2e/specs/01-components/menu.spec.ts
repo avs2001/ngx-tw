@@ -1,5 +1,9 @@
+/* eslint playwright/expect-expect: ["warn", { "assertFunctionNames": ["expect", "pollUntil"] }] --
+   `pollUntil` (support/timing.ts) wraps `expect.poll`, so a test that asserts only
+   through it still asserts; without this the rule reports it as assertion-free. */
 import { expect, test } from '../../fixtures/base';
 import { MenuPage } from '../../pages/menu.page';
+import { pollUntil } from '../../support/timing';
 
 test.describe.configure({ mode: 'parallel' });
 
@@ -41,10 +45,11 @@ test.describe('Menu', () => {
     await m.waitForOpen();
 
     // CDK's CdkMenuTrigger focuses the first item on keyboard open.
-    const focusedRole = await page.evaluate(
-      () => (document.activeElement?.getAttribute('role') ?? null),
-    );
-    expect(focusedRole, 'first menuitem should hold focus after open').toBe('menuitem');
+    await pollUntil(
+      page,
+      () => document.activeElement?.getAttribute('role') ?? null,
+      'first menuitem should hold focus after open',
+    ).toBe('menuitem');
 
     await page.keyboard.press('Escape');
     await m.waitForClosed();
@@ -64,10 +69,16 @@ test.describe('Menu', () => {
     for (let i = 0; i < 4; i++) {
       await page.keyboard.press('ArrowDown');
     }
-    const focusedName = await page.evaluate(
+    // Asserted positively. A polled *negative* ("not Archive") would go green
+    // the instant focus is anywhere else — including on <body> before the key
+    // handler has run — so it would be weaker than the one-shot read it
+    // replaces. Naming the expected landing item keeps the assertion strict
+    // while still tolerating the settle delay.
+    await pollUntil(
+      page,
       () => document.activeElement?.textContent?.trim() ?? '',
-    );
-    expect(focusedName, 'disabled "Archive" must be skipped').not.toMatch(/^Archive$/);
+      'ArrowDown must skip the disabled "Archive" and land on "Delete project"',
+    ).toBe('Delete project');
   });
 
   test('@interaction @overlay hovering a submenu trigger opens the nested overlay', async ({
