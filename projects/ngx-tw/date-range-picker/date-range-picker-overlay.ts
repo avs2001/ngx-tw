@@ -228,6 +228,9 @@ export class DateRangePickerOverlayComponent<D = unknown> {
   readonly dateFilter = signal<DateFilterFn<D> | null>(null);
   /** @internal */
   readonly startView = signal<CalendarViewState>('day');
+
+  /** @internal Mirrors the host's `startAt`. Anchors the calendar when no range is pending. */
+  readonly startAt = signal<D | null>(null);
   /** @internal */
   readonly numberOfMonths = signal<DateRangePickerMonths>(2);
   /** @internal Current pending range shown as selected in the calendar. */
@@ -338,10 +341,18 @@ export class DateRangePickerOverlayComponent<D = unknown> {
     return v ? { start: v.start, end: v.end } : { start: null, end: null };
   });
 
-  /** @internal Seeds the calendar's active month on first attach so it anchors to the current value rather than today. */
+  /**
+   * @internal Seeds the calendar's active month on first attach so it anchors to
+   * the current value rather than today.
+   *
+   * A pending range wins: once the user has a selection, the calendar should
+   * follow it. `startAt` is the fallback for an empty picker, which is the case
+   * the host input exists for — it was declared but never forwarded here, so a
+   * consumer setting it got silence and the calendar always opened on today.
+   */
   readonly initialStartAt = computed<D | null>(() => {
     const v = this.pendingRange();
-    return v?.start ?? null;
+    return v?.start ?? this.startAt();
   });
 
   // ── Template handlers ──

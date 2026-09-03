@@ -80,27 +80,26 @@ export class CommandPaletteHarness extends ComponentHarness {
   }
 
   /**
-   * Closes the palette with Escape and returns once the overlay has actually
-   * detached. No-op when it is already closed.
+   * Sends Escape to the search input. No-op when the palette is already closed.
    *
-   * The component defers the detach behind its leave animation, so the panel
-   * outlives the key press by a short interval. Polling for the detach keeps
-   * that timing an implementation detail: a caller should not have to know the
-   * duration, and hard-coding it here would silently rot if it changed.
+   * **The overlay is still attached when this resolves.** The component defers
+   * the detach behind a leave animation, so a caller asserting on `isOpen()`
+   * immediately afterwards will still see `true`. Wait for the animation before
+   * asserting — with a plain timer, not by polling a harness method.
+   *
+   * That caveat is deliberate rather than hidden behind a poll. An earlier
+   * version looped on `isOpen()` until the panel detached, which reads better
+   * but is unsound here: every harness call routes through
+   * `fixture.whenStable()`, and under zoneless that can wait on a re-scheduled
+   * timer and never resolve. A deadline checked *between* awaits cannot bound a
+   * single await that never returns, so the loop hung the suite instead of
+   * failing it. A harness that can hang is worse than one that makes the caller
+   * wait explicitly.
    */
   async close(): Promise<void> {
     const input = await this.input();
     if (!input) return;
     await input.sendKeys(TestKey.ESCAPE);
-    await this.waitForTasksOutsideAngular();
-
-    // Bounded so a genuine failure to close reports as a failed assertion in the
-    // caller rather than hanging the suite.
-    const deadline = Date.now() + 2000;
-    while ((await this.panel()) !== null && Date.now() < deadline) {
-      await new Promise((resolve) => setTimeout(resolve, 20));
-      await this.waitForTasksOutsideAngular();
-    }
   }
 
   /** Moves the active descendant down one row. */

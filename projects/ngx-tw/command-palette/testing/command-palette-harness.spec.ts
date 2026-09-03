@@ -156,8 +156,11 @@ describe('CommandPaletteHarness', () => {
     expect(await palette.isOpen()).toBe(true);
 
     await palette.close();
+    // A plain timer, deliberately not a poll through the harness: harness calls
+    // route through `whenStable()`, which can hang rather than resolve.
+    // 120ms is the component's leave animation; 250 gives it margin.
+    await new Promise((resolve) => setTimeout(resolve, 250));
     fixture.detectChanges();
-    await fixture.whenStable();
 
     expect(await palette.isOpen()).toBe(false);
   });

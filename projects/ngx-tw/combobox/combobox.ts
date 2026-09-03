@@ -783,6 +783,10 @@ export class ComboboxComponent<T = unknown>
       const emptyTemplate = this.emptyTemplateChild()?.templateRef;
       const loadingTemplate = this.loadingTemplateChild()?.templateRef;
       const customPanelClass = this.resolvePanelClass();
+      // Tracked so the selection snapshot below refreshes when either changes.
+      // The snapshot replaced a live closure — see the `isSelected` push.
+      const visibleCount = this.visibleOptions().length;
+      void this.value();
       untracked(() => {
         const instance = this.overlayInstance;
         if (!attached || !instance || this.closing) return;
@@ -800,7 +804,19 @@ export class ComboboxComponent<T = unknown>
         instance.listboxId.set(this.listboxId);
         instance.optionIdFn.set(this.optionId);
         instance.groupHeaderIdFn.set(this.groupHeaderId);
-        instance.isSelected.set((index: number) => this.isVisibleOptionSelected(index));
+        // A SNAPSHOT, not a live closure. `renderedRows` is frozen while the
+        // panel animates out (the guard above), and each frozen row carries its
+        // index into the visible list at freeze time. A closure reading
+        // `visibleOptions()` at call time would resolve those stale indices
+        // against the current, already-refiltered list — so committing an option
+        // marked the WRONG row `aria-selected="true"` for the ~120ms leave
+        // window. Snapshotting here binds the flags to the same generation of
+        // the list as the rows they describe.
+        const selectedFlags: boolean[] = new Array(visibleCount);
+        for (let i = 0; i < visibleCount; i++) {
+          selectedFlags[i] = this.isVisibleOptionSelected(i);
+        }
+        instance.isSelected.set((index: number) => selectedFlags[index] ?? false);
       });
     });
 

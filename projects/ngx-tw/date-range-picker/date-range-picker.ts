@@ -862,6 +862,7 @@ export class DateRangePickerComponent<D = Date>
       const maxDate = this.maxDate();
       const dateFilter = this.dateFilter();
       const startView = this.startView();
+      const startAt = this.startAt();
       const numberOfMonths = this.numberOfMonths();
       const pendingRange = this.pendingRange();
       const currentView = this.currentView();
@@ -896,6 +897,7 @@ export class DateRangePickerComponent<D = Date>
         instance.maxDate.set(maxDate);
         instance.dateFilter.set(dateFilter);
         instance.startView.set(startView);
+        instance.startAt.set(startAt);
         instance.numberOfMonths.set(numberOfMonths);
         instance.pendingRange.set(pendingRange);
         instance.currentView.set(currentView);
