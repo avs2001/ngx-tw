@@ -249,6 +249,25 @@ for (const scheme of FULL_SCENE_SCHEMES) {
       });
     });
 
+    test(`@visual alert — Variants section (solid / outline / soft)`, async ({ page }) => {
+      // The `Colors` scene below renders the `soft` variant, so before this
+      // existed the `outline` variant had NO baseline — and `outline` is the
+      // only place `--color-{role}-border` is painted (`alert.ts`'s outlineSlots
+      // sets a transparent background, so that border is the container's sole
+      // boundary). Pass 8 raised all seven of those tokens and moved exactly one
+      // baseline in the whole suite, none of it alert. A token whose only
+      // consumer is unphotographed cannot regress visibly, which is the gap this
+      // closes.
+      await page.goto('/components/alert/examples');
+      await waitForRoute(page, scheme);
+      const variants = section(page, 'Variants');
+      await expect(variants).toBeVisible();
+      await prepareRegionCapture(page, variants);
+      await expect(variants).toHaveScreenshot(`alert-variants.${scheme}.png`, {
+        maxDiffPixelRatio: DIFF,
+      });
+    });
+
     test(`@visual alert — all four colors`, async ({ page }) => {
       await page.goto('/components/alert/examples');
       await waitForRoute(page, scheme);

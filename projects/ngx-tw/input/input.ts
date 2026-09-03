@@ -125,7 +125,7 @@ const inputVariants = tv(
       {
         inFormField: false,
         errorState: true,
-        class: 'border-error-500 focus-visible:outline-error-500',
+        class: 'border-error-border focus-visible:outline-error-border',
       },
     ],
     defaultVariants: {

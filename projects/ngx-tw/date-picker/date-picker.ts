@@ -257,16 +257,16 @@ const datePickerVariants = tv(
       { variant: 'default', customTrigger: true, class: { root: 'py-2' } },
 
       // Default variant — focused border per color
-      { variant: 'default', focused: true, color: 'primary', class: { root: 'border-primary-500' } },
-      { variant: 'default', focused: true, color: 'secondary', class: { root: 'border-secondary-500' } },
-      { variant: 'default', focused: true, color: 'accent', class: { root: 'border-accent-500' } },
+      { variant: 'default', focused: true, color: 'primary', class: { root: 'border-primary-border' } },
+      { variant: 'default', focused: true, color: 'secondary', class: { root: 'border-secondary-border' } },
+      { variant: 'default', focused: true, color: 'accent', class: { root: 'border-accent-border' } },
       { variant: 'default', focused: true, color: 'neutral', class: { root: 'border-border-strong' } },
-      { variant: 'default', focused: true, color: 'info', class: { root: 'border-info-500' } },
-      { variant: 'default', focused: true, color: 'success', class: { root: 'border-success-500' } },
-      { variant: 'default', focused: true, color: 'warning', class: { root: 'border-warning-500' } },
-      { variant: 'default', focused: true, color: 'error', class: { root: 'border-error-500' } },
+      { variant: 'default', focused: true, color: 'info', class: { root: 'border-info-border' } },
+      { variant: 'default', focused: true, color: 'success', class: { root: 'border-success-border' } },
+      { variant: 'default', focused: true, color: 'warning', class: { root: 'border-warning-border' } },
+      { variant: 'default', focused: true, color: 'error', class: { root: 'border-error-border' } },
       // Default variant + error state → red outline
-      { variant: 'default', errorState: true, class: { root: 'border-error-500' } },
+      { variant: 'default', errorState: true, class: { root: 'border-error-border' } },
     ],
     defaultVariants: {
       size: 'md',
