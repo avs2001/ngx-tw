@@ -66,11 +66,12 @@ jobs:
       # ──────────────────────────────────────────────────────────────
       # `test.fixme` registry guard.
       #
-      # `e2e/support/fixme-registry.ts` makes a suppression expire:
-      # `fixmeTitle(id)` throws at collection time for an unregistered id, and
-      # `specs/00-smoke/fixme-registry.spec.ts` fails once `reviewBy` passes.
-      # Neither can catch the two directions below, which need to read the
-      # source tree — and a spec cannot `import 'node:fs'` because
+      # `e2e/support/fixme-registry.ts` gives every suppression a dated expiry
+      # and `specs/00-smoke/fixme-registry.spec.ts` fails once `reviewBy`
+      # passes. Neither can check the *pairing* — that every `test.fixme` title
+      # carries a `[fixme:<id>]` prefix naming a real row, and that no row is
+      # left orphaned by a deleted call site. Both directions need to read the
+      # source tree, and a spec cannot `import 'node:fs'` because
       # `@types/node` is not a dependency of this workspace (the same gap the
       # audit register records against `scripts/verify-theme-parity.mjs`). So
       # the source scan lives here, where a shell has no such problem. It runs
@@ -99,7 +100,7 @@ jobs:
                   if not re.match(r'^\s*test\.fixme\(', line):
                       continue
                   window = '\n'.join(lines[n:n + 3])
-                  match = re.search(r"fixmeTitle\('([^']+)'\)", window)
+                  match = re.search(r"'\[fixme:([^\]]+)\]", window)
                   if match:
                       used.add(match.group(1))
                   else:
@@ -111,8 +112,8 @@ jobs:
           problems = []
           if bare:
               problems.append(
-                  'test.fixme call sites with no registry id (use '
-                  "fixmeTitle('<area>/<slug>')):\n  " + '\n  '.join(bare))
+                  'test.fixme call sites with no registry id — the title must '
+                  "start with '[fixme:<area>/<slug>] ':\n  " + '\n  '.join(bare))
           orphans = sorted(declared - used)
           if orphans:
               problems.append(
