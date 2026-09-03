@@ -2,10 +2,20 @@ import AxeBuilder from '@axe-core/playwright';
 import type { BrowserContext, Locator } from '@playwright/test';
 
 import { expect, test } from '../../fixtures/base';
+import {
+  SCHEME_APPEARANCE,
+  TW_RESOLVED_THEMES,
+  type TwResolvedTheme,
+} from '../../support/themes';
 
 test.describe.configure({ mode: 'parallel' });
 
-type Theme = 'light' | 'dark' | 'high-contrast';
+/**
+ * Sweeps derive from the library's own `TW_RESOLVED_THEMES` — see
+ * `support/themes.ts` for why, and for what the hand-written literal that used
+ * to sit here cost. Do not reintroduce a local union.
+ */
+type Theme = TwResolvedTheme;
 type Preset = 'default' | 'candy' | 'ocean' | 'forest' | 'sunset';
 
 /**
@@ -73,8 +83,10 @@ const SAMPLED_PAGES = [
 /**
  * Theme matrix — chapter 05 §5.4.
  *
- * Sweeps the three resolved themes (`light`, `dark`, `high-contrast`)
- * across a sampled set of pages. Each cell asserts:
+ * Sweeps **every** resolved theme in `TW_RESOLVED_THEMES` across a sampled set
+ * of pages. The list is imported, not restated: this sweep hard-coded three
+ * schemes and silently skipped `'high-contrast-dark'` for the whole of the pass
+ * that introduced it. Each cell asserts:
  *   - No console errors during navigation.
  *   - `<html data-theme="...">` matches the seeded value.
  *   - axe's `color-contrast` rule passes (the surface most theme drift
@@ -85,7 +97,7 @@ const SAMPLED_PAGES = [
  * `background-color` on a `tw-button` primary-solid than the default.
  */
 test.describe('Theme matrix', () => {
-  for (const theme of ['light', 'dark', 'high-contrast'] as const) {
+  for (const theme of TW_RESOLVED_THEMES) {
     test(`@theme ${theme}: <html data-theme> matches and console stays quiet`, async ({
       page,
       context,
@@ -200,22 +212,32 @@ test.describe('Theme matrix', () => {
    *
    * Three independent assertions, because each alone can pass vacuously:
    *
-   *  1. **Mechanism.** The light pane's *computed custom properties* must
-   *     differ from the document root's. Under the bug they were byte-identical
-   *     — that inheritance IS the defect, stated directly.
-   *  2. **Relative.** The `bg-primary-600` chip inside each pane must compute
-   *     three distinct backgrounds (blue-600 / blue-400 / blue-700). Under the
-   *     bug the light chip collapsed onto the dark chip's blue-400.
-   *  3. **Absolute.** The light pane's own background must be a *light* colour
-   *     and the dark pane's a dark one, by luminance. A regression that
-   *     re-darkens the light pane fails here even if it somehow kept the panes
-   *     mutually distinct.
+   *  1. **Mechanism.** Every pane whose scheme is not the document's own must
+   *     have *computed custom properties* differing from the root's. Under the
+   *     bug they were byte-identical — that inheritance IS the defect, stated
+   *     directly.
+   *  2. **Relative.** The `bg-primary-600` chip inside each pane must compute a
+   *     distinct background in every scheme. Under the bug the light chip
+   *     collapsed onto the dark chip's value.
+   *  3. **Absolute.** Each pane's own background must have the luminance its
+   *     scheme calls for. A regression that re-darkens the light pane fails
+   *     here even if it somehow kept the panes mutually distinct.
    *
    * NOTE on the sampled element: the panes themselves carry `bg-surface`, and
    * `--color-surface` is `--color-white` in BOTH `_light.css` and
-   * `_high-contrast.css` by design — so a three-way-distinct check on the pane
+   * `_high-contrast.css` by design — so an all-distinct check on the pane
    * background is unsatisfiable. The chip (`bg-primary-600`) is the nearest
-   * element whose token genuinely differs across all three schemes.
+   * element whose token genuinely differs across every scheme; measured
+   * 2026-09-03 it is `#155dfc` / `#51a2ff` / `#1447e6` / `#8ec5ff` for
+   * light / dark / high-contrast / high-contrast-dark, so `size === 4` is
+   * satisfiable rather than aspirational. Re-measure with
+   * `SWATCH=1 node scratchpad/p6-contrast.mjs <scheme> light` before widening.
+   *
+   * The pane list is `TW_RESOLVED_THEMES`, matching the demo section itself
+   * (which iterates the same constant). Before 2026-09-03 this test named
+   * three schemes literally; the demo rendered a fourth pane that **nothing
+   * asserted on**, and `[data-theme="dark"]` is an exact-value attribute match
+   * so it did not even accidentally catch `high-contrast-dark`.
    *
    * Everything asserted here is computed style. An attribute/class assertion
    * would have passed with the bug present — the directive always wrote
@@ -227,11 +249,12 @@ test.describe('Theme matrix', () => {
   }) => {
     // `ngx-tw-theme` is `DEFAULT_TW_THEME_CONFIG.storageKey`
     // (projects/ngx-tw/theme/theme.types.ts).
-    await seedTheme(context, 'dark');
+    const ROOT_SCHEME: Theme = 'dark';
+    await seedTheme(context, ROOT_SCHEME);
 
     await page.goto('/services/theme/examples');
     await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
-    await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
+    await expect(page.locator('html')).toHaveAttribute('data-theme', ROOT_SCHEME);
 
     // Scope to the demo section before selecting by `data-theme`: unscoped,
     // `[data-theme="dark"]` would also match `<html>`.
@@ -240,14 +263,12 @@ test.describe('Theme matrix', () => {
     });
     const pane = (theme: Theme) => scoped.locator(`[data-theme="${theme}"]`).first();
 
-    const lightPane = pane('light');
-    const darkPane = pane('dark');
-    const contrastPane = pane('high-contrast');
-    await expect(lightPane).toBeVisible();
-    await expect(darkPane).toBeVisible();
-    await expect(contrastPane).toBeVisible();
+    const panes = TW_RESOLVED_THEMES.map((theme) => ({ theme, locator: pane(theme) }));
+    for (const { theme, locator } of panes) {
+      await expect(locator, `no [twTheme]="${theme}" pane rendered`).toBeVisible();
+    }
 
-    // ── 1. Mechanism: the light subtree must not inherit the root's tokens ──
+    // ── 1. Mechanism: a non-root subtree must not inherit the root's tokens ──
     const TOKENS = ['--color-surface', '--color-fg', '--color-primary-600'] as const;
     const readTokens = (locator: Locator) =>
       locator.evaluate((el, tokens: readonly string[]) => {
@@ -261,37 +282,43 @@ test.describe('Theme matrix', () => {
         const style = getComputedStyle(el);
         return tokens.map((t) => style.getPropertyValue(t).trim());
       }, TOKENS);
-    const lightTokens = await readTokens(lightPane);
 
-    expect(
-      lightTokens,
-      '[twTheme]="light" must re-resolve the semantic tokens inside a dark document; ' +
-        'identical values mean the subtree inherited the root (the _light.css defect)',
-    ).not.toEqual(rootTokens);
+    for (const { theme, locator } of panes) {
+      // The pane matching the document's own scheme is *supposed* to equal the
+      // root — asserting inequality there would be a guaranteed false failure.
+      if (theme === ROOT_SCHEME) continue;
+      expect(
+        await readTokens(locator),
+        `[twTheme]="${theme}" must re-resolve the semantic tokens inside a ${ROOT_SCHEME} ` +
+          'document; identical values mean the subtree inherited the root (the _light.css defect)',
+      ).not.toEqual(rootTokens);
+    }
 
-    // ── 2. Relative: three distinct chip backgrounds ──
+    // ── 2. Relative: one distinct chip background per scheme ──
     const chip = (paneLocator: Locator) => paneLocator.getByText('Primary', { exact: true });
     const chipBackgrounds = await Promise.all(
-      [lightPane, darkPane, contrastPane].map(async (p) =>
-        (await backgroundRgb(chip(p))).join(','),
-      ),
+      panes.map(async ({ locator }) => (await backgroundRgb(chip(locator))).join(',')),
     );
     expect(
       new Set(chipBackgrounds).size,
-      `the three [twTheme] panes must resolve three different primary backgrounds, got ${chipBackgrounds.join(' | ')}`,
-    ).toBe(3);
+      `the ${panes.length} [twTheme] panes must resolve ${panes.length} different primary ` +
+        `backgrounds, got ${chipBackgrounds.join(' | ')}`,
+    ).toBe(panes.length);
 
-    // ── 3. Absolute: light stays light, dark stays dark ──
-    const lightLuminance = relativeLuminance(await backgroundRgb(lightPane));
-    const darkLuminance = relativeLuminance(await backgroundRgb(darkPane));
-
-    expect(
-      lightLuminance,
-      'the [twTheme]="light" pane background must be a light colour even on a dark page',
-    ).toBeGreaterThan(0.8);
-    expect(
-      darkLuminance,
-      'the [twTheme]="dark" pane background must stay dark',
-    ).toBeLessThan(0.2);
+    // ── 3. Absolute: each pane keeps its scheme's appearance ──
+    for (const { theme, locator } of panes) {
+      const luminance = relativeLuminance(await backgroundRgb(locator));
+      if (SCHEME_APPEARANCE[theme] === 'light') {
+        expect(
+          luminance,
+          `the [twTheme]="${theme}" pane background must be a light colour even on a dark page`,
+        ).toBeGreaterThan(0.8);
+      } else {
+        expect(
+          luminance,
+          `the [twTheme]="${theme}" pane background must stay dark`,
+        ).toBeLessThan(0.2);
+      }
+    }
   });
 });
