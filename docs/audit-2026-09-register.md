@@ -1192,6 +1192,20 @@ baseline changes no visual run has verified. **[measured]**
 That strengthens the load-dependence diagnosis rather than weakening it: local full-suite
 contention on a laptop is heavier than a 4-way-sharded CI run.
 
+**All four load-dependent flakes are now fixed, and the last one turned CI red before it was.**
+The three e2e flakes were fixed as a class (a shared `pollUntil` in `e2e/support/timing.ts`, plus
+the recorded finding that the `date-picker` flake sat on an *inline* overlay assertion rather than
+the page object, so fixing only the eight POMs would have missed the named flake). The fourth —
+`menu.spec.ts`'s type-ahead — was **not** an e2e test at all but a Vitest unit spec sleeping a real
+250ms for CDK's 200ms typeahead debounce, so the e2e class fix could not reach it. It failed a PR
+`unit tests` check at 5000ms while passing locally three times in a row.
+
+Fixed with virtual time (`vi.useFakeTimers()` + `advanceTimersByTime`), not a wider budget — a
+longer sleep only moves the threshold. RxJS's async scheduler drives `debounceTime` through
+`setInterval`, which Vitest's fake timers patch. Non-vacuous: without the clock advance it fails,
+and it now fails in **26ms instead of hanging for 5000ms**, so a future regression reports as a
+failure rather than a timeout. Three consecutive full runs: 3381 passed, zero flakes. **[measured]**
+
 **A third load-dependent e2e flake, new this pass and NOT a regression.**
 `transfer.spec.ts:58` (`expect(focusHome).toBe('listbox')`) failed once under full-suite
 contention and passes **5/5 in isolation**. `git diff f1196e5..HEAD` confirms **no pass-5 change
