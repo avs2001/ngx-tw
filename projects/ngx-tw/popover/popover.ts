@@ -314,6 +314,13 @@ class PopoverOverlayComponent {
   selector: '[twPopover]',
   exportAs: 'twPopover',
   host: {
+    // Static marker so the directive is locatable in tests and by consumers.
+    // Its own selector is not usable for that: `[twPopover]` takes a required
+    // `TemplateRef`, so it is ALWAYS property-bound and Angular emits no
+    // attribute for a bound input. Material solves this with a class
+    // (`.mat-mdc-menu-trigger`); `data-tw-*` is this repo's existing convention
+    // (see `data-tw-table-loading`, `data-tw-sort-arrow`) and carries no styling.
+    'data-tw-popover-trigger': '',
     '[attr.aria-haspopup]': '"dialog"',
     '[attr.aria-expanded]': 'twPopoverOpen()',
     '[attr.aria-controls]': 'overlayComponentId()',

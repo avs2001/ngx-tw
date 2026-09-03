@@ -50,6 +50,48 @@ Reach for the right primitive instead of an effect:
 
 **Codified exception.** `paginator.ts` has an intrinsic, documented cycle: its effect must track `page()` (to clamp when the consumer assigns an out-of-range page) *and* write `page.set(clamped)` (to clamp when `totalPages` shrinks). It is bounded by a `clamped !== newPage` guard that settles in exactly one extra tick and never loops; the inline comment on that effect is mandatory reading before touching it. Do not introduce new effects of this shape — if a new one seems unavoidable, it needs the same guard + inline justification, or a `linkedSignal()` refactor.
 
+## `@angular/aria` — evaluated, NOT adopted
+
+Angular v22 ships `@angular/aria`: headless directives implementing WAI-ARIA patterns
+(Accordion, Listbox, Combobox/Select, Menu, Tabs, Toolbar, Tree, Grid). ngx-tw hand-rolls all
+eight, so the question of adopting it is obvious enough that it will be asked again. **It was
+evaluated in September 2026 and rejected. Do not adopt it without revisiting the evidence below.**
+
+Three measured costs, in descending order of severity:
+
+1. **It peer-pins `@angular/cdk` to an exact version.** Verified empirically:
+   `npm i @angular/cdk@22.0.5 @angular/aria@22.1.5` → `ERESOLVE`. A published library declaring
+   it as a peer imposes **lockstep CDK on every consumer of every entry point** — including
+   consumers who import one component that has nothing to do with it.
+2. **`KeyboardEventManager` defaults to `stopPropagation: true`** for every key it registers,
+   including no-op handlers. CDK's overlay keyboard channel is a bubble-phase listener on
+   `document.body`, so **any `@angular/aria` widget inside a CDK overlay swallows the keys that
+   overlay needs, Escape included.** This library is overlay-heavy: dialog, sheet, select,
+   combobox, menu, popover, command-palette and the three pickers are all disqualified by this
+   alone.
+3. **The patterns do not match.** The `command-palette` pilot was rejected because `ngListbox`
+   models **selection** while a palette is an **action list**, and neither mode supplies
+   activation: `selectionMode="follow"` registers no `Enter` handler in single-select, and
+   `"explicit"` maps Enter to `toggleOne()`, so pressing Enter twice *deselects* — silently
+   breaking the documented `[closeOnSelect]="false"` mode. The existing spec catches it: it
+   asserts the **active** option carries `aria-selected="true"`, which under `ngOption` is bound
+   from selection. The only way to make that migration green is to weaken the guard.
+
+**What is NOT a reason to reject it**, stated so the record is accurate: the flat-DOM and
+`tv()`-slot conventions are *not* an obstacle. Both directives are attribute directives, neither
+binds `class`, `ngOption` resolves its listbox through DI (so `role="group"` wrappers are fine),
+and `SortedCollection` orders by `compareDocumentPosition`. The cost there is one `ng-template`
+layer plus a `[tabindex]="-1"` override. That was the expected blocker and it is not the real one.
+
+**Revisit when** the CDK peer pin relaxes to a range, *or* `KeyboardEventManager` gains a way to
+opt out of `stopPropagation`. At that point the honest first targets are `transfer` (already
+`CdkListbox`, genuine multi-select, no overlay) and `tabs`/`tab-nav` — but note both are lateral
+CDK→aria moves with **no hand-rolled code to delete**, so the pitch is "get onto the framework's
+forward path", not "delete hand-rolled navigation". `@angular/aria` addresses none of the six
+genuinely hand-rolled list navigations today.
+
+Nothing was installed; it appears in no `package.json`.
+
 ## TypeScript
 
 - Strict type checking. Avoid `any`; use `unknown` when uncertain. Prefer type inference when obvious.

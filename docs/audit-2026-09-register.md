@@ -1379,3 +1379,100 @@ written for cleanly are the ones with API gaps.
 | `npm run e2e:fast` | **950 passed, 0 flakes** (was 936 / 1) |
 | CI `e2e.yml` (dispatched) | **all 9 jobs pass**, including the visual canary and all four full-suite shards |
 
+
+---
+
+# Pass 7 — 2026-09-03, trigger markers, the `@angular/aria` decision, and a flake class
+
+Scope: the two decisions pass 6 left to the maintainer, taken on code- and library-quality grounds
+rather than deferred again.
+
+## The two decisions
+
+**1. Trigger markers: adopted.** `MenuTriggerDirective`, `PopoverDirective` and `TooltipDirective`
+each take a required `TemplateRef`, so they are **always property-bound and Angular emits no
+attribute** — none could be located by its own selector. All three now carry a static
+`data-tw-*-trigger` marker. `data-tw-*` is this repo's existing convention (`data-tw-table-loading`,
+`data-tw-sort-arrow`, `data-tw-carousel-viewport`), so this is consistency, not new vocabulary.
+
+The quality argument is not about our tests: **a directive that cannot be located by its own
+selector is a testability defect affecting consumers**, who hit the same wall writing their own.
+Payoff was immediate — `popover`'s harness lost **32 lines** of guard code that existed only to
+disambiguate `aria-haspopup="dialog"` from date-picker triggers, and `tooltip`'s coverage hole
+closed: bound `[twTooltip]="expr"` triggers were previously unreachable, and its spec contained a
+test asserting that gap which predicted its own deletion.
+
+**2. `@angular/aria`: NOT adopted.** This **reverses** the "adopt incrementally" decision recorded
+in pass 6, which was taken before two costs were known. Full reasoning is now in `.claude/CLAUDE.md`
+so the next author does not re-derive it. In short: an exact `@angular/cdk` peer pin imposing
+lockstep CDK on every consumer; `KeyboardEventManager` defaulting to `stopPropagation: true`, so
+any aria widget inside a CDK overlay swallows that overlay's Escape; and a pattern mismatch that
+made the `command-palette` pilot unmergeable without weakening the guard that catches it. Recorded
+positively as well: the flat-DOM / `tv()`-slot conventions are **not** the obstacle — that was the
+expected blocker and it is not the real one.
+
+## The flake class, which cost the most and is the most reusable finding
+
+**`TestbedHarnessEnvironment` + zoneless + an overlay leave animation means `fixture.whenStable()`
+may never resolve.** Every harness call routes through it. Around a leave animation it reliably
+hangs rather than resolves.
+
+Three consequences, each learned the hard way:
+
+- **A poll bounded by a deadline checked *between* awaits cannot bound a single await that never
+  returns.** Polling a harness method to wait for a state therefore **hangs** rather than fails —
+  it timed out at the full 15000ms budget, which no timeout can fix. Wait by reading the DOM
+  directly; `document.querySelector` needs no stabilization.
+- **Reading the DOM fixes a final assertion but not the harness calls before it.** `close()`
+  resolves its input through the same path. That is exactly why `tooltip` was salvageable (its
+  waits were the problem) and `popover` was not (its calls are).
+- **A suite-level budget is right for bounded real work and wrong for a fixed sleep standing in for
+  a condition.** Harness specs are slower than unit specs *by construction*; the `menu` type-ahead
+  flake was the other shape and was correctly fixed with virtual time instead.
+
+### Three process failures worth more than the fix
+
+1. **The flake was chased one file at a time** — `popover`, then `command-palette`, then `tooltip`
+   — before being recognised as systemic. Several full-suite cycles wasted.
+2. **The unsound polling pattern was written, diagnosed, removed from one file, and then
+   REINTRODUCED** by restoring another file that still contained it. Removing a bad pattern from
+   one site does not remove it from the branch.
+3. **A flaky spec reached `develop`** in `e911bbb` (`command-palette`'s `closes with Escape`)
+   before the class was understood. It is removed here, not skipped — a skip rots, and this repo
+   has a whole mechanism for that problem.
+
+## Outcome
+
+| Component | Decision | Evidence |
+|---|---|---|
+| `tooltip/testing` | **kept** | clean across 5 consecutive full-suite runs after switching its waits to direct DOM reads |
+| `popover/testing` | **withdrawn** | 3 tests hung at the full 15000ms budget in ~1 run in 3 |
+| `command-palette` `closes with Escape` | **removed** | hung ~1 in 3; already on `develop`. Escape dismissal stays covered in `command-palette.spec.ts` directly against the component, and `close()`'s JSDoc records the gap |
+
+**14 harness entry points ship** (13 from pass 6 plus `tooltip`, minus `popover`).
+
+The markers are the durable half: locatability is solved permanently, so restoring `popover/testing`
+later is a spec problem, not a library one.
+
+## Open — carried forward
+
+Everything in pass 6's list except items 2 and 3, which this pass closed. Still open and unchanged:
+the MCP index not covering `testing/` entry points; `_light.css` failing the 3:1 border floor
+(1.40–1.92, all seven roles) in the **default** scheme; `item.ts`'s selected ring, which the theme
+layer cannot fix; `core/form-reset.ts` awaiting deletion or adoption; the `ThemeDirective` /
+`ThemeService` attribute disagreement; and the smaller consistency items.
+
+**`popover/testing` is newly open**, blocked on the `whenStable()` interaction rather than on
+locatability.
+
+## Verification state at hand-off
+
+| Gate | Result |
+|---|---|
+| `npm run test:ci` | **3523 passed**, 4 skipped — **5 of 5 consecutive runs green** |
+| `npm run build:lib` | pass |
+| `npx ng build demo` | pass |
+| `npm run lint` | 0 errors |
+| `npm run verify:package` | pass |
+| `npm run verify:mcp-index` | 6 warnings |
+

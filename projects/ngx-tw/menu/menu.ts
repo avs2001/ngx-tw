@@ -217,6 +217,15 @@ export class MenuComponent {
       outputs: ['cdkMenuOpened: opened', 'cdkMenuClosed: closed'],
     },
   ],
+  host: {
+    // Static marker so the directive is locatable in tests and by consumers.
+    // Its own selector is not usable for that: `[twMenuTrigger]` takes a required
+    // `TemplateRef`, so it is ALWAYS property-bound and Angular emits no
+    // attribute for a bound input. Material solves this with a class
+    // (`.mat-mdc-menu-trigger`); `data-tw-*` is this repo's existing convention
+    // (see `data-tw-table-loading`, `data-tw-sort-arrow`) and carries no styling.
+    'data-tw-menu-trigger': '',
+  },
 })
 export class MenuTriggerDirective {}
 

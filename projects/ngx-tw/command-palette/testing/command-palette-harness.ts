@@ -95,6 +95,12 @@ export class CommandPaletteHarness extends ComponentHarness {
    * single await that never returns, so the loop hung the suite instead of
    * failing it. A harness that can hang is worse than one that makes the caller
    * wait explicitly.
+   *
+   * **This method is not covered by a spec.** A test driving it hung at the full
+   * 15000ms budget in roughly one run in three: the harness calls it makes
+   * around a leave animation route through `whenStable()`, which can wait on a
+   * re-scheduled timer and never resolve. Escape dismissal itself is covered in
+   * `command-palette.spec.ts`, directly against the component.
    */
   async close(): Promise<void> {
     const input = await this.input();
