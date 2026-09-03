@@ -33,6 +33,20 @@ import { TW_RESOLVED_THEMES, type TwResolvedTheme } from './theme.types';
  * → WCAG relative luminance → ratio. The conversion is checked against
  * Tailwind's own published hexes in the first test below, so a wrong
  * implementation fails loudly instead of producing plausible numbers.
+ *
+ * **What this file used to also assert, and why it no longer does.** A second
+ * pairing — `{role}-border` painted on `{role}-soft` — was tracked here as a
+ * two-sided `EXPECTED_BELOW_FLOOR` list, because `item.ts` drew its selected
+ * state as `bg-primary-soft ring-2 ring-inset ring-primary-border`. On
+ * 2026-09-04 that ring moved to `ring-primary-border-strong`, and with it the
+ * last site in the library painting the subtle tier on a soft fill. The
+ * expectation was removed rather than updated: nothing paints that pairing, so
+ * it would have recorded a number about a combination the library does not
+ * produce and no one could act on. What replaced it is stronger, not weaker —
+ * `borderRatios()` below asserts `-border-strong` on `-soft` for all eight
+ * roles in all four schemes against a hard floor, with no allowance list. For
+ * the record, the retired pairing measured 2.37–2.97 for four of dark's eight
+ * roles (primary, accent, info, warning) and cleared 3:1 everywhere else.
  */
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -49,15 +63,11 @@ const NON_TEXT_FLOOR = 3;
  * and when an unlisted one fails (a regression). An entry cannot rot into
  * permanent permission, because fixing the scheme turns the list red.
  */
-const KNOWN_FAILING: ReadonlyMap<TwResolvedTheme, string> = new Map([
-  [
-    'light',
-    'The default scheme still uses `{role}-300` for the coloured `-border` slot, ' +
-      'measuring 1.40–1.92:1 on white. Raising it darkens the outline tier across ' +
-      'eight colours in the scheme every visual baseline is captured in, so it is ' +
-      'deliberately a change of its own rather than a rider on the dark fix ' +
-      '(2026-09-03). Delete this entry — and this comment — when light is raised.',
-  ],
+const KNOWN_FAILING: ReadonlyMap<TwResolvedTheme, string> = new Map<TwResolvedTheme, string>([
+  // Empty, and worth keeping empty rather than deleting: the assertion below is
+  // two-sided, so an entry added here to buy time turns the list red the moment
+  // its scheme is fixed. `dark` was raised on 2026-09-03 and `light` — the last
+  // holdout, and the default — on 2026-09-04.
 ]);
 
 /** Which file and selector carry each scheme's element-agnostic token block. */
@@ -237,19 +247,6 @@ function borderRatios(theme: TwResolvedTheme): ReadonlyMap<string, number> {
   return out;
 }
 
-/** `{role}-border` painted on `{role}-soft` — `item.ts`'s selected-state ring. */
-function softRingRatios(theme: TwResolvedTheme): ReadonlyMap<string, number> {
-  const tokens = schemeTokens(...SCHEME_BLOCKS[theme]);
-  const out = new Map<string, number>();
-  for (const role of ROLES) {
-    out.set(
-      `color-${role}-border on ${role}-soft`,
-      contrast(resolve(tokens, `color-${role}-border`), resolve(tokens, `color-${role}-soft`)),
-    );
-  }
-  return out;
-}
-
 /* ───────────────────────── tests ───────────────────────── */
 
 describe('theme border contrast (WCAG 2.2 SC 1.4.11)', () => {
@@ -279,9 +276,6 @@ describe('theme border contrast (WCAG 2.2 SC 1.4.11)', () => {
       expect(borderRatios(theme).size, `${theme} resolved no border pairings`).toBe(
         2 + ROLES.length * 3,
       );
-      expect(softRingRatios(theme).size, `${theme} resolved no soft-ring pairings`).toBe(
-        ROLES.length,
-      );
     }
   });
 
@@ -310,39 +304,6 @@ describe('theme border contrast (WCAG 2.2 SC 1.4.11)', () => {
         '`color-contrast` rule tests text only. A stale allowance means the ' +
         'scheme was fixed; delete its KNOWN_FAILING entry.',
     ).toEqual({ failing: [], staleAllowances: [] });
-  });
-
-  it('records exactly which schemes fail on `{role}-border` painted on `{role}-soft`', () => {
-    // `item.ts:101` paints the selected state as
-    // `bg-primary-soft ring-2 ring-inset ring-primary-border`, so here the
-    // subtle border tier IS the selection indicator — squarely SC 1.4.11.
-    //
-    // This pairing is NOT fixable from the theme: clearing 3:1 on the soft fill
-    // needs roughly the `-500` step, which is what `-border-strong` already is,
-    // so raising `-border` that far collapses the two tiers (the test below
-    // would then fail). The fix belongs in `item.ts` — `ring-{role}-border-strong`
-    // — which is outside the theme entry point's ownership. Recorded here as a
-    // two-sided expectation so it is an open item with a number attached rather
-    // than a sentence in a report nobody re-runs.
-    //
-    // Raising dark's `-border` on 2026-09-03 moved `primary` here from 1.67:1 to
-    // 2.80:1 — better, still short.
-    const EXPECTED_BELOW_FLOOR: readonly TwResolvedTheme[] = ['dark', 'light'];
-
-    // Both sides sorted. `TW_RESOLVED_THEMES` is an ordered, UI-facing list —
-    // `cycleTheme()` walks it, and `'high-contrast-dark'` was *inserted* into
-    // the middle of it rather than appended. Comparing in its order would make
-    // a future reordering fail here with a message about contrast.
-    const below = TW_RESOLVED_THEMES.filter((theme) =>
-      [...softRingRatios(theme).values()].some((ratio) => ratio < NON_TEXT_FLOOR),
-    )
-      .slice()
-      .sort();
-    expect(
-      below,
-      'When `item.ts` moves to `ring-{role}-border-strong`, or a scheme raises its ' +
-        'soft fill, update EXPECTED_BELOW_FLOOR — and delete it once it is empty.',
-    ).toEqual([...EXPECTED_BELOW_FLOOR].sort());
   });
 
   it('keeps each `-border` visually distinct from its `-border-strong`', () => {

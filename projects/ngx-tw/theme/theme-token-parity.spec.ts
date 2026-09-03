@@ -74,6 +74,7 @@ function block(file: string, from: string, to?: string): readonly (readonly [str
   return declarations(css.slice(start, end));
 }
 
+const SEMANTIC = block('_semantic.css', '@theme');
 const LIGHT = block('_light.css', '[data-theme="light"]');
 const DARK_EXPLICIT = block('_dark.css', '[data-theme="dark"]', '@media (prefers-color-scheme: dark)');
 const DARK_MEDIA = block('_dark.css', '@media (prefers-color-scheme: dark)');
@@ -123,6 +124,35 @@ describe('theme token parity', () => {
         `${name} has drifted from _light.css's token set`,
       ).toEqual({ missing: [], extra: [] });
     }
+  });
+
+  it("keeps _semantic.css's @theme in lock-step with _light.css", () => {
+    // The sixth duplicated block, and the one the header above does not count.
+    // `@theme` compiles to `:root, :host`, so it IS the light scheme for every
+    // consumer who never sets `data-theme` — the default rendering path. Its
+    // colour tokens are hand-copied into `[data-theme="light"]` and nothing
+    // checked that the copies agreed: a value raised in one and forgotten in
+    // the other renders differently depending on whether an ancestor happens
+    // to carry the attribute, which no test, lint or screenshot would catch.
+    //
+    // Not folded into BLOCKS above, because `@theme` legitimately carries a
+    // few tokens no scheme block redefines (`--shadow-table-sticky*`,
+    // `--text-2xs*`, `--color-overlay-control*`). So this asserts the weaker
+    // true thing: every token `[data-theme="light"]` declares must exist in
+    // `@theme` with an identical value.
+    const semantic = new Map(SEMANTIC);
+    const missing: string[] = [];
+    const differing: string[] = [];
+    for (const [token, value] of LIGHT) {
+      if (!semantic.has(token)) missing.push(token);
+      else if (semantic.get(token) !== value) {
+        differing.push(`${token}: @theme=${semantic.get(token)} light=${value}`);
+      }
+    }
+    expect(
+      { missing, differing },
+      '_semantic.css @theme and _light.css [data-theme="light"] have drifted',
+    ).toEqual({ missing: [], differing: [] });
   });
 
   it("keeps _dark.css's two blocks byte-identical, values included", () => {

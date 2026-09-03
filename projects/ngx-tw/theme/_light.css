@@ -160,6 +160,62 @@
   --color-error-900: var(--color-red-900);
   --color-error-950: var(--color-red-950);
 
+  /* ===== Role slot tokens (light) =====
+
+     ===== `-border` / `-border-strong`: raised for SC 1.4.11 on 2026-09-04 =====
+
+     The seven coloured `-border` tokens were `{role}-300`, measuring
+     1.40–1.92:1 against `--color-surface` (white) — the worst of the four
+     schemes against the 3:1 non-text-contrast floor, and in the DEFAULT one.
+     They are the only boundary of the alert `outline` variant (`alert.ts:50` —
+     transparent background, so nothing else marks the container), which makes
+     them identifying, not decorative. `info`, `success` and `warning` failed
+     the same floor on `-border-strong` too (2.15–2.71 on surface, 2.07–2.54 on
+     their own `-soft` fill), so three of the four tiers below move on their own
+     evidence rather than as a knock-on.
+
+     Rule for `-border` — the LIGHTEST palette step measuring ≥ 3.4:1 against
+     `--color-surface`. This is `_dark.css`'s rule read in light's direction: on
+     white, contrast rises with the step number, so "dimmest passing step" and
+     "lightest passing step" are the same instruction about keeping the tier as
+     subtle as the floor allows. The 0.4 margin over 3:1 is what stops a palette
+     retune dropping the token below it silently. Applied to grey it re-derives
+     `gray-500` — the value `--color-border` already ships — which is what makes
+     it the right rule rather than one fitted to this table.
+
+       role        was         now          on surface  on soft   step below (fails)
+       primary     blue-300    blue-500       3.76       3.45     blue-400   2.64
+       secondary   slate-300   slate-500      4.77       4.55     slate-400  2.63
+       accent      violet-300  violet-500     4.40       4.01     violet-400 2.85
+       info        sky-300     sky-600        4.02       3.77     sky-500    2.71
+       success     green-300   green-700      4.94       4.72     green-600  3.22
+       warning     amber-300   amber-700      5.05       4.87     amber-600  3.19
+       error       red-300     red-500        3.82       3.50     red-400    2.89
+       neutral     (--color-border, gray-500) 4.84       4.39     gray-400   2.60
+
+     `success` and `warning` land two steps further than the rest because
+     green-600 (3.22 / 3.07) and amber-600 (3.19 / 3.08) clear the 3:1 floor by
+     0.07 on the soft fill — inside the margin the rule exists to keep. The
+     spread of steps is the hues differing in luminance, not an inconsistency;
+     `_dark.css` produced the same spread from the same rule.
+
+     Rule for `-border-strong` — the next palette step darker than that role's
+     `-border`. Every role clears both floors with room (4.36–7.23 on `-soft`,
+     4.76–7.56 on surface) and stays strictly darker than `-border`, so the two
+     tiers remain distinguishable; `theme-contrast.spec.ts` asserts both halves.
+
+     Known consequence, considered and accepted: for `primary`, `accent`, `info`
+     and `error` the new `-border-strong` now equals that role's `-solid`, so the
+     1px rim on a solid-filled indicator (`stepper.ts`, `timeline.ts`:
+     `bg-{role}-solid border border-{role}-border-strong`) no longer reads as a
+     separate edge. Those indicators carry their emphasis through the fill and
+     the `ring-4 ring-{role}-soft` halo; buying the rim back costs two more steps
+     of darkening on every ring in the scheme, which is the worse trade.
+
+     Re-measure with `docs/research/2026-09-audit/p8-border-steps.mjs light`;
+     do not estimate.
+  */
+
   /* ----- Primary (blue) ----- */
   --color-primary-soft: var(--color-primary-50);
   --color-primary-soft-hover: var(--color-primary-100);
@@ -168,8 +224,8 @@
   --color-primary-solid: var(--color-primary-600);
   --color-primary-solid-hover: var(--color-primary-700);
   --color-primary-solid-fg: var(--color-white);
-  --color-primary-border: var(--color-primary-300);
-  --color-primary-border-strong: var(--color-primary-500);
+  --color-primary-border: var(--color-primary-500);
+  --color-primary-border-strong: var(--color-primary-600);
   --color-primary-fg: var(--color-primary-700);
   --color-primary-icon: var(--color-primary-600);
 
@@ -181,8 +237,8 @@
   --color-secondary-solid: var(--color-secondary-700);
   --color-secondary-solid-hover: var(--color-secondary-800);
   --color-secondary-solid-fg: var(--color-white);
-  --color-secondary-border: var(--color-secondary-300);
-  --color-secondary-border-strong: var(--color-secondary-500);
+  --color-secondary-border: var(--color-secondary-500);
+  --color-secondary-border-strong: var(--color-secondary-600);
   --color-secondary-fg: var(--color-secondary-700);
   --color-secondary-icon: var(--color-secondary-600);
 
@@ -194,8 +250,8 @@
   --color-accent-solid: var(--color-accent-600);
   --color-accent-solid-hover: var(--color-accent-700);
   --color-accent-solid-fg: var(--color-white);
-  --color-accent-border: var(--color-accent-300);
-  --color-accent-border-strong: var(--color-accent-500);
+  --color-accent-border: var(--color-accent-500);
+  --color-accent-border-strong: var(--color-accent-600);
   --color-accent-fg: var(--color-accent-700);
   --color-accent-icon: var(--color-accent-600);
 
@@ -220,8 +276,8 @@
   --color-info-solid: var(--color-info-700);
   --color-info-solid-hover: var(--color-info-800);
   --color-info-solid-fg: var(--color-white);
-  --color-info-border: var(--color-info-300);
-  --color-info-border-strong: var(--color-info-500);
+  --color-info-border: var(--color-info-600);
+  --color-info-border-strong: var(--color-info-700);
   --color-info-fg: var(--color-info-700);
   --color-info-icon: var(--color-info-600);
 
@@ -233,8 +289,8 @@
   --color-success-solid: var(--color-success-700);
   --color-success-solid-hover: var(--color-success-800);
   --color-success-solid-fg: var(--color-white);
-  --color-success-border: var(--color-success-300);
-  --color-success-border-strong: var(--color-success-500);
+  --color-success-border: var(--color-success-700);
+  --color-success-border-strong: var(--color-success-800);
   --color-success-fg: var(--color-success-700);
   --color-success-icon: var(--color-success-600);
 
@@ -246,8 +302,8 @@
   --color-warning-solid: var(--color-warning-500);
   --color-warning-solid-hover: var(--color-warning-600);
   --color-warning-solid-fg: var(--color-warning-950);
-  --color-warning-border: var(--color-warning-300);
-  --color-warning-border-strong: var(--color-warning-500);
+  --color-warning-border: var(--color-warning-700);
+  --color-warning-border-strong: var(--color-warning-800);
   --color-warning-fg: var(--color-warning-800);
   --color-warning-icon: var(--color-warning-600);
 
@@ -259,8 +315,8 @@
   --color-error-solid: var(--color-error-600);
   --color-error-solid-hover: var(--color-error-700);
   --color-error-solid-fg: var(--color-white);
-  --color-error-border: var(--color-error-300);
-  --color-error-border-strong: var(--color-error-500);
+  --color-error-border: var(--color-error-500);
+  --color-error-border-strong: var(--color-error-600);
   --color-error-fg: var(--color-error-700);
   --color-error-icon: var(--color-error-600);
 

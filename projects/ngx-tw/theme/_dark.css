@@ -154,7 +154,7 @@
 
      Dark-mode contrast notes. Every number below is MEASURED, not estimated:
      Tailwind v4's oklch palette → sRGB (gamut-clamped) → WCAG relative
-     luminance → ratio. Reproduce with `scratchpad/p6-contrast.mjs dark light`.
+     luminance → ratio. Reproduce with `docs/research/2026-09-audit/p6-contrast.mjs dark light`.
 
      `-solid-fg` on `-solid` — the shipped pairings (AA body text, floor 4.5):
        blue-950 ↔ blue-400      5.58   ✓  (primary-solid)
@@ -211,11 +211,12 @@
 
      Each new value stays strictly dimmer than that role's `-border-strong`
      (`{hue}-500`, secondary `slate-400`), so the two border tiers remain
-     visually distinct. `light` and `high-contrast*` are NOT changed here: both
-     high-contrast schemes already clear 3:1 on every role (4.94–10.34), and
-     `_light.css` fails the same floor WORSE (1.40–1.92) — that is a change to
-     the default scheme's outline tier with its own visual blast radius and is
-     reported separately rather than smuggled in here.
+     visually distinct. `light` and `high-contrast*` were NOT changed here: both
+     high-contrast schemes already cleared 3:1 on every role (4.94–10.34), and
+     `_light.css` failed the same floor WORSE (1.40–1.92) — a change to the
+     default scheme's outline tier with its own visual blast radius, so it was
+     reported separately rather than smuggled in here. It landed on 2026-09-04;
+     `_light.css` carries its own table and its own rule, derived from this one.
   */
 
   /* ----- Primary ----- */

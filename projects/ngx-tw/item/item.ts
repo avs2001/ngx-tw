@@ -98,7 +98,16 @@ const itemVariants = tv(
       },
       current: {
         true: {
-          root: 'bg-primary-soft ring-2 ring-inset ring-primary-border',
+          // `-border-strong`, not `-border`. This ring IS the selection
+          // indicator, so WCAG 2.2 SC 1.4.11 applies to it against the
+          // `bg-primary-soft` fill it sits on — and the subtle tier does not
+          // clear 3:1 there in every scheme (measured 2026-09-04: 7 of 8 roles
+          // failed in `light`, 4 of 8 in `dark`). The theme layer cannot fix
+          // that: raising `-border` far enough collapses it onto
+          // `-border-strong`, which is the tier already sized for rings.
+          // `theme-contrast.spec.ts` asserts the `-border-strong`-on-`-soft`
+          // pairing for every role in every scheme.
+          root: 'bg-primary-soft ring-2 ring-inset ring-primary-border-strong',
         },
         false: {},
       },
