@@ -152,17 +152,70 @@
      (e.g. `green-300 + white` ≈ 1.7:1 ✗). Each pairing has been picked to meet
      WCAG AA against the matched surface (typically gray-950).
 
-     Dark-mode contrast notes:
-       sky-950 ↔ sky-100      ≈ 12.5:1   ✓ AA
-       sky-950 ↔ sky-300      ≈  7.7:1   ✓ AA
-       sky-500 ↔ sky-950      ≈  7.4:1   ✓ AA  (info-solid)
-       sky-300 ↔ gray-950     ≈ 11:1     ✓ AA  (info-fg on surface)
-       green-500 ↔ green-950  ≈  8.1:1   ✓ AA
-       amber-400 ↔ amber-950  ≈ 11.2:1   ✓ AA  (yellow signage preserved)
-       red-500 ↔ red-950      ≈  5.4:1   ✓ AA
-       blue-500 ↔ blue-950    ≈  5.8:1   ✓ AA
-       violet-500 ↔ violet-950 ≈  6.0:1  ✓ AA
-       slate-300 ↔ slate-950  ≈ 11.6:1   ✓ AA
+     Dark-mode contrast notes. Every number below is MEASURED, not estimated:
+     Tailwind v4's oklch palette → sRGB (gamut-clamped) → WCAG relative
+     luminance → ratio. Reproduce with `scratchpad/p6-contrast.mjs dark light`.
+
+     `-solid-fg` on `-solid` — the shipped pairings (AA body text, floor 4.5):
+       blue-950 ↔ blue-400      5.58   ✓  (primary-solid)
+       slate-900 ↔ slate-300   12.02   ✓  (secondary-solid)
+       violet-950 ↔ violet-400  5.36   ✓  (accent-solid)
+       sky-950 ↔ sky-500        5.12   ✓  (info-solid)
+       green-950 ↔ green-500    6.71   ✓  (success-solid)
+       amber-950 ↔ amber-400    8.73   ✓  (warning-solid, yellow signage kept)
+       red-950 ↔ red-400        5.58   ✓  (error-solid)
+
+     `-soft-fg` on `-soft`, and `-fg` on `surface` (representative rows):
+       sky-100 ↔ sky-950       12.10   ✓  (info-soft-fg on info-soft)
+       sky-300 ↔ gray-950      12.08   ✓  (info-fg on surface)
+
+     Rejected `-500` solid candidates — these are why `-solid` is `-400` for
+     three roles. They are AA FAILURES and are listed as such:
+       blue-500 ↔ blue-950      3.91   ✗
+       violet-500 ↔ violet-950  3.47   ✗
+       red-500 ↔ red-950        4.23   ✗
+
+     > This table previously listed those three rejected candidates under a
+     > "✓ AA" column at 5.8 / 6.0 / 5.4 — numbers that contradicted the file's
+     > own inline comments 20 lines below (3.92 / 3.46 / 4.14) and marked as
+     > passing the exact pairings this file rejects. Every one of its ten rows
+     > was wrong; it was rewritten against the harness on 2026-09-03, and the
+     > two surviving inline estimates ("~7.8", "~5.8") were corrected at the
+     > same time. Do not hand-estimate a row here.
+
+     ===== `-border`: raised for SC 1.4.11 on 2026-09-03 =====
+
+     The seven coloured `-border` tokens were `{hue}-800`, measuring 1.95–2.84:1
+     against `--color-surface` — below the 3:1 non-text-contrast floor. They are
+     the ONLY boundary of the alert `outline` variant (`alert.ts:50` —
+     transparent background, so nothing else marks the container), which makes
+     them identifying, not decorative. The neutral sibling in the same slot,
+     `--color-neutral-border` → `--color-border`, was raised to `gray-500` for
+     exactly this reason (see `_semantic.css`); these seven were left behind.
+
+     Rule for picking a value — the dimmest palette step measuring **≥ 3.4:1**
+     against `--color-surface` (gray-950). The 0.4 margin over the 3:1 floor
+     stops a palette retune dropping the token below it silently. Applied to
+     grey, this rule re-derives `gray-500` — the value `--color-border` already
+     ships — which is what makes it the right rule rather than a fitted one.
+
+       role        was            now           ratio   step below (fails)
+       primary     blue-800       blue-600      3.83    blue-700    2.95
+       secondary   slate-700      slate-500     4.22    slate-600   2.66
+       accent      violet-800     violet-600    3.42    violet-700  2.76
+       info        sky-800        sky-700       3.44    sky-800     2.68
+       success     green-800      green-700     4.07    green-800   2.84
+       warning     amber-800      amber-700     3.99    amber-800   2.82
+       error       red-800        red-600       4.22    red-700     3.14
+       neutral     (--color-border, gray-500)   4.16    gray-600    2.66
+
+     Each new value stays strictly dimmer than that role's `-border-strong`
+     (`{hue}-500`, secondary `slate-400`), so the two border tiers remain
+     visually distinct. `light` and `high-contrast*` are NOT changed here: both
+     high-contrast schemes already clear 3:1 on every role (4.94–10.34), and
+     `_light.css` fails the same floor WORSE (1.40–1.92) — that is a change to
+     the default scheme's outline tier with its own visual blast radius and is
+     reported separately rather than smuggled in here.
   */
 
   /* ----- Primary ----- */
@@ -171,11 +224,12 @@
   --color-primary-soft-fg: var(--color-blue-100);
   --color-primary-soft-fg-muted: var(--color-blue-300);
   /* `-400` not `-500` — blue-500/#2b7fff on blue-950/#162456 only hits
-     3.92:1 (AA fail). blue-400 lifts that to ~7.8:1 with the same fg. */
+     3.91:1 (AA fail). blue-400 lifts that to 5.58:1 with the same fg.
+     (Was "~7.8:1" — an estimate, and wrong; measured 2026-09-03.) */
   --color-primary-solid: var(--color-blue-400);
   --color-primary-solid-hover: var(--color-blue-300);
   --color-primary-solid-fg: var(--color-blue-950);
-  --color-primary-border: var(--color-blue-800);
+  --color-primary-border: var(--color-blue-600);
   --color-primary-border-strong: var(--color-blue-500);
   --color-primary-fg: var(--color-blue-300);
   --color-primary-icon: var(--color-blue-400);
@@ -188,7 +242,7 @@
   --color-secondary-solid: var(--color-slate-300);
   --color-secondary-solid-hover: var(--color-slate-200);
   --color-secondary-solid-fg: var(--color-slate-900);
-  --color-secondary-border: var(--color-slate-700);
+  --color-secondary-border: var(--color-slate-500);
   --color-secondary-border-strong: var(--color-slate-400);
   --color-secondary-fg: var(--color-slate-300);
   --color-secondary-icon: var(--color-slate-400);
@@ -198,11 +252,11 @@
   --color-accent-soft-hover: var(--color-violet-900);
   --color-accent-soft-fg: var(--color-violet-100);
   --color-accent-soft-fg-muted: var(--color-violet-300);
-  /* violet-500/violet-950 = 3.46:1 (AA fail); -400 lifts to ~5.4:1. */
+  /* violet-500/violet-950 = 3.47:1 (AA fail); -400 lifts to 5.36:1. */
   --color-accent-solid: var(--color-violet-400);
   --color-accent-solid-hover: var(--color-violet-300);
   --color-accent-solid-fg: var(--color-violet-950);
-  --color-accent-border: var(--color-violet-800);
+  --color-accent-border: var(--color-violet-600);
   --color-accent-border-strong: var(--color-violet-500);
   --color-accent-fg: var(--color-violet-300);
   --color-accent-icon: var(--color-violet-400);
@@ -228,7 +282,7 @@
   --color-info-solid: var(--color-sky-500);
   --color-info-solid-hover: var(--color-sky-400);
   --color-info-solid-fg: var(--color-sky-950);
-  --color-info-border: var(--color-sky-800);
+  --color-info-border: var(--color-sky-700);
   --color-info-border-strong: var(--color-sky-500);
   --color-info-fg: var(--color-sky-300);
   --color-info-icon: var(--color-sky-400);
@@ -241,7 +295,7 @@
   --color-success-solid: var(--color-green-500);
   --color-success-solid-hover: var(--color-green-400);
   --color-success-solid-fg: var(--color-green-950);
-  --color-success-border: var(--color-green-800);
+  --color-success-border: var(--color-green-700);
   --color-success-border-strong: var(--color-green-500);
   --color-success-fg: var(--color-green-300);
   --color-success-icon: var(--color-green-400);
@@ -254,7 +308,7 @@
   --color-warning-solid: var(--color-amber-400);
   --color-warning-solid-hover: var(--color-amber-300);
   --color-warning-solid-fg: var(--color-amber-950);
-  --color-warning-border: var(--color-amber-800);
+  --color-warning-border: var(--color-amber-700);
   --color-warning-border-strong: var(--color-amber-500);
   --color-warning-fg: var(--color-amber-300);
   --color-warning-icon: var(--color-amber-400);
@@ -264,11 +318,12 @@
   --color-error-soft-hover: var(--color-red-900);
   --color-error-soft-fg: var(--color-red-100);
   --color-error-soft-fg-muted: var(--color-red-300);
-  /* red-500/red-950 = 4.14:1 (just AA fail). red-400 lifts to ~5.8:1. */
+  /* red-500/red-950 = 4.23:1 (just AA fail). red-400 lifts to 5.58:1.
+     (Was "4.14 / ~5.8" — both estimates; measured 2026-09-03.) */
   --color-error-solid: var(--color-red-400);
   --color-error-solid-hover: var(--color-red-300);
   --color-error-solid-fg: var(--color-red-950);
-  --color-error-border: var(--color-red-800);
+  --color-error-border: var(--color-red-600);
   --color-error-border-strong: var(--color-red-500);
   --color-error-fg: var(--color-red-300);
   --color-error-icon: var(--color-red-400);
@@ -424,7 +479,7 @@
     --color-primary-solid: var(--color-blue-400);
     --color-primary-solid-hover: var(--color-blue-300);
     --color-primary-solid-fg: var(--color-blue-950);
-    --color-primary-border: var(--color-blue-800);
+    --color-primary-border: var(--color-blue-600);
     --color-primary-border-strong: var(--color-blue-500);
     --color-primary-fg: var(--color-blue-300);
     --color-primary-icon: var(--color-blue-400);
@@ -437,7 +492,7 @@
     --color-secondary-solid: var(--color-slate-300);
     --color-secondary-solid-hover: var(--color-slate-200);
     --color-secondary-solid-fg: var(--color-slate-900);
-    --color-secondary-border: var(--color-slate-700);
+    --color-secondary-border: var(--color-slate-500);
     --color-secondary-border-strong: var(--color-slate-400);
     --color-secondary-fg: var(--color-slate-300);
     --color-secondary-icon: var(--color-slate-400);
@@ -450,7 +505,7 @@
     --color-accent-solid: var(--color-violet-400);
     --color-accent-solid-hover: var(--color-violet-300);
     --color-accent-solid-fg: var(--color-violet-950);
-    --color-accent-border: var(--color-violet-800);
+    --color-accent-border: var(--color-violet-600);
     --color-accent-border-strong: var(--color-violet-500);
     --color-accent-fg: var(--color-violet-300);
     --color-accent-icon: var(--color-violet-400);
@@ -476,7 +531,7 @@
     --color-info-solid: var(--color-sky-500);
     --color-info-solid-hover: var(--color-sky-400);
     --color-info-solid-fg: var(--color-sky-950);
-    --color-info-border: var(--color-sky-800);
+    --color-info-border: var(--color-sky-700);
     --color-info-border-strong: var(--color-sky-500);
     --color-info-fg: var(--color-sky-300);
     --color-info-icon: var(--color-sky-400);
@@ -489,7 +544,7 @@
     --color-success-solid: var(--color-green-500);
     --color-success-solid-hover: var(--color-green-400);
     --color-success-solid-fg: var(--color-green-950);
-    --color-success-border: var(--color-green-800);
+    --color-success-border: var(--color-green-700);
     --color-success-border-strong: var(--color-green-500);
     --color-success-fg: var(--color-green-300);
     --color-success-icon: var(--color-green-400);
@@ -502,7 +557,7 @@
     --color-warning-solid: var(--color-amber-400);
     --color-warning-solid-hover: var(--color-amber-300);
     --color-warning-solid-fg: var(--color-amber-950);
-    --color-warning-border: var(--color-amber-800);
+    --color-warning-border: var(--color-amber-700);
     --color-warning-border-strong: var(--color-amber-500);
     --color-warning-fg: var(--color-amber-300);
     --color-warning-icon: var(--color-amber-400);
@@ -515,7 +570,7 @@
     --color-error-solid: var(--color-red-400);
     --color-error-solid-hover: var(--color-red-300);
     --color-error-solid-fg: var(--color-red-950);
-    --color-error-border: var(--color-red-800);
+    --color-error-border: var(--color-red-600);
     --color-error-border-strong: var(--color-red-500);
     --color-error-fg: var(--color-red-300);
     --color-error-icon: var(--color-red-400);

@@ -29,7 +29,11 @@
      that, and for an unchecked checkbox the border IS the component. Measured
      against `--color-surface`, gray-300 gave 1.47:1 and gray-400 gave 2.60:1,
      so both failed; the values below are the first palette steps that clear
-     3:1 (4.79:1 and 7.56:1 in light, 4.16:1 and 8.59:1 in dark).
+     3:1 (4.84:1 and 7.56:1 in light, 4.16:1 and 7.73:1 in dark).
+     (The dark `-strong` figure read 8.59 until 2026-09-03; measured it is
+     7.73, and no plausible pairing reproduces 8.59 — gray-400 on gray-900 is
+     6.82. The verdict is unchanged: it was and is the first step clearing 3:1.
+     Re-measure with `scratchpad/p6-pairs.mjs` rather than estimating.)
 
      `--color-border-muted` is deliberately NOT raised. It is the decorative
      divider — ghost-variant footers, subtle rules between rows — and SC 1.4.11
@@ -184,6 +188,24 @@
        -solid-fg       text on -solid (AA body)
        -border         subtle border (outline variant, dividers)
        -border-strong  accent border (indicators, rings)
+
+     `-border` reads as "subtle", but it is NOT decorative the way
+     `--color-border-muted` is: it is the alert `outline` variant's only
+     boundary (`alert.ts:50`, transparent background), so SC 1.4.11's 3:1
+     applies to it. The four schemes currently disagree about whether they
+     honour that, and the disagreement is deliberate, not drift:
+
+       scheme              {role}-border       on surface    3:1?
+       light               {role}-300          1.40 – 1.92    ✗  (all 7 roles)
+       dark                see `_dark.css`     3.42 – 4.22    ✓  (raised 2026-09-03)
+       high-contrast       {hue}-700           4.94 – 10.34   ✓
+       high-contrast-dark  {hue}-300          10.93 – 15.02   ✓
+
+     Light is the outstanding one. Raising it means darkening the default
+     scheme's outline tier across eight colours — a visual-baseline change
+     with its own blast radius, reported for a pass of its own rather than
+     folded into the dark fix. Re-measure any row here with
+     `scratchpad/p6-contrast.mjs <scheme> <baseline>`; do not estimate.
        -fg             colored text on neutral surface (tab labels, links)
        -icon           icon tint on -soft / surface contexts
 

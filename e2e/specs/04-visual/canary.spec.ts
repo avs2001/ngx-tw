@@ -1,6 +1,11 @@
 import { expect, test } from '../../fixtures/base';
 import type { BrowserContext, Locator, Page } from '@playwright/test';
 import { OUTLET_READY_TIMEOUT_MS } from '../../support/timing';
+import {
+  FULL_SCENE_SCHEMES,
+  SWATCH_ONLY_SCHEMES,
+  type TwResolvedTheme,
+} from '../../support/themes';
 
 test.describe.configure({ mode: 'parallel' });
 
@@ -10,6 +15,22 @@ test.describe.configure({ mode: 'parallel' });
  * One snapshot per canonical scene per scheme. Scope kept deliberately
  * small (8 pages × 2 schemes × ≤2 scenes ≈ 32 PNGs) to keep maintenance
  * cost bounded — see chapter 07 for what NOT to snapshot.
+ *
+ * **Scheme coverage is tiered, and both tiers derive from the library's
+ * `TW_RESOLVED_THEMES`** (see `support/themes.ts`):
+ *
+ *   - `FULL_SCENE_SCHEMES` (`light`, `dark`) get every canonical scene.
+ *   - every other resolved scheme gets the Semantic Tokens swatch grid only.
+ *
+ * Rationale for not sweeping all four everywhere: `high-contrast` shipped long
+ * before this and never had a canary baseline, because the canary guards
+ * component *shape*, not scheme colour — `theme-matrix.spec.ts` is the
+ * scheme-coverage mechanism and now sweeps all four with an axe
+ * `color-contrast` assertion per page. Full sweeps would take the canary from
+ * 20 baselines to 40 to re-cover ground already covered functionally, while a
+ * scheme's actual subject — the token ramp — is exactly what the swatch grid
+ * renders. A fifth scheme enrols in the swatch tier automatically and
+ * announces itself as a missing-baseline failure.
  *
  * Stability strategy (chapter 07 §"Masking and stability"):
  *   - Reduced motion is on globally (`playwright.config.ts`), and the
@@ -44,7 +65,7 @@ const DIFF = 0.01;
 
 
 /** Wait for the route's outlet to mount (H1 + theme attribute reflect). */
-async function waitForRoute(page: Page, scheme: 'light' | 'dark'): Promise<void> {
+async function waitForRoute(page: Page, scheme: TwResolvedTheme): Promise<void> {
   await expect(page.getByRole('heading', { level: 1 })).toBeVisible({
     timeout: OUTLET_READY_TIMEOUT_MS,
   });
@@ -112,7 +133,7 @@ async function stabiliseOverlayIds(page: Page): Promise<void> {
  */
 async function applyScheme(
   context: BrowserContext,
-  scheme: 'light' | 'dark',
+  scheme: TwResolvedTheme,
 ): Promise<void> {
   await context.addInitScript((s) => {
     window.localStorage.setItem('ngx-tw-theme', s);
@@ -173,7 +194,34 @@ async function prepareRegionCapture(page: Page, target: Locator): Promise<void> 
   }
 }
 
-for (const scheme of ['light', 'dark'] as const) {
+/**
+ * Declares the Semantic Tokens swatch-grid test for one scheme.
+ *
+ * This is the one scene whose entire subject is the scheme's token ramp, and
+ * therefore the scene every resolved scheme is worth a baseline for. Declared
+ * from a shared function so the two coverage tiers below cannot drift apart in
+ * capture technique — and declared as a whole `test()` rather than a helper the
+ * tests call, so `expect` stays lexically inside the test body (a helper trips
+ * `playwright/expect-expect`, which would then be reporting a real smell about
+ * a fake one).
+ */
+function declareSwatchGridTest(scheme: TwResolvedTheme): void {
+  test(`@visual theme — Semantic Tokens swatch grid`, async ({ page }) => {
+    await page.goto('/services/theme/examples');
+    await waitForRoute(page, scheme);
+    const swatches = section(page, 'Semantic Tokens');
+    await expect(swatches).toBeVisible();
+    // This is the capture that exposed both defects `prepareRegionCapture`
+    // fixes: at 1284px it is the tallest region in the canary, and the theme
+    // page's tabbed shell pushes it under the sticky header.
+    await prepareRegionCapture(page, swatches);
+    await expect(swatches).toHaveScreenshot(`theme-swatches.${scheme}.png`, {
+      maxDiffPixelRatio: DIFF,
+    });
+  });
+}
+
+for (const scheme of FULL_SCENE_SCHEMES) {
   test.describe(`@visual ${scheme} scheme`, () => {
     test.beforeEach(async ({ context }) => {
       await applyScheme(context, scheme);
@@ -302,18 +350,24 @@ for (const scheme of ['light', 'dark'] as const) {
       });
     });
 
-    test(`@visual theme — Semantic Tokens swatch grid`, async ({ page }) => {
-      await page.goto('/services/theme/examples');
-      await waitForRoute(page, scheme);
-      const swatches = section(page, 'Semantic Tokens');
-      await expect(swatches).toBeVisible();
-      // This is the capture that exposed both defects `prepareRegionCapture`
-      // fixes: at 1284px it is the tallest region in the canary, and the theme
-      // page's tabbed shell pushes it under the sticky header.
-      await prepareRegionCapture(page, swatches);
-      await expect(swatches).toHaveScreenshot(`theme-swatches.${scheme}.png`, {
-        maxDiffPixelRatio: DIFF,
-      });
+    declareSwatchGridTest(scheme);
+  });
+}
+
+/**
+ * Swatch-only tier — every resolved scheme outside `FULL_SCENE_SCHEMES`.
+ *
+ * Today that is `high-contrast` and `high-contrast-dark`. This loop is what
+ * stops a new scheme from shipping with zero visual coverage: it is derived by
+ * subtraction from `TW_RESOLVED_THEMES`, so a fifth scheme lands here with no
+ * edit and fails on its first `@visual` run for want of a baseline.
+ */
+for (const scheme of SWATCH_ONLY_SCHEMES) {
+  test.describe(`@visual ${scheme} scheme`, () => {
+    test.beforeEach(async ({ context }) => {
+      await applyScheme(context, scheme);
     });
+
+    declareSwatchGridTest(scheme);
   });
 }
