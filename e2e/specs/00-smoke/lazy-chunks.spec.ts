@@ -1,6 +1,7 @@
 import type { Request } from '@playwright/test';
 import { expect, test } from '../../fixtures/base';
 import { ShellPage } from '../../pages/shell.page';
+import { OUTLET_READY_TIMEOUT_MS } from '../../support/timing';
 
 test.describe.configure({ mode: 'parallel' });
 
@@ -38,7 +39,7 @@ test('@smoke component-route navigation triggers lazy chunk loading', async ({
   // Land somewhere neutral first, then start counting. The starting page
   // brings in its own chunks which we don't want attributed to the next nav.
   await page.goto('/components/button/overview');
-  await expect(page.getByRole('heading', { level: 1 })).toBeVisible({ timeout: 20_000 });
+  await expect(page.getByRole('heading', { level: 1 })).toBeVisible({ timeout: OUTLET_READY_TIMEOUT_MS });
 
   page.on('request', onRequest);
 
@@ -49,7 +50,7 @@ test('@smoke component-route navigation triggers lazy chunk loading', async ({
     const link = shell.navChildLink(step.component, step.child);
     const targetUrl = `**/components/${step.component}/${step.child.toLowerCase()}`;
     await Promise.all([page.waitForURL(targetUrl), link.click()]);
-    await expect(page.getByRole('heading', { level: 1 })).toBeVisible({ timeout: 20_000 });
+    await expect(page.getByRole('heading', { level: 1 })).toBeVisible({ timeout: OUTLET_READY_TIMEOUT_MS });
 
     // Filter out hot-reload sentinels and framework chunks that may be
     // re-fetched. What remains is the route-specific lazy work.

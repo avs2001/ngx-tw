@@ -1,5 +1,9 @@
+/* eslint playwright/expect-expect: ["warn", { "assertFunctionNames": ["expect", "pollUntil"] }] --
+   `pollUntil` (support/timing.ts) wraps `expect.poll`, so a test that asserts only
+   through it still asserts; without this the rule reports it as assertion-free. */
 import { expect, test } from '../../fixtures/base';
 import { DialogPage } from '../../pages/dialog.page';
+import { pollUntil } from '../../support/timing';
 
 test.describe.configure({ mode: 'parallel' });
 
@@ -79,12 +83,15 @@ test.describe('Concurrent overlays', () => {
     // FocusTrap autoFocus runs on each successive overlay open. A
     // regression here historically manifested as the parent's trigger
     // retaining focus while the child appeared above it.
-    const focusInChild = await page.evaluate(() => {
-      const containers = document.querySelectorAll('tw-dialog-container');
-      const top = containers[containers.length - 1];
-      return !!document.activeElement && top?.contains(document.activeElement);
-    });
-    expect(focusInChild, 'focus did not transfer into the child dialog').toBe(true);
+    await pollUntil(
+      page,
+      () => {
+        const containers = document.querySelectorAll('tw-dialog-container');
+        const top = containers[containers.length - 1];
+        return !!document.activeElement && !!top?.contains(document.activeElement);
+      },
+      'focus did not transfer into the child dialog',
+    ).toBe(true);
 
     // Focus trap on the **child**: 25 Tabs, focus never escapes the
     // top container. Crucially, the parent must NOT receive focus while
@@ -92,18 +99,22 @@ test.describe('Concurrent overlays', () => {
     // receives focus and keyboard events").
     for (let i = 0; i < FOCUS_TRAP_TAB_COUNT; i++) {
       await page.keyboard.press('Tab');
-      const state = await page.evaluate(() => {
-        const containers = document.querySelectorAll('tw-dialog-container');
-        const top = containers[containers.length - 1];
-        const parent = containers[0];
-        const active = document.activeElement;
-        return {
-          inTop: !!active && !!top?.contains(active),
-          inParentOnly: !!active && !!parent?.contains(active) && !top?.contains(active),
-        };
-      });
-      expect(state.inTop, `iteration ${i}: focus escaped the child`).toBe(true);
-      expect(state.inParentOnly, `iteration ${i}: focus leaked into parent`).toBe(false);
+      // Polled as one object so both halves are read from the same sample —
+      // two independent polls could each settle on a different instant.
+      await pollUntil(
+        page,
+        () => {
+          const containers = document.querySelectorAll('tw-dialog-container');
+          const top = containers[containers.length - 1];
+          const parent = containers[0];
+          const active = document.activeElement;
+          return {
+            inTop: !!active && !!top?.contains(active),
+            inParentOnly: !!active && !!parent?.contains(active) && !top?.contains(active),
+          };
+        },
+        `iteration ${i}: focus must stay inside the child dialog and never reach the parent`,
+      ).toEqual({ inTop: true, inParentOnly: false });
     }
 
     // First Esc closes only the child.
@@ -127,8 +138,7 @@ test.describe('Concurrent overlays', () => {
     await dialog.waitForClosed();
     await expect(dialog.stackDepth).toContainText('0');
 
-    const restoredToRoot = await rootTrigger.evaluate((el) => el === document.activeElement);
-    expect(restoredToRoot, 'focus did not return to the route-level trigger').toBe(true);
+    await expect(rootTrigger, 'focus did not return to the route-level trigger').toBeFocused();
   });
 
   test('@overlay stacked dialogs: child is layered above parent in the CDK overlay tree', async ({
@@ -168,7 +178,7 @@ test.describe('Concurrent overlays', () => {
   });
 
   test.fixme(
-    '@overlay dialog + select: opening a select inside a dialog does not break the dialog trap',
+    '[fixme:concurrent-overlays/dialog-select] @overlay dialog + select: opening a select inside a dialog does not break the dialog trap',
     async ({ page }) => {
       // chapter 05 §5.9: needs a `_e2e/concurrent-overlays` route or
       // an inline `tw-select` inside a dialog example. Today's
@@ -194,7 +204,7 @@ test.describe('Concurrent overlays', () => {
   );
 
   test.fixme(
-    '@overlay dialog + toast: toast appears above the dialog, focus stays in the dialog',
+    '[fixme:concurrent-overlays/dialog-toast] @overlay dialog + toast: toast appears above the dialog, focus stays in the dialog',
     async ({ page }) => {
       // chapter 05 §5.9 / chapter 08 §8.3: no dialog example injects
       // ToastService today. Lift this fixme once a "Show toast"
@@ -215,7 +225,7 @@ test.describe('Concurrent overlays', () => {
   );
 
   test.fixme(
-    '@overlay tooltip on dialog button: tooltip renders above the dialog backdrop',
+    '[fixme:concurrent-overlays/dialog-tooltip] @overlay tooltip on dialog button: tooltip renders above the dialog backdrop',
     async ({ page }) => {
       // chapter 05 §5.9 / chapter 08 §8.3: no dialog example wires
       // `[twTooltip]` on a dialog action button today. Lift once the
@@ -244,7 +254,7 @@ test.describe('Concurrent overlays', () => {
   );
 
   test.fixme(
-    '@overlay z-index canary: all six overlay types coexist with documented stacking',
+    '[fixme:concurrent-overlays/z-index-canary] @overlay z-index canary: all six overlay types coexist with documented stacking',
     async ({ page }) => {
       // chapter 05 §5.9: requires the `_e2e/concurrent-overlays` route
       // to mount tooltip + popover + select + menu + dialog +

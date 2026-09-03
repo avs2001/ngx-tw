@@ -1,4 +1,5 @@
 import { expect, type Locator, type Page } from '@playwright/test';
+import { OVERLAY_SETTLE_TIMEOUT_MS } from '../support/timing';
 
 /**
  * Section labels rendered as `<h2>` headings inside `select-examples.component.ts`.
@@ -94,11 +95,11 @@ export class SelectPage {
   }
 
   async waitForOpen(): Promise<void> {
-    await expect(this.listbox).toBeVisible();
+    await expect(this.listbox).toBeVisible({ timeout: OVERLAY_SETTLE_TIMEOUT_MS });
   }
 
   async waitForClosed(): Promise<void> {
-    await expect(this.listbox).toHaveCount(0);
+    await expect(this.listbox).toHaveCount(0, { timeout: OVERLAY_SETTLE_TIMEOUT_MS });
   }
 
   /** Options rendered inside the listbox (post-filter), in DOM order. */

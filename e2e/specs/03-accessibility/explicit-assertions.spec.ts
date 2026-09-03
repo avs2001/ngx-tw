@@ -1,15 +1,10 @@
 import { expect, test } from '../../fixtures/base';
 import type { Page } from '@playwright/test';
 import { COMPONENTS } from '../../support/routes';
+import { OUTLET_READY_TIMEOUT_MS } from '../../support/timing';
 
 test.describe.configure({ mode: 'parallel' });
 
-/**
- * First-hit lazy-chunk compilation can take well past the default 5s expect
- * timeout under parallel load. Match the smoke-suite threshold so a slow
- * build isn't conflated with a true outlet-render failure.
- */
-const OUTLET_READY_TIMEOUT_MS = 20_000;
 
 /**
  * Targeted accessibility assertions that complement the axe sweep. axe is

@@ -39,13 +39,20 @@ test.describe('Date Range Picker', () => {
     await picker.waitForClosed();
   });
 
-  test.fixme(
+  test(
     '@interaction @overlay single-month layout (`numberOfMonths=1`) renders one grid',
     async ({ page }) => {
-      // BUG / NEEDS-INVESTIGATION: setting `[numberOfMonths]="1"` on the
-      // date-range-picker still renders two `[role="grid"]` elements inside
-      // the overlay calendar. The `numberOfMonths` input may not propagate
-      // to the embedded `tw-calendar`'s `monthColumns`. File as a follow-up.
+      // Was `test.fixme` from pass 2 to pass 5 on the premise that
+      // `[numberOfMonths]="1"` still rendered two grids because the input did
+      // not reach the embedded `tw-calendar`'s `monthColumns`. That premise is
+      // **stale**: the chain is intact (`date-range-picker.ts` pushes the value
+      // onto the overlay instance, `date-range-picker-overlay.ts` binds
+      // `[monthColumns]`), and the overlay's `numberOfMonths` signal is merely
+      // seeded at 2 before the picker sets it — a first-render flash that
+      // `toHaveCount`'s auto-retry absorbs. Measured in pass 6: it passes.
+      // This was the only one of the 33 suppressed bodies that had genuinely
+      // gone stale, which is exactly the failure mode `test.fixme` cannot
+      // detect on its own — see `support/fixme-registry.ts`.
       const picker = new DateRangePickerPage(page);
       await picker.goto();
       const target = picker.pickerIn(picker.monthLayoutSection, 1);
@@ -173,7 +180,7 @@ test.describe('Date Range Picker', () => {
   });
 
   test.fixme(
-    '@interaction minRangeLength / maxRangeLength surfaced on the picker (NEEDS-DEMO-CHANGE)',
+    '[fixme:date-range-picker/min-max-range-length] @interaction minRangeLength / maxRangeLength surfaced on the picker (NEEDS-DEMO-CHANGE)',
     async () => {
       // BLOCKED — chapter 04 + REVIEW.md: the underlying calendar supports
       // `minRangeLength` / `maxRangeLength`, but the date-range-picker does

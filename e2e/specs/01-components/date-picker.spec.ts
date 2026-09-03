@@ -17,7 +17,9 @@ test.describe.configure({ mode: 'parallel' });
  * - `withTime` integration — embedded `<tw-time-picker>`; time edits don't
  *   close the overlay.
  * - Action bar Apply/Cancel — cell click stages, only Apply commits.
- * - `onFormReset` and writeValue queueing → see the cross-cutting suite.
+ * - form reset (via `writeValue(null)`) and writeValue queueing → see the
+ *   cross-cutting suite. NOTE: this line used to name `onFormReset`; no
+ *   component imports that helper. Corrected in audit pass 6.
  *
  * BLOCKED:
  *   - Locale (German example) — NEEDS-DEMO-CHANGE (REVIEW.md §date-picker).
@@ -223,7 +225,7 @@ test.describe('Date Picker', () => {
   });
 
   test.fixme(
-    '@interaction @overlay German locale renders day names in German (NEEDS-DEMO-CHANGE)',
+    '[fixme:date-picker/german-locale] @interaction @overlay German locale renders day names in German (NEEDS-DEMO-CHANGE)',
     async () => {
       // BLOCKED — REVIEW.md §date-picker: the demo route has no German
       // example. Either add a section that calls `provideCalendarIntl(de)`

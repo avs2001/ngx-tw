@@ -191,7 +191,7 @@ test.describe('Table', () => {
   });
 
   test.fixme(
-    '@a11y keyboard nav across cells follows the WAI-ARIA grid pattern',
+    '[fixme:table/grid-keyboard-nav] @a11y keyboard nav across cells follows the WAI-ARIA grid pattern',
     async () => {
       // BLOCKED — out of scope for v1 per `table.ts` header note (no
       // arrow-key grid pattern). Re-enable if/when source adopts the APG

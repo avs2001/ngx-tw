@@ -1,4 +1,5 @@
 import { expect, type Locator, type Page } from '@playwright/test';
+import { OVERLAY_SETTLE_TIMEOUT_MS } from '../support/timing';
 
 /**
  * Section labels rendered as `<h2>` headings inside `dialog-examples.component.ts`.
@@ -88,13 +89,15 @@ export class DialogPage {
    * of animation timing.
    */
   async waitForOpen(): Promise<void> {
-    await expect(this.topDialog).toBeVisible();
-    await expect(this.topDialog).toHaveAttribute('data-state', 'open');
+    await expect(this.topDialog).toBeVisible({ timeout: OVERLAY_SETTLE_TIMEOUT_MS });
+    await expect(this.topDialog).toHaveAttribute('data-state', 'open', {
+      timeout: OVERLAY_SETTLE_TIMEOUT_MS,
+    });
   }
 
   /** Wait until no dialog containers remain in the overlay tree. */
   async waitForClosed(): Promise<void> {
-    await expect(this.dialogs).toHaveCount(0);
+    await expect(this.dialogs).toHaveCount(0, { timeout: OVERLAY_SETTLE_TIMEOUT_MS });
   }
 
   /**

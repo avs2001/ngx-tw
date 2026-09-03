@@ -1,5 +1,6 @@
 import { expect, test } from '../../fixtures/base';
 import { CalendarPage } from '../../pages/calendar.page';
+import { EXPECTED_FAILURE_TIMEOUT_MS } from '../../support/fixme-registry';
 
 test.describe.configure({ mode: 'parallel' });
 
@@ -77,9 +78,13 @@ test.describe('Calendar', () => {
     ).not.toHaveCount(0);
   });
 
-  test.fixme('@interaction multi-month: range-selection renders two grids and supports cross-grid selection', async ({
+  // `test.fail()`, not `test.fixme`: this body fails on a real assertion, so
+  // Playwright runs it and turns the suite RED the day it starts passing —
+  // the self-expiry a `test.fixme` can never have. See `support/fixme-registry.ts`.
+  test.fail('@interaction multi-month: range-selection renders two grids and supports cross-grid selection', async ({
     page,
   }) => {
+    test.setTimeout(EXPECTED_FAILURE_TIMEOUT_MS);
     // Pre-existing drift: range mode no longer defaults to a two-month
     // layout post-S19 (`numberOfMonths` is now 1 by default; the
     // rangeBehavior config object owns this). Re-enable by setting
@@ -200,7 +205,7 @@ test.describe('Calendar', () => {
   });
 
   test.fixme(
-    '@interaction CalendarConstraints shorthand (NEEDS-DEMO-CHANGE)',
+    '[fixme:calendar/constraints-shorthand] @interaction CalendarConstraints shorthand (NEEDS-DEMO-CHANGE)',
     async () => {
       // BLOCKED — chapter 04 §Calendar + REVIEW.md: the demo's Constraints
       // section passes minDate/maxDate/disabledDates/disabledDaysOfWeek
@@ -210,7 +215,7 @@ test.describe('Calendar', () => {
   );
 
   test.fixme(
-    '@interaction Range click-strategy hand-off with custom CALENDAR_SELECTION_STRATEGY',
+    '[fixme:calendar/custom-selection-strategy] @interaction Range click-strategy hand-off with custom CALENDAR_SELECTION_STRATEGY',
     async () => {
       // BLOCKED — chapter 04 §Calendar: requires a dedicated demo route
       // that provides a custom selection strategy. Today's demo only

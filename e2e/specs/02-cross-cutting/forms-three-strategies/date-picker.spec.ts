@@ -7,11 +7,23 @@ test.describe.configure({ mode: 'parallel' });
  * Three-strategy contract — `Date Picker`.
  *
  * Per chapter 04 §Date Picker + chapter 08 §2: the date-picker is an
- * **overlay-deferred form control**. The new `onFormReset` helper subscribes
- * to `NgControl.events` and clears UI state without re-emitting `dateChange`
- * on the null path. Signal Forms' control type does not expose an `events`
- * stream — reset cleanup does not fire under Signal Forms today; that path
- * is `test.fixme`.
+ * **overlay-deferred form control**.
+ *
+ * **How reset actually works here.** Through the plain CVA path:
+ * `DatePickerComponent.writeValue(null)` (`date-picker.ts:1514`) clears
+ * `internalValue`, `value`, `rawInputText` and the parse-error state. It does
+ * NOT go through `core/form-reset.ts`'s `onFormReset` helper — no component in
+ * the library imports that helper, and it is not exported from `core/index.ts`
+ * either. Earlier revisions of this file (and five of its siblings) attributed
+ * the behaviour to it; corrected in audit pass 6. `calendar` is the one control
+ * that really does hand-roll a `control.events` / `FormResetEvent`
+ * subscription (`calendar.ts:824`).
+ *
+ * Because the mechanism is `writeValue`, whether reset works under Signal
+ * Forms is a question about how Signal Forms drives the accessor, not about an
+ * `events` stream. The Signal Forms reset test stays suppressed for a
+ * different and simpler reason: the demo's Signal Forms section renders no
+ * reset surface at all.
  *
  * The picker is a `ControlValueAccessor` with a `dateChange` output, but
  * neither the demo's bound `<p>`/`<pre>` readouts nor a Playwright locator
@@ -56,7 +68,7 @@ test.describe('Forms · Three strategies · Date Picker', () => {
     await expect(picker.output('reactive-forms')).toContainText('"status": "VALID"');
   });
 
-  test('@forms @reactive reactive: `reset()` clears the input via onFormReset (no dateChange re-emit)', async ({
+  test('@forms @reactive reactive: `reset()` clears the input via writeValue(null) (no dateChange re-emit)', async ({
     page,
   }) => {
     const picker = new DatePickerPage(page);
@@ -69,7 +81,8 @@ test.describe('Forms · Three strategies · Date Picker', () => {
     await expect(picker.triggerInput(target)).not.toHaveValue('');
 
     // Overlay-deferred-reset contract (chapter 05 §5.1 + chapter 08 §2):
-    //   1. DOM clears — `onFormReset` invokes the picker's clear path.
+    //   1. DOM clears — `formControl.reset()` reaches the accessor as
+    //      `writeValue(null)`, which takes the picker's clear path.
     //   2. The reset code path explicitly skips `dateChange` emission — see
     //      `date-picker.ts:1294-1313` `applyValue()`. The unit spec
     //      (`date-picker.spec.ts:804-846`) is the authoritative negative
@@ -98,14 +111,15 @@ test.describe('Forms · Three strategies · Date Picker', () => {
   });
 
   test.fixme(
-    '@forms @signal signal-forms: reset clears the trigger (BLOCKED — onFormReset has no Signal Forms events stream)',
+    '[fixme:forms/date-picker-signal-reset] @forms @signal signal-forms: reset clears the trigger',
     async () => {
-      // BLOCKED (chapter 05 §5.1 + chapter 08 §2): `onFormReset` subscribes
-      // to `NgControl.control.events`, which Signal Forms' FieldState does
-      // not expose. The reset path does not fire under signal forms today,
-      // and the demo's Signal Forms section has no Reset button either.
-      // Lift this when either the helper supports Signal Forms or the demo
-      // wires its own reset surface.
+      // BLOCKED — and NOT for the reason this comment used to give. It
+      // blamed `onFormReset` having no Signal Forms events stream; the
+      // date-picker does not use that helper at all (see the file header).
+      // The real blocker is smaller and entirely demo-side: the Signal Forms
+      // section of `date-picker-examples.component.ts` renders a
+      // `tw-date-picker` and a readout and nothing else — there is no reset
+      // control to click. Registry: `forms/date-picker-signal-reset`.
     },
   );
 });

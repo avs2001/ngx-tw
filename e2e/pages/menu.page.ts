@@ -1,4 +1,5 @@
 import { expect, type Locator, type Page } from '@playwright/test';
+import { OVERLAY_SETTLE_TIMEOUT_MS } from '../support/timing';
 
 /**
  * Page Object for the menu examples route. The menu component composes
@@ -45,11 +46,11 @@ export class MenuPage {
   }
 
   async waitForOpen(): Promise<void> {
-    await expect(this.topMenu).toBeVisible();
+    await expect(this.topMenu).toBeVisible({ timeout: OVERLAY_SETTLE_TIMEOUT_MS });
   }
 
   async waitForClosed(): Promise<void> {
-    await expect(this.menus).toHaveCount(0);
+    await expect(this.menus).toHaveCount(0, { timeout: OVERLAY_SETTLE_TIMEOUT_MS });
   }
 
   get basicTrigger(): Locator {

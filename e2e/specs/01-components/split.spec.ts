@@ -1,5 +1,6 @@
 import { expect, test } from '../../fixtures/base';
 import { SplitPage } from '../../pages/split.page';
+import { EXPECTED_FAILURE_TIMEOUT_MS } from '../../support/fixme-registry';
 
 test.describe.configure({ mode: 'parallel' });
 
@@ -229,7 +230,11 @@ test.describe('Split', () => {
     await expect(gutter).toHaveAttribute('aria-valuenow', '20');
   });
 
-  test.fixme('@interaction Escape cancels an in-flight drag and restores sizes', async ({ page }) => {
+  // `test.fail()`, not `test.fixme`: this body fails on a real assertion, so
+  // Playwright runs it and turns the suite RED the day it starts passing —
+  // the self-expiry a `test.fixme` can never have. See `support/fixme-registry.ts`.
+  test.fail('@interaction Escape cancels an in-flight drag and restores sizes', async ({ page }) => {
+    test.setTimeout(EXPECTED_FAILURE_TIMEOUT_MS);
     // Investigate: Escape-mid-drag is not rolling sizes back. Either the
     // host keydown handler runs while the drag is captured but `_cancel`
     // never fires before `pointerup` commits, or the rAF apply pass
@@ -314,7 +319,11 @@ test.describe('Split', () => {
     await expect(split.collapseStatus).toHaveText(/expanded/);
   });
 
-  test.fixme('@interaction drag below snapSize collapses the pane', async ({ page }) => {
+  // `test.fail()`, not `test.fixme`: this body fails on a real assertion, so
+  // Playwright runs it and turns the suite RED the day it starts passing —
+  // the self-expiry a `test.fixme` can never have. See `support/fixme-registry.ts`.
+  test.fail('@interaction drag below snapSize collapses the pane', async ({ page }) => {
+    test.setTimeout(EXPECTED_FAILURE_TIMEOUT_MS);
     // Investigate: with the new demo config (`minSize=20 collapsedSize=6
     // snapSize=6`), the pointer-drag below snapSize is not flipping
     // `_collapsed = true`. Probably the rAF apply pass races the test's
@@ -380,7 +389,11 @@ test.describe('Split', () => {
     await expect(gutter).toHaveAttribute('aria-valuenow', '50');
   });
 
-  test.fixme('@interaction pixel-mode drag updates sizes', async ({ page }) => {
+  // `test.fail()`, not `test.fixme`: this body fails on a real assertion, so
+  // Playwright runs it and turns the suite RED the day it starts passing —
+  // the self-expiry a `test.fixme` can never have. See `support/fixme-registry.ts`.
+  test.fail('@interaction pixel-mode drag updates sizes', async ({ page }) => {
+    test.setTimeout(EXPECTED_FAILURE_TIMEOUT_MS);
     // Investigate: drag of +60 pixels produces +49 instead of the expected
     // +60. Pixel-mode is documented as 1:1 with cursor delta; investigate
     // whether the demo's container width is narrowing the visible delta or
@@ -411,7 +424,7 @@ test.describe('Split', () => {
   // there's no stable DOM to drive an end-to-end keyboard scenario. Restore
   // once the demo grows a "Nested splits" section again.
   test.fixme(
-    '@interaction nested split — inner gutter resizes inner panes only',
+    '[fixme:split/nested] @interaction nested split — inner gutter resizes inner panes only',
     async () => {},
   );
 
@@ -422,7 +435,7 @@ test.describe('Split', () => {
     const hasClass = async () =>
       page.evaluate(() => document.body.classList.contains('tw-split-no-select'));
 
-    expect(await hasClass()).toBe(false);
+    await expect.poll(hasClass).toBe(false);
 
     const gBox = (await split.gutterRect(split.horizontalSection, 0))!;
     await page.mouse.move(gBox.x + gBox.width / 2, gBox.y + gBox.height / 2);
@@ -440,13 +453,18 @@ test.describe('Split', () => {
   // the (collapseChange) event but is presentational, not a live region.
   // Restore once `split.ts` emits an announcement (likely via CDK's
   // `LiveAnnouncer`) on collapseChange.
-  test.fixme('@a11y live region announces collapse / expand', async () => {});
+  test.fixme('[fixme:split/live-region] @a11y live region announces collapse / expand', async () => {});
 
-  // Axe sweep across every component's examples route is covered centrally
-  // by `e2e/specs/03-accessibility/examples.spec.ts` (light + dark). No
-  // need to duplicate it here.
+  // NOTE: an "axe sweep is covered centrally" comment used to sit here, left
+  // behind by a deleted test. Sitting immediately above the RTL suppression it
+  // read as that test's rationale — the misattribution class the audit register
+  // records as having cost a pass real time. The RTL reason is in the body.
 
-  test.fixme('@keyboard @rtl horizontal arrow keys invert under dir=rtl', async ({ page }) => {
+  // `test.fail()`, not `test.fixme`: this body fails on a real assertion, so
+  // Playwright runs it and turns the suite RED the day it starts passing —
+  // the self-expiry a `test.fixme` can never have. See `support/fixme-registry.ts`.
+  test.fail('@keyboard @rtl horizontal arrow keys invert under dir=rtl', async ({ page }) => {
+    test.setTimeout(EXPECTED_FAILURE_TIMEOUT_MS);
     // BLOCKED: setting `document.documentElement.dir = 'rtl'` via an init
     // script does not flip CDK's `Directionality` service in the demo
     // shell — the keydown handler still treats ArrowRight as

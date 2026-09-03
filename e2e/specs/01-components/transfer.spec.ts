@@ -1,6 +1,10 @@
+/* eslint playwright/expect-expect: ["warn", { "assertFunctionNames": ["expect", "pollUntil"] }] --
+   `pollUntil` (support/timing.ts) wraps `expect.poll`, so a test that asserts only
+   through it still asserts; without this the rule reports it as assertion-free. */
 import type { Page } from '@playwright/test';
 import { expect, test } from '../../fixtures/base';
 import { formatViolations } from '../../support/a11y';
+import { pollUntil } from '../../support/timing';
 
 test.describe.configure({ mode: 'parallel' });
 
@@ -50,12 +54,19 @@ test.describe('Transfer', () => {
 
     // The button disables itself as its checked set drains; focus must not fall
     // back to <body>. The fix re-homes focus into the destination listbox.
-    const focusHome = await page.evaluate(() => {
-      const active = document.activeElement;
-      if (!active || active.tagName === 'BODY') return 'body';
-      return active.closest('[role="listbox"]') ? 'listbox' : active.tagName.toLowerCase();
-    });
-    expect(focusHome).toBe('listbox');
+    // `afterNextRender` re-homes focus, so the answer is not available on the
+    // instant the click resolves. Poll rather than sample — a one-shot
+    // `page.evaluate` here was the pass-5 flake (passed 5/5 in isolation,
+    // failed once under full-suite contention). See `support/timing.ts`.
+    await pollUntil(
+      page,
+      () => {
+        const active = document.activeElement;
+        if (!active || active.tagName === 'BODY') return 'body';
+        return active.closest('[role="listbox"]') ? 'listbox' : active.tagName.toLowerCase();
+      },
+      'focus must be re-homed into a listbox, not left on <body>',
+    ).toBe('listbox');
   });
 
   test('@interaction moving the first item into an empty destination keeps focus in the new listbox', async ({
@@ -72,12 +83,18 @@ test.describe('Transfer', () => {
     // The destination listbox mounts during the move's render; afterNextRender
     // must home focus into it rather than letting it fall to <body>.
     await expect(oneWay.getByRole('listbox')).toHaveCount(2);
-    const focusHome = await page.evaluate(() => {
-      const active = document.activeElement;
-      if (!active || active.tagName === 'BODY') return 'body';
-      return active.closest('[role="listbox"]') ? 'listbox' : active.tagName.toLowerCase();
-    });
-    expect(focusHome).toBe('listbox');
+    // Same shape as the test above: the destination listbox mounts during the
+    // move's render and `afterNextRender` homes focus into it afterwards, so
+    // the value settles a tick or more after the click resolves.
+    await pollUntil(
+      page,
+      () => {
+        const active = document.activeElement;
+        if (!active || active.tagName === 'BODY') return 'body';
+        return active.closest('[role="listbox"]') ? 'listbox' : active.tagName.toLowerCase();
+      },
+      'focus must be re-homed into the newly mounted listbox, not left on <body>',
+    ).toBe('listbox');
   });
 
   test('@a11y a required transfer inside tw-form-field surfaces an error once touched', async ({

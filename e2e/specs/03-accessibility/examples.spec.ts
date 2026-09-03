@@ -2,16 +2,10 @@ import { expect, test } from '../../fixtures/base';
 import { COMPONENTS } from '../../support/routes';
 import { formatViolations, partitionViolations, runAxe } from '../../support/a11y';
 import type { RuleBacklog } from '../../support/a11y';
+import { OUTLET_READY_TIMEOUT_MS } from '../../support/timing';
 
 test.describe.configure({ mode: 'parallel' });
 
-/**
- * First-hit lazy-chunk compilation can take well past the default 5s expect
- * timeout under parallel load (some example chunks are 600+ lines). Match
- * the smoke-suite threshold so a slow build isn't conflated with a true
- * outlet-render failure.
- */
-const OUTLET_READY_TIMEOUT_MS = 20_000;
 
 /**
  * Settle time before scanning.

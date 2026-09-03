@@ -97,7 +97,7 @@ test.describe('Tab Nav', () => {
   });
 
   test.fixme(
-    '@interaction routerLink-driven tab updates the URL on click',
+    '[fixme:tab-nav/routerlink-url] @interaction routerLink-driven tab updates the URL on click',
     async () => {
       // BLOCKED — demo does not wire `routerLink` on any twTabLink. See
       // docs/e2e/REVIEW.md §tab-nav. Re-enable after a routed demo section
@@ -106,7 +106,7 @@ test.describe('Tab Nav', () => {
   );
 
   test.fixme(
-    '@interaction refreshing the page restores the active routed tab',
+    '[fixme:tab-nav/routerlink-restore] @interaction refreshing the page restores the active routed tab',
     async () => {
       // BLOCKED — same root cause as above (NEEDS-DEMO-CHANGE for routerLink).
     },
