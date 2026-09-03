@@ -137,7 +137,7 @@ jobs:
       - run: npm ci
       - name: Cache Playwright browsers
         id: pw-cache
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: ~/.cache/ms-playwright
           # Scope key by the browser set this job installs — otherwise the
@@ -182,7 +182,7 @@ jobs:
       - run: npm ci
       - name: Cache Playwright browsers
         id: pw-cache
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: ~/.cache/ms-playwright
           key: ${{ runner.os }}-pw-chromium-${{ hashFiles('package-lock.json') }}
@@ -232,7 +232,7 @@ jobs:
       - run: npm ci
       - name: Cache Playwright browsers
         id: pw-cache
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: ~/.cache/ms-playwright
           # `-all` keeps this cache disjoint from the chromium-only jobs so a
@@ -360,7 +360,7 @@ jobs:
       - run: npm ci
       - name: Cache Playwright browsers
         id: pw-cache
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: ~/.cache/ms-playwright
           key: ${{ runner.os }}-pw-chromium-${{ hashFiles('package-lock.json') }}
