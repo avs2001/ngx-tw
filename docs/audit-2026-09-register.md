@@ -1140,6 +1140,33 @@ alias. Keying the Record on the rendered subset (`as const satisfies`) is the du
 | `npm run e2e:fast` | **936 passed**, 52 skipped, **1 flake** (was 932). The flake is `transfer.spec.ts:58`, which passes 5/5 in isolation — see below |
 | `npm run e2e:visual` | **NOT regenerated, by design** — Linux via `workflow_dispatch` only |
 
+**Visual baselines were regenerated on Linux (`workflow_dispatch`), and doing so surfaced a
+capture defect — recorded because it is only half fixed.**
+
+15 of 20 baselines moved. `button`, `tabs` and `dialog` were **untouched by pass 5** — those
+deltas are pass 1's rhythm migration finally being regenerated, which had been outstanding for
+four passes. `card`, `select`, `date-picker` and `theme` were genuinely touched.
+
+Note that `--update-snapshots` makes the visual suite pass **by definition** — it records whatever
+renders. "20 passed" on the regeneration job is therefore *not* evidence of correctness, and the
+only real check is the `e2e.yml` visual job running against the committed baselines afterwards.
+
+Inspecting the regenerated PNGs (rather than trusting the green job) found that
+**`theme-swatches.{light,dark}.png` no longer shows what it is named for.** Two causes:
+
+1. **Fixed.** The theme demo page's migration to the tabbed `tw-item` + `twTabNav` shell pushed the
+   "Semantic Tokens" section under the shell's `sticky top-0 z-30` header (`shell.ts:510`).
+   Playwright element screenshots capture the page *region*, so the sticky chrome — including a
+   `backdrop-blur-md` — landed inside the frame. The header is now hidden for that one capture, so
+   the other 14 regenerated baselines stay valid.
+2. **NOT fixed, carried to pass 6.** Even with the chrome gone, ~270px at the top of the frame is
+   blank where the `Semantic Tokens` heading and the SURFACE and FOREGROUND rows used to render.
+   The captured box is correct; its first rows are not painted at capture time. Most likely the
+   same class as pass 3's axe finding — *scanning before the enter animation settles*, which
+   produced 43 phantom contrast failures until a 1200ms settle was added. The baseline is stable
+   and still guards the rows it does show, so this is a coverage hole, not a false alarm: **the
+   surface and foreground token ramps currently have no visual guard.**
+
 **A third load-dependent e2e flake, new this pass and NOT a regression.**
 `transfer.spec.ts:58` (`expect(focusHome).toBe('listbox')`) failed once under full-suite
 contention and passes **5/5 in isolation**. `git diff f1196e5..HEAD` confirms **no pass-5 change
