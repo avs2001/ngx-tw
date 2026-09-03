@@ -29,8 +29,8 @@ import { Subscription } from 'rxjs';
 import { tv } from 'tailwind-variants';
 import type { TwColor, TwSize } from '@cdevhub/ngx-tw/core';
 import {
-  POPOVER_DATA,
-  POPOVER_REF,
+  TW_POPOVER_DATA,
+  TW_POPOVER_REF,
   type PopoverRef,
   type PopoverTemplateContext,
 } from './popover-tokens';
@@ -365,7 +365,7 @@ export class PopoverDirective {
   /** Whether to trap focus inside the popover panel using CDK FocusTrapFactory. Defaults to `true` — it matches the `role="dialog"` baseline, where a focus-trapped panel announces itself as modal; the special case is an inline popover acting as an informational tooltip. */
   readonly twPopoverTrapFocus = input(true);
 
-  /** Arbitrary data passed to template context or component via `POPOVER_DATA` token. Defaults to `undefined`. */
+  /** Arbitrary data passed to template context or component via `TW_POPOVER_DATA` token. Defaults to `undefined`. */
   readonly twPopoverData = input<unknown>(undefined);
 
   /** Additional CSS classes applied to the overlay panel for consumer customization. Defaults to an empty string. */
@@ -702,7 +702,7 @@ export class PopoverDirective {
     this.popoverInstance.ariaLabelledByQueue.set([]);
     this.popoverInstance.panelClass.set(this.resolvePanelClass());
 
-    // Provide POPOVER_REF for both template and component content. Title directives
+    // Provide TW_POPOVER_REF for both template and component content. Title directives
     // call _addAriaLabelledBy / _removeAriaLabelledBy to register their id with the
     // overlay's aria-labelledby queue.
     const overlayInstance = this.popoverInstance;
@@ -721,8 +721,8 @@ export class PopoverDirective {
       const templateInjector = Injector.create({
         parent: this.injector,
         providers: [
-          { provide: POPOVER_DATA, useValue: this.twPopoverData() },
-          { provide: POPOVER_REF, useValue: popoverRef },
+          { provide: TW_POPOVER_DATA, useValue: this.twPopoverData() },
+          { provide: TW_POPOVER_REF, useValue: popoverRef },
         ],
       });
       const templatePortal = new TemplatePortal(
@@ -736,8 +736,8 @@ export class PopoverDirective {
       const contentInjector = Injector.create({
         parent: this.injector,
         providers: [
-          { provide: POPOVER_DATA, useValue: this.twPopoverData() },
-          { provide: POPOVER_REF, useValue: popoverRef },
+          { provide: TW_POPOVER_DATA, useValue: this.twPopoverData() },
+          { provide: TW_POPOVER_REF, useValue: popoverRef },
         ],
       });
       const componentPortal = new ComponentPortal(

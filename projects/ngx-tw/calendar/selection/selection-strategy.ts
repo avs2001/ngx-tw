@@ -12,7 +12,7 @@ export interface SelectionResult<D, S> {
 }
 
 /**
- * Pluggable selection behaviour. Provide via `CALENDAR_SELECTION_STRATEGY` to
+ * Pluggable selection behaviour. Provide via `TW_CALENDAR_SELECTION_STRATEGY` to
  * customise how clicks mutate the calendar's `selected` value.
  *
  * `D` is the date type understood by the active `DateAdapter`.
@@ -40,6 +40,15 @@ export abstract class CalendarSelectionStrategy<D, S = unknown> {
 }
 
 /** Injection token for the active selection strategy. */
-export const CALENDAR_SELECTION_STRATEGY = new InjectionToken<
+export const TW_CALENDAR_SELECTION_STRATEGY = new InjectionToken<
   CalendarSelectionStrategy<unknown, unknown>
 >('tw-calendar/SelectionStrategy');
+
+/**
+ * @deprecated Renamed to {@link TW_CALENDAR_SELECTION_STRATEGY} for consistency
+ * with every other ngx-tw injection token. This is the *same token instance*,
+ * not a copy — providing under either name and injecting under the other
+ * resolves — so the rename is safe to adopt incrementally. Removed in the next
+ * major.
+ */
+export const CALENDAR_SELECTION_STRATEGY = TW_CALENDAR_SELECTION_STRATEGY;

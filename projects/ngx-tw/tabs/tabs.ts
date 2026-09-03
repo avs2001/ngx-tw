@@ -24,7 +24,6 @@ import {
 import { NgTemplateOutlet } from '@angular/common';
 import { type FocusableOption, FocusKeyManager, LiveAnnouncer } from '@angular/cdk/a11y';
 import { Directionality } from '@angular/cdk/bidi';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { tv } from 'tailwind-variants';
 import { twMerge } from 'tailwind-merge';
 import {
@@ -277,13 +276,15 @@ export class TabsComponent implements AfterViewInit {
   private readonly directionality = inject(Directionality, { optional: true });
 
   /**
-   * Live layout direction, mirrored into a signal so the key manager rebuilds
-   * when it changes. Without this the tablist hardcodes 'ltr' and ArrowRight
-   * moves to the next tab in DOM order but the *previous* tab visually in an
-   * RTL locale. CdkStepper and `tw-split` already honour Directionality.
+   * Live layout direction, read straight from CDK's `Directionality.valueSignal`
+   * (CDK 22+) so the key-manager effect re-runs on a runtime `dir` flip with no
+   * manual subscription mirror. Without a live direction the tablist hardcodes
+   * 'ltr' and ArrowRight moves to the next tab in DOM order but the *previous*
+   * tab visually in an RTL locale. CdkStepper and `tw-split` already honour
+   * Directionality; `tw-paginator` reads `valueSignal` the same way.
    */
-  private readonly layoutDirection = signal<'ltr' | 'rtl'>(
-    this.directionality?.value ?? 'ltr',
+  private readonly layoutDirection = computed<'ltr' | 'rtl'>(
+    () => this.directionality?.valueSignal() ?? 'ltr',
   );
 
   /** @internal */
@@ -566,13 +567,10 @@ export class TabsComponent implements AfterViewInit {
       this.setupScrollDetection();
     });
 
-    // Track CDK Directionality so an app that flips `dir` at runtime rebuilds
-    // the key manager with the new horizontal orientation.
-    this.directionality?.change
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe((dir) => this.layoutDirection.set(dir));
-
-    // Rebuild FocusKeyManager whenever triggers, orientation or direction change.
+    // Rebuild FocusKeyManager whenever triggers, orientation or direction
+    // change. `layoutDirection()` reads `Directionality.valueSignal` directly,
+    // so an app that flips `dir` at runtime rebuilds the manager with the new
+    // horizontal orientation without a subscription mirror.
     effect((onCleanup) => {
       const triggers = this.triggerElements();
       const orientation = this.orientation();

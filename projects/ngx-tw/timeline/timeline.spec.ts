@@ -1,7 +1,7 @@
 import { Component, input, signal, ChangeDetectionStrategy } from '@angular/core';
 import { TestBed, type ComponentFixture } from '@angular/core/testing';
 import { By } from '@angular/platform-browser';
-import { Directionality } from '@angular/cdk/bidi';
+import { type Direction, Directionality } from '@angular/cdk/bidi';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import {
   TimelineComponent,
@@ -976,9 +976,12 @@ describe('TimelineComponent', () => {
       TestBed.configureTestingModule({
         providers: [
           {
+            // `valueSignal` is the field the component actually reads (CDK 22+);
+            // `value`/`change` are kept so the mock stays shape-complete.
             provide: Directionality,
             useValue: {
               value: 'rtl',
+              valueSignal: signal<Direction>('rtl'),
               change: { subscribe: () => ({ unsubscribe: () => {} }) },
             },
           },

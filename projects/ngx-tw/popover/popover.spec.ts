@@ -14,6 +14,10 @@ import {
 } from './popover';
 import { PopoverCloseDirective } from './popover-close';
 import { PopoverTitleDirective } from './popover-title';
+// Deliberately the *deprecated* spellings. `PopoverDirective` now provides
+// `TW_POPOVER_DATA` / `TW_POPOVER_REF` into the content injector, so this
+// suite doubles as an end-to-end proof that the aliases are the same token
+// instances and not two DI keys. See `popover-token-alias.spec.ts`.
 import { POPOVER_DATA, POPOVER_REF } from './popover-tokens';
 import type { TwColor, TwSize } from '@cdevhub/ngx-tw/core';
 

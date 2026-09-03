@@ -1,5 +1,11 @@
-import { Component, ChangeDetectionStrategy } from '@angular/core';
+import {
+  Component,
+  ChangeDetectionStrategy,
+  signal,
+  type WritableSignal,
+} from '@angular/core';
 import { type ComponentFixture, TestBed } from '@angular/core/testing';
+import { type Direction, Directionality } from '@angular/cdk/bidi';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { SplitComponent } from './split';
 import { SplitPaneComponent } from './split-pane';
@@ -139,6 +145,21 @@ class DisabledHost {
   `,
 })
 class RtlHost {}
+
+// Same geometry as `RtlHost` but with NO `rtl` input, so `_isRtl` falls through
+// to the ambient CDK `Directionality`. This is the only host that exercises the
+// `Directionality` read path — every other RTL test pins `[rtl]="true"`.
+@Component({
+  imports: [SplitComponent, SplitPaneComponent],
+  changeDetection: ChangeDetectionStrategy.Eager,
+  template: `
+    <tw-split>
+      <tw-split-pane [defaultSize]="40">A</tw-split-pane>
+      <tw-split-pane [defaultSize]="60">B</tw-split-pane>
+    </tw-split>
+  `,
+})
+class AmbientDirHost {}
 
 @Component({
   imports: [SplitComponent, SplitPaneComponent],
@@ -1259,6 +1280,69 @@ describe('SplitComponent (Phase 1 scaffold)', () => {
       sep.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight' }));
       fixture.detectChanges();
       expect(split._sizes()[0]).toBeCloseTo(before - 10, 1);
+    });
+
+    // The `rtl` input is `null` on this host, so `_isRtl` falls through to CDK
+    // `Directionality` — the path no other split test covers.
+    //
+    // `Directionality` is declared `@Service()` (root-provided) in CDK 22, so
+    // simply omitting a provider still injects the REAL instance, which reports
+    // 'ltr' in jsdom; the provider below is what makes the assertion mean
+    // something. The mock's `valueSignal` is the field the component reads.
+    async function mountAmbient(dir: WritableSignal<Direction>) {
+      TestBed.configureTestingModule({
+        providers: [
+          {
+            provide: Directionality,
+            useValue: { value: dir(), valueSignal: dir },
+          },
+        ],
+      });
+      const fixture = TestBed.createComponent(AmbientDirHost);
+      fixture.detectChanges();
+      await fixture.whenStable();
+      fixture.detectChanges();
+      return fixture;
+    }
+
+    const splitOf = (fixture: ComponentFixture<unknown>) =>
+      fixture.debugElement.query(e => e.componentInstance instanceof SplitComponent)
+        ?.componentInstance as SplitComponent;
+
+    it('inherits rtl from the ambient CDK Directionality when the rtl input is null', async () => {
+      const fixture = await mountAmbient(signal<Direction>('rtl'));
+      const split = splitOf(fixture);
+      const before = split._sizes()[0];
+      const sep = fixture.nativeElement.querySelector('[role="separator"]') as HTMLElement;
+
+      sep.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowLeft' }));
+      fixture.detectChanges();
+
+      // LTR would shrink the leading pane; RTL grows it.
+      expect(split._sizes()[0]).toBeCloseTo(before + 10, 1);
+    });
+
+    it('honours a direction flip at runtime', async () => {
+      // Non-vacuous by construction: `dir.set('rtl')` writes the signal WITHOUT
+      // emitting on `Directionality.change`, so the old subscription mirror
+      // would still report 'ltr' here and ArrowLeft would keep shrinking.
+      const dir = signal<Direction>('ltr');
+      const fixture = await mountAmbient(dir);
+      const split = splitOf(fixture);
+      const sep = fixture.nativeElement.querySelector('[role="separator"]') as HTMLElement;
+
+      const start = split._sizes()[0];
+      sep.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowLeft' }));
+      fixture.detectChanges();
+      expect(split._sizes()[0]).toBeCloseTo(start - 10, 1);
+
+      dir.set('rtl');
+      fixture.detectChanges();
+
+      const afterFlip = split._sizes()[0];
+      sep.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowLeft' }));
+      fixture.detectChanges();
+      expect(split._sizes()[0]).toBeCloseTo(afterFlip + 10, 1);
     });
   });
 

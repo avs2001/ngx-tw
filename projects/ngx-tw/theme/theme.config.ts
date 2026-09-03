@@ -18,10 +18,18 @@ import { ThemeService } from './theme.service';
  * therefore still read a non-optional field for each setting, exactly as
  * before this token's type was tightened.
  */
-export const THEME_CONFIG = new InjectionToken<Required<TwThemeConfig>>('THEME_CONFIG');
+export const TW_THEME_CONFIG = new InjectionToken<Required<TwThemeConfig>>('TW_THEME_CONFIG');
 
 /**
- * Registers {@link ThemeService}, a {@link THEME_CONFIG} value built by merging
+ * @deprecated Renamed to {@link TW_THEME_CONFIG} for consistency with every
+ * other ngx-tw injection token. This is the *same token instance*, not a copy —
+ * providing under either name and injecting under the other resolves — so the
+ * rename is safe to adopt incrementally. Removed in the next major.
+ */
+export const THEME_CONFIG = TW_THEME_CONFIG;
+
+/**
+ * Registers {@link ThemeService}, a {@link TW_THEME_CONFIG} value built by merging
  * `config` over {@link DEFAULT_TW_THEME_CONFIG}, and an environment initializer
  * that constructs the service at bootstrap. Call once in the app's environment
  * providers.
@@ -55,7 +63,7 @@ export function provideTheme(config?: Partial<TwThemeConfig>): EnvironmentProvid
   );
   return makeEnvironmentProviders([
     {
-      provide: THEME_CONFIG,
+      provide: TW_THEME_CONFIG,
       useValue: { ...DEFAULT_TW_THEME_CONFIG, ...overrides } as Required<TwThemeConfig>,
     },
     ThemeService,

@@ -72,7 +72,7 @@ import { CodeBlockComponent } from '@cdevhub/ngx-tw/code-block';
             </tr>
             <tr>
               <td class="px-4 py-2 font-mono text-xs">Pointer swipe</td>
-              <td class="px-4 py-2 text-fg-muted">Horizontal drag past the threshold dismisses with reason <code class="font-mono">'swipe'</code>; disabled under <code class="font-mono">prefers-reduced-motion</code>.</td>
+              <td class="px-4 py-2 text-fg-muted">Horizontal drag past the threshold dismisses with reason <code class="font-mono">'swipe'</code>. Turn it off per toast with <code class="font-mono">swipeToDismiss: false</code>.</td>
             </tr>
             <tr>
               <td class="px-4 py-2 font-mono text-xs">LiveAnnouncer</td>
@@ -80,7 +80,7 @@ import { CodeBlockComponent } from '@cdevhub/ngx-tw/code-block';
             </tr>
             <tr>
               <td class="px-4 py-2 font-mono text-xs">Reduced motion</td>
-              <td class="px-4 py-2 text-fg-muted">Enter / leave animations shorten and swipe gestures are suppressed.</td>
+              <td class="px-4 py-2 text-fg-muted">Enter / leave animations shorten. Swipe is unaffected — a drag is the user's own pointer movement, not decorative motion, so removing it would take away an affordance rather than restore comfort.</td>
             </tr>
           </tbody>
         </table>

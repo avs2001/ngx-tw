@@ -4,6 +4,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { OverlayModule } from '@angular/cdk/overlay';
 import { provideSheet, Sheet } from './sheet';
 import { SheetRef } from './sheet-ref';
+// Deliberately the *deprecated* spelling. `sheet-renderer.ts` now provides
+// `TW_SHEET_DATA`, so this suite doubles as an end-to-end proof that the
+// alias is the same token instance. See `sheet-token-alias.spec.ts`.
 import { SHEET_DATA } from './sheet-config';
 import {
   SheetActionsDirective,

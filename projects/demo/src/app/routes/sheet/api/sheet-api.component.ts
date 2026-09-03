@@ -118,7 +118,7 @@ import { CodeBlockComponent } from '@cdevhub/ngx-tw/code-block';
               <td class="px-4 py-2 font-mono text-xs">data</td>
               <td class="px-4 py-2 font-mono text-xs text-fg-muted">D | null</td>
               <td class="px-4 py-2 font-mono text-xs text-fg-muted">null</td>
-              <td class="px-4 py-2 text-fg-muted">Value injected into the sheet content via <code class="font-mono">SHEET_DATA</code>.</td>
+              <td class="px-4 py-2 text-fg-muted">Value injected into the sheet content via <code class="font-mono">TW_SHEET_DATA</code>.</td>
             </tr>
             <tr>
               <td class="px-4 py-2 font-mono text-xs">role</td>
@@ -415,12 +415,12 @@ import { CodeBlockComponent } from '@cdevhub/ngx-tw/code-block';
           </thead>
           <tbody class="divide-y divide-border-muted">
             <tr>
-              <td class="px-4 py-2 font-mono text-xs">SHEET_DATA</td>
+              <td class="px-4 py-2 font-mono text-xs">TW_SHEET_DATA</td>
               <td class="px-4 py-2 font-mono text-xs text-fg-muted">InjectionToken&lt;unknown&gt;</td>
               <td class="px-4 py-2 text-fg-muted">Injects the <code class="font-mono">config.data</code> value inside component content.</td>
             </tr>
             <tr>
-              <td class="px-4 py-2 font-mono text-xs">SHEET_DEFAULT_OPTIONS</td>
+              <td class="px-4 py-2 font-mono text-xs">TW_SHEET_DEFAULT_OPTIONS</td>
               <td class="px-4 py-2 font-mono text-xs text-fg-muted">InjectionToken&lt;Partial&lt;SheetConfig&gt;&gt;</td>
               <td class="px-4 py-2 text-fg-muted">Holds the application-wide defaults supplied to <code class="font-mono">provideSheet()</code>.</td>
             </tr>

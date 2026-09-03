@@ -1056,3 +1056,70 @@ describe('SegmentedControl — RTL keyboard navigation', () => {
   });
 
 });
+
+// ── Output channel (F-6) ───────────────────────────────────────────
+//
+// `value` is a `model()`, so Angular mints a `valueChange` output that has no
+// declaration site in segmented-control.ts. Unlike `tw-checkbox` / `tw-switch` /
+// `tw-radio-group`, this control ships NO hand-written gesture-only `change`
+// output — so `valueChange` is the only channel and it is an ANY-CHANGE channel:
+// it fires on user selection and on a programmatic write through the CVA alike.
+// That asymmetry is now stated in the `value` JSDoc; this pins it, both so the
+// doc cannot rot and so a future gesture-only output is an intentional addition
+// rather than an accident.
+//
+// Non-vacuity: delete `this.value.set(val ?? null)` from `writeValue()` and the
+// first test fails; delete it from `selectOption()` and the second fails.
+
+@Component({
+  imports: [SegmentedControlComponent, SegmentedControlOptionComponent, ReactiveFormsModule],
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  template: `
+    <tw-segmented-control
+      [formControl]="control"
+      aria-label="Channel"
+      (valueChange)="valueChangeSpy($event)"
+    >
+      <tw-segmented-option value="x">X</tw-segmented-option>
+      <tw-segmented-option value="y">Y</tw-segmented-option>
+    </tw-segmented-control>
+  `,
+})
+class OutputChannelHost {
+  readonly control = new FormControl<string | null>('x');
+  readonly valueChangeSpy = vi.fn();
+}
+
+describe('SegmentedControl output channel', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    TestBed.configureTestingModule({});
+  });
+
+  function mount(): ComponentFixture<OutputChannelHost> {
+    const fixture = TestBed.createComponent(OutputChannelHost);
+    fixture.detectChanges();
+    fixture.componentInstance.valueChangeSpy.mockClear();
+    return fixture;
+  }
+
+  it('fires valueChange for a programmatic FormControl.setValue', () => {
+    const fixture = mount();
+    const host = fixture.componentInstance;
+
+    host.control.setValue('y');
+    fixture.detectChanges();
+
+    expect(host.valueChangeSpy).toHaveBeenCalledWith('y');
+  });
+
+  it('fires valueChange for a user gesture too — there is no gesture-only channel', () => {
+    const fixture = mount();
+    const host = fixture.componentInstance;
+
+    getOptions(fixture)[1].click();
+    fixture.detectChanges();
+
+    expect(host.valueChangeSpy).toHaveBeenCalledWith('y');
+  });
+});

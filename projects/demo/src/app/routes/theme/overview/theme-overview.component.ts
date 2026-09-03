@@ -143,7 +143,7 @@ export const appConfig: ApplicationConfig = {
   provideTheme,
   ThemeService,
   ThemeDirective,
-  THEME_CONFIG,
+  TW_THEME_CONFIG,
   TW_THEMES,
   TW_RESOLVED_THEMES,
 } from '@cdevhub/ngx-tw/theme';`;

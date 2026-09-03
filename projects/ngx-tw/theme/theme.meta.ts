@@ -2,7 +2,7 @@ import type { ComponentMeta } from '../meta.types';
 
 export const meta = {
   summary:
-    'Runtime theming API — provideTheme, ThemeService, THEME_CONFIG, and a [twTheme] directive — that switches between light, dark, high-contrast, and system modes and persists the choice, alongside the default theme CSS.',
+    'Runtime theming API — provideTheme, ThemeService, TW_THEME_CONFIG, and a [twTheme] directive — that switches between light, dark, high-contrast, and system modes and persists the choice, alongside the default theme CSS.',
   whenToUse: [
     'Building a theme toggle or a light/dark/high-contrast picker: inject ThemeService and call setTheme() or cycleTheme()',
     'Reading the active appearance in component logic via the theme, resolvedTheme, systemTheme, isDark, isLight, and isHighContrast signals',

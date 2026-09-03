@@ -5,7 +5,7 @@ import {
   type Provider,
   makeEnvironmentProviders,
 } from '@angular/core';
-import { DateAdapter, DATE_ADAPTER, type TwDateNameStyle } from './date-adapter';
+import { DateAdapter, TW_DATE_ADAPTER, type TwDateNameStyle } from './date-adapter';
 
 /** Display-format descriptor used by `NativeDateAdapter.format()`. */
 export interface TwNativeDateFormat {
@@ -264,7 +264,7 @@ export class NativeDateAdapter extends DateAdapter<Date> {
 export function provideNativeDateAdapter(): EnvironmentProviders {
   return makeEnvironmentProviders([
     NativeDateAdapter,
-    { provide: DATE_ADAPTER, useExisting: NativeDateAdapter },
+    { provide: TW_DATE_ADAPTER, useExisting: NativeDateAdapter },
   ]);
 }
 
@@ -275,7 +275,7 @@ export function provideTwCalendar<D>(config: {
 }): EnvironmentProviders {
   return makeEnvironmentProviders([
     config.adapter as unknown as Provider,
-    { provide: DATE_ADAPTER, useExisting: config.adapter },
+    { provide: TW_DATE_ADAPTER, useExisting: config.adapter },
     ...(config.extraProviders ?? []),
   ]);
 }

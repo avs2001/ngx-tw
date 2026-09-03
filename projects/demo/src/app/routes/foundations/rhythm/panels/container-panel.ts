@@ -131,7 +131,7 @@ interface RhythmRow {
         [unit]="settings().unit"
         [flagOffGrid]="settings().flagOffGrid"
       >
-        <tw-accordion class="w-full" variant="bordered" aria-label="Accordion, closed">
+        <tw-accordion class="w-full" variant="outline" aria-label="Accordion, closed">
           <tw-collapsible value="a" [display]="collapsibleDisplay()">
             <button twCollapsibleTrigger>Accordion</button>
             <p>{{ line }}</p>
@@ -148,7 +148,7 @@ interface RhythmRow {
       >
         <tw-accordion
           class="w-full"
-          variant="bordered"
+          variant="outline"
           [value]="'a'"
           aria-label="Accordion, open"
         >
@@ -317,11 +317,20 @@ export class ContainerPanel {
 
   /** `tw-collapsible` takes its size through the `display` config object, not a `size` input. */
   protected readonly collapsibleDisplay = computed<CollapsibleDisplay>(() => ({
-    variant: 'bordered',
+    variant: 'outline',
     size: this.settings().size,
   }));
 
-  /** `tw-table` takes its size through the `appearance` config object, not a `size` input. */
+  /**
+   * `tw-table` takes its size through the `appearance` config object, not a `size` input.
+   *
+   * `'bordered'` here is **not** the deprecated surface-treatment spelling that
+   * `tw-accordion` / `tw-collapsible` alias onto `'outline'`. `TwTableVariant` is a
+   * grid-style axis (`default | striped | bordered`) where `bordered` means "draw cell
+   * gridlines", and it has no legacy alias. Leave it alone — `tv()` returns base classes
+   * only for an unrecognised variant, so "modernising" this to `'outline'` would silently
+   * unstyle the table.
+   */
   protected readonly tableAppearance = computed<TwTableAppearance>(() => ({
     variant: 'bordered',
     size: this.settings().size,

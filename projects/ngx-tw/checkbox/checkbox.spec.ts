@@ -1416,3 +1416,104 @@ describe('CheckboxComponent size axis', () => {
     expect(new Set(rendered).size).toBe(SIZES.length);
   });
 });
+
+// ── Output-channel split (F-6) ─────────────────────────────────────
+//
+// `checked` is a `model()`, so Angular mints a `checkedChange` output that has
+// no declaration site in checkbox.ts. It is the ANY-CHANGE channel: it fires on
+// a user gesture AND on a programmatic write through the CVA. The hand-written
+// `change` output is the USER-GESTURE-ONLY channel. The distinction is what the
+// JSDoc on both outputs now promises, and these tests are what stop it rotting.
+//
+// Non-vacuity: delete `this.checked.set(next)` from `writeValue()` and the
+// first test's `checkedChangeSpy` assertion fails; move `this.change.emit(next)`
+// out of `toggle()` into `writeValue()` and its `changeSpy` assertion fails.
+
+@Component({
+  imports: [CheckboxComponent, ReactiveFormsModule],
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  template: `
+    <tw-checkbox
+      label="Split"
+      [formControl]="control"
+      (checkedChange)="checkedChangeSpy($event)"
+      (indeterminateChange)="indeterminateChangeSpy($event)"
+      (change)="changeSpy($event)"
+    />
+  `,
+})
+class OutputSplitHost {
+  readonly control = new FormControl<boolean>(false, { nonNullable: true });
+  readonly checkedChangeSpy = vi.fn();
+  readonly indeterminateChangeSpy = vi.fn();
+  readonly changeSpy = vi.fn();
+}
+
+describe('CheckboxComponent output-channel split', () => {
+  const focusMonitorSpy = {
+    monitor: vi.fn(),
+    stopMonitoring: vi.fn(),
+  };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    TestBed.configureTestingModule({
+      providers: [{ provide: FocusMonitor, useValue: focusMonitorSpy }],
+    });
+  });
+
+  function mount(): ComponentFixture<OutputSplitHost> {
+    const fixture = TestBed.createComponent(OutputSplitHost);
+    fixture.detectChanges();
+    // The initial writeValue(false) is a no-op set on an already-false model, so
+    // nothing should have emitted — but clear so the assertions are unambiguous.
+    fixture.componentInstance.checkedChangeSpy.mockClear();
+    fixture.componentInstance.indeterminateChangeSpy.mockClear();
+    fixture.componentInstance.changeSpy.mockClear();
+    return fixture;
+  }
+
+  it('fires checkedChange but NOT change for a programmatic FormControl.setValue', () => {
+    const fixture = mount();
+    const host = fixture.componentInstance;
+
+    host.control.setValue(true);
+    fixture.detectChanges();
+
+    expect(host.checkedChangeSpy).toHaveBeenCalledWith(true);
+    expect(host.changeSpy).not.toHaveBeenCalled();
+  });
+
+  it('fires BOTH checkedChange and change for a user gesture', () => {
+    const fixture = mount();
+    const host = fixture.componentInstance;
+
+    getCheckbox(fixture).click();
+    fixture.detectChanges();
+
+    expect(host.checkedChangeSpy).toHaveBeenCalledWith(true);
+    expect(host.changeSpy).toHaveBeenCalledWith(true);
+  });
+
+  it('fires indeterminateChange on a programmatic write that clears indeterminate', () => {
+    const fixture = mount();
+    const host = fixture.componentInstance;
+    // Set indeterminate through the component instance rather than a parent
+    // `[indeterminate]` binding: writeValue() clears the model below, and a
+    // parent binding still declaring `true` would leave the two disagreeing.
+    // Same instance-handle pattern as `CheckboxComponent change emission`.
+    const instance = fixture.debugElement.query(By.directive(CheckboxComponent))
+      .componentInstance as CheckboxComponent;
+
+    instance.indeterminate.set(true);
+    fixture.detectChanges();
+    host.indeterminateChangeSpy.mockClear();
+
+    // writeValue() clears indeterminate — an any-change emission with no gesture.
+    host.control.setValue(true);
+    fixture.detectChanges();
+
+    expect(host.indeterminateChangeSpy).toHaveBeenCalledWith(false);
+    expect(host.changeSpy).not.toHaveBeenCalled();
+  });
+});

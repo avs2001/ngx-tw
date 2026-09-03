@@ -303,13 +303,36 @@ export class RadioComponent implements ControlValueAccessor, OnInit {
   /** ID of an external element that describes the radio. Mirrored to `aria-describedby`. Defaults to `undefined`. */
   readonly ariaDescribedby = input<string | undefined>(undefined, { alias: 'aria-describedby' });
 
-  /** Two-way bound checked state. Authoritative only in standalone mode; when inside a `tw-radio-group`, this model reflects group selection but does NOT drive it. Defaults to `false`. */
+  /**
+   * Two-way bound checked state. Authoritative only in standalone mode.
+   * Defaults to `false`.
+   *
+   * Standalone, the minted `checkedChange` output is the *any-change* channel:
+   * it fires both when the user selects this radio and when a bound form writes
+   * into it (`FormControl.setValue`, `ngModel`, `writeValue`). `(change)` is the
+   * *user-gesture-only* channel — bind that one for analytics or a confirmation
+   * prompt, where a programmatic write must not count as a click.
+   *
+   * Inside a `tw-radio-group` this model is inert: the group owns selection,
+   * the rendered state comes from the group's `value`, and the component never
+   * writes `checked` — so `(checkedChange)` never fires on a grouped radio.
+   * `(change)` still fires when this radio becomes the selected one. Bind the
+   * group's `[(value)]` / `(change)` instead.
+   */
   readonly checked = model(false);
 
   /** Per-instance override of the {@link ErrorStateMatcher}. When omitted, the radio uses the `TW_ERROR_STATE_MATCHER` token's value. */
   readonly errorStateMatcher = input<ErrorStateMatcher | undefined>(undefined);
 
-  /** Fires after the checked state changes from a user interaction on this radio. In grouped mode only fires when this radio becomes the selected one. Does not fire when selection is updated programmatically. */
+  /**
+   * Fires after the checked state changes from a user interaction on this
+   * radio. In grouped mode only fires when this radio becomes the selected one.
+   * Does **not** fire when selection is updated programmatically via
+   * `writeValue` / `FormControl.setValue` / `ngModel` — standalone, bind the
+   * two-way binding's `(checkedChange)` for that, which fires on any change.
+   * (Grouped, `(checkedChange)` never fires at all; use the group's
+   * `[(value)]`.)
+   */
   readonly change = output<boolean>();
 
   private readonly focusMonitor = inject(FocusMonitor);
@@ -652,13 +675,29 @@ export class RadioGroupComponent<T = unknown> implements ControlValueAccessor, O
   /** ID of an external element that describes the group. Mirrored to `aria-describedby`. Defaults to `undefined`. */
   readonly ariaDescribedby = input<string | undefined>(undefined, { alias: 'aria-describedby' });
 
-  /** Two-way bound selected value. Updates when the user picks a radio; fires `valueChange`. `null` means no selection. Defaults to `null`. */
+  /**
+   * Two-way bound selected value. `null` means no selection. Defaults to
+   * `null`.
+   *
+   * The two-way binding mints a `valueChange` output. That output is the
+   * *any-change* channel: it fires when the user picks a radio **and** when a
+   * bound form writes into the group (`FormControl.setValue`, `ngModel`,
+   * `writeValue`). `(change)` is the *user-gesture-only* channel — bind that
+   * one for analytics or a confirmation prompt, where a programmatic write must
+   * not count as a click. Writing back into the same form from a
+   * `(valueChange)` handler will echo.
+   */
   readonly value = model<T | null>(null);
 
   /** Per-instance override of the {@link ErrorStateMatcher}. When omitted, the group uses the `TW_ERROR_STATE_MATCHER` token's value. */
   readonly errorStateMatcher = input<ErrorStateMatcher | undefined>(undefined);
 
-  /** Fires after the selected value changes from a user interaction. Does not fire when the value is updated programmatically via `writeValue`. */
+  /**
+   * Fires after the selected value changes from a user interaction. Does
+   * **not** fire when the value is updated programmatically via `writeValue` /
+   * `FormControl.setValue` / `ngModel` — for those, bind the two-way binding's
+   * `(valueChange)` instead, which fires on any change.
+   */
   readonly change = output<T | null>();
 
   /** @internal Child radios discovered via content projection. */

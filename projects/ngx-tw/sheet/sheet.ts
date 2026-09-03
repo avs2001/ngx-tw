@@ -13,7 +13,7 @@ import {
 import type { ComponentType } from '@angular/cdk/portal';
 import { defer, type Observable, startWith, Subject } from 'rxjs';
 import {
-  SHEET_DEFAULT_OPTIONS,
+  TW_SHEET_DEFAULT_OPTIONS,
   SheetConfig,
 } from './sheet-config';
 import { SheetRef } from './sheet-ref';
@@ -44,7 +44,7 @@ function generateSheetId(): string {
 @Injectable()
 export class Sheet implements OnDestroy {
   private readonly injector = inject(Injector);
-  private readonly defaultOptions = inject(SHEET_DEFAULT_OPTIONS, { optional: true }) ?? {};
+  private readonly defaultOptions = inject(TW_SHEET_DEFAULT_OPTIONS, { optional: true }) ?? {};
   private readonly parentSheet = inject(Sheet, { optional: true, skipSelf: true });
 
   /** Cached renderer chunk import — kicked off on the first `open()`. */
@@ -209,7 +209,7 @@ export class Sheet implements OnDestroy {
 export function provideSheet(defaultOptions?: Partial<SheetConfig>): EnvironmentProviders {
   const providers: Provider[] = [Sheet];
   if (defaultOptions) {
-    providers.push({ provide: SHEET_DEFAULT_OPTIONS, useValue: defaultOptions });
+    providers.push({ provide: TW_SHEET_DEFAULT_OPTIONS, useValue: defaultOptions });
   }
   return makeEnvironmentProviders(providers);
 }

@@ -8,7 +8,15 @@ export type TwDateNameStyle = 'long' | 'short' | 'narrow';
  * When set, TZ-aware adapters resolve `today()` and date-range math against
  * the supplied IANA timezone. Floating (naive) adapters ignore the token.
  */
-export const TZ_OVERRIDE = new InjectionToken<string>('tw-calendar/TZ_OVERRIDE');
+export const TW_TZ_OVERRIDE = new InjectionToken<string>('tw-calendar/TZ_OVERRIDE');
+
+/**
+ * @deprecated Renamed to {@link TW_TZ_OVERRIDE} for consistency with every other
+ * ngx-tw injection token. This is the *same token instance*, not a copy —
+ * providing under either name and injecting under the other resolves — so the
+ * rename is safe to adopt incrementally. Removed in the next major.
+ */
+export const TZ_OVERRIDE = TW_TZ_OVERRIDE;
 
 /**
  * Injection token for the default value transformer (§7.4, §7.6). Phase 14 wires
@@ -16,7 +24,17 @@ export const TZ_OVERRIDE = new InjectionToken<string>('tw-calendar/TZ_OVERRIDE')
  * Shipped as a token shell now so later phases can bind against it without a
  * breaking change.
  */
-export const DATE_SERIALIZATION = new InjectionToken<unknown>('tw-calendar/DATE_SERIALIZATION');
+export const TW_DATE_SERIALIZATION = new InjectionToken<unknown>(
+  'tw-calendar/DATE_SERIALIZATION',
+);
+
+/**
+ * @deprecated Renamed to {@link TW_DATE_SERIALIZATION} for consistency with
+ * every other ngx-tw injection token. This is the *same token instance*, not a
+ * copy — providing under either name and injecting under the other resolves —
+ * so the rename is safe to adopt incrementally. Removed in the next major.
+ */
+export const DATE_SERIALIZATION = TW_DATE_SERIALIZATION;
 
 /**
  * Format definitions consumed by the calendar header, views, and text-input
@@ -50,7 +68,15 @@ export interface DateFormats {
 }
 
 /** DI token carrying the default `DateFormats`. The calendar's `dateFormats` input overrides. */
-export const DATE_FORMATS = new InjectionToken<DateFormats>('tw-calendar/DateFormats');
+export const TW_DATE_FORMATS = new InjectionToken<DateFormats>('tw-calendar/DateFormats');
+
+/**
+ * @deprecated Renamed to {@link TW_DATE_FORMATS} for consistency with every
+ * other ngx-tw injection token. This is the *same token instance*, not a copy —
+ * providing under either name and injecting under the other resolves — so the
+ * rename is safe to adopt incrementally. Removed in the next major.
+ */
+export const DATE_FORMATS = TW_DATE_FORMATS;
 
 /**
  * Abstract date adapter. Ship a subclass to swap the underlying date library
@@ -242,4 +268,15 @@ export abstract class DateAdapter<D> {
  * Injection token for the calendar's `DateAdapter`. Prefer `provideNativeDateAdapter()`
  * or `provideTwCalendar({ adapter })` over binding this token directly.
  */
-export const DATE_ADAPTER = new InjectionToken<DateAdapter<unknown>>('tw-calendar/DateAdapter');
+export const TW_DATE_ADAPTER = new InjectionToken<DateAdapter<unknown>>(
+  'tw-calendar/DateAdapter',
+);
+
+/**
+ * @deprecated Renamed to {@link TW_DATE_ADAPTER} for consistency with every
+ * other ngx-tw injection token. This is the *same token instance*, not a copy —
+ * providing under either name and injecting under the other resolves, so an app
+ * that provides `DATE_ADAPTER` keeps working against a library that injects
+ * `TW_DATE_ADAPTER`. Removed in the next major.
+ */
+export const DATE_ADAPTER = TW_DATE_ADAPTER;

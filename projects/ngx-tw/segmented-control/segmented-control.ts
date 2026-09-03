@@ -337,7 +337,18 @@ export class SegmentedControlComponent implements ControlValueAccessor, OnInit {
   /** Per-instance override of the {@link ErrorStateMatcher}. When omitted, the control uses the `TW_ERROR_STATE_MATCHER` token's value. */
   readonly errorStateMatcher = input<ErrorStateMatcher | undefined>(undefined);
 
-  /** The value of the currently selected option. Two-way bound. Updates on user selection. Defaults to `null`. */
+  /**
+   * The value of the currently selected option. Two-way bound. Defaults to
+   * `null`.
+   *
+   * The two-way binding mints a `valueChange` output, and it is the
+   * *any-change* channel: it fires on user selection **and** on a programmatic
+   * write from a bound form (`FormControl.setValue`, `ngModel`, `writeValue`).
+   * Unlike `tw-checkbox` / `tw-switch` / `tw-radio-group`, this control ships no
+   * separate gesture-only `change` output, so writing back into the same form
+   * from a `(valueChange)` handler will echo. To act on user selection alone,
+   * compare against the value you last wrote, or listen on the form control.
+   */
   readonly value = model<string | null>(null);
 
   /** @internal */

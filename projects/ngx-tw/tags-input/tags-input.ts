@@ -318,7 +318,18 @@ export class TagsInputComponent<T = string>
   /** Per-instance override of the {@link ErrorStateMatcher}. When omitted, uses the `TW_ERROR_STATE_MATCHER` token's value. */
   readonly errorStateMatcher = input<ErrorStateMatcher | undefined>(undefined);
 
-  /** Fires when the tag array changes through user interaction (add, remove, clear). Emits a fresh array reference. Does not fire on `writeValue`. */
+  /**
+   * Fires when the tag array changes through user interaction (add, remove,
+   * clear). Emits a fresh array reference. Does **not** fire on `writeValue` /
+   * `FormControl.setValue` / `ngModel`.
+   *
+   * This is a hand-written, user-gesture-only output. The control exposes no
+   * `value` input and therefore no two-way binding, so — unlike
+   * `tw-checkbox` / `tw-switch` / `tw-radio-group`, where `(valueChange)` /
+   * `(checkedChange)` is minted by a `model()` and fires on programmatic writes
+   * too — there is no any-change channel here. Observe programmatic writes
+   * through the bound form control's own `valueChanges`.
+   */
   readonly valueChange = output<T[]>();
 
   /** Fires when a tag is committed via Enter, a separator key, paste, or `addTag()`. Does not fire for dropped duplicates, blocked-by-max commits, empty commits, or `writeValue`. */

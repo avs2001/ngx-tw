@@ -30,7 +30,7 @@ import { Subscription } from 'rxjs';
 import { tv } from 'tailwind-variants';
 import type { TwSize } from '@cdevhub/ngx-tw/core';
 import {
-  COMMAND_PALETTE_REF,
+  TW_COMMAND_PALETTE_REF,
   type CommandPaletteFilterFn,
   type CommandPaletteItem,
   type CommandPaletteRef,
@@ -48,18 +48,37 @@ let nextPaletteId = 0;
 
 // ── Types ──
 
-/** Resolved item shape used internally — merges declarative directive refs with data entries. */
-interface ResolvedItem {
+/**
+ * One entry of the palette's resolved item list — the merge of a declarative
+ * `*twCommandPaletteItem` directive with a `commands` array entry.
+ *
+ * Public because it is the element type of {@link CommandPaletteComponent.filteredItems}
+ * and the parameter type of `selectItem()` / `setActiveItem()`. Re-exported
+ * from the entry point as `CommandPaletteResolvedItem`.
+ */
+export interface ResolvedItem {
+  /** The underlying item data, whether declared inline or supplied via `commands`. */
   readonly data: CommandPaletteItem;
+  /** The declarative directive backing this item, when it came from a template. */
   readonly directive?: CommandPaletteItemDirective;
+  /** The custom row template to render instead of the default row, when one was supplied. */
   readonly template?: TemplateRef<unknown>;
+  /** The item's shortcut, normalised to a key list. Empty when the item declares none. */
   readonly shortcutKeys: readonly string[];
 }
 
-/** A rendered group in the filtered view. */
-interface ResolvedGroup {
+/**
+ * A rendered group in the filtered view.
+ *
+ * Public because it is the element type of {@link CommandPaletteComponent.grouped}.
+ * Re-exported from the entry point as `CommandPaletteResolvedGroup`.
+ */
+export interface ResolvedGroup {
+  /** Stable DOM id for the group's section element. */
   readonly id: string;
+  /** The group header text, or `undefined` for the implicit ungrouped bucket. */
   readonly label?: string;
+  /** The group's items, in filtered order. */
   readonly items: readonly ResolvedItem[];
 }
 
@@ -763,7 +782,7 @@ export class CommandPaletteComponent {
       parent: this.injector,
       providers: [
         { provide: CommandPaletteComponent, useValue: this },
-        { provide: COMMAND_PALETTE_REF, useValue: paletteRef },
+        { provide: TW_COMMAND_PALETTE_REF, useValue: paletteRef },
       ],
     });
     const portal = new ComponentPortal(

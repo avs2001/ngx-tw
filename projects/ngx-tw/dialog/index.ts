@@ -1,10 +1,14 @@
 export { TwDialog, provideTwDialog } from './dialog';
 export { TwDialogRef } from './dialog-ref';
-// `DialogContainer` is the internal render surface — it now lives in the
-// dynamically-imported renderer chunk and is no longer part of the public API.
-// Only its lifecycle types remain exported.
+// `DialogContainer` is the render surface. Its *runtime* is not part of the
+// public API — the class lives in the dynamically-imported renderer chunk and
+// is deliberately not exported as a value, so nothing outside the library can
+// construct or declare it. Its *type* is public, because
+// `TwDialogRef.containerInstance` is a documented getter that returns it and a
+// consumer must be able to name what it hands back. Export it type-only.
 export type {
   DialogAnimationEvent,
+  DialogContainer,
   DialogState,
 } from './dialog-container';
 export {

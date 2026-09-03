@@ -34,7 +34,15 @@ export interface AvatarAppearance {
  * Injection token used by `AvatarGroupComponent` to propagate its size
  * to child avatars. When present, overrides the individual avatar's `size` input.
  */
-export const AVATAR_GROUP_SIZE = new InjectionToken<() => TwSize>('AVATAR_GROUP_SIZE');
+export const TW_AVATAR_GROUP_SIZE = new InjectionToken<() => TwSize>('TW_AVATAR_GROUP_SIZE');
+
+/**
+ * @deprecated Renamed to {@link TW_AVATAR_GROUP_SIZE} for consistency with every
+ * other ngx-tw injection token. This is the *same token instance*, not a copy —
+ * providing under either name and injecting under the other resolves — so the
+ * rename is safe to adopt incrementally. Removed in the next major.
+ */
+export const AVATAR_GROUP_SIZE = TW_AVATAR_GROUP_SIZE;
 
 const avatarVariants = tv({
   slots: {
@@ -169,7 +177,7 @@ export class AvatarComponent {
    */
   readonly groupHidden = signal(false);
 
-  private readonly groupSize = inject(AVATAR_GROUP_SIZE, { optional: true });
+  private readonly groupSize = inject(TW_AVATAR_GROUP_SIZE, { optional: true });
 
   constructor() {
     if (isDevMode()) {
@@ -237,7 +245,7 @@ const groupOverlapMap: Record<TwSize, string> = {
   changeDetection: ChangeDetectionStrategy.OnPush,
   providers: [
     {
-      provide: AVATAR_GROUP_SIZE,
+      provide: TW_AVATAR_GROUP_SIZE,
       useFactory: () => {
         const group = inject(AvatarGroupComponent);
         return () => group.size();

@@ -94,9 +94,17 @@ export type { WeekdayHeader } from './calendar.utils';
 
 export {
   DateAdapter,
+  TW_DATE_ADAPTER,
+  TW_DATE_FORMATS,
+  TW_TZ_OVERRIDE,
+  TW_DATE_SERIALIZATION,
+  /** @deprecated Use `TW_DATE_ADAPTER` — same token instance. */
   DATE_ADAPTER,
+  /** @deprecated Use `TW_DATE_FORMATS` — same token instance. */
   DATE_FORMATS,
+  /** @deprecated Use `TW_TZ_OVERRIDE` — same token instance. */
   TZ_OVERRIDE,
+  /** @deprecated Use `TW_DATE_SERIALIZATION` — same token instance. */
   DATE_SERIALIZATION,
 } from './date-adapter';
 export type { TwDateNameStyle, DateFormats } from './date-adapter';

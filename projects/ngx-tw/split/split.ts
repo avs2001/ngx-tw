@@ -196,8 +196,15 @@ export class SplitComponent {
    */
   readonly _sizes = signal<number[]>([]);
 
-  /** Tracks the live `dir` attribute resolved through CDK Directionality. */
-  private readonly _cdkDir = signal<'ltr' | 'rtl'>(this._directionality?.value ?? 'ltr');
+  /**
+   * Live `dir` resolved through CDK `Directionality`. Read straight from
+   * `valueSignal` (CDK 22+) so `_isRtl` re-evaluates on a runtime `dir` flip
+   * with no manual subscription mirror. Falls back to 'ltr' when the consumer's
+   * injector cannot supply the token (`{ optional: true }`).
+   */
+  private readonly _cdkDir = computed<'ltr' | 'rtl'>(
+    () => this._directionality?.valueSignal() ?? 'ltr',
+  );
 
   /** Resolves the effective RTL state: explicit `rtl` input overrides CDK `dir`. */
   readonly _isRtl = computed(() => this.rtl() ?? this._cdkDir() === 'rtl');
@@ -297,16 +304,6 @@ export class SplitComponent {
       const containerPx = untracked(() => this._containerSizePx());
       this._onPanesChange(panes, containerPx);
     });
-
-    // Reflect CDK Directionality changes into the local signal so the computed
-    // _isRtl re-evaluates and keyboard / pointer handlers honour live `dir`
-    // attribute changes (e.g. when an ancestor flips the page direction).
-    if (this._directionality) {
-      const sub = this._directionality.change.subscribe(value => {
-        this._cdkDir.set(value);
-      });
-      this._destroyRef.onDestroy(() => sub.unsubscribe());
-    }
   }
 
   // ── Internal resize handler ─────────────────────────────────────────────────

@@ -146,9 +146,9 @@ import { CodeBlockComponent } from '@cdevhub/ngx-tw/code-block';
       </div>
     </section>
 
-    <!-- AVATAR_GROUP_SIZE -->
+    <!-- TW_AVATAR_GROUP_SIZE -->
     <section class="mb-10">
-      <h2 class="text-sm font-semibold mb-3">AVATAR_GROUP_SIZE</h2>
+      <h2 class="text-sm font-semibold mb-3">TW_AVATAR_GROUP_SIZE</h2>
       <p class="text-xs text-fg-muted mb-4 font-mono">Token: InjectionToken&lt;() =&gt; TwSize&gt;</p>
       <p class="text-sm text-fg-muted leading-relaxed max-w-2xl">
         Internal injection token provided by

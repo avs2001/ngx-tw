@@ -7,7 +7,6 @@ import {
   contentChild,
   contentChildren,
   effect,
-  DestroyRef,
   inject,
   input,
   signal,
@@ -15,7 +14,6 @@ import {
 } from '@angular/core';
 import { type FocusableOption, FocusKeyManager, LiveAnnouncer } from '@angular/cdk/a11y';
 import { Directionality } from '@angular/cdk/bidi';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { tv } from 'tailwind-variants';
 import { twMerge } from 'tailwind-merge';
 import {
@@ -139,15 +137,16 @@ export class TabNavComponent {
 
   private readonly liveAnnouncer = inject(LiveAnnouncer);
   private readonly directionality = inject(Directionality, { optional: true });
-  private readonly destroyRef = inject(DestroyRef);
 
   /**
    * Live layout direction. Hardcoding 'ltr' inverts ArrowLeft/ArrowRight in RTL
    * locales — the arrow moves to the next link in DOM order but the previous
-   * one visually. Mirrored into a signal so the key manager rebuilds on change.
+   * one visually. Read straight from CDK's `Directionality.valueSignal`
+   * (CDK 22+) so the key-manager effect rebuilds on a runtime `dir` flip with
+   * no manual subscription mirror.
    */
-  private readonly layoutDirection = signal<'ltr' | 'rtl'>(
-    this.directionality?.value ?? 'ltr',
+  private readonly layoutDirection = computed<'ltr' | 'rtl'>(
+    () => this.directionality?.valueSignal() ?? 'ltr',
   );
 
   /** Tracks the previously-announced active link id so we only announce on actual changes. `null` = before the first sync. */
@@ -197,11 +196,6 @@ export class TabNavComponent {
   private keyManager: FocusKeyManager<FocusableOption> | null = null;
 
   constructor() {
-    // Rebuild the key manager when the app flips `dir` at runtime.
-    this.directionality?.change
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe((dir) => this.layoutDirection.set(dir));
-
     // Keep the associated panel's aria-labelledby in sync with the active link
     // and announce route changes to screen readers when in the ARIA tabs pattern.
     effect(() => {
@@ -231,8 +225,9 @@ export class TabNavComponent {
       this.liveAnnouncer.announce(message);
     });
 
-    // Rebuild FocusKeyManager whenever the link set changes. tab-nav is
-    // horizontal-only, so we always configure horizontal orientation.
+    // Rebuild FocusKeyManager whenever the link set changes, or the app flips
+    // `dir` at runtime (`layoutDirection()` reads `Directionality.valueSignal`).
+    // tab-nav is horizontal-only, so we always configure horizontal orientation.
     effect((onCleanup) => {
       const links = this.links();
       if (links.length === 0) {

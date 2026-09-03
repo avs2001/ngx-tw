@@ -9,7 +9,7 @@ import {
   type OnDestroy,
 } from '@angular/core';
 import { DOCUMENT, isPlatformBrowser } from '@angular/common';
-import { THEME_CONFIG } from './theme.config';
+import { TW_THEME_CONFIG } from './theme.config';
 import { TW_THEMES, type TwTheme, type TwResolvedTheme, type TwThemeState } from './theme.types';
 
 /** OS colour-scheme query backing `'system'` resolution. */
@@ -39,7 +39,7 @@ const CONTRAST_QUERY = '(prefers-contrast: more)';
  */
 @Injectable()
 export class ThemeService implements OnDestroy {
-  private readonly config = inject(THEME_CONFIG);
+  private readonly config = inject(TW_THEME_CONFIG);
   private readonly document = inject(DOCUMENT);
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
   private readonly ngZone = inject(NgZone);

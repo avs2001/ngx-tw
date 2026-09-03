@@ -1,6 +1,6 @@
 import { Injectable, inject } from '@angular/core';
 import { DateTime, Info, Settings } from 'luxon';
-import { DateAdapter, TZ_OVERRIDE, type TwDateNameStyle } from '@cdevhub/ngx-tw/calendar';
+import { DateAdapter, TW_TZ_OVERRIDE, type TwDateNameStyle } from '@cdevhub/ngx-tw/calendar';
 
 /**
  * Display-format descriptor used by `LuxonDateAdapter.format()` and
@@ -20,7 +20,7 @@ export interface TwLuxonDateFormat {
 }
 
 /**
- * Luxon-backed `DateAdapter`. Honors the calendar's `TZ_OVERRIDE` injection
+ * Luxon-backed `DateAdapter`. Honors the calendar's `TW_TZ_OVERRIDE` injection
  * token so `today()` resolves against the consumer-configured timezone, and
  * implements the §20.2 TZ-aware virtuals (`getTimezone`, `withTimezone`,
  * `isDST`, `resolveAmbiguous`).
@@ -37,7 +37,7 @@ export class LuxonDateAdapter extends DateAdapter<DateTime> {
    * the constructor stays SSR-safe — Luxon's default zone reads from the host
    * environment which we want to defer until first use.
    */
-  private readonly _tzOverride = inject(TZ_OVERRIDE, { optional: true });
+  private readonly _tzOverride = inject(TW_TZ_OVERRIDE, { optional: true });
 
   /**
    * Locale is resolved lazily on first read so the constructor stays
@@ -56,7 +56,7 @@ export class LuxonDateAdapter extends DateAdapter<DateTime> {
 
   /**
    * Returns the configured timezone for new dates. Precedence: per-instance
-   * `TZ_OVERRIDE` → Luxon's `Settings.defaultZone` → `'local'`.
+   * `TW_TZ_OVERRIDE` → Luxon's `Settings.defaultZone` → `'local'`.
    */
   private get zone(): string {
     if (this._tzOverride) return this._tzOverride;

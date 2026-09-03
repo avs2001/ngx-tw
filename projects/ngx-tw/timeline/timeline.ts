@@ -699,8 +699,14 @@ export class TimelineComponent {
     optional: true,
   });
 
-  /** @internal Live `dir` from CDK `Directionality`. */
-  private readonly _cdkDir = signal<'ltr' | 'rtl'>(this._directionality?.value ?? 'ltr');
+  /**
+   * @internal Live `dir` from CDK `Directionality`. Read straight from
+   * `valueSignal` (CDK 22+) so `_isRtl` re-evaluates on a runtime `dir` flip
+   * with no manual subscription mirror.
+   */
+  private readonly _cdkDir = computed<'ltr' | 'rtl'>(
+    () => this._directionality?.valueSignal() ?? 'ltr',
+  );
 
   /** @internal True when the host renders inside a `dir="rtl"` ancestor. */
   readonly _isRtl = computed(() => this._cdkDir() === 'rtl');
@@ -814,13 +820,6 @@ export class TimelineComponent {
       this._resizeObserver?.disconnect();
       this._resizeObserver = null;
     });
-
-    if (this._directionality) {
-      const sub = this._directionality.change.subscribe((value) => {
-        this._cdkDir.set(value);
-      });
-      this._destroyRef.onDestroy(() => sub.unsubscribe());
-    }
   }
 
   private _setupScrollDetection(): void {

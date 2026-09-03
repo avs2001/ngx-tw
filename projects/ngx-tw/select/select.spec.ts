@@ -822,8 +822,32 @@ describe('SelectComponent', () => {
       await advance(fixture);
       const clearBtn = getClearControl(fixture);
       expect(clearBtn.tabIndex).toBe(0);
-      expect(clearBtn.getAttribute('role')).toBe('button');
       expect(clearBtn.getAttribute('aria-label')).toBe('Clear selection');
+    });
+
+    // HTML's content model for `button` is "no interactive content descendant",
+    // and the clear control used to be a `role="button" tabindex="0"` span
+    // nested inside the trigger. axe provably cannot catch that: its
+    // `nested-interactive` rule only fires when the ancestor's role is
+    // children-presentational, and the trigger's role is `combobox`. This
+    // assertion is the only thing stopping the shape from coming back.
+    it('renders the clear control as a native button OUTSIDE the trigger', async () => {
+      const fixture = TestBed.createComponent(BasicHost);
+      fixture.componentInstance.value.set('apple');
+      await advance(fixture);
+      const trigger = getTriggerButton(fixture);
+      const clearBtn = getClearControl(fixture) as HTMLButtonElement;
+
+      expect(clearBtn.tagName).toBe('BUTTON');
+      // Not a submit button — the trigger already guards this with type="button".
+      expect(clearBtn.type).toBe('button');
+      expect(trigger.contains(clearBtn)).toBe(false);
+      // Still inside the host and still after the trigger in DOM order, which
+      // is what keeps the tab order (trigger, then clear) unchanged.
+      expect(getSelectHost(fixture).contains(clearBtn)).toBe(true);
+      expect(
+        trigger.compareDocumentPosition(clearBtn) & Node.DOCUMENT_POSITION_FOLLOWING,
+      ).toBeTruthy();
     });
 
     it('clears the selection from the keyboard with Enter', async () => {
@@ -1558,6 +1582,26 @@ describe('SelectComponent inside tw-form-field', () => {
     await advance(fixture);
     expect(fixture.componentInstance.ctrl.errors).toBe(null);
     expect(errorVisible(fixture, 'matched')).toBe(false);
+  });
+
+  // The clear control is a SIBLING of the trigger, so its click no longer
+  // passes through the trigger — but it is still a descendant of the
+  // form-field's control wrapper, whose click handler calls
+  // `onContainerClick()` and opens the panel. `onClearClick`'s
+  // `stopPropagation()` is the only thing preventing that; drop it and this
+  // test goes red while every non-form-field clear test stays green.
+  it('does not open the panel when the clear control is clicked inside a form field', async () => {
+    const fixture = TestBed.createComponent(SelectFormFieldHost);
+    fixture.componentInstance.ctrl.setValue('apple');
+    await advance(fixture);
+    const clearBtn = getClearControl(fixture);
+    expect(clearBtn).toBeTruthy();
+
+    clearBtn.click();
+    await advance(fixture);
+
+    expect(fixture.componentInstance.ctrl.value).toBeNull();
+    expect(getOverlayPanel()).toBeFalsy();
   });
 });
 

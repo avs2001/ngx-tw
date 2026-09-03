@@ -1201,3 +1201,163 @@ describe('RadioComponent size axis', () => {
     expect(new Set(rendered).size).toBe(SIZES.length);
   });
 });
+
+// ── Output-channel split (F-6) ─────────────────────────────────────
+//
+// `RadioGroupComponent.value` and `RadioComponent.checked` are `model()`s, so
+// Angular mints `valueChange` / `checkedChange` outputs that have no declaration
+// site in radio.ts. Those are the ANY-CHANGE channels: they fire on a user
+// gesture AND on a programmatic write through the CVA. The hand-written `change`
+// outputs are the USER-GESTURE-ONLY channels. The third test pins the one
+// asymmetry: inside a group, `RadioComponent.checked` is never written by the
+// component (selection lives on the group and the rendered state reads
+// `parent.value()`), so a grouped radio's `checkedChange` never fires at all.
+//
+// Non-vacuity: delete `this.value.set(...)` from `RadioGroupComponent.writeValue`
+// and the first test's `valueChangeSpy` assertion fails; move
+// `this.change.emit(typed)` out of `selectValue()` into `writeValue()` and its
+// `changeSpy` assertion fails. Add a `this.checked.set(...)` to the grouped
+// branch of `RadioComponent.onActivate()` and the third test fails.
+
+@Component({
+  imports: [RadioGroupComponent, RadioComponent, ReactiveFormsModule],
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  template: `
+    <tw-radio-group
+      [formControl]="control"
+      aria-label="Split"
+      (valueChange)="valueChangeSpy($event)"
+      (change)="changeSpy($event)"
+    >
+      <tw-radio value="a" label="A" (checkedChange)="childCheckedChangeSpy($event)" />
+      <tw-radio value="b" label="B" />
+    </tw-radio-group>
+  `,
+})
+class GroupOutputSplitHost {
+  readonly control = new FormControl<string | null>(null);
+  readonly valueChangeSpy = vi.fn();
+  readonly changeSpy = vi.fn();
+  readonly childCheckedChangeSpy = vi.fn();
+}
+
+@Component({
+  imports: [RadioComponent, ReactiveFormsModule],
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  template: `
+    <tw-radio
+      label="Standalone split"
+      [formControl]="control"
+      (checkedChange)="checkedChangeSpy($event)"
+      (change)="changeSpy($event)"
+    />
+  `,
+})
+class StandaloneOutputSplitHost {
+  readonly control = new FormControl<boolean>(false, { nonNullable: true });
+  readonly checkedChangeSpy = vi.fn();
+  readonly changeSpy = vi.fn();
+}
+
+describe('RadioGroupComponent output-channel split', () => {
+  const focusMonitorSpy = {
+    monitor: vi.fn(),
+    stopMonitoring: vi.fn(),
+  };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    TestBed.configureTestingModule({
+      providers: [{ provide: FocusMonitor, useValue: focusMonitorSpy }],
+    });
+  });
+
+  function mount(): ComponentFixture<GroupOutputSplitHost> {
+    const fixture = TestBed.createComponent(GroupOutputSplitHost);
+    fixture.detectChanges();
+    fixture.componentInstance.valueChangeSpy.mockClear();
+    fixture.componentInstance.changeSpy.mockClear();
+    fixture.componentInstance.childCheckedChangeSpy.mockClear();
+    return fixture;
+  }
+
+  it('fires valueChange but NOT change for a programmatic FormControl.setValue', () => {
+    const fixture = mount();
+    const host = fixture.componentInstance;
+
+    host.control.setValue('b');
+    fixture.detectChanges();
+
+    expect(host.valueChangeSpy).toHaveBeenCalledWith('b');
+    expect(host.changeSpy).not.toHaveBeenCalled();
+  });
+
+  it('fires BOTH valueChange and change for a user gesture', () => {
+    const fixture = mount();
+    const host = fixture.componentInstance;
+
+    getRadios(fixture)[1].click();
+    fixture.detectChanges();
+
+    expect(host.valueChangeSpy).toHaveBeenCalledWith('b');
+    expect(host.changeSpy).toHaveBeenCalledWith('b');
+  });
+
+  it('never fires a grouped child radio checkedChange — the group owns selection', () => {
+    const fixture = mount();
+    const host = fixture.componentInstance;
+
+    getRadios(fixture)[0].click();
+    fixture.detectChanges();
+    host.control.setValue('b');
+    fixture.detectChanges();
+
+    expect(host.childCheckedChangeSpy).not.toHaveBeenCalled();
+    // ...while the group's own channels did fire for the gesture.
+    expect(host.changeSpy).toHaveBeenCalledWith('a');
+  });
+});
+
+describe('RadioComponent standalone output-channel split', () => {
+  const focusMonitorSpy = {
+    monitor: vi.fn(),
+    stopMonitoring: vi.fn(),
+  };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    TestBed.configureTestingModule({
+      providers: [{ provide: FocusMonitor, useValue: focusMonitorSpy }],
+    });
+  });
+
+  function mount(): ComponentFixture<StandaloneOutputSplitHost> {
+    const fixture = TestBed.createComponent(StandaloneOutputSplitHost);
+    fixture.detectChanges();
+    fixture.componentInstance.checkedChangeSpy.mockClear();
+    fixture.componentInstance.changeSpy.mockClear();
+    return fixture;
+  }
+
+  it('fires checkedChange but NOT change for a programmatic FormControl.setValue', () => {
+    const fixture = mount();
+    const host = fixture.componentInstance;
+
+    host.control.setValue(true);
+    fixture.detectChanges();
+
+    expect(host.checkedChangeSpy).toHaveBeenCalledWith(true);
+    expect(host.changeSpy).not.toHaveBeenCalled();
+  });
+
+  it('fires BOTH checkedChange and change for a user gesture', () => {
+    const fixture = mount();
+    const host = fixture.componentInstance;
+
+    getRadios(fixture)[0].click();
+    fixture.detectChanges();
+
+    expect(host.checkedChangeSpy).toHaveBeenCalledWith(true);
+    expect(host.changeSpy).toHaveBeenCalledWith(true);
+  });
+});

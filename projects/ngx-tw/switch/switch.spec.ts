@@ -591,3 +591,79 @@ describe('SwitchComponent errorState', () => {
     expect(getSwitch(fixture).hasAttribute('aria-required')).toBe(false);
   });
 });
+
+// ── Output-channel split (F-6) ─────────────────────────────────────
+//
+// `checked` is a `model()`, so Angular mints a `checkedChange` output that has
+// no declaration site in switch.ts. It is the ANY-CHANGE channel: it fires on a
+// user gesture AND on a programmatic write through the CVA. The hand-written
+// `change` output is the USER-GESTURE-ONLY channel. The distinction is what the
+// JSDoc on both outputs now promises, and these tests are what stop it rotting.
+//
+// Non-vacuity: delete `this.checked.set(next)` from `writeValue()` and the first
+// test's `checkedChangeSpy` assertion fails; move `this.change.emit(next)` out
+// of the toggle handler into `writeValue()` and its `changeSpy` assertion fails.
+
+@Component({
+  imports: [SwitchComponent, ReactiveFormsModule],
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  template: `
+    <tw-switch
+      label="Split"
+      [formControl]="control"
+      (checkedChange)="checkedChangeSpy($event)"
+      (change)="changeSpy($event)"
+    />
+  `,
+})
+class OutputSplitHost {
+  readonly control = new FormControl<boolean>(false, { nonNullable: true });
+  readonly checkedChangeSpy = vi.fn();
+  readonly changeSpy = vi.fn();
+}
+
+describe('SwitchComponent output-channel split', () => {
+  const focusMonitorSpy = {
+    monitor: vi.fn(),
+    stopMonitoring: vi.fn(),
+  };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    TestBed.configureTestingModule({
+      providers: [{ provide: FocusMonitor, useValue: focusMonitorSpy }],
+    });
+  });
+
+  function mount(): ComponentFixture<OutputSplitHost> {
+    const fixture = TestBed.createComponent(OutputSplitHost);
+    fixture.detectChanges();
+    // The initial writeValue(false) is a no-op set on an already-false model, so
+    // nothing should have emitted — but clear so the assertions are unambiguous.
+    fixture.componentInstance.checkedChangeSpy.mockClear();
+    fixture.componentInstance.changeSpy.mockClear();
+    return fixture;
+  }
+
+  it('fires checkedChange but NOT change for a programmatic FormControl.setValue', () => {
+    const fixture = mount();
+    const host = fixture.componentInstance;
+
+    host.control.setValue(true);
+    fixture.detectChanges();
+
+    expect(host.checkedChangeSpy).toHaveBeenCalledWith(true);
+    expect(host.changeSpy).not.toHaveBeenCalled();
+  });
+
+  it('fires BOTH checkedChange and change for a user gesture', () => {
+    const fixture = mount();
+    const host = fixture.componentInstance;
+
+    getSwitch(fixture).click();
+    fixture.detectChanges();
+
+    expect(host.checkedChangeSpy).toHaveBeenCalledWith(true);
+    expect(host.changeSpy).toHaveBeenCalledWith(true);
+  });
+});

@@ -2,7 +2,7 @@ import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import {
   Sheet,
-  SHEET_DATA,
+  TW_SHEET_DATA,
   SheetActionsDirective,
   SheetCloseDirective,
   SheetContentDirective,
@@ -45,7 +45,7 @@ import { CodeBlockComponent } from '@cdevhub/ngx-tw/code-block';
   `,
 })
 class QuickStartSheetContent {
-  protected readonly data = inject<{ side: string }>(SHEET_DATA);
+  protected readonly data = inject<{ side: string }>(TW_SHEET_DATA);
 }
 
 @Component({
@@ -188,7 +188,7 @@ bootstrapApplication(AppComponent, {
 
   protected readonly importSnippet = `import {
   Sheet,
-  SHEET_DATA,
+  TW_SHEET_DATA,
   SheetHeaderDirective,
   SheetIconDirective,
   SheetTitleDirective,

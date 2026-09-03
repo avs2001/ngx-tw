@@ -21,7 +21,7 @@ import type {
   DateRange,
   DisabledDates,
 } from './calendar.types';
-import { type DateAdapter, DATE_ADAPTER } from './date-adapter';
+import { type DateAdapter, TW_DATE_ADAPTER } from './date-adapter';
 import { isDateInRange } from './calendar.utils';
 
 /**
@@ -32,7 +32,7 @@ import { isDateInRange } from './calendar.utils';
  */
 @Directive()
 export abstract class CalendarViewBase<D> {
-  protected readonly dateAdapter: DateAdapter<D> = inject<DateAdapter<D>>(DATE_ADAPTER);
+  protected readonly dateAdapter: DateAdapter<D> = inject<DateAdapter<D>>(TW_DATE_ADAPTER);
 
   /** The date that anchors the grid being rendered. */
   readonly activeDate: InputSignal<D> = input.required<D>();
