@@ -1336,12 +1336,14 @@ written for cleanly are the ones with API gaps.
 4. **No `testing/` entry point reaches the MCP index** — `build-mcp-index.mjs` derives entry points
    from `public-api.ts`, which nested testing entry points are correctly absent from. Confirmed
    independently by two agents; `CalendarHarness` was already invisible before this pass.
-5. **`_light.css` fails the same 3:1 border floor worse than dark did** (1.40–1.92, all seven
+5. ~~**`_light.css` fails the same 3:1 border floor worse than dark did** (1.40–1.92, all seven
    roles). Not fixed: it darkens the default scheme's outline tier in the scheme every visual
-   baseline is captured in. Recorded as a dated, self-invalidating allowance.
-6. **`item.ts`'s selected ring still fails** and the theme layer cannot fix it — clearing 3:1 on the
+   baseline is captured in. Recorded as a dated, self-invalidating allowance.~~ **CLOSED in pass 8**
+   — and the item understated it: `info`, `success` and `warning` failed on `-border-strong` too.
+6. ~~**`item.ts`'s selected ring still fails** and the theme layer cannot fix it — clearing 3:1 on the
    soft fill collapses the two border tiers. Needs `ring-{role}-border-strong` in the component.
-   Measured per-role: 7/8 roles in light, 4/8 in dark.
+   Measured per-role: 7/8 roles in light, 4/8 in dark.~~ **CLOSED in pass 8.** The 7/8 and 4/8
+   figures here were correct and were re-derived before the change.
 7. **CLAUDE.md's "zero `dark:` variants, greppable as a lint rule" is subtly false.** A
    documentation comment in `file-upload.ts` survives into the shipped bundle and Tailwind's
    scanner resurrects the dead utility it documents; `docs/library-review/done/calendar.md` is
@@ -1472,11 +1474,15 @@ later is a spec problem, not a library one.
 
 ## Open — carried forward
 
+> **Superseded.** Pass 8 closed the two border items below. Read the **Pass 8** section's
+> "Open — carried forward" for the current queue.
+
 Everything in pass 6's list except items 2 and 3, which this pass closed. Still open and unchanged:
-the MCP index not covering `testing/` entry points; `_light.css` failing the 3:1 border floor
-(1.40–1.92, all seven roles) in the **default** scheme; `item.ts`'s selected ring, which the theme
-layer cannot fix; `core/form-reset.ts` awaiting deletion or adoption; the `ThemeDirective` /
-`ThemeService` attribute disagreement; and the smaller consistency items.
+the MCP index not covering `testing/` entry points; ~~`_light.css` failing the 3:1 border floor
+(1.40–1.92, all seven roles) in the **default** scheme~~ (closed in pass 8); ~~`item.ts`'s selected
+ring, which the theme layer cannot fix~~ (closed in pass 8); `core/form-reset.ts` awaiting deletion
+or adoption; the `ThemeDirective` / `ThemeService` attribute disagreement; and the smaller
+consistency items.
 
 **`popover/testing` is newly open**, blocked on the `whenStable()` interaction rather than on
 locatability.
@@ -1492,3 +1498,154 @@ locatability.
 | `npm run verify:package` | pass |
 | `npm run verify:mcp-index` | 6 warnings |
 
+
+---
+
+# Pass 8 — 2026-09-04, the light scheme's border floor and `tw-item`'s selected ring
+
+Scope set by the maintainer: the two accessibility items pass 6 measured and pass 7 carried
+forward unchanged — `_light.css`'s coloured `-border` tokens, and `item.ts`'s selected ring.
+Both were described as "the last known accessibility failures in shipped ngx-tw code". **They
+were not**, and the correction is the most useful thing this pass produced; see "What the fix
+does not reach" below.
+
+## Tier 1 — landed
+
+| # | Item | Evidence |
+|---|---|---|
+| P8-1 | **Seven `{role}-border` tokens failed SC 1.4.11 in shipped `light`** — 1.40–1.92:1 against a 3:1 floor, in the **default** scheme, the mirror of the dark defect P6-8 fixed. Now 3.76–5.05 on surface, 3.45–4.87 on the soft fill. | **[measured]** |
+| P8-2 | **`info`, `success` and `warning` also failed the floor on `-border-strong`** — 2.15–2.71 on surface, 2.07–2.54 on their own `-soft` fill. Nobody had said so: pass 6 reported light as a `-border` problem and the `KNOWN_FAILING` allowance swallowed all thirteen of the scheme's failing pairings behind one entry. Now 4.76–7.56 / 4.36–7.23. | **[measured]** |
+| P8-3 | **`item.ts`'s selected ring moved to `ring-primary-border-strong`.** Verified before changing rather than taken from the register: the subtle tier on its own soft fill failed **7 of 8 roles in light, 4 of 8 in dark** — the register's figure, and the one that survives measurement. | **[measured]** |
+| P8-4 | **`theme-token-parity.spec.ts` gained the sixth duplicated block.** `_semantic.css`'s `@theme` compiles to `:root, :host`, so it *is* the light scheme for any consumer who never sets `data-theme`, and its hand-copied values were checked against nothing. This change had to edit both by hand — exactly the drift that would not have been caught. They agreed (195 tokens, zero diffs); now it is enforced. | **[measured]** |
+| P8-5 | **`.claude/CLAUDE.md`'s Borders table said `border-{color}-300` / `-500`** — palette steps, not tokens, and a licence to name steps directly that the Semantic Color Tokens section forbids. Corrected to the `-border` / `-border-strong` slots. | **[verified]** |
+
+## The fix could not be confined to one tier, and that is the interesting part
+
+The dark fix moved `-border` and left `-border-strong` alone, because dark's `-border-strong` was
+already `{hue}-500` and cleared every floor. Light does not work that way. On white, contrast rises
+with the step number, so "the dimmest passing step" and "the lightest passing step" point the same
+way — and the lightest step clearing the target is, for four of the seven roles, **exactly where
+`-border-strong` already sat**. Stopping there would have collapsed the two tiers, which
+`theme-contrast.spec.ts` already forbade in a test written during pass 6 for precisely this.
+
+So the rule had to be stated for both tiers:
+
+- **`-border`** — the lightest palette step measuring **≥ 3.4:1** against `--color-surface`. This is
+  `_dark.css`'s rule read in light's direction; the 0.4 margin over 3:1 is what stops a palette
+  retune dropping the token below the floor silently. Applied to grey it re-derives `gray-500`, the
+  value `--color-border` already ships — which is what makes it a rule rather than a fit.
+- **`-border-strong`** — the next palette step darker than that role's `-border`.
+
+```
+  role        was         now          on surface  on soft   step below (fails)
+  primary     blue-300    blue-500       3.76       3.45     blue-400   2.64
+  secondary   slate-300   slate-500      4.77       4.55     slate-400  2.63
+  accent      violet-300  violet-500     4.40       4.01     violet-400 2.85
+  info        sky-300     sky-600        4.02       3.77     sky-500    2.71
+  success     green-300   green-700      4.94       4.72     green-600  3.22
+  warning     amber-300   amber-700      5.05       4.87     amber-600  3.19
+  error       red-300     red-500        3.82       3.50     red-400    2.89
+  neutral     unchanged (--color-border, gray-500)  4.84     4.39
+```
+
+`success` and `warning` travel two steps further than the rest because green-600 (3.22 / 3.07) and
+amber-600 (3.19 / 3.08) clear the floor by 0.07 on the soft fill — inside the margin the rule
+exists to hold. The spread of steps is the hues differing in luminance, not an inconsistency; dark
+produced the same spread from the same rule.
+
+**One consequence was accepted rather than designed around.** For `primary`, `accent`, `info` and
+`error` the new `-border-strong` now equals that role's `-solid`, so the 1px rim on a solid-filled
+indicator (`stepper.ts`, `timeline.ts`: `bg-{role}-solid border border-{role}-border-strong`) stops
+reading as a separate edge. Those indicators carry their emphasis through the fill and the
+`ring-4 ring-{role}-soft` halo. Buying the rim back costs two more steps of darkening on every ring
+in the scheme, which is the worse trade — and for `primary` the two-step value collides with
+`-solid-hover` anyway.
+
+## What the fix does not reach — and why the "last known failure" framing was wrong
+
+`theme-contrast.spec.ts` asserts the **semantic slots**. A component that names a palette step
+directly bypasses them entirely, and the register's standing claim that there are "no raw Tailwind
+palette colours anywhere in shipped source" is true but does not cover this: `border-primary-300`
+is a semantic *token*, just a scale step rather than a slot, so it passes every sweep the register
+has ever run while resolving to the same 1.81:1 the theme fix just removed.
+
+Measured with `docs/research/2026-09-audit/p8-raw-scale-borders.mjs` — **14 of the 28 distinct
+`border|ring|outline-{role}-{step}` utilities in library components sit below 3:1 against white**:
+
+```
+  1.40–1.92   border-{7 roles}-300      badge, button, card, collapsible, separator
+  1.92        ring-error-300            switch
+  2.15–2.71   border-{info,success,warning}-500
+                                        checkbox, radio, select, slider, form-field,
+                                        date-picker, date-range-picker, time-picker, paginator
+  2.15–2.71   outline-{info,success,warning}-500
+                                        combobox, paginator, slider, tags-input
+```
+
+**Not fixed here, deliberately.** It is ~20 components and every light visual baseline, and each
+use needs its own judgment: SC 1.4.11 exempts purely decorative boundaries, so `separator`'s
+coloured rule plausibly qualifies while `badge`'s outline — the badge's only boundary, the same
+shape as the alert `outline` variant this pass just fixed — plausibly does not. The
+`outline-{role}-500` rows are focus indicators, where the canonical `outline-primary-500` passes at
+3.76 and only the three low-luminance hues fail. That is a pass, not a rider.
+
+The instruction that produced them is fixed, which is the half that stops the debt growing:
+`.claude/CLAUDE.md`'s Borders table pointed at `border-{color}-300` / `-500` and now points at the
+slots. `alert` and the tab triggers were already on the slots; `badge`, `button`, `card`,
+`collapsible` and `separator` followed the table.
+
+## Two guards were changed, and both were proven to bite
+
+- **`KNOWN_FAILING` is now empty.** The mechanism stays — the assertion is two-sided, so an entry
+  added to buy time turns the list red the moment its scheme is fixed. Reverting one token
+  (`success-border` → `success-300`) was confirmed to fail the spec before the entry was deleted.
+- **The `{role}-border`-on-`{role}-soft` expectation was retired, not updated.** `item.ts` was the
+  only site painting that pairing; once its ring moved tiers, the expectation would have recorded a
+  number about a combination the library does not produce and no one could act on. What replaced it
+  is stronger: `borderRatios()` asserts `-border-strong` on `-soft` for all eight roles in all four
+  schemes against a hard floor with no allowance list. The retired dark numbers (2.37–2.97 for
+  primary, accent, info, warning) are preserved in the spec's header so the measurement is not lost.
+- The new `@theme` ↔ `_light.css` parity test was likewise confirmed to fail on an induced drift.
+
+## Corrections to earlier passes
+
+1. **`_semantic.css`'s scheme table said `light` fails the 3:1 floor.** It no longer does; the table
+   now reads `✓` on all four schemes and states that the enforcement covers both tiers and both
+   backgrounds.
+2. **`_semantic.css` and `_dark.css` both pointed at `scratchpad/p6-contrast.mjs`** — a path that
+   moved when `e1452fd` promoted the measurement scripts to `docs/research/2026-09-audit/`. Both
+   now point at the real one. A "re-measure, do not estimate" instruction that names a missing file
+   is an instruction to estimate.
+3. **`_dark.css`'s note that light "fails the same floor WORSE"** was true when written and is now
+   past tense, with a pointer to light's own table.
+
+## Newly measured, not fixed, so the next pass does not re-derive it
+
+- **`fg-subtle on surface-muted` measures 4.39:1 in light**, against the 4.5 floor for text. It is
+  **pre-existing** — untouched by this change — and is not governed by `theme-contrast.spec.ts`,
+  which covers borders only. It is not a one-line fix: raising `--color-fg-subtle` to `gray-600`
+  collides it with `--color-fg-muted` and collapses the two foreground tiers, the same shape of
+  problem the border tiers had here. Reproduce with `p6-contrast.mjs light dark`.
+- The raw-scale sweep above.
+
+## Open — carried forward
+
+Pass 6's items 5 and 6 are **closed** by this pass. Everything else in pass 7's carried-forward
+list stands unchanged: the MCP index not covering `testing/` entry points; `popover/testing`
+blocked on the `whenStable()` interaction; `core/form-reset.ts` awaiting deletion or adoption; the
+`ThemeDirective` / `ThemeService` attribute disagreement; the Escape-dismiss split across nine
+overlay shapes; 28 files hand-rolling `let nextId = 0` against four using CDK's `_IdGenerator`; six
+hand-rolled list navigations with no migration target now that `@angular/aria` is rejected.
+
+**Newly open:** the raw-scale border sweep, and `fg-subtle on surface-muted`.
+
+## Verification state at hand-off
+
+| Gate | Result |
+|---|---|
+| `npm run build:lib` | pass — 56 entry points, 586 symbols |
+| `npx ng build demo` | pass |
+| `npm run test:ci` | **3517 passed**, 4 skipped — **5 of 5 consecutive runs green** |
+| `npm run lint` | 0 errors, 79 warnings — all in `e2e/` |
+| `npm run verify:package` | pass |
+| `npm run verify:mcp-index` | 6 warnings |

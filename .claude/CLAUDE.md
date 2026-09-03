@@ -373,10 +373,24 @@ Prefer `opacity-50 pointer-events-none` on the container. For individual disable
 | Structural dividers (between sections) | `border-border` | 1px |
 | Emphasized structural (container outlines) | `border-border-strong` | 1px |
 | Subtle structural (ghost variants) | `border-border-muted` | 1px |
-| Semantic (colored outlines for alert/badge variants) | `border-{color}-300` | 1px |
-| Active indicators (tab underlines, selection marks) | `border-{color}-500` | 2px via `border-b-2`/`border-r-2` |
+| Semantic (colored outlines for alert/badge variants) | `border-{color}-border` | 1px |
+| Active indicators (tab underlines, selection marks) | `border-{color}-border-strong` | 2px via `border-b-2`/`border-r-2` |
 
 Do not use `border-2` or thicker for structural borders. Reserve 2px borders for active state indicators only.
+
+> The two coloured rows previously read `border-{color}-300` and `border-{color}-500`
+> — palette steps, not tokens. That was a description of what those slots happened to
+> resolve to in the light scheme, and it stopped being true on 2026-09-04 when the
+> `-border` / `-border-strong` slots were raised to clear WCAG 2.2 SC 1.4.11 (see
+> `theme/_light.css`). It also read as a licence to name palette steps directly, which
+> the **Semantic Color Tokens** section forbids: `alert` and the tab triggers were
+> already on the tokens, while `badge`, `button`, `card`, `collapsible` and `separator`
+> followed this table onto raw `-300`. Measured against white, **14 of the 28 distinct
+> raw-scale `border|ring|outline-{role}-{step}` utilities in library components sit
+> below the 3:1 non-text floor** (1.40–2.71) — a class the theme fix cannot reach,
+> because those components bypass the tokens. Recorded as pass 8's open item; not fixed
+> there, because each use needs its own governed-vs-decorative judgment. Corrected
+> 2026-09-04.
 
 #### Hover States
 
