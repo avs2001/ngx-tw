@@ -9,6 +9,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 _Nothing yet._
 
+## 0.6.0 — 2026-09-03
+
+### Features
+
+- **library:** trigger markers, record the @angular/aria decision, kill a flake class ([28dd6a4](https://github.com/avs2001/ngx-tw/commit/28dd6a4c558c7494c96074f837373594cb80f266))
+- **library,demo:** pass 6 wave 1 — TW_ tokens, select clear, type exports ([71b2992](https://github.com/avs2001/ngx-tw/commit/71b299256c6995aa18e2663e23c530769c9e146d))
+- **theme,core:** pin control heights to one shared scale ([c437ce6](https://github.com/avs2001/ngx-tw/commit/c437ce6f6f3143a4064990804e58d780980655a2))
+
+### Bug Fixes
+
+- **combobox,date-range-picker:** two defects the harness work surfaced ([2b9455c](https://github.com/avs2001/ngx-tw/commit/2b9455c6fdba7522e587c6e62bf35114a6aa804e))
+- **slider:** stop a bounds change from discarding a control-written value ([2837a7e](https://github.com/avs2001/ngx-tw/commit/2837a7e9df4b6234a0b1efd7ff87f80a75fd7250))
+- **library,theme,e2e:** picker aria-required, overlay coordinator, dark contrast ([07456ba](https://github.com/avs2001/ngx-tw/commit/07456ba3ce045e920f34a60ea0d4c6a0664a0d52))
+- **theme:** decouple the soft-ring expectation from TW_RESOLVED_THEMES order ([2427ab7](https://github.com/avs2001/ngx-tw/commit/2427ab76f9e47872a1eac85e4b5ba1eb5cdbbfb3))
+- **theme,e2e:** raise dark role borders for SC 1.4.11; sweep every scheme ([d4efa7b](https://github.com/avs2001/ngx-tw/commit/d4efa7b8ab8284f9a006e3f890a3bedf547af6bd))
+- **library,e2e,docs:** pass 5 wave 2 — frozen overlay config, calendar intl, guards ([9805b27](https://github.com/avs2001/ngx-tw/commit/9805b27ab61a47d90beb162c8c22400816082378))
+- **library,demo,theme:** fifth audit pass — theme system, RTL, CDK drift ([73b6b73](https://github.com/avs2001/ngx-tw/commit/73b6b73826d3e3fa5a1fd19323ecd19811b032de))
+- **library,demo,e2e:** fourth audit pass — v22 idiom, consistency, public API ([d51787e](https://github.com/avs2001/ngx-tw/commit/d51787e39899110ebe99a64982344c7e1d9aa33a))
+- **library,demo,e2e:** third audit pass — accessibility ([d55e04b](https://github.com/avs2001/ngx-tw/commit/d55e04b056ffd1098262ab6bdff9f6b70a2a2019))
+- **library,demo,e2e:** second audit pass — row alignment, aria aliasing, size axis ([013c2ba](https://github.com/avs2001/ngx-tw/commit/013c2ba2c136ad6c38afb69caf13bd5358c2b9c8))
+- **tabs:** stop stealing focus when a tablist mounts ([be9633e](https://github.com/avs2001/ngx-tw/commit/be9633ed5fe8a59e5a9e16b71775ba303c37f6a2))
+
 ## 0.5.0 — 2026-07-23
 
 ### Performance

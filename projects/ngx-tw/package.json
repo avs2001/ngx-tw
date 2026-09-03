@@ -1,7 +1,7 @@
 {
   "name": "@cdevhub/ngx-tw",
-  "version": "0.5.0",
-  "description": "Angular component library for Tailwind CSS v4 \u2014 accessible, signal-based, built on Angular CDK.",
+  "version": "0.6.0",
+  "description": "Angular component library for Tailwind CSS v4 — accessible, signal-based, built on Angular CDK.",
   "keywords": [
     "angular",
     "tailwindcss",
