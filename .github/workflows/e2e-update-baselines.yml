@@ -65,10 +65,19 @@ jobs:
         run: npx playwright install-deps chromium
       - run: npm run build:lib
       - name: Regenerate visual baselines
-        # `--update-snapshots` writes the freshly captured PNGs into
+        # `--update-snapshots=all` writes the freshly captured PNGs into
         # `e2e/__screenshots__/...`. `--project=chromium-light --project=chromium-dark`
         # mirrors the visual canary job in `e2e.yml`.
-        run: npx playwright test --grep @visual --project=chromium-light --project=chromium-dark --update-snapshots
+        #
+        # `=all`, not the default `=changed`. `changed` only rewrites a baseline
+        # whose comparison FAILS, so a new capture that differs by less than the
+        # spec's `maxDiffPixelRatio: 0.01` is silently kept as-is. Pass 6 hit
+        # exactly that: a capture fix that restored content missing from five
+        # baselines rewrote only two of them, because on the other three the
+        # restored content (thin dark text on a light ground) came to fewer than
+        # 1% of the frame's pixels. A deliberate regeneration should record what
+        # actually renders, not "close enough to what was recorded before".
+        run: npx playwright test --grep @visual --project=chromium-light --project=chromium-dark --update-snapshots=all
       - name: Commit + push regenerated baselines
         run: |
           set -euo pipefail
