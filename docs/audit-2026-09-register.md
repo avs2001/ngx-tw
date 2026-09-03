@@ -1753,6 +1753,29 @@ slot.** `card.spec.ts` asserted the outline variant applies exactly one coloured
 `not.toContain('border-…-300')` negative assertions had the same hazard: left naming a class that
 can no longer appear, they pass because the string is gone, not because the component is right.
 
+## A CI gate that fails as "cancelled" is worse than one that fails as "failed"
+
+`e2e — accessibility` hit its `timeout-minutes: 15` on the first pass-9 run. GitHub reports a
+timed-out job as **cancelled**, and the whole workflow's conclusion follows suit — which reads like
+somebody stopped the run, not like a gate went red. On the one job whose entire purpose is catching
+accessibility regressions, that is the wrong failure mode: it invites exactly the "9 of 10 passed,
+ship it" reading.
+
+It was not a test failure. The log shows **387 tests passed consecutively with zero failures** up to
+the cut. Measured across recent runs the job takes **8m42s / 9m20s / 9m33s / 10m24s** — so the 15m
+cap was a ~30% margin on a sweep that grows with every route added to `e2e/support/routes.ts`. It
+was going to expire on its own; pass 9 just arrived when it did. Raised to 25m, matching the ~2.5x
+margin the full-suite shards already budget (30m).
+
+Two method notes, because both cost a cycle:
+
+- **Re-running a single job is not a valid re-measurement.** `gh run rerun --job` cannot regenerate
+  the `ngx-tw-dist` artifact that job's `needs` supplied, so it died at `download-artifact` with a
+  403 in 42 seconds having run no tests. Dispatch the whole workflow instead.
+- **Duration, not conclusion, was the diagnostic.** "Did my change slow it?" was answerable only by
+  comparing the job's wall time against its own history — 9m33s on the re-measure, squarely inside
+  the historical band, which is what cleared the change.
+
 ## Verification state at hand-off
 
 | Gate | Result |
