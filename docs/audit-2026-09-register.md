@@ -5,7 +5,9 @@ test/demo coverage, computed size scale, industry rhythm research), plus a mecha
 shipped source against `.claude/CLAUDE.md`, plus **live browser measurement** of every component
 at every size via a new diagnostic page (`/foundations/rhythm`).
 
-Full reports live in `docs/research/`. This file is the triage register.
+Full reports live in `docs/research/2026-09-audit/`, alongside the re-runnable measurement
+scripts (`bool.mjs`, `fixme.mjs`, `inputs2.mjs`, `p6-contrast.mjs`). This file is the triage
+register.
 
 **Confidence gradient.** Findings marked **[measured]** were reproduced in a real browser or by
 running code. Findings marked **[verified]** were confirmed by reading the source myself.
@@ -753,7 +755,7 @@ different mechanism (api-extractor, or keeping internals out of barrels by conve
 were deliberately queued rather than raced):
 
 1. **Variant vocabulary unification** — 11 renames across 6 components, scoped in full at
-   `scratchpad/wave2-variant-scope.md`: `outlined`→`outline` (card, flip-card, code-block, stat),
+   `docs/research/2026-09-audit/wave2-variant-scope.md`: `outlined`→`outline` (card, flip-card, code-block, stat),
    `bordered`→`outline` (accordion, collapsible), `filled`→`solid` (code-block, collapsible,
    segmented-control, stat), `plain`→`ghost` (stat). Each needs a deprecated alias.
    **Explicitly excluded:** `table` (different axis), `segmented-control`'s `surface` (a genuine
@@ -842,7 +844,7 @@ Pass 4's `Register:` discipline was reused verbatim — every finding had to dec
 Two lenses had **never been audited before**: SRP, and "what CDK are we *missing*" as opposed to
 "is our CDK usage correct".
 
-Full reports: `scratchpad/pass5-{srp,cdk,theme,api,gaps}.md`, with re-runnable measurement scripts
+Full reports: `docs/research/2026-09-audit/pass5-{srp,cdk,theme,api,gaps}.md`, with re-runnable measurement scripts
 beside them (`bool.mjs`, `fixme.mjs`, `fixme3.mjs`, `inputs2.mjs`) — the first pass to publish its
 scripts, which is what finally settled the untested-inputs dispute below.
 
@@ -980,7 +982,7 @@ The mechanism was decided once and applied uniformly: normalise in a `computed()
 renames):
 
 1. **`TW_` prefix on 12 injection tokens** — all 12 are root-barrel public (register said 6).
-   Alias shape is specified in `scratchpad/pass5-api.md` A2.3, with the one rule that matters:
+   Alias shape is specified in `docs/research/2026-09-audit/pass5-api.md` A2.3, with the one rule that matters:
    `export const OLD = TW_NEW;` — **never** a second `new InjectionToken`, which would split the
    DI graph in a way no test would catch.
 2. **`select`'s clear control is a `role="button" tabindex="0"` span inside the `<button>` trigger**
@@ -988,7 +990,7 @@ renames):
    rather than ship unverifiable work: `e2e/specs/04-visual/canary.spec.ts:190` screenshots the
    select "Colors" section and `colorValues` seeds **6 of 8** of those selects with a value, so the
    clear control sits inside `select-closed.{light,dark}.png`. Costed Path A/Path B hand-off is in
-   `scratchpad/pass5-fix-cbx-report.md`; Path A recommended.
+   `docs/research/2026-09-audit/pass5-fix-cbx-report.md`; Path A recommended.
 
 **Newly found, needing their own pass:**
 
@@ -1034,7 +1036,7 @@ renames):
 12. **A dark high-contrast ramp** — the follow-up P5-4 deliberately deferred.
 13. **Theme scheme-parity guard blocked on tooling**: `@types/node` is not installed, so a
     `scripts/verify-theme-parity.mjs` cannot be type-checked (`import 'node:fs'` fails TS2591).
-    The `grep`/`comm` recipe is in `scratchpad/pass5-fix-theme-report.md`. Three hand-duplicated
+    The `grep`/`comm` recipe is in `docs/research/2026-09-audit/pass5-fix-theme-report.md`. Three hand-duplicated
     195-token blocks now exist with nothing guarding them against drift.
 14. **`segmented-control`'s `surface` variant** and the `default | naked` field-chrome axis (**four**
     components — `select` too, not three) stay excluded from the variant vocabulary, verified
