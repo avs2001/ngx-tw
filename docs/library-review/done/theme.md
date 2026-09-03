@@ -252,7 +252,8 @@ Bring the theme surface to production-grade by (1) closing two WCAG-AA contrast 
      - Update `index.ts` exports.
      - Update all internal usages (theme.service.ts, theme.directive.ts, theme.config.ts, both spec files).
      - **Do not** rename `ThemeDirective` / `ThemeService` — directive and service classes correctly carry no `Tw` prefix per the same rule.
-     - **Do not** rename `THEME_CONFIG` (the `InjectionToken`) — it follows the canonical `TW_ERROR_STATE_MATCHER` pattern and is already correctly prefixed.
+     - ~~**Do not** rename `THEME_CONFIG` (the `InjectionToken`) — it follows the canonical `TW_ERROR_STATE_MATCHER` pattern and is already correctly prefixed.~~
+     - **Corrected (pass 6): the premise was factually wrong.** `THEME_CONFIG` was **not** prefixed — it was declared `export const THEME_CONFIG = new InjectionToken(...)`. It was one of 12 unprefixed tokens of 24, and was renamed to `TW_THEME_CONFIG` with a deprecated `export const THEME_CONFIG = TW_THEME_CONFIG` alias. This line is left struck through rather than deleted because, as written, it would lead the next reviewer to re-derive the same wrong objection.
    - Acceptance:
      - `grep -rn "import.*Theme.*from 'ngx-tw/theme'" projects/demo/` returns the new names.
      - `npm run build:lib` passes.
