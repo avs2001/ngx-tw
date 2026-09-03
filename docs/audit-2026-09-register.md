@@ -1633,8 +1633,9 @@ slots. `alert` and the tab triggers were already on the slots; `badge`, `button`
   which covers borders only. It is not a one-line fix: raising `--color-fg-subtle` to `gray-600`
   collides it with `--color-fg-muted` and collapses the two foreground tiers, the same shape of
   problem the border tiers had here. Reproduce with `p6-contrast.mjs light dark`.
-- The raw-scale sweep above.
-- **The alert `outline` variant has no visual baseline** — the `alert-colors` scene captures the
+- ~~The raw-scale sweep above.~~ **CLOSED in pass 9**, except `border-warning-500` in checkbox /
+  radio / paginator, which is a `-solid`-fill design question rather than a token swap.
+- ~~**The alert `outline` variant has no visual baseline**~~ **CLOSED in pass 9** (`alert-variants`) — the `alert-colors` scene captures the
   `soft` variant, which `theme-contrast.spec.ts`'s header already noted in a different context. So
   the *primary consumer* of every `{role}-border` token is unphotographed, which is why a change
   to all seven moved exactly one baseline. Adding an `alert-variants` scene would make the next
@@ -1674,3 +1675,92 @@ a side-by-side of old-vs-new for the two judgment calls — the two border tiers
 separable at adjacent steps, and the solid-indicator rim collapse is confined to the four roles
 predicted, where the `ring-4 ring-{role}-soft` halo already carries the emphasis. `success` and
 `warning` in fact keep the *widest* tier gap of the eight roles.
+
+---
+
+# Pass 9 — 2026-09-04, the border failures the theme layer could not reach
+
+Scope: the open item pass 8 created. `theme-contrast.spec.ts` asserts the semantic `-border` /
+`-border-strong` **slots**; a component naming a palette step directly bypasses it entirely, and
+14 of 28 such utilities measured below the 3:1 non-text floor.
+
+## The pass's real lesson: a sweep is only as good as its assumed background
+
+Pass 8 measured every raw-scale utility **against white**, because that is `--color-surface` in the
+default scheme. Two of the three findings below exist because that assumption was wrong somewhere,
+and neither would have been caught by re-reading the code.
+
+1. **`switch`'s error ring is not on white.** `ring-error-300` sits on `bg-error-100` — its own
+   track. Measured against white it looked like 1.92; measured against the track it is **1.57**.
+   The sweep understated it.
+2. **The `high-contrast` scheme was failing on all seven roles** (1.72–2.89) for the outline-variant
+   boundary — in places *worse* than light, in the scheme that exists for users who need contrast.
+   Nothing measured it, because the sweep only ever resolved the light scheme. It is fixed here as
+   a by-product, which is luck, not method.
+
+So the honest count for the outline-variant change is **18 failing pairings closed, not 7**: seven
+in `light`, three in `dark` (primary 2.95, secondary 1.95, accent 2.76), seven in `high-contrast`,
+one in `high-contrast-dark`. **Zero regressions in any of the four**, verified per role per scheme.
+
+## Tier 1 — landed
+
+| # | Item | Evidence |
+|---|---|---|
+| P9-1 | **Focus rings and focused-state borders moved onto `-border`.** slider (three maps), form-field, select, the three pickers, combobox, tags-input, input, paginator's ring. info 2.71→4.02, success 2.22→4.94, warning 2.15→5.05. | **[measured]** |
+| P9-2 | **The swap is a pixel-for-pixel no-op on four of seven roles.** After pass 8, `--color-{role}-border` resolves to `{hue}-500` for primary/secondary/accent/error — the exact value these sites already used. That is what made a 95-site change safe. | **[measured]** |
+| P9-3 | **`switch`'s error track ring** `ring-error-300` → `ring-error-border-strong`: 1.57 → 3.90 **on `error-100`**, the background it actually sits on. `-border-strong` is also the slot `_semantic.css` assigns to rings. | **[measured]** |
+| P9-4 | **Outline-variant boundaries** (badge, button, card, collapsible) and separator's coloured lines, `-300` → `-border`. The identical shape `alert` already had right. 18 pairings closed across four schemes. | **[measured]** |
+| P9-5 | **`alert-variants` visual scene added.** The `outline` variant — the only place `--color-{role}-border` is painted — had **no baseline at all**; `alert-colors` renders `soft`. Added *before* the `-300` sweep so that change was provable from a screenshot instead of re-verified by hand. | **[verified]** |
+
+## The canonical focus ring was deliberately not touched
+
+`focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-500` appears
+in **36 files** and is unchanged in all of them. It already clears the floor (3.76), `-border`
+resolves to the same blue-500 so the swap would be invisible, and `.claude/CLAUDE.md` documents that
+exact string in its Focus Rings section. Rewriting 36 files to change nothing, against a pattern the
+instructions name verbatim, is churn that makes the next grep harder. The replacement therefore
+skipped any line containing `outline-offset-2`.
+
+## Open — the one thing deliberately not fixed, and why it is not laziness
+
+**`border-warning-500` in `checkbox`, `radio` and `paginator`** (2.15:1 on white) is not a token
+swap. All three paint a border the *same colour as a `-solid` fill*, and `--color-warning-solid`
+**is** `amber-500` precisely because dark-on-yellow (`warning-solid-fg` = `amber-950`) is what makes
+its glyph pass AA. Darkening the fill breaks the thing the fill was chosen for.
+
+The real question is whether a **low-luminance-by-design solid surface needs a separate boundary
+token**, and it applies to every `-solid` in the library, not these three. Both obvious fixes
+(`border-{role}-border-strong` on the fill, or migrating the box to `bg-{role}-solid`) introduce a
+visible rim on roles that do not currently have one — a design change wearing a contrast fix's
+clothes. Note also that `success` at `green-600` measures 3.22: passing, but inside the 0.4 margin
+pass 8's rule exists to hold, which is a second reason this wants its own analysis.
+
+This is the same shape as the `time-picker` entry already in `A11Y_BACKLOG` — a component using a
+hand-picked step where the theme ships an AA-checked pair — and should be resolved the same way.
+
+## Traps worth recording
+
+**Parametrised spec assertions build class names with template literals, including in the test
+NAME.** `card.spec.ts` and `collapsible.spec.ts` carry ``it(`should apply border-${color}-300 …`)``
+plus a matching `toContain`. A string sweep for `border-primary-300` finds neither. They failed
+loudly on the next run, which is the good outcome — but a sweep that only greps literal class names
+will report "no remaining references" while seven parametrised tests still assert the old value.
+
+**A regex that matches a palette step by construction goes silently vacuous when the class becomes a
+slot.** `card.spec.ts` asserted the outline variant applies exactly one coloured border via
+`/\bborder-[a-z]+-\d{3}\b/` → `['border-primary-300']`. Against `border-primary-border` that returns
+`[]`, and had the expectation been `[]`-tolerant it would have passed while testing nothing. Three
+`not.toContain('border-…-300')` negative assertions had the same hazard: left naming a class that
+can no longer appear, they pass because the string is gone, not because the component is right.
+
+## Verification state at hand-off
+
+| Gate | Result |
+|---|---|
+| `npm run build:lib` | pass |
+| `npx ng build demo` | pass |
+| `npm run test:ci` | 3517 passed, 4 skipped |
+| `npm run lint` | 0 errors, 79 warnings — all in `e2e/` |
+| `npm run verify:package` | pass |
+| `npm run verify:mcp-index` | 6 warnings |
+| Visual baselines | 2 created (`alert-variants` light/dark), 6 modified. All dimensions unchanged; light diffs confirmed as the intended tokens (`#7bf1a8` green-300 → `#008236` green-700; `#8ec5ff` blue-300 → `#2b7fff` blue-500). The new alert scene was read by eye and captures the full section, outline border included. |
