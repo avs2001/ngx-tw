@@ -155,7 +155,7 @@ const SOLID_BOX: Record<TwColor, string> = {
   neutral: 'bg-fg border-fg',
   info: 'bg-info-600 border-info-600',
   success: 'bg-success-600 border-success-600',
-  warning: 'bg-warning-500 border-warning-500',
+  warning: 'bg-warning-500 border-warning-border-strong',
   error: 'bg-error-600 border-error-600',
 };
 
@@ -177,7 +177,7 @@ const OUTLINE_BOX: Record<TwColor, string> = {
   neutral: 'bg-surface border-fg',
   info: 'bg-surface border-info-600',
   success: 'bg-surface border-success-600',
-  warning: 'bg-surface border-warning-500',
+  warning: 'bg-surface border-warning-border-strong',
   error: 'bg-surface border-error-600',
 };
 

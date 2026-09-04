@@ -1857,3 +1857,85 @@ shape rather than guessing at `@types/node`, which remains not a dependency.
 | `npm run build:lib` | pass |
 | `npm run lint` | 0 errors, 79 warnings — all in `e2e/` |
 | Guard forced-failure | both sides confirmed red before being kept |
+
+---
+
+# Pass 11 — 2026-09-04, the `-solid` boundary, and the pairing nothing asserts
+
+Scope: the item passes 9 and 10 both deferred — `border-warning-500` in `checkbox`, `radio` and
+`paginator`, 2.15:1 against white.
+
+## The deferral was right, and the reason it was right is not the reason given
+
+Both earlier passes deferred this as "a `-solid` design question applying to every `-solid` in the
+library". Measurement says something sharper: **the component defect is `light`-only and
+`warning`-only**, and the fix that looked most principled would have caused a regression.
+
+`A11Y_BACKLOG` already contains the tempting precedent — `time-picker` was fixed by migrating from a
+hand-picked step to "the theme's AA-checked `{role}-solid` / `-solid-fg` pair". Applying that here
+would have been **wrong**, because the components use the role *scale step* and the theme's `-solid`
+is a different value:
+
+| scheme | `--color-warning-500` (what components use) | `--color-warning-solid` |
+|---|---|---|
+| `light` | `amber-500` — **2.15 FAIL** | `amber-500` — 2.15 |
+| `high-contrast` | `amber-600` — **3.19 pass** | `amber-400` — **1.72** |
+
+So "migrate to `-solid`" would have taken high-contrast from **3.19 to 1.72** — turning a passing
+scheme into the worst failure in the set, in the scheme that exists for users who need contrast.
+Verified against `_high-contrast.css:103` and `:212`.
+
+## The fix
+
+Leave the fill; give the boundary its own token. `border-warning-500` →
+`border-warning-border-strong` at five sites (checkbox `SOLID_BOX` + `OUTLINE_BOX`, radio
+`SOLID_RING` + `OUTLINE_RING`, paginator's active page). The `*_DOT` maps are the inner mark rather
+than the boundary and are untouched.
+
+Why this is proportionate rather than a blanket change: `--color-warning-border-strong` and
+`--color-warning-500` are **the same value in `dark`** (both `amber-500`, `_dark.css:129` / `:313`),
+so **no rim appears in dark at all**. The rim shows in `light` (amber-800, 7.13 on a 2.15 fill),
+and in the two high-contrast schemes where a stronger edge is the point. The visual change is
+exactly proportional to the need — none of the "6 of 8 roles grow a rim" churn that a universal
+`-border-strong` boundary would have caused.
+
+**Every raw-scale border, ring and outline in the library now clears 3:1 in all four schemes.**
+
+## The guard flagged its own obsolescence, unasked
+
+Pass 10's `RAW_SCALE_BACKLOG` carried exactly one entry, `warning-500`. The moment the fix landed,
+the two-sided assertion reported it as **stale** — before anyone thought to go and delete it. That
+is the mechanism working as designed and is worth recording as evidence that the shape
+(`KNOWN_FAILING`, `A11Y_BACKLOG`, this) earns its keep. The list is now empty.
+
+## Newly measured and NOT fixed: the fill-against-page pairing is unasserted everywhere
+
+`--color-warning-solid` measures **2.15:1 against `--color-surface` in `light` and 1.72:1 in
+`high-contrast`**. Every component painting a solid warning fill inherits it — alert, badge, button,
+stepper, timeline, toast.
+
+**Nothing asserts that pairing anywhere.** `borderRatios()` covers the two border tiers.
+`p6-contrast.mjs` covers `solid-fg` on `solid` — the *text on* the fill — but never **the fill
+against the page**. Pass 10's guard does not close it either: its regex is
+`(border|ring|outline|divide)-{role}-{step}`, so a `bg-` utility is never scanned. That is how a
+1.72 survives in the high-contrast scheme with a full contrast suite green.
+
+Not fixed here because it is genuinely the library-wide `-solid` question, and it has a real
+constraint: `warning-solid` cannot simply be darkened without breaking the dark-on-yellow pairing
+that makes its foreground pass AA. The honest options are a separate `--color-{role}-solid-border`
+token, or accepting that solid warning surfaces need a boundary the way these three now have one.
+
+## Also noted, not chased
+
+`success-600` measures **3.22** in light — passing, but inside the 0.4 margin pass 8's rule exists
+to hold. Recorded so a future palette retune does not drop it silently.
+
+## Verification state at hand-off
+
+| Gate | Result |
+|---|---|
+| `npm run test:ci` | **3519 passed**, 4 skipped |
+| `npm run build:lib` | pass |
+| `npx ng build demo` | pass |
+| `npm run lint` | 0 errors, 79 warnings — all in `e2e/` |
+| Raw-scale sweep | **0 of 9 utilities below 3:1** (was 14 of 28 at pass 9's start) |

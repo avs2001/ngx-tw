@@ -167,7 +167,7 @@ const SOLID_RING: Record<TwColor, string> = {
   neutral: 'border-fg',
   info: 'border-info-600',
   success: 'border-success-600',
-  warning: 'border-warning-500',
+  warning: 'border-warning-border-strong',
   error: 'border-error-600',
 };
 
@@ -189,7 +189,7 @@ const OUTLINE_RING: Record<TwColor, string> = {
   neutral: 'border-fg',
   info: 'border-info-600',
   success: 'border-success-600',
-  warning: 'border-warning-500',
+  warning: 'border-warning-border-strong',
   error: 'border-error-600',
 };
 

@@ -347,13 +347,24 @@ describe('theme border contrast (WCAG 2.2 SC 1.4.11)', () => {
  * documents verbatim, which passes comfortably. The rule that matters is the
  * contrast floor, so that is what is asserted, in every scheme.
  *
- * **Known limitation, stated so nobody mistakes green here for completeness.**
- * This resolves each utility against its scheme's `--color-surface`, because
- * that is where the overwhelming majority are painted. A utility painted on a
- * *coloured* background is not covered, and the assumption is not always
- * conservative: `switch`'s error ring sits on `bg-error-100` and measured
- * **1.57** there versus 1.92 against white — worse, not better. A border on a
- * non-surface background still needs its own measurement.
+ * **Two known blind spots, stated so nobody mistakes green here for
+ * completeness.**
+ *
+ * 1. *Background.* This resolves each utility against its scheme's
+ *    `--color-surface`, because that is where the overwhelming majority are
+ *    painted. A utility on a *coloured* background is not covered, and the
+ *    assumption is not always conservative: `switch`'s error ring sits on
+ *    `bg-error-100` and measured **1.57** there versus 1.92 against white —
+ *    worse, not better.
+ * 2. *Property.* The regex covers `border|ring|outline|divide` only, so a
+ *    **fill** is not scanned. That matters: `--color-warning-solid` measures
+ *    **2.15:1 against surface in `light` and 1.72:1 in `high-contrast`**, and
+ *    every component painting a solid warning fill — alert, badge, button,
+ *    stepper, timeline, toast — inherits it. Nothing asserts that pairing:
+ *    `borderRatios()` covers the border tiers, and `p6-contrast.mjs` covers
+ *    `solid-fg` on `solid` (the text ON the fill) but never the fill against
+ *    the page. That is how a 1.72 survived in the high-contrast scheme. Left
+ *    unfixed deliberately — see the register's pass 11 entry.
  */
 const COMPONENT_SRC = join(HERE, '..');
 
@@ -391,16 +402,13 @@ function rawScaleUses(): ReadonlyMap<string, ReadonlySet<string>> {
  * Two-sided like `KNOWN_FAILING`: an entry that stops failing is reported as
  * stale and must be deleted, so this cannot rot into permission.
  */
-const RAW_SCALE_BACKLOG: ReadonlyMap<string, string> = new Map([
-  [
-    'warning-500',
-    "checkbox, radio and paginator paint a border the same colour as a `-solid` fill, and " +
-      '`--color-warning-solid` IS `amber-500` precisely because dark-on-yellow ' +
-      '(`warning-solid-fg` = `amber-950`) is what makes its glyph pass AA — so the fill cannot be ' +
-      'darkened without breaking what it was chosen for. Whether a low-luminance-by-design solid ' +
-      'surface needs a separate boundary token applies to every `-solid` in the library, not these ' +
-      'three, so it is deferred to its own pass rather than fixed with a rider (2026-09-04).',
-  ],
+const RAW_SCALE_BACKLOG: ReadonlyMap<string, string> = new Map<string, string>([
+  // Empty. `warning-500` lived here for one commit — checkbox, radio and
+  // paginator painted a boundary the same colour as their fill, and
+  // `--color-warning-solid` IS `amber-500` because dark-on-yellow is what makes
+  // its glyph pass AA. The fix was to leave the fill and give those three a
+  // `-border-strong` boundary; this list then reported the entry as STALE
+  // without being asked, which is the whole point of it being two-sided.
 ]);
 
 describe('component raw-scale border contrast (WCAG 2.2 SC 1.4.11)', () => {

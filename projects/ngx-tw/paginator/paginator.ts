@@ -175,7 +175,7 @@ const PAGE_BUTTON_ACTIVE_BG: Record<TwColor, string> = {
   success: 'bg-success-600 hover:bg-success-700 border-success-600 focus-visible:outline-success-border',
   // Warning keeps -500 because the amber-500/amber-950 pairing meets contrast — see
   // `theme/_semantic.css` warning role comment ("yellow signage convention").
-  warning: 'bg-warning-500 hover:bg-warning-600 border-warning-500 focus-visible:outline-warning-border',
+  warning: 'bg-warning-500 hover:bg-warning-600 border-warning-border-strong focus-visible:outline-warning-border',
   error: 'bg-error-600 hover:bg-error-700 border-error-600 focus-visible:outline-error-border',
 };
 

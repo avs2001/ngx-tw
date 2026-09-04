@@ -812,7 +812,10 @@ describe('CheckboxComponent color × variant combinatorial', () => {
     neutral: 'border-fg',
     info: 'border-info-600',
     success: 'border-success-600',
-    warning: 'border-warning-500',
+    // `-border-strong`, not `-600`: `warning`'s fill is `amber-500` because
+    // dark-on-yellow is what makes its glyph pass AA, so the boundary has to
+    // carry SC 1.4.11 on its own (2.15 → 7.13 in light).
+    warning: 'border-warning-border-strong',
     error: 'border-error-600',
   };
 
