@@ -828,8 +828,34 @@ describe('CarouselComponent — page count', () => {
 describe('CarouselComponent — teardown', () => {
   it('clears the post-interaction autoplay-pause timer when the carousel is destroyed', () => {
     vi.useFakeTimers();
-    const setSpy = vi.spyOn(globalThis, 'setTimeout');
-    const clearSpy = vi.spyOn(globalThis, 'clearTimeout');
+    // The two recorders below are installed by PLAIN ASSIGNMENT. Do not
+    // "clean this up" back to `vi.spyOn(globalThis, 'setTimeout')`.
+    //
+    // `vi.spyOn` on a global timer *while fake timers are installed* captures
+    // Sinon's fake as the spy's "original". Vitest then runs
+    // `vi.restoreAllMocks()` after every spec file ("mocks should not affect
+    // different files"), which re-applies that captured original — putting the
+    // fake back *after* `useRealTimers()` has already uninstalled its clock.
+    // The result is a `setTimeout` that accepts callbacks and never runs them,
+    // for every later spec file in the same worker under `isolate: false`.
+    // Angular's zoneless scheduler ticks from `setTimeout`, so `whenStable()`
+    // can then never resolve and an unrelated spec file's tests all time out.
+    // `vi.isFakeTimers()` reports `false` throughout, which is what made this
+    // cost seven audit passes. A plain assignment never enters Vitest's mock
+    // registry, so `restoreAllMocks()` has nothing to re-apply.
+    const fakeSetTimeout = globalThis.setTimeout;
+    const fakeClearTimeout = globalThis.clearTimeout;
+    const armed: { delay: unknown; handle: ReturnType<typeof setTimeout> }[] = [];
+    const cleared: unknown[] = [];
+    globalThis.setTimeout = ((...args: Parameters<typeof setTimeout>) => {
+      const handle = fakeSetTimeout(...args);
+      armed.push({ delay: args[1], handle });
+      return handle;
+    }) as typeof globalThis.setTimeout;
+    globalThis.clearTimeout = ((...args: Parameters<typeof clearTimeout>) => {
+      cleared.push(args[0]);
+      return fakeClearTimeout(...args);
+    }) as typeof globalThis.clearTimeout;
     try {
       const { fixture, viewport } = setup();
 
@@ -852,18 +878,17 @@ describe('CarouselComponent — teardown', () => {
       // uses the default 5000ms interval and autoplay is off, so nothing else
       // in the component schedules at this delay.
       const pauseDelay = 5000 * 2 + 16;
-      const armedHandles = setSpy.mock.calls
-        .map((call, i) => ({ delay: call[1], handle: setSpy.mock.results[i]?.value }))
+      const armedHandles = armed
         .filter((entry) => entry.delay === pauseDelay)
         .map((entry) => entry.handle);
       expect(armedHandles.length).toBe(1);
 
       fixture.destroy();
 
-      expect(clearSpy.mock.calls.map((call) => call[0])).toContain(armedHandles[0]);
+      expect(cleared).toContain(armedHandles[0]);
     } finally {
-      setSpy.mockRestore();
-      clearSpy.mockRestore();
+      globalThis.setTimeout = fakeSetTimeout;
+      globalThis.clearTimeout = fakeClearTimeout;
       vi.useRealTimers();
     }
   });
