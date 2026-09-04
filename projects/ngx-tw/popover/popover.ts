@@ -27,7 +27,7 @@ import { CdkPortalOutlet, ComponentPortal, TemplatePortal } from '@angular/cdk/p
 import { FocusTrapFactory } from '@angular/cdk/a11y';
 import { Subscription } from 'rxjs';
 import { tv } from 'tailwind-variants';
-import type { TwColor, TwSize } from '@cdevhub/ngx-tw/core';
+import { consumeOverlayEscape, type TwColor, type TwSize } from '@cdevhub/ngx-tw/core';
 import {
   TW_POPOVER_DATA,
   TW_POPOVER_REF,
@@ -666,12 +666,16 @@ export class PopoverDirective {
       );
     }
 
-    // Escape from within the overlay
+    // Escape from within the overlay. Uses `core`'s `consumeOverlayEscape`
+    // rather than re-filtering `keydownEvents()` here: that helper is exported
+    // from `@cdevhub/ngx-tw/core` as public API, and until this call site
+    // existed the library shipped a compatibility promise for a function it
+    // never used itself while duplicating its body inline.
+    // `Subscription.add()` accepts a teardown function, which is exactly what
+    // `consumeOverlayEscape` returns — the helper's own JSDoc names this shape.
     this.perOpenSubs.add(
-      this.overlayRef!.keydownEvents().subscribe((event) => {
-        if (event.key === 'Escape' && this.twPopoverCloseOnEscape()) {
-          this.close();
-        }
+      consumeOverlayEscape(this.overlayRef!, () => {
+        if (this.twPopoverCloseOnEscape()) this.close();
       }),
     );
 

@@ -10,6 +10,17 @@
   **Coercion is the exception, and the exception is now the rule.** This line used to name coercion as a CDK responsibility. It is stale: the library makes **49 uses of Angular's own `booleanAttribute` / `numberAttribute`** across 14 files and imports `@angular/cdk/coercion` **zero** times. The code is right and the instruction was wrong — `@angular/cdk/coercion` is redundant in v22 and must not be reintroduced. Verified 2026-09-03.
 
   **The CDK gap in this library is drift, not absence.** Nine of ten "is a CDK package missing?" leads close clean; what is actually wrong is that four concerns CDK already owns are *also* hand-rolled, and the hand-rolled copies have diverged from the CDK-backed siblings beside them — list keyboard navigation (8 CDK-backed vs 8 hand-rolled), layout direction, announcements (`LiveAnnouncer` in 17 vs `aria-live` host regions in 9, with 2 components doing **both**), and unique DOM ids (`_IdGenerator` in 4 files vs `let nextId = 0` in 28). Before hand-rolling any of those four, read what the CDK-backed sibling does.
+
+  **The id row is the exception, and it is NOT worth converging.** Measured 2026-09-04, against the
+  installed CDK rather than assumed: `_IdGenerator` keeps its counters in a **module-scope `Map`**
+  (`@angular/cdk/fesm2022/_id-generator-chunk.mjs`), exactly like `let nextId = 0`. It is not
+  per-injector, so it carries the *same* cross-request behaviour under SSR and the migration buys
+  no robustness. The SSR worry is in any case benign: a component's host id and its label id come
+  from the same counter in the same render pass, so the `aria-labelledby` wiring stays internally
+  consistent whatever the counter value is, and no spec pins a literal id. That leaves a 28-file
+  refactor onto an **underscore-prefixed, private-by-convention** CDK symbol, with real
+  aria-rewiring risk, for cosmetic uniformity. Do not do it. The other three rows in this paragraph
+  are unaffected by this note.
 - **Tailwind CSS v4 for all styling.** Components use utility classes directly. No component CSS files. No `@tailwind` directives (v4 doesn't use them). Consumers must have Tailwind v4 installed.
 - **Accessible by default.** Every component MUST pass AXE checks and meet WCAG AA. Use Angular CDK's a11y module (`LiveAnnouncer`, `FocusMonitor`, `FocusTrap`, etc.).
 
