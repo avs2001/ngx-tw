@@ -1939,3 +1939,106 @@ to hold. Recorded so a future palette retune does not drop it silently.
 | `npx ng build demo` | pass |
 | `npm run lint` | 0 errors, 79 warnings — all in `e2e/` |
 | Raw-scale sweep | **0 of 9 utilities below 3:1** (was 14 of 28 at pass 9's start) |
+
+---
+
+# Pass 13 — 2026-09-04, production hardening rather than defect hunting
+
+Scope set by the maintainer, and it is a change of objective rather than another sweep: *"I don't
+want to find new defects, I want to make sure the library is production grade, solid and well done
+code, fluent API, and robust overall."*
+
+## The baseline is strong, which is the first thing worth recording
+
+Measured before changing anything, so later passes do not re-derive it:
+
+| signal | result |
+|---|---|
+| `any` in shipped source | **3**, across ~400 files |
+| `TODO` / `FIXME` / `HACK` | **0** |
+| JSDoc on public inputs | essentially complete — two single-input gaps |
+| SSR safety | **safe** — all 17 DOM-touching files verified individually |
+| Suite | 3521 passing, 56 entry points, consumer-install verified |
+
+**The SSR check is worth stating positively.** 17 files reference `document.` / `window.` while only
+4 inject `DOCUMENT` or check `PLATFORM_ID`, which looks alarming and is not: four are test harnesses
+(browser-only by construction), `theme.bootstrap.ts` and `theme.meta.ts` contain the DOM calls
+*inside exported strings* rather than executing them, `carousel.ts` guards with
+`typeof document !== 'undefined'`, and the rest sit on focus-handler paths that cannot run on a
+server. Nothing to fix. Do not re-open this on the raw grep count.
+
+## What was changed
+
+| # | Item | Why it is a production-grade issue |
+|---|---|---|
+| P13-1 | **`core/form-reset.ts` deleted.** | Never exported, zero importers. The decisive reason is architectural, not statistical: `onFormReset()` needs an **injection context**, and `calendar` — its only intended consumer — deliberately defers that same `NgControl` lookup to `ngOnInit` to avoid the DI cycle its self-provided `NG_VALIDATORS` creates. Incompatible with the one component it was written for. |
+| P13-2 | **`provideTheme({ attribute })` deprecated.** | A public option that **cannot work**: the stylesheets key off the literal `data-theme`, four files declare `[data-theme="…"]` blocks, and CSS cannot parameterise an attribute name. Both files documented the caveat; the API should not have carried the trap. Deprecated not removed (breaking); verified the `@deprecated` reaches the shipped `.d.ts`. |
+| P13-3 | **`consumeOverlayEscape` dogfooded in `popover`.** | It is exported from `core/index.ts` — a public compatibility promise — with **zero library importers**, while `popover` duplicated its body inline. |
+| P13-4 | **An untested overlay path covered.** | Neutering popover's overlay Escape handler left the **entire suite green**. The specs press Escape on the *trigger* (host `(keydown.escape)`); Escape from inside the panel arrives only through the CDK overlay's `keydownEvents()` channel, and that path had never been tested. |
+| P13-5 | **470 class assertions made capable of failing.** | See below — the most consequential item. |
+| P13-6 | **`tabs.dismissible` added, `closable` deprecated.** | One idea, two spellings. |
+
+## P13-5: the suite contained 75 assertions that could not fail
+
+`expect(el.className).toContain('x')` is a **substring** match against a space-joined string, so it
+passes on any longer class sharing the prefix:
+
+```
+toContain('bg-surface')           also matches bg-surface-muted / -sunken / -raised
+toContain('border-t')             also matches border-transparent
+toContain('border-border')        also matches border-border-strong / -muted
+toContain('ring-primary-border')  kept passing after the class became ring-primary-border-strong
+```
+
+The last one is not hypothetical — it happened **twice in this audit**. All ~470 are now
+`classList.contains(...)`, which is exact and order-independent. The suite still passes, so nothing
+depended on the loose behaviour. Demonstrated rather than asserted: changing `card`'s `bg-surface`
+to `bg-surface-muted` **passes** the old form and **fails** the new one.
+
+## Three CLAUDE.md rules were wrong, and the code was right
+
+This pass changed the instructions three times without changing the code, which is the pass-5 lesson
+(*"the specification drifts faster than the source"*) recurring:
+
+1. **The `_IdGenerator` "drift" is not worth converging.** Measured against the installed CDK:
+   `_IdGenerator` keeps its counters in a **module-scope `Map`**, exactly like `let nextId = 0`. Not
+   per-injector, so the 28-file migration buys no robustness — and the SSR worry behind it is benign
+   anyway, since a component's host id and label id come from the same counter in the same render
+   pass. That left a large refactor onto an underscore-prefixed, private-by-convention symbol for
+   cosmetic uniformity. **Do not do it.**
+2. **"Do not test class names" is too broad.** 47 of 75 spec files violate it, so taken literally the
+   suite has been non-compliant since the beginning. This is a Tailwind library in jsdom where
+   nothing is computed and the class is the only observable proxy. The rule now says what it actually
+   protects against, and mandates `classList.contains`.
+3. **The form controls' bare `change` output is a carve-out, not drift.** `checkedChange` (from the
+   `model()`) fires on **any** change including programmatic; `change` fires **only** on user
+   interaction, every one documents it, and it is the name Material uses. Pass 5's own F-6 draft
+   nearly deprecated these before re-reading the emit sites falsified it — two audits have now
+   reached the edge of the same breaking rename.
+
+## The dismissal-API survey shrank on inspection
+
+"Five vocabularies for one concept" turned out to be **one** outlier and four justified spellings:
+`dismissible` + `closeOnX` are the canonical capability/gesture pair; popover's `tw`-prefix is
+required because it is an **attribute directive** whose unprefixed inputs would collide; and
+`disableClose` is **CDK's own property** — `TwDialogConfig extends CdkDialogConfig` — so renaming it
+would fight the base class and diverge from Material's vocabulary.
+
+Only `tabs.closable` was drift, and one alias closes it. Recording the four justifications matters as
+much as the change: pass 5's "nine shapes of dismissal API" counted shapes without separating the
+justified from the drifted, and that framing invites a breaking rename that would make the library
+**less** conventional.
+
+## Open
+
+- **`popover/testing` and `tooltip/testing` remain withdrawn.** The pass-7 blocker
+  (`TestbedHarnessEnvironment` + zoneless + a leave animation means `whenStable()` may never resolve)
+  is unchanged; the trigger markers that unblock *locatability* are in place. This is a real gap in
+  the **consumer's** experience: 13 entry points ship harnesses, popover and tooltip do not.
+- **The `dark:` rule is still unenforced.** Pass 6 found a documentation comment in `file-upload.ts`
+  resurrects a dead utility through Tailwind's scanner, so a naive guard would need to reason about
+  comments and about the demo.
+- **`fg-subtle on surface-muted` = 4.39:1** against a 4.5 text floor in light — pre-existing, text
+  rather than border, blocked on the same tier-collapse the borders had.
+- The remaining consistency items: the Escape-dismiss *implementation* split (three overlapping
+  abstractions, one now dogfooded), and `_IdGenerator` — **closed as won't-do**, above.
