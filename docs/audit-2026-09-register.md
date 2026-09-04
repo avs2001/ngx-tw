@@ -2035,10 +2035,22 @@ justified from the drifted, and that framing invites a breaking rename that woul
   (`TestbedHarnessEnvironment` + zoneless + a leave animation means `whenStable()` may never resolve)
   is unchanged; the trigger markers that unblock *locatability* are in place. This is a real gap in
   the **consumer's** experience: 13 entry points ship harnesses, popover and tooltip do not.
-- **The `dark:` rule is still unenforced.** Pass 6 found a documentation comment in `file-upload.ts`
-  resurrects a dead utility through Tailwind's scanner, so a naive guard would need to reason about
-  comments and about the demo.
-- **`fg-subtle on surface-muted` = 4.39:1** against a 4.5 text floor in light — pre-existing, text
-  rather than border, blocked on the same tier-collapse the borders had.
+- **The `dark:` rule is unenforced but NOT violated.** Re-measured 2026-09-04, correcting an
+  overstatement made earlier in this same pass: all 12 `dark:` hits in shipped library `.ts` are
+  **prose inside comments** ("Slot tokens own light/dark contrast — no `dark:`"). **Zero real
+  utilities.** One live utility exists in the **demo** — `dark:ring-primary-800` — not in the
+  library. So the rule holds in practice and only the guard is missing; pass 6's finding that a
+  documentation comment in `file-upload.ts` resurrects a dead utility through Tailwind's scanner is
+  what makes a naive grep insufficient. Low priority.
+- **`fg-subtle on surface-muted` = 4.39:1 is a token measurement with NO governed painted
+  instance.** Also corrected 2026-09-04. The number is real and is the single remaining failure in
+  the 90-pairing sweep, but the only place the library pairs them directly is `stepper.ts:161`
+  `INDICATOR_DISABLED` — a **disabled** state, which SC 1.4.3 explicitly exempts. Its sibling
+  `INDICATOR_PENDING` uses `text-fg-muted` (6.87, passing), and `calendar-header` pairs
+  `disabled:text-fg-subtle` with `disabled:hover:bg-transparent`, so the muted background never
+  applies. Worth keeping recorded because a future component could pair them in an *active*
+  context — but it is not a shipped accessibility failure. Not trivially fixable either:
+  `--color-fg-subtle` is `gray-500` and `--color-fg-muted` is `gray-600`, so raising subtle to
+  clear 4.5 collapses the two foreground tiers — the same trap the borders hit in pass 8.
 - The remaining consistency items: the Escape-dismiss *implementation* split (three overlapping
   abstractions, one now dogfooded), and `_IdGenerator` — **closed as won't-do**, above.
