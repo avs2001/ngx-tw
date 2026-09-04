@@ -3,7 +3,7 @@
    have to resolve at runtime, and it emits no JavaScript. */
 /// <reference path="./theme-node-shims.d.ts" />
 
-import { readFileSync } from 'node:fs';
+import { readdirSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
@@ -320,5 +320,129 @@ describe('theme border contrast (WCAG 2.2 SC 1.4.11)', () => {
       }
     }
     expect(collapsed, 'these roles lost the distinction between the two border tiers').toEqual([]);
+  });
+});
+
+/* ─────────────── the same floor, applied to COMPONENT source ─────────────── */
+
+/**
+ * Where the tokens are asserted above, this asserts what components actually
+ * *use*.
+ *
+ * **Why a second guard was needed.** The block above proves every
+ * `--color-{role}-border{,-strong}` clears 3:1. It says nothing about a
+ * component that writes `border-primary-300`, which resolves through
+ * `--color-primary-300` and bypasses the slot entirely. That gap was not
+ * hypothetical: it hid **14 of 28** raw-scale utilities below the floor across
+ * ~20 components — `badge`'s outline at 1.40–1.92, focus rings at 2.15–2.71 —
+ * for the entire life of the library, while every sweep the audit register ran
+ * reported "no raw Tailwind palette colours in shipped source". That claim was
+ * true and irrelevant: it rules out `blue-500`, not `primary-300`.
+ *
+ * Pass 9 fixed all of them. This is what stops the next component reintroducing
+ * one, so the fix is an invariant rather than a snapshot.
+ *
+ * **It measures rather than pattern-matches.** A lint rule banning the syntax
+ * would also reject `outline-primary-500` — the canonical focus ring CLAUDE.md
+ * documents verbatim, which passes comfortably. The rule that matters is the
+ * contrast floor, so that is what is asserted, in every scheme.
+ *
+ * **Known limitation, stated so nobody mistakes green here for completeness.**
+ * This resolves each utility against its scheme's `--color-surface`, because
+ * that is where the overwhelming majority are painted. A utility painted on a
+ * *coloured* background is not covered, and the assumption is not always
+ * conservative: `switch`'s error ring sits on `bg-error-100` and measured
+ * **1.57** there versus 1.92 against white — worse, not better. A border on a
+ * non-surface background still needs its own measurement.
+ */
+const COMPONENT_SRC = join(HERE, '..');
+
+/** `{utility}-{role}-{step}` occurrences in shipped component source. */
+function rawScaleUses(): ReadonlyMap<string, ReadonlySet<string>> {
+  const out = new Map<string, Set<string>>();
+  const walk = (dir: string): void => {
+    for (const entry of readdirSync(dir, { withFileTypes: true })) {
+      const full = join(dir, entry.name);
+      if (entry.isDirectory()) {
+        if (entry.name !== 'node_modules') walk(full);
+        continue;
+      }
+      // Specs and this file are not shipped; `.d.ts` carries no classes.
+      if (!/\.(ts|html)$/.test(entry.name)) continue;
+      if (/\.spec\.ts$|\.d\.ts$/.test(entry.name)) continue;
+      const src = readFileSync(full, 'utf8');
+      const re =
+        /\b(?:border|ring|outline|divide)-(primary|secondary|accent|neutral|info|success|warning|error)-(50|100|200|300|400|500|600|700|800|900|950)\b/g;
+      let m: RegExpExecArray | null;
+      while ((m = re.exec(src)) !== null) {
+        const key = `${m[1]}-${m[2]}`;
+        if (!out.has(key)) out.set(key, new Set());
+        out.get(key)!.add(full.slice(COMPONENT_SRC.length + 1));
+      }
+    }
+  };
+  walk(COMPONENT_SRC);
+  return out;
+}
+
+/**
+ * Raw-scale utilities allowed to sit below the floor, with the reason.
+ *
+ * Two-sided like `KNOWN_FAILING`: an entry that stops failing is reported as
+ * stale and must be deleted, so this cannot rot into permission.
+ */
+const RAW_SCALE_BACKLOG: ReadonlyMap<string, string> = new Map([
+  [
+    'warning-500',
+    "checkbox, radio and paginator paint a border the same colour as a `-solid` fill, and " +
+      '`--color-warning-solid` IS `amber-500` precisely because dark-on-yellow ' +
+      '(`warning-solid-fg` = `amber-950`) is what makes its glyph pass AA — so the fill cannot be ' +
+      'darkened without breaking what it was chosen for. Whether a low-luminance-by-design solid ' +
+      'surface needs a separate boundary token applies to every `-solid` in the library, not these ' +
+      'three, so it is deferred to its own pass rather than fixed with a rider (2026-09-04).',
+  ],
+]);
+
+describe('component raw-scale border contrast (WCAG 2.2 SC 1.4.11)', () => {
+  it('finds a non-trivial number of raw-scale utilities to check', () => {
+    // Guards the guard: a regex that stopped matching would make the assertion
+    // below pass on an empty map.
+    expect(rawScaleUses().size).toBeGreaterThan(3);
+  });
+
+  it('clears 3:1 on every raw-scale border/ring/outline in shipped source', () => {
+    const failing: string[] = [];
+    const seen = new Set<string>();
+    const uses = rawScaleUses();
+
+    for (const [key, files] of uses) {
+      const [role, step] = key.split('-');
+      for (const theme of TW_RESOLVED_THEMES) {
+        const tokens = schemeTokens(...SCHEME_BLOCKS[theme]);
+        const ratio = contrast(
+          resolve(tokens, `color-${role}-${step}`),
+          resolve(tokens, 'color-surface'),
+        );
+        if (ratio >= NON_TEXT_FLOOR) continue;
+        if (RAW_SCALE_BACKLOG.has(key)) {
+          seen.add(key);
+          continue;
+        }
+        failing.push(
+          `${theme}: ${key} = ${ratio.toFixed(2)}:1 (${[...files].sort().join(', ')})`,
+        );
+      }
+    }
+
+    const stale = [...RAW_SCALE_BACKLOG.keys()].filter(
+      (k) => !seen.has(k) || !uses.has(k),
+    );
+
+    expect(
+      { failing, stale },
+      'A component naming a palette step bypasses the token guard above — that is how 14 of 28 ' +
+        'such utilities shipped below the floor. Use the `{role}-border` / `-border-strong` slot ' +
+        'instead. A stale entry means the use was fixed or removed; delete it.',
+    ).toEqual({ failing: [], stale: [] });
   });
 });
