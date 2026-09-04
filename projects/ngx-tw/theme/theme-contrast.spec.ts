@@ -411,22 +411,41 @@ const RAW_SCALE_BACKLOG: ReadonlyMap<string, string> = new Map<string, string>([
   // without being asked, which is the whole point of it being two-sided.
 ]);
 
+/**
+ * Walked ONCE, at module scope, and shared by both tests below.
+ *
+ * Not a micro-optimisation — a correctness fix for a flake this guard shipped
+ * with. Calling `rawScaleUses()` inside each `it()` read ~400 files
+ * synchronously, twice, and under full-suite contention that exceeded Vitest's
+ * **5000ms per-test budget**: `Error: Test timed out in 5000ms`, measured at
+ * 19363ms, reproducing roughly 1 run in 3 while passing every time the theme
+ * specs ran alone. Module-scope evaluation is not governed by that budget, is
+ * the pattern `PALETTE` above already uses in this same file, and halves the
+ * I/O. A guard whose specs hang is worse than no guard.
+ */
+const RAW_SCALE_USES = rawScaleUses();
+
 describe('component raw-scale border contrast (WCAG 2.2 SC 1.4.11)', () => {
   it('finds a non-trivial number of raw-scale utilities to check', () => {
     // Guards the guard: a regex that stopped matching would make the assertion
     // below pass on an empty map.
-    expect(rawScaleUses().size).toBeGreaterThan(3);
+    expect(RAW_SCALE_USES.size).toBeGreaterThan(3);
   });
 
   it('clears 3:1 on every raw-scale border/ring/outline in shipped source', () => {
     const failing: string[] = [];
     const seen = new Set<string>();
-    const uses = rawScaleUses();
+    const uses = RAW_SCALE_USES;
+
+    // Parsed once per scheme rather than once per (utility x scheme): the inner
+    // form re-read and re-parsed four CSS files on every iteration.
+    const perTheme = TW_RESOLVED_THEMES.map(
+      (theme) => [theme, schemeTokens(...SCHEME_BLOCKS[theme])] as const,
+    );
 
     for (const [key, files] of uses) {
       const [role, step] = key.split('-');
-      for (const theme of TW_RESOLVED_THEMES) {
-        const tokens = schemeTokens(...SCHEME_BLOCKS[theme]);
+      for (const [theme, tokens] of perTheme) {
         const ratio = contrast(
           resolve(tokens, `color-${role}-${step}`),
           resolve(tokens, 'color-surface'),
