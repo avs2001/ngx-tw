@@ -84,8 +84,8 @@ export class CommandPaletteHarness extends ComponentHarness {
    *
    * **The overlay is still attached when this resolves.** The component defers
    * the detach behind a leave animation, so a caller asserting on `isOpen()`
-   * immediately afterwards will still see `true`. Wait for the animation before
-   * asserting — with a plain timer, not by polling a harness method.
+   * immediately afterwards will still see `true`. Wait for the detach before
+   * asserting — by reading the document, never by polling a harness method.
    *
    * That caveat is deliberate rather than hidden behind a poll. An earlier
    * version looped on `isOpen()` until the panel detached, which reads better
@@ -96,11 +96,11 @@ export class CommandPaletteHarness extends ComponentHarness {
    * failing it. A harness that can hang is worse than one that makes the caller
    * wait explicitly.
    *
-   * **This method is not covered by a spec.** A test driving it hung at the full
-   * 15000ms budget in roughly one run in three: the harness calls it makes
-   * around a leave animation route through `whenStable()`, which can wait on a
-   * re-scheduled timer and never resolve. Escape dismissal itself is covered in
-   * `command-palette.spec.ts`, directly against the component.
+   * Wait by polling the document for the panel to leave, under your own
+   * deadline — `document.querySelector('tw-command-palette-overlay') === null`
+   * needs no stabilization, so it can neither hang nor burn a fixed sleep. The
+   * `closes with Escape` case in `command-palette-harness.spec.ts` is the
+   * worked example, and is this method's coverage.
    */
   async close(): Promise<void> {
     const input = await this.input();
