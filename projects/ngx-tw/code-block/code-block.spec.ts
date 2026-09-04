@@ -230,20 +230,33 @@ describe('CodeBlockComponent', () => {
 
   it('should clear the reset timeout when destroyed mid-success', () => {
     vi.useFakeTimers();
-    const clearTimeoutSpy = vi.spyOn(globalThis, 'clearTimeout');
+    // Installed by PLAIN ASSIGNMENT, not `vi.spyOn`. Spying a global timer
+    // while fake timers are installed captures Sinon's fake as the spy's
+    // "original", and Vitest's post-file `vi.restoreAllMocks()` re-applies it
+    // after the clock has been uninstalled — leaving a dead timer function for
+    // every later spec file in the worker under `isolate: false`. See the long
+    // note on the same hazard in `carousel.spec.ts`.
+    const fakeClearTimeout = globalThis.clearTimeout;
+    let clearTimeoutCalls = 0;
+    globalThis.clearTimeout = ((...args: Parameters<typeof clearTimeout>) => {
+      clearTimeoutCalls++;
+      return fakeClearTimeout(...args);
+    }) as typeof globalThis.clearTimeout;
 
-    const button = fixture.nativeElement.querySelector('button');
-    button.click();
-    fixture.detectChanges();
+    try {
+      const button = fixture.nativeElement.querySelector('button');
+      button.click();
+      fixture.detectChanges();
 
-    fixture.destroy();
-    expect(clearTimeoutSpy).toHaveBeenCalled();
+      fixture.destroy();
+      expect(clearTimeoutCalls).toBeGreaterThan(0);
 
-    // Advance past the reset window — nothing should throw.
-    expect(() => vi.advanceTimersByTime(2000)).not.toThrow();
-
-    clearTimeoutSpy.mockRestore();
-    vi.useRealTimers();
+      // Advance past the reset window — nothing should throw.
+      expect(() => vi.advanceTimersByTime(2000)).not.toThrow();
+    } finally {
+      globalThis.clearTimeout = fakeClearTimeout;
+      vi.useRealTimers();
+    }
   });
 
   // ===== Accessibility =====
