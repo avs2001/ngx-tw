@@ -56,8 +56,15 @@ function outlineSlots(role: TwColor): AlertSlotClasses {
 }
 
 function solidSlots(role: TwColor): AlertSlotClasses {
+  // `warning` alone gets a boundary ring. Its `-solid` is `amber-500` because
+  // dark-on-yellow is a deliberate signage choice (`_semantic.css`), which
+  // leaves the filled block at 1.95:1 against the page in light and 1.56:1 in
+  // high-contrast — the other seven roles clear 3:1 on the fill alone (4.33+).
+  // Written as a literal so Tailwind's scanner sees it; `ring-{role}-border-strong`
+  // is also safelisted in `theme/index.css`.
+  const boundary = role === 'warning' ? ' ring-1 ring-inset ring-warning-border-strong' : '';
   return {
-    root: `bg-${role}-solid text-${role}-solid-fg`,
+    root: `bg-${role}-solid text-${role}-solid-fg${boundary}`,
     icon: `text-${role}-solid-fg`,
     title: `text-${role}-solid-fg`,
     content: `text-${role}-solid-fg`,

@@ -104,7 +104,13 @@ const buttonVariants = tv({
     { variant: 'link', color: 'success', class: 'text-success-700' },
 
     // ===== Warning =====
-    { variant: 'solid', color: 'warning', class: 'bg-warning-solid text-on-warning hover:bg-warning-solid-hover' },
+    {
+      variant: 'solid',
+      color: 'warning',
+      // See badge.ts: amber-500 is load-bearing for the dark-on-yellow glyph, so
+      // the boundary carries SC 1.4.11 (1.95:1 light / 1.56:1 high-contrast).
+      class: 'bg-warning-solid text-on-warning hover:bg-warning-solid-hover ring-1 ring-inset ring-warning-border-strong',
+    },
     { variant: 'outline', color: 'warning', class: 'border-warning-border text-warning-700 hover:bg-warning-50' },
     { variant: 'ghost', color: 'warning', class: 'text-warning-700 hover:bg-warning-50' },
     { variant: 'soft', color: 'warning', class: 'bg-warning-50 text-warning-800 hover:bg-warning-100' },

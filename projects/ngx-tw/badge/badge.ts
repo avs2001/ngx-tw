@@ -132,7 +132,17 @@ const badgeVariants = tv({
     { variant: 'soft', color: 'success', class: { root: 'bg-success-50 text-success-800' } },
 
     // ===== Warning =====
-    { variant: 'solid', color: 'warning', class: { root: 'bg-warning-solid text-warning-solid-fg' } },
+    {
+      variant: 'solid',
+      color: 'warning',
+      // `warning-solid` is `amber-500` because dark-on-yellow is a deliberate
+      // signage choice (`_semantic.css`), which leaves the chip at 1.95:1
+      // against the page in light and 1.56:1 in high-contrast. The fill cannot
+      // be darkened without breaking what it was chosen for, so the boundary
+      // carries SC 1.4.11 instead. A ring, not a border: it is a box-shadow,
+      // so it adds no layout box to a variant that has none.
+      class: { root: 'bg-warning-solid text-warning-solid-fg ring-1 ring-inset ring-warning-border-strong' },
+    },
     { variant: 'outline', color: 'warning', class: { root: 'border-warning-border text-warning-700' } },
     { variant: 'soft', color: 'warning', class: { root: 'bg-warning-50 text-warning-800' } },
 
