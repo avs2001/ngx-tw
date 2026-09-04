@@ -70,7 +70,10 @@
           "defaultConfiguration": "development"
         },
         "test": {
-          "builder": "@angular/build:unit-test"
+          "builder": "@angular/build:unit-test",
+          "options": {
+            "isolate": true
+          }
         },
         "e2e": {
           "builder": "playwright-ng-schematics:playwright",
@@ -168,7 +171,8 @@
               "../aspect-ratio/**/*.spec.ts",
               "../tree/**/*.spec.ts",
               "../transfer/**/*.spec.ts"
-            ]
+            ],
+            "isolate": true
           }
         }
       }
