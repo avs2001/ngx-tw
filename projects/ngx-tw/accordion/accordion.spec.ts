@@ -183,11 +183,11 @@ describe('AccordionComponent', () => {
 
       fixture.componentInstance.variant.set('outline');
       fixture.detectChanges();
-      expect(accordion.className).toContain('border');
+      expect(accordion.classList.contains('border')).toBe(true);
 
       fixture.componentInstance.variant.set('ghost');
       fixture.detectChanges();
-      expect(accordion.className).not.toContain('border-border');
+      expect(accordion.classList.contains('border-border')).toBe(false);
     });
 
     it('should apply divide-y on default and outline variants', () => {
@@ -196,11 +196,11 @@ describe('AccordionComponent', () => {
 
       fixture.componentInstance.variant.set('default');
       fixture.detectChanges();
-      expect(accordion.className).toContain('divide-y');
+      expect(accordion.classList.contains('divide-y')).toBe(true);
 
       fixture.componentInstance.variant.set('outline');
       fixture.detectChanges();
-      expect(accordion.className).toContain('divide-y');
+      expect(accordion.classList.contains('divide-y')).toBe(true);
     });
 
     it('should NOT apply divide-y on ghost variant', () => {
@@ -209,7 +209,7 @@ describe('AccordionComponent', () => {
 
       fixture.componentInstance.variant.set('ghost');
       fixture.detectChanges();
-      expect(accordion.className).not.toContain('divide-y');
+      expect(accordion.classList.contains('divide-y')).toBe(false);
     });
 
     // ── Deprecated variant aliases ──
@@ -235,8 +235,8 @@ describe('AccordionComponent', () => {
       fixture.componentInstance.variant.set('bordered');
       fixture.detectChanges();
       expect(accordion.className).toBe(canonical);
-      expect(accordion.className).toContain('border-border');
-      expect(accordion.className).toContain('divide-y');
+      expect(accordion.classList.contains('border-border')).toBe(true);
+      expect(accordion.classList.contains('divide-y')).toBe(true);
     });
   });
 

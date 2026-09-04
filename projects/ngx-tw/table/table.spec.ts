@@ -572,7 +572,7 @@ describe('TableComponent — clickableRows keyboard activation', () => {
 
   it('gives clickable rows a visible focus indicator', async () => {
     await enableClickableRows();
-    expect(rows()[0].className).toContain('focus-visible:outline-primary-500');
+    expect(rows()[0].classList.contains('focus-visible:outline-primary-500')).toBe(true);
   });
 
   it('does not keep the tab order after clickableRows is turned back off', async () => {
@@ -1007,7 +1007,7 @@ describe('TableComponent — sticky header shadow token', () => {
     fixture.detectChanges();
 
     const table = fixture.nativeElement.querySelector('table') as HTMLElement;
-    expect(table.className).toContain('[&>thead>tr>th]:shadow-table-sticky');
+    expect(table.classList.contains('[&>thead>tr>th]:shadow-table-sticky')).toBe(true);
     // Negative: no arbitrary-value escape hatch remains.
     expect(table.className).not.toMatch(/shadow-\[0_1px_0_0/);
   });
@@ -1028,7 +1028,7 @@ describe('TableComponent — loading overlay tokens', () => {
       '[data-tw-table-loading]',
     ) as HTMLElement;
     expect(overlay).toBeTruthy();
-    expect(overlay.className).toContain('backdrop-blur-sm');
+    expect(overlay.classList.contains('backdrop-blur-sm')).toBe(true);
     expect(overlay.className).not.toMatch(/backdrop-blur-\[/);
   });
 });
@@ -1067,7 +1067,7 @@ describe('TableComponent — sticky-edge shadows', () => {
     const cell = fixture.nativeElement.querySelector(
       'tbody td[data-column="id"]',
     ) as HTMLElement;
-    expect(cell.className).toContain('shadow-table-sticky-cell-start');
+    expect(cell.classList.contains('shadow-table-sticky-cell-start')).toBe(true);
   });
 
   it('applies a left-side hairline shadow on sticky-end cells', async () => {
@@ -1080,7 +1080,7 @@ describe('TableComponent — sticky-edge shadows', () => {
     const cell = fixture.nativeElement.querySelector(
       'tbody td[data-column="amount"]',
     ) as HTMLElement;
-    expect(cell.className).toContain('shadow-table-sticky-cell-end');
+    expect(cell.classList.contains('shadow-table-sticky-cell-end')).toBe(true);
   });
 
   it('leaves non-sticky cells without an edge shadow', async () => {
@@ -1093,8 +1093,8 @@ describe('TableComponent — sticky-edge shadows', () => {
     const cell = fixture.nativeElement.querySelector(
       'tbody td[data-column="name"]',
     ) as HTMLElement;
-    expect(cell.className).not.toContain('shadow-table-sticky-cell-start');
-    expect(cell.className).not.toContain('shadow-table-sticky-cell-end');
+    expect(cell.classList.contains('shadow-table-sticky-cell-start')).toBe(false);
+    expect(cell.classList.contains('shadow-table-sticky-cell-end')).toBe(false);
   });
 });
 

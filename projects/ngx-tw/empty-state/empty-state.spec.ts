@@ -130,11 +130,11 @@ describe('EmptyStateComponent', () => {
 
     it('should apply centered md classes by default', () => {
       const host: HTMLElement = fixture.nativeElement.querySelector('tw-empty-state');
-      expect(host.className).toContain('flex-col');
-      expect(host.className).toContain('items-center');
-      expect(host.className).toContain('text-center');
-      expect(host.className).toContain('p-4');
-      expect(host.className).toContain('gap-3');
+      expect(host.classList.contains('flex-col')).toBe(true);
+      expect(host.classList.contains('items-center')).toBe(true);
+      expect(host.classList.contains('text-center')).toBe(true);
+      expect(host.classList.contains('p-4')).toBe(true);
+      expect(host.classList.contains('gap-3')).toBe(true);
     });
 
     it('should not have a role attribute on the host', () => {
@@ -200,8 +200,8 @@ describe('EmptyStateComponent', () => {
       fixture.componentInstance.variant.set('inline');
       fixture.detectChanges();
       const host: HTMLElement = fixture.nativeElement.querySelector('tw-empty-state');
-      expect(host.className).toContain('flex-row');
-      expect(host.className).toContain('text-left');
+      expect(host.classList.contains('flex-row')).toBe(true);
+      expect(host.classList.contains('text-left')).toBe(true);
     });
 
     it('should change root padding per size', () => {
@@ -362,9 +362,9 @@ describe('EmptyStateComponent', () => {
 
       const actions: HTMLElement = fixture.nativeElement.querySelector('[data-testid="projected-actions"]');
       expect(actions).toBeTruthy();
-      expect(actions.className).toContain('flex');
-      expect(actions.className).toContain('gap-2');
-      expect(actions.className).toContain('justify-center'); // centered variant default
+      expect(actions.classList.contains('flex')).toBe(true);
+      expect(actions.classList.contains('gap-2')).toBe(true);
+      expect(actions.classList.contains('justify-center')).toBe(true); // centered variant default
     });
 
     it('should NOT stamp parent typography classes on the [twEmptyStateTitle] / [twEmptyStateDescription] host elements', async () => {
@@ -378,15 +378,15 @@ describe('EmptyStateComponent', () => {
       const title: HTMLElement = fixture.nativeElement.querySelector('[data-testid="projected-title"]');
       const desc: HTMLElement = fixture.nativeElement.querySelector('[data-testid="projected-description"]');
       // The user's projected element keeps only its own classes.
-      expect(title.className).toContain('user-class');
-      expect(title.className).not.toContain('font-semibold');
-      expect(desc.className).toContain('user-class');
-      expect(desc.className).not.toContain('text-fg-muted');
+      expect(title.classList.contains('user-class')).toBe(true);
+      expect(title.classList.contains('font-semibold')).toBe(false);
+      expect(desc.classList.contains('user-class')).toBe(true);
+      expect(desc.classList.contains('text-fg-muted')).toBe(false);
       // The wrapping heading/paragraph carries the parent classes.
       const headingWrapper: HTMLElement = fixture.nativeElement.querySelector('tw-empty-state h3');
-      expect(headingWrapper.className).toContain('font-semibold');
+      expect(headingWrapper.classList.contains('font-semibold')).toBe(true);
       const paragraphWrapper: HTMLElement = fixture.nativeElement.querySelector('tw-empty-state p');
-      expect(paragraphWrapper.className).toContain('text-fg-muted');
+      expect(paragraphWrapper.classList.contains('text-fg-muted')).toBe(true);
     });
   });
 
@@ -420,16 +420,16 @@ describe('EmptyStateComponent', () => {
       fixture.componentInstance.variant.set('centered');
       fixture.detectChanges();
       const host: HTMLElement = fixture.nativeElement.querySelector('tw-empty-state');
-      expect(host.className).toContain('flex-col');
-      expect(host.className).toContain('text-center');
+      expect(host.classList.contains('flex-col')).toBe(true);
+      expect(host.classList.contains('text-center')).toBe(true);
     });
 
     it('should include flex-row / text-left for the inline variant', () => {
       fixture.componentInstance.variant.set('inline');
       fixture.detectChanges();
       const host: HTMLElement = fixture.nativeElement.querySelector('tw-empty-state');
-      expect(host.className).toContain('flex-row');
-      expect(host.className).toContain('text-left');
+      expect(host.classList.contains('flex-row')).toBe(true);
+      expect(host.classList.contains('text-left')).toBe(true);
     });
   });
 
@@ -443,10 +443,10 @@ describe('EmptyStateComponent', () => {
       fixture.detectChanges();
 
       const host: HTMLElement = fixture.nativeElement.querySelector('tw-empty-state');
-      expect(host.className).toContain('bg-purple-500');
+      expect(host.classList.contains('bg-purple-500')).toBe(true);
       // Internal layout classes survive — bg/rounded are overridden but flex/p-* are not in the same group.
-      expect(host.className).toContain('flex-col');
-      expect(host.className).toContain('p-4');
+      expect(host.classList.contains('flex-col')).toBe(true);
+      expect(host.classList.contains('p-4')).toBe(true);
     });
   });
 

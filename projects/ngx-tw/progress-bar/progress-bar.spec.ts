@@ -197,7 +197,7 @@ describe('ProgressBarComponent', () => {
       const fixture = TestBed.createComponent(ConfiguredHost);
       fixture.componentRef.setInput('value', null);
       fixture.detectChanges();
-      expect(getFill(fixture).className).toContain('animate-progress-bar-indeterminate');
+      expect(getFill(fixture).classList.contains('animate-progress-bar-indeterminate')).toBe(true);
     });
 
     it('switches from indeterminate to determinate when value becomes a number', () => {
@@ -211,7 +211,7 @@ describe('ProgressBarComponent', () => {
       el = getProgressEl(fixture);
       expect(el.hasAttribute('aria-busy')).toBe(false);
       expect(el.getAttribute('aria-valuenow')).toBe('42');
-      expect(getFill(fixture).className).not.toContain('animate-progress-bar-indeterminate');
+      expect(getFill(fixture).classList.contains('animate-progress-bar-indeterminate')).toBe(false);
     });
   });
 
@@ -293,7 +293,7 @@ describe('ProgressBarComponent', () => {
       fixture.componentRef.setInput('color', 'success');
       fixture.componentRef.setInput('value', 50);
       fixture.detectChanges();
-      expect(getFill(fixture).className).toContain('bg-success-500');
+      expect(getFill(fixture).classList.contains('bg-success-500')).toBe(true);
     });
   });
 

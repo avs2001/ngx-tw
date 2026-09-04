@@ -47,16 +47,16 @@ describe('CodeBlockComponent', () => {
 
   it('should render solid variant by default', () => {
     const host = fixture.nativeElement;
-    expect(host.className).toContain('bg-surface-sunken');
-    expect(host.className).toContain('border-border-strong');
+    expect(host.classList.contains('bg-surface-sunken')).toBe(true);
+    expect(host.classList.contains('border-border-strong')).toBe(true);
   });
 
   it('should render outline variant', () => {
     fixture.componentRef.setInput('variant', 'outline');
     fixture.detectChanges();
     const host = fixture.nativeElement;
-    expect(host.className).toContain('bg-transparent');
-    expect(host.className).not.toContain('bg-surface-sunken');
+    expect(host.classList.contains('bg-transparent')).toBe(true);
+    expect(host.classList.contains('bg-surface-sunken')).toBe(false);
   });
 
   // ===== Deprecated variant aliases =====
@@ -79,7 +79,7 @@ describe('CodeBlockComponent', () => {
     fixture.componentRef.setInput('variant', 'filled');
     fixture.detectChanges();
     expect(fixture.nativeElement.className).toBe(canonical);
-    expect(fixture.nativeElement.className).toContain('bg-surface-sunken');
+    expect(fixture.nativeElement.classList.contains('bg-surface-sunken')).toBe(true);
   });
 
   it('"outlined" resolves to exactly the same classes as "outline"', () => {
@@ -90,7 +90,7 @@ describe('CodeBlockComponent', () => {
     fixture.componentRef.setInput('variant', 'outlined');
     fixture.detectChanges();
     expect(fixture.nativeElement.className).toBe(canonical);
-    expect(fixture.nativeElement.className).toContain('bg-transparent');
+    expect(fixture.nativeElement.classList.contains('bg-transparent')).toBe(true);
   });
 
   // ===== Inputs =====
@@ -104,15 +104,15 @@ describe('CodeBlockComponent', () => {
 
   it('should apply whitespace-pre by default (no wrap)', () => {
     const pre = fixture.nativeElement.querySelector('pre');
-    expect(pre.className).toContain('whitespace-pre');
-    expect(pre.className).not.toContain('whitespace-pre-wrap');
+    expect(pre.classList.contains('whitespace-pre')).toBe(true);
+    expect(pre.classList.contains('whitespace-pre-wrap')).toBe(false);
   });
 
   it('should apply whitespace-pre-wrap when wrap is true', () => {
     fixture.componentRef.setInput('wrap', true);
     fixture.detectChanges();
     const pre = fixture.nativeElement.querySelector('pre');
-    expect(pre.className).toContain('whitespace-pre-wrap');
+    expect(pre.classList.contains('whitespace-pre-wrap')).toBe(true);
   });
 
   it('should not show language label when not set', () => {
@@ -202,7 +202,7 @@ describe('CodeBlockComponent', () => {
     button.click();
     fixture.detectChanges();
 
-    expect(button.className).toContain('text-success-500');
+    expect(button.classList.contains('text-success-500')).toBe(true);
   });
 
   it('should reset copied state after 2 seconds', () => {
@@ -211,11 +211,11 @@ describe('CodeBlockComponent', () => {
     const button = fixture.nativeElement.querySelector('button');
     button.click();
     fixture.detectChanges();
-    expect(button.className).toContain('text-success-500');
+    expect(button.classList.contains('text-success-500')).toBe(true);
 
     vi.advanceTimersByTime(2000);
     fixture.detectChanges();
-    expect(button.className).not.toContain('text-success-500');
+    expect(button.classList.contains('text-success-500')).toBe(false);
 
     vi.useRealTimers();
   });
@@ -344,10 +344,10 @@ describe('CodeBlockComponent', () => {
     hostFixture.detectChanges();
 
     const host = hostFixture.nativeElement.querySelector('tw-code-block');
-    expect(host.className).toContain('rounded-2xl');
-    expect(host.className).toContain('shadow-md');
-    expect(host.className).toContain('custom-block');
-    expect(host.className).toContain('bg-surface-sunken');
+    expect(host.classList.contains('rounded-2xl')).toBe(true);
+    expect(host.classList.contains('shadow-md')).toBe(true);
+    expect(host.classList.contains('custom-block')).toBe(true);
+    expect(host.classList.contains('bg-surface-sunken')).toBe(true);
   });
 
   // ===== Two-way bindable isCopied =====
@@ -374,7 +374,7 @@ describe('CodeBlockComponent', () => {
     fixture.componentInstance.isCopied.set(true);
     fixture.detectChanges();
     const button = fixture.nativeElement.querySelector('button');
-    expect(button.className).toContain('text-success-500');
+    expect(button.classList.contains('text-success-500')).toBe(true);
     expect(button.getAttribute('aria-label')).toBe('Copied');
   });
 
@@ -400,6 +400,6 @@ describe('CodeBlockComponent', () => {
     expect(projected!.textContent).toBe('app.ts');
 
     // The directive applies its host classes for typography alignment.
-    expect(projected!.className).toContain('inline-flex');
+    expect(projected!.classList.contains('inline-flex')).toBe(true);
   });
 });

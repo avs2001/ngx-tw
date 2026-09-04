@@ -169,7 +169,7 @@ describe('TextareaDirective', () => {
     });
 
     it('applies the default resize-y class (vertical)', () => {
-      expect(textareaEl(fixture).className).toContain('resize-y');
+      expect(textareaEl(fixture).classList.contains('resize-y')).toBe(true);
     });
   });
 
@@ -647,15 +647,15 @@ describe('TextareaDirective', () => {
       await fixture.whenStable();
 
       const el = textareaEl(fixture);
-      expect(el.className).toContain('border-0');
-      expect(el.className).toContain('p-0');
+      expect(el.classList.contains('border-0')).toBe(true);
+      expect(el.classList.contains('p-0')).toBe(true);
       expect(fixture.componentInstance.directive().controlType).toBe(
         'textarea',
       );
 
       // Form-field host carries the controlType class
       const formFieldEl = fixture.nativeElement.querySelector('tw-form-field');
-      expect(formFieldEl.className).toContain('tw-form-field-type-textarea');
+      expect(formFieldEl.classList.contains('tw-form-field-type-textarea')).toBe(true);
     });
   });
 

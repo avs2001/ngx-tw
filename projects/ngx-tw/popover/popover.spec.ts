@@ -422,7 +422,7 @@ describe('PopoverDirective', () => {
       const popover = getOverlayPopover();
       expect(popover).toBeTruthy();
       const panel = popover!.querySelector(':scope > div > div');
-      expect(panel?.className).not.toContain('border-t-2');
+      expect(panel?.classList.contains('border-t-2')).toBe(false);
     });
 
     it('should add accent border when color is set', () => {
@@ -438,8 +438,8 @@ describe('PopoverDirective', () => {
       const popover = getOverlayPopover();
       expect(popover).toBeTruthy();
       const panel = popover!.querySelector(':scope > div > div');
-      expect(panel?.className).toContain('border-t-2');
-      expect(panel?.className).toContain('border-t-warning-500');
+      expect(panel?.classList.contains('border-t-2')).toBe(true);
+      expect(panel?.classList.contains('border-t-warning-500')).toBe(true);
     });
   });
 

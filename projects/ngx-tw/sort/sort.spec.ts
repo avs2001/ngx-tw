@@ -471,7 +471,7 @@ describe('SortHeaderComponent', () => {
     container.click();
     f.detectChanges();
     const arrow = header.querySelector('[data-tw-sort-arrow]') as HTMLElement;
-    expect(arrow.className).toContain('text-success-600');
+    expect(arrow.classList.contains('text-success-600')).toBe(true);
   });
 
   it('arrow icon has rotate-180 class when direction is asc', () => {
@@ -488,7 +488,7 @@ describe('SortHeaderComponent', () => {
     const arrow = getHeader(fixture, 'name').querySelector(
       '[data-tw-sort-arrow]',
     ) as HTMLElement;
-    expect(arrow.className).toContain('opacity-0');
+    expect(arrow.classList.contains('opacity-0')).toBe(true);
   });
 
   it('renders arrow before label when arrowPosition="before"', async () => {
@@ -523,9 +523,9 @@ describe('SortHeaderComponent', () => {
     // padding is intentionally absent — the height is pinned to the control
     // scale (docs/vertical-rhythm.md) and `py-*` would fight it.
     const container = getContainer(getHeader(fixture, 'name'));
-    expect(container.className).toContain('px-3');
-    expect(container.className).toContain('h-9');
-    expect(container.className).not.toContain('py-');
+    expect(container.classList.contains('px-3')).toBe(true);
+    expect(container.classList.contains('h-9')).toBe(true);
+    expect(container.classList.contains('py-')).toBe(false);
   });
 
   it('throws when header is rendered without a parent twSort directive', async () => {
@@ -663,7 +663,7 @@ describe('SortHeaderComponent — interactive host', () => {
   });
 
   it('moves the focus ring onto the host, which is the element that takes focus', () => {
-    expect(button('name').className).toContain('focus-visible:outline-primary-500');
+    expect(button('name').classList.contains('focus-visible:outline-primary-500')).toBe(true);
   });
 
   it('describes the host via AriaDescriber so the description reaches the control', () => {

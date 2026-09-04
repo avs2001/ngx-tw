@@ -176,31 +176,31 @@ describe('StatComponent', () => {
 
     it('applies outline surface classes by default', () => {
       const stat = fixture.nativeElement.querySelector('tw-stat') as HTMLElement;
-      expect(stat.className).toContain('border');
-      expect(stat.className).toContain('bg-surface');
-      expect(stat.className).toContain('rounded-lg');
+      expect(stat.classList.contains('border')).toBe(true);
+      expect(stat.classList.contains('bg-surface')).toBe(true);
+      expect(stat.classList.contains('rounded-lg')).toBe(true);
     });
 
     it('applies elevated surface classes when variant="elevated"', () => {
       host.variant.set('elevated');
       fixture.detectChanges();
       const stat = fixture.nativeElement.querySelector('tw-stat') as HTMLElement;
-      expect(stat.className).toContain('shadow');
-      expect(stat.className).toContain('bg-surface-raised');
+      expect(stat.classList.contains('shadow')).toBe(true);
+      expect(stat.classList.contains('bg-surface-raised')).toBe(true);
     });
 
     it('applies solid surface classes when variant="solid"', () => {
       host.variant.set('solid');
       fixture.detectChanges();
       const stat = fixture.nativeElement.querySelector('tw-stat') as HTMLElement;
-      expect(stat.className).toContain('bg-surface-muted');
+      expect(stat.classList.contains('bg-surface-muted')).toBe(true);
     });
 
     it('applies ghost surface classes when variant="ghost"', () => {
       host.variant.set('ghost');
       fixture.detectChanges();
       const stat = fixture.nativeElement.querySelector('tw-stat') as HTMLElement;
-      expect(stat.className).toContain('bg-transparent');
+      expect(stat.classList.contains('bg-transparent')).toBe(true);
     });
 
     // ── Deprecated variant aliases ──
@@ -239,12 +239,12 @@ describe('StatComponent', () => {
       host.size.set('xs');
       fixture.detectChanges();
       let stat = fixture.nativeElement.querySelector('tw-stat') as HTMLElement;
-      expect(stat.className).toContain('p-2');
+      expect(stat.classList.contains('p-2')).toBe(true);
 
       host.size.set('xl');
       fixture.detectChanges();
       stat = fixture.nativeElement.querySelector('tw-stat') as HTMLElement;
-      expect(stat.className).toContain('p-8');
+      expect(stat.classList.contains('p-8')).toBe(true);
     });
 
     it('toggles aria-busy when loading is true', () => {
@@ -448,7 +448,7 @@ describe('StatDeltaComponent', () => {
       host.inverted.set(false);
       fixture.detectChanges();
       const delta = fixture.nativeElement.querySelector('tw-stat-delta') as HTMLElement;
-      expect(delta.className).toContain('bg-success-soft');
+      expect(delta.classList.contains('bg-success-soft')).toBe(true);
     });
 
     it('uses error colors for down + not inverted', () => {
@@ -456,7 +456,7 @@ describe('StatDeltaComponent', () => {
       host.inverted.set(false);
       fixture.detectChanges();
       const delta = fixture.nativeElement.querySelector('tw-stat-delta') as HTMLElement;
-      expect(delta.className).toContain('bg-error-soft');
+      expect(delta.classList.contains('bg-error-soft')).toBe(true);
     });
 
     it('flips colors when inverted is true (up → error)', () => {
@@ -464,7 +464,7 @@ describe('StatDeltaComponent', () => {
       host.inverted.set(true);
       fixture.detectChanges();
       const delta = fixture.nativeElement.querySelector('tw-stat-delta') as HTMLElement;
-      expect(delta.className).toContain('bg-error-soft');
+      expect(delta.classList.contains('bg-error-soft')).toBe(true);
     });
 
     it('flips colors when inverted is true (down → success)', () => {
@@ -472,7 +472,7 @@ describe('StatDeltaComponent', () => {
       host.inverted.set(true);
       fixture.detectChanges();
       const delta = fixture.nativeElement.querySelector('tw-stat-delta') as HTMLElement;
-      expect(delta.className).toContain('bg-success-soft');
+      expect(delta.classList.contains('bg-success-soft')).toBe(true);
     });
 
     it('uses surface tokens for neutral direction regardless of inverted', () => {
@@ -480,12 +480,12 @@ describe('StatDeltaComponent', () => {
       host.inverted.set(false);
       fixture.detectChanges();
       let delta = fixture.nativeElement.querySelector('tw-stat-delta') as HTMLElement;
-      expect(delta.className).toContain('bg-surface-muted');
+      expect(delta.classList.contains('bg-surface-muted')).toBe(true);
 
       host.inverted.set(true);
       fixture.detectChanges();
       delta = fixture.nativeElement.querySelector('tw-stat-delta') as HTMLElement;
-      expect(delta.className).toContain('bg-surface-muted');
+      expect(delta.classList.contains('bg-surface-muted')).toBe(true);
     });
 
     it('does NOT flip the ARIA verb when inverted (literal direction is preserved)', async () => {
@@ -514,8 +514,8 @@ describe('StatDeltaComponent', () => {
 
     it('applies badge chip classes by default', () => {
       const delta = fixture.nativeElement.querySelector('tw-stat-delta') as HTMLElement;
-      expect(delta.className).toContain('rounded-md');
-      expect(delta.className).toContain('px-2');
+      expect(delta.classList.contains('rounded-md')).toBe(true);
+      expect(delta.classList.contains('px-2')).toBe(true);
     });
 
     it('applies inline classes (no chip background) for variant="inline"', () => {
@@ -523,8 +523,8 @@ describe('StatDeltaComponent', () => {
       host.direction.set('up');
       fixture.detectChanges();
       const delta = fixture.nativeElement.querySelector('tw-stat-delta') as HTMLElement;
-      expect(delta.className).toContain('text-success-700');
-      expect(delta.className).not.toContain('bg-success-soft');
+      expect(delta.classList.contains('text-success-700')).toBe(true);
+      expect(delta.classList.contains('bg-success-soft')).toBe(false);
     });
 
     it('visually hides text and comparison for variant="icon-only" but keeps them in the aria-label', async () => {

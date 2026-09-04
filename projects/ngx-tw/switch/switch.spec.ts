@@ -229,7 +229,7 @@ describe('SwitchComponent', () => {
       const fixture = TestBed.createComponent(BasicHost);
       fixture.componentInstance.labelPosition.set('before');
       fixture.detectChanges();
-      expect(getSwitch(fixture).className).toContain('flex-row-reverse');
+      expect(getSwitch(fixture).classList.contains('flex-row-reverse')).toBe(true);
     });
   });
 

@@ -487,14 +487,14 @@ describe('SplitComponent (Phase 1 scaffold)', () => {
       const fixture = TestBed.createComponent(TwoPaneHost);
       fixture.detectChanges();
       const split = getSplit(fixture);
-      expect(split.className).toContain('flex-row');
+      expect(split.classList.contains('flex-row')).toBe(true);
     });
 
     it('applies flex-col layout class for vertical direction', () => {
       const fixture = TestBed.createComponent(SplitComponent);
       fixture.componentRef.setInput('direction', 'vertical');
       fixture.detectChanges();
-      expect(fixture.nativeElement.className).toContain('flex-col');
+      expect(fixture.nativeElement.classList.contains('flex-col')).toBe(true);
     });
 
     it('sets data-split-direction attribute', () => {

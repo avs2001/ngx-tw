@@ -130,9 +130,9 @@ describe('BadgeComponent', () => {
       fixture.detectChanges();
       const el = getBadge(fixture);
       expect(el).toBeTruthy();
-      expect(el.className).toContain('inline-flex');
-      expect(el.className).toContain('rounded-md');
-      expect(el.className).toContain('font-medium');
+      expect(el.classList.contains('inline-flex')).toBe(true);
+      expect(el.classList.contains('rounded-md')).toBe(true);
+      expect(el.classList.contains('font-medium')).toBe(true);
     });
 
     it('should render projected content', () => {
@@ -164,7 +164,7 @@ describe('BadgeComponent', () => {
       const fixture = TestBed.createComponent(StyledBadgeHost);
       fixture.componentRef.setInput('variant', 'outline');
       fixture.detectChanges();
-      expect(getBadge(fixture).className).toContain('border');
+      expect(getBadge(fixture).classList.contains('border')).toBe(true);
     });
   });
 
@@ -198,7 +198,7 @@ describe('BadgeComponent', () => {
     it('should apply rounded-md by default', () => {
       const fixture = TestBed.createComponent(PillBadgeHost);
       fixture.detectChanges();
-      expect(getBadge(fixture).className).toContain('rounded-md');
+      expect(getBadge(fixture).classList.contains('rounded-md')).toBe(true);
     });
 
     it('should apply rounded-full when pill is true', () => {
@@ -272,7 +272,7 @@ describe('BadgeComponent', () => {
         fixture.componentRef.setInput('size', size);
         fixture.detectChanges();
         const button = getBadge(fixture).querySelector('button')!;
-        expect(button.className).toContain(expected);
+        expect(button.classList.contains(expected)).toBe(true);
       });
     }
   });
@@ -390,8 +390,8 @@ describe('BadgeComponent', () => {
       const fixture = TestBed.createComponent(AvatarBadgeHost);
       fixture.detectChanges();
       const avatarWrapper = getBadge(fixture).querySelector('span:has(> tw-avatar)')!;
-      expect(avatarWrapper.className).toContain('rounded-full');
-      expect(avatarWrapper.className).toContain('overflow-hidden');
+      expect(avatarWrapper.classList.contains('rounded-full')).toBe(true);
+      expect(avatarWrapper.classList.contains('overflow-hidden')).toBe(true);
     });
 
     it('should reduce left padding when avatar is present', () => {
@@ -417,7 +417,7 @@ describe('BadgeComponent', () => {
       const badge = getBadge(fixture);
       expect(badge.querySelector('tw-avatar')).toBeTruthy();
       expect(badge.querySelector('button')).toBeTruthy();
-      expect(badge.className).toContain('rounded-full');
+      expect(badge.classList.contains('rounded-full')).toBe(true);
       expect(badge.textContent).toContain('John Doe');
     });
   });

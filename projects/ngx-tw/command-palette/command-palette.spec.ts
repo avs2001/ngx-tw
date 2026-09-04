@@ -1127,8 +1127,8 @@ describe('CommandPaletteComponent', () => {
       openPalette(fixture);
 
       const panel = getDialog()!;
-      expect(panel.className).toContain('custom-panel');
-      expect(panel.className).toContain('extra-shadow');
+      expect(panel.classList.contains('custom-panel')).toBe(true);
+      expect(panel.classList.contains('extra-shadow')).toBe(true);
     });
   });
 

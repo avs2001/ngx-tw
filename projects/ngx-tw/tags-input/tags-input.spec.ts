@@ -660,7 +660,7 @@ describe('TagsInputComponent', () => {
     it('renders inside a tw-form-field and strips its own border', () => {
       const fixture = mount(FormFieldHost);
       const host = fixture.nativeElement.querySelector('tw-tags-input') as HTMLElement;
-      expect(host.className).not.toContain('border-border');
+      expect(host.classList.contains('border-border')).toBe(false);
     });
   });
 
@@ -717,7 +717,7 @@ describe('TagsInputComponent', () => {
   describe('Focus indicator', () => {
     it('renders the canonical focus-visible outline on remove buttons', () => {
       const fixture = mountBare(['a']);
-      expect(removeButtons(fixture)[0].className).toContain('focus-visible:outline-2');
+      expect(removeButtons(fixture)[0].classList.contains('focus-visible:outline-2')).toBe(true);
     });
   });
 

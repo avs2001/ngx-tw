@@ -337,7 +337,7 @@ describe('FileUploadComponent — rendering', () => {
     const fixture = TestBed.createComponent(BasicHost);
     fixture.detectChanges();
     const input = getHiddenInput(fixture);
-    expect(input.className).toContain('sr-only');
+    expect(input.classList.contains('sr-only')).toBe(true);
     expect(input.type).toBe('file');
   });
 
@@ -435,7 +435,7 @@ describe('FileUploadComponent — inputs', () => {
     fixture.detectChanges();
     expect(getHost(fixture).getAttribute('aria-disabled')).toBe('true');
     const dz = getDropzone(fixture);
-    expect(dz.className).toContain('pointer-events-none');
+    expect(dz.classList.contains('pointer-events-none')).toBe(true);
     expect(getTriggerButton(fixture).disabled).toBe(true);
     expect(getHiddenInput(fixture).disabled).toBe(true);
   });
@@ -1034,7 +1034,7 @@ describe('FileUploadComponent — accessibility', () => {
     fixture.detectChanges();
     // The dropzone is no longer focusable, so the visible focus indicator must
     // live on the element that actually receives focus: the trigger <button>.
-    expect(getTriggerButton(fixture).className).toContain('focus-visible:outline-primary-500');
+    expect(getTriggerButton(fixture).classList.contains('focus-visible:outline-primary-500')).toBe(true);
   });
 
   it('renders remove buttons with aria-label "Remove {name}"', () => {
@@ -1087,7 +1087,7 @@ describe('FileUploadComponent — form-field integration', () => {
     const fixture = TestBed.createComponent(FormFieldHost);
     fixture.detectChanges();
     const ff = fixture.nativeElement.querySelector('tw-form-field') as HTMLElement;
-    expect(ff.className).toContain('tw-form-field-type-file-upload');
+    expect(ff.classList.contains('tw-form-field-type-file-upload')).toBe(true);
   });
 
   it("propagates form-field's setDescribedByIds to the host", () => {
@@ -1109,14 +1109,14 @@ describe('FileUploadComponent — state variants', () => {
     fixture.detectChanges();
     dispatchDragEvent(getDropzone(fixture), 'dragenter', [makeFile('a.txt', 10, 'text/plain')]);
     fixture.detectChanges();
-    expect(getDropzone(fixture).className).toContain('border-primary-500');
+    expect(getDropzone(fixture).classList.contains('border-primary-500')).toBe(true);
   });
 
   it("variant='soft': dropzone has surface-muted background", () => {
     const fixture = TestBed.createComponent(BasicHost);
     fixture.componentInstance.variant.set('soft');
     fixture.detectChanges();
-    expect(getDropzone(fixture).className).toContain('bg-surface-muted');
+    expect(getDropzone(fixture).classList.contains('bg-surface-muted')).toBe(true);
   });
 
   // Theme adaptation is owned by the slot tokens, exactly as `alert`,

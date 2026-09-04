@@ -97,7 +97,7 @@ describe('NumberStepperComponent', () => {
   it('renders a visible focus ring on each spinner button', async () => {
     const fixture = await create(StepperHost);
     for (const btn of buttons(fixture)) {
-      expect(btn.className).toContain('focus-visible:outline-primary-500');
+      expect(btn.classList.contains('focus-visible:outline-primary-500')).toBe(true);
     }
   });
 

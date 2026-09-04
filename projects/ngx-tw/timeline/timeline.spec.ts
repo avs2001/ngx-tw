@@ -298,14 +298,14 @@ describe('TimelineComponent', () => {
       let conns = connectorSpans(middle);
       expect(conns.length).toBe(1);
       expect(conns[0].className).toMatch(/(^|\s)bg-/);
-      expect(conns[0].className).not.toContain('border-dashed');
+      expect(conns[0].classList.contains('border-dashed')).toBe(false);
 
       fixture.componentRef.setInput('lineStyle', 'dashed');
       fixture.detectChanges();
       middle = items(fixture)[1];
       conns = connectorSpans(middle);
-      expect(conns[0].className).toContain('border-dashed');
-      expect(conns[0].className).toContain('border-l');
+      expect(conns[0].classList.contains('border-dashed')).toBe(true);
+      expect(conns[0].classList.contains('border-l')).toBe(true);
     });
   });
 
@@ -332,7 +332,7 @@ describe('TimelineComponent', () => {
         fixture.componentRef.setInput('size', size);
         fixture.detectChanges();
         const marker = markerOf(items(fixture)[0]);
-        expect(marker.className).toContain(dotSizeMap[size]);
+        expect(marker.classList.contains(dotSizeMap[size])).toBe(true);
       }
     });
 
@@ -410,30 +410,30 @@ describe('TimelineComponent', () => {
       fixture.componentRef.setInput('state', 'reached');
       fixture.detectChanges();
       let marker = markerOf(items(fixture)[0]);
-      expect(marker.className).toContain('bg-success-solid');
+      expect(marker.classList.contains('bg-success-solid')).toBe(true);
 
       // current + primary → primary-solid + primary-soft ring
       fixture.componentRef.setInput('color', 'primary');
       fixture.componentRef.setInput('state', 'current');
       fixture.detectChanges();
       marker = markerOf(items(fixture)[0]);
-      expect(marker.className).toContain('bg-primary-solid');
-      expect(marker.className).toContain('ring-primary-soft');
+      expect(marker.classList.contains('bg-primary-solid')).toBe(true);
+      expect(marker.classList.contains('ring-primary-soft')).toBe(true);
 
       // pending → neutral surface fill regardless of color
       fixture.componentRef.setInput('color', 'success');
       fixture.componentRef.setInput('state', 'pending');
       fixture.detectChanges();
       marker = markerOf(items(fixture)[0]);
-      expect(marker.className).toContain('bg-surface');
-      expect(marker.className).toContain('border-border');
+      expect(marker.classList.contains('bg-surface')).toBe(true);
+      expect(marker.classList.contains('border-border')).toBe(true);
 
       // error → error palette regardless of color input
       fixture.componentRef.setInput('color', 'success');
       fixture.componentRef.setInput('state', 'error');
       fixture.detectChanges();
       marker = markerOf(items(fixture)[0]);
-      expect(marker.className).toContain('bg-error-solid');
+      expect(marker.classList.contains('bg-error-solid')).toBe(true);
     });
 
     it('renders <time datetime="…"> for a Date timestamp', () => {
@@ -520,8 +520,8 @@ describe('TimelineComponent', () => {
       fixture.componentRef.setInput('projectMarker', true);
       fixture.detectChanges();
       const marker = markerOf(items(fixture)[0]);
-      expect(marker.className).toContain('bg-primary-soft');
-      expect(marker.className).not.toContain('bg-primary-solid');
+      expect(marker.classList.contains('bg-primary-soft')).toBe(true);
+      expect(marker.classList.contains('bg-primary-solid')).toBe(false);
     });
 
     it('warns and ignores marker slot when marker="dot"', () => {
@@ -663,7 +663,7 @@ describe('TimelineComponent', () => {
       // First span is the leading spacer — geometry only, no bg-* / border-* colour token.
       expect(conns[0].className).not.toMatch(/bg-\w+-border-strong|border-\w+-border-strong/);
       // Second span is the coloured trailing line.
-      expect(conns[1].className).toContain('bg-success-border-strong');
+      expect(conns[1].classList.contains('bg-success-border-strong')).toBe(true);
     });
 
     it('horizontal last item renders a coloured leading connector plus an invisible trailing spacer', () => {
@@ -678,7 +678,7 @@ describe('TimelineComponent', () => {
       const conns = connectorSpans(items(fixture)[2]);
       expect(conns.length).toBe(2);
       // First span: leading — coloured. Previous item was reached + success.
-      expect(conns[0].className).toContain('bg-success-border-strong');
+      expect(conns[0].classList.contains('bg-success-border-strong')).toBe(true);
       // Last span: trailing spacer — no colour token.
       expect(conns[1].className).not.toMatch(/bg-\w+-border-strong|border-\w+-border-strong/);
     });
@@ -699,7 +699,7 @@ describe('TimelineComponent', () => {
       fixture.detectChanges();
       const firstConns = connectorSpans(items(fixture)[0]);
       // First item only has trailing connector.
-      expect(firstConns[0].className).toContain('bg-success-border-strong');
+      expect(firstConns[0].classList.contains('bg-success-border-strong')).toBe(true);
     });
 
     it('trailing connector after a current item is neutral', () => {
@@ -710,8 +710,8 @@ describe('TimelineComponent', () => {
       ]);
       fixture.detectChanges();
       const firstConns = connectorSpans(items(fixture)[0]);
-      expect(firstConns[0].className).toContain('bg-border');
-      expect(firstConns[0].className).not.toContain('bg-primary-border-strong');
+      expect(firstConns[0].classList.contains('bg-border')).toBe(true);
+      expect(firstConns[0].classList.contains('bg-primary-border-strong')).toBe(false);
     });
 
     it('trailing connector after an error item carries the error token', () => {
@@ -722,7 +722,7 @@ describe('TimelineComponent', () => {
       ]);
       fixture.detectChanges();
       const firstConns = connectorSpans(items(fixture)[0]);
-      expect(firstConns[0].className).toContain('bg-error-border-strong');
+      expect(firstConns[0].classList.contains('bg-error-border-strong')).toBe(true);
     });
 
     it('dashed connectors use border-* utilities, not bg-*', () => {
@@ -734,9 +734,9 @@ describe('TimelineComponent', () => {
       ]);
       fixture.detectChanges();
       const conn = connectorSpans(items(fixture)[0])[0];
-      expect(conn.className).toContain('border-dashed');
-      expect(conn.className).toContain('border-success-border-strong');
-      expect(conn.className).not.toContain('bg-success-border-strong');
+      expect(conn.classList.contains('border-dashed')).toBe(true);
+      expect(conn.classList.contains('border-success-border-strong')).toBe(true);
+      expect(conn.classList.contains('bg-success-border-strong')).toBe(false);
     });
   });
 
@@ -800,9 +800,9 @@ describe('TimelineComponent', () => {
       fixture.componentRef.setInput('size', 'md');
       fixture.detectChanges();
       const first = items(fixture)[0];
-      expect(first.className).toContain('min-w-40');
-      expect(first.className).not.toContain('flex-1');
-      expect(first.className).not.toContain('basis-0');
+      expect(first.classList.contains('min-w-40')).toBe(true);
+      expect(first.classList.contains('flex-1')).toBe(false);
+      expect(first.classList.contains('basis-0')).toBe(false);
     });
 
     it('renders an inner scroll wrapper only in horizontal orientation', () => {
@@ -814,10 +814,10 @@ describe('TimelineComponent', () => {
       fixture.detectChanges();
       const vp = viewport(fixture);
       expect(vp).not.toBeNull();
-      expect(vp!.className).toContain('overflow-x-auto');
-      expect(vp!.className).toContain('tw-scrollbar-none');
-      expect(vp!.className).toContain('scroll-smooth');
-      expect(vp!.className).toContain('motion-reduce:scroll-auto');
+      expect(vp!.classList.contains('overflow-x-auto')).toBe(true);
+      expect(vp!.classList.contains('tw-scrollbar-none')).toBe(true);
+      expect(vp!.classList.contains('scroll-smooth')).toBe(true);
+      expect(vp!.classList.contains('motion-reduce:scroll-auto')).toBe(true);
     });
 
     it('renders prev/next chevron buttons in horizontal orientation', () => {
@@ -873,8 +873,8 @@ describe('TimelineComponent', () => {
       // (axe: scrollable-region-focusable).
       expect(vp.getAttribute('tabindex')).toBe('0');
       expect(vp.getAttribute('aria-label')).toBe('Timeline events');
-      expect(vp.className).toContain('focus-visible:outline-2');
-      expect(vp.className).toContain('focus-visible:outline-primary-500');
+      expect(vp.classList.contains('focus-visible:outline-2')).toBe(true);
+      expect(vp.classList.contains('focus-visible:outline-primary-500')).toBe(true);
     });
 
     it('localises the scroll-region name from TW_TIMELINE_SCROLL_LABELS', () => {
@@ -893,7 +893,7 @@ describe('TimelineComponent', () => {
       const btns = chevrons(fixture);
       expect(btns.length).toBe(2);
       for (const b of btns) {
-        expect(b.className).toContain('hidden');
+        expect(b.classList.contains('hidden')).toBe(true);
         expect(b.getAttribute('aria-hidden')).toBe('true');
       }
     });
@@ -906,8 +906,8 @@ describe('TimelineComponent', () => {
       expect(btns.length).toBe(2);
       for (const b of btns) {
         expect(b.getAttribute('aria-hidden')).toBeNull();
-        expect(b.className).not.toContain('hidden');
-        expect(b.className).not.toContain('invisible');
+        expect(b.classList.contains('hidden')).toBe(false);
+        expect(b.classList.contains('invisible')).toBe(false);
       }
       // Without scroll possible, both buttons are disabled.
       expect(btns[0].disabled).toBe(true);
@@ -1061,9 +1061,9 @@ describe('TimelineComponent', () => {
       const fixture = TestBed.createComponent(HorizontalScrollHost);
       fixture.detectChanges();
       for (const b of chevrons(fixture)) {
-        expect(b.className).toContain('focus-visible:outline-2');
-        expect(b.className).toContain('focus-visible:outline-offset-2');
-        expect(b.className).toContain('focus-visible:outline-primary-500');
+        expect(b.classList.contains('focus-visible:outline-2')).toBe(true);
+        expect(b.classList.contains('focus-visible:outline-offset-2')).toBe(true);
+        expect(b.classList.contains('focus-visible:outline-primary-500')).toBe(true);
       }
     });
   });
@@ -1083,12 +1083,12 @@ describe('TimelineComponent', () => {
       const vp = fixture.nativeElement.querySelector(
         'tw-timeline div.overflow-x-auto',
       ) as HTMLElement;
-      expect(vp.className).toContain('grid');
-      expect(vp.className).toContain('grid-flow-col');
-      expect(vp.className).toContain('auto-cols-max');
+      expect(vp.classList.contains('grid')).toBe(true);
+      expect(vp.classList.contains('grid-flow-col')).toBe(true);
+      expect(vp.classList.contains('auto-cols-max')).toBe(true);
       expect(vp.className).toMatch(/\[grid-template-rows:minmax\(0,1fr\)_auto\]/);
       // The old flex layout is gone:
-      expect(vp.className).not.toContain('flex-row');
+      expect(vp.classList.contains('flex-row')).toBe(false);
     });
 
     it('horizontal items participate as subgrid rows (row-span-2 + items-center)', () => {
@@ -1099,9 +1099,9 @@ describe('TimelineComponent', () => {
       const itemEls = items(fixture);
       expect(itemEls.length).toBeGreaterThan(0);
       for (const el of itemEls) {
-        expect(el.className).toContain('grid');
-        expect(el.className).toContain('grid-rows-subgrid');
-        expect(el.className).toContain('row-span-2');
+        expect(el.classList.contains('grid')).toBe(true);
+        expect(el.classList.contains('grid-rows-subgrid')).toBe(true);
+        expect(el.classList.contains('row-span-2')).toBe(true);
         // Flex-order classes are no longer emitted in horizontal:
         expect(el.className).not.toMatch(/\border-1\b/);
         expect(el.className).not.toMatch(/\border-2\b/);
@@ -1118,9 +1118,9 @@ describe('TimelineComponent', () => {
       const markerSideEl = firstItem.children[0] as HTMLElement;
       const bodyEl = firstItem.children[1] as HTMLElement;
 
-      expect(bodyEl.className).toContain('row-start-1');
-      expect(bodyEl.className).toContain('self-end');
-      expect(markerSideEl.className).toContain('row-start-2');
+      expect(bodyEl.classList.contains('row-start-1')).toBe(true);
+      expect(bodyEl.classList.contains('self-end')).toBe(true);
+      expect(markerSideEl.classList.contains('row-start-2')).toBe(true);
     });
 
     it('vertical orientation does NOT carry the subgrid classes (regression guard)', () => {
@@ -1130,8 +1130,8 @@ describe('TimelineComponent', () => {
 
       const itemEls = items(fixture);
       for (const el of itemEls) {
-        expect(el.className).not.toContain('grid-rows-subgrid');
-        expect(el.className).not.toContain('row-span-2');
+        expect(el.classList.contains('grid-rows-subgrid')).toBe(false);
+        expect(el.classList.contains('row-span-2')).toBe(false);
       }
     });
 
@@ -1161,7 +1161,7 @@ describe('TimelineComponent', () => {
         fixture.componentRef.setInput('size', size);
         fixture.detectChanges();
         const marker = markerOf(items(fixture)[0]);
-        expect(marker.className).toContain(verticalDotNudge[size]);
+        expect(marker.classList.contains(verticalDotNudge[size])).toBe(true);
       }
     });
   });

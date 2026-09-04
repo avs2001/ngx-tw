@@ -39,9 +39,9 @@ describe('BadgeDotDirective', () => {
       fixture.detectChanges();
       const el = getDot(fixture);
       expect(el).toBeTruthy();
-      expect(el.className).toContain('inline-block');
-      expect(el.className).toContain('rounded-full');
-      expect(el.className).toContain('shrink-0');
+      expect(el.classList.contains('inline-block')).toBe(true);
+      expect(el.classList.contains('rounded-full')).toBe(true);
+      expect(el.classList.contains('shrink-0')).toBe(true);
     });
 
     it('should not render any child content', () => {

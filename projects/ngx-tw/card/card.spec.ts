@@ -102,14 +102,14 @@ describe('CardComponent', () => {
 
     it('should apply elevated variant classes by default', () => {
       const card: HTMLElement = fixture.nativeElement.querySelector('tw-card');
-      expect(card.className).toContain('rounded-lg');
-      expect(card.className).toContain('shadow');
+      expect(card.classList.contains('rounded-lg')).toBe(true);
+      expect(card.classList.contains('shadow')).toBe(true);
     });
 
     it('should apply hover:shadow-md on elevated variant', () => {
       const card: HTMLElement = fixture.nativeElement.querySelector('tw-card');
-      expect(card.className).toContain('hover:shadow-md');
-      expect(card.className).toContain('transition-shadow');
+      expect(card.classList.contains('hover:shadow-md')).toBe(true);
+      expect(card.classList.contains('transition-shadow')).toBe(true);
     });
   });
 
@@ -126,28 +126,28 @@ describe('CardComponent', () => {
 
     it('should render elevated variant', () => {
       const card: HTMLElement = fixture.nativeElement.querySelector('tw-card');
-      expect(card.className).toContain('shadow');
-      expect(card.className).toContain('hover:shadow-md');
-      expect(card.className).toContain('bg-surface-raised');
+      expect(card.classList.contains('shadow')).toBe(true);
+      expect(card.classList.contains('hover:shadow-md')).toBe(true);
+      expect(card.classList.contains('bg-surface-raised')).toBe(true);
     });
 
     it('should render outline variant', () => {
       fixture.componentInstance.variant.set('outline');
       fixture.detectChanges();
       const card: HTMLElement = fixture.nativeElement.querySelector('tw-card');
-      expect(card.className).toContain('border');
-      expect(card.className).toContain('bg-surface');
-      expect(card.className).not.toContain('shadow');
-      expect(card.className).not.toContain('hover:shadow-md');
+      expect(card.classList.contains('border')).toBe(true);
+      expect(card.classList.contains('bg-surface')).toBe(true);
+      expect(card.classList.contains('shadow')).toBe(false);
+      expect(card.classList.contains('hover:shadow-md')).toBe(false);
     });
 
     it('should render ghost variant', () => {
       fixture.componentInstance.variant.set('ghost');
       fixture.detectChanges();
       const card: HTMLElement = fixture.nativeElement.querySelector('tw-card');
-      expect(card.className).toContain('bg-transparent');
-      expect(card.className).not.toContain('shadow');
-      expect(card.className).not.toContain('hover:shadow-md');
+      expect(card.classList.contains('bg-transparent')).toBe(true);
+      expect(card.classList.contains('shadow')).toBe(false);
+      expect(card.classList.contains('hover:shadow-md')).toBe(false);
     });
   });
 
@@ -178,11 +178,11 @@ describe('CardComponent', () => {
         fixture.componentInstance.color.set(color);
         fixture.detectChanges();
         const card: HTMLElement = fixture.nativeElement.querySelector('tw-card');
-        expect(card.className).toContain(`border-${color}-border`);
+        expect(card.classList.contains(`border-${color}-border`)).toBe(true);
 
         for (const otherColor of TINTABLE_COLORS) {
           if (otherColor === color) continue;
-          expect(card.className).not.toContain(`border-${otherColor}-border`);
+          expect(card.classList.contains(`border-${otherColor}-border`)).toBe(false);
         }
       });
     }
@@ -193,7 +193,7 @@ describe('CardComponent', () => {
       fixture.detectChanges();
       const card: HTMLElement = fixture.nativeElement.querySelector('tw-card');
       for (const color of TINTABLE_COLORS) {
-        expect(card.className).not.toContain(`border-${color}-border`);
+        expect(card.classList.contains(`border-${color}-border`)).toBe(false);
       }
     });
 
@@ -202,7 +202,7 @@ describe('CardComponent', () => {
       fixture.componentInstance.color.set('error');
       fixture.detectChanges();
       const card: HTMLElement = fixture.nativeElement.querySelector('tw-card');
-      expect(card.className).not.toContain('border-error-border');
+      expect(card.classList.contains('border-error-border')).toBe(false);
     });
 
     it('should not apply color border on ghost variant', () => {
@@ -210,7 +210,7 @@ describe('CardComponent', () => {
       fixture.componentInstance.color.set('primary');
       fixture.detectChanges();
       const card: HTMLElement = fixture.nativeElement.querySelector('tw-card');
-      expect(card.className).not.toContain('border-primary-border');
+      expect(card.classList.contains('border-primary-border')).toBe(false);
     });
   });
 
@@ -228,7 +228,7 @@ describe('CardComponent', () => {
     it('should apply md padding by default', () => {
       const body: HTMLElement =
         fixture.nativeElement.querySelector('[twCardBody]');
-      expect(body.className).toContain('p-4');
+      expect(body.classList.contains('p-4')).toBe(true);
     });
 
     it('should apply xs padding', () => {
@@ -236,7 +236,7 @@ describe('CardComponent', () => {
       fixture.detectChanges();
       const body: HTMLElement =
         fixture.nativeElement.querySelector('[twCardBody]');
-      expect(body.className).toContain('p-2');
+      expect(body.classList.contains('p-2')).toBe(true);
     });
 
     it('should apply xl padding', () => {
@@ -244,7 +244,7 @@ describe('CardComponent', () => {
       fixture.detectChanges();
       const body: HTMLElement =
         fixture.nativeElement.querySelector('[twCardBody]');
-      expect(body.className).toContain('p-8');
+      expect(body.classList.contains('p-8')).toBe(true);
     });
 
     it('should apply size to all sections', () => {
@@ -256,9 +256,9 @@ describe('CardComponent', () => {
         fixture.nativeElement.querySelector('[twCardBody]');
       const footer: HTMLElement =
         fixture.nativeElement.querySelector('[twCardFooter]');
-      expect(header.className).toContain('p-6');
-      expect(body.className).toContain('p-6');
-      expect(footer.className).toContain('p-6');
+      expect(header.classList.contains('p-6')).toBe(true);
+      expect(body.classList.contains('p-6')).toBe(true);
+      expect(footer.classList.contains('p-6')).toBe(true);
     });
   });
 
@@ -320,8 +320,8 @@ describe('CardComponent', () => {
     it('should apply media base classes', () => {
       const media: HTMLElement =
         fixture.nativeElement.querySelector('[twCardMedia]');
-      expect(media.className).toContain('w-full');
-      expect(media.className).toContain('overflow-hidden');
+      expect(media.classList.contains('w-full')).toBe(true);
+      expect(media.classList.contains('overflow-hidden')).toBe(true);
     });
 
     const PADDING_UTILITY = /(?:^|\s)p-\d+(?:\.\d+)?(?:\s|$)/;
@@ -348,7 +348,7 @@ describe('CardComponent', () => {
 
       const header: HTMLElement =
         fixture.nativeElement.querySelector('[twCardHeader]');
-      expect(header.className).toContain('border-b');
+      expect(header.classList.contains('border-b')).toBe(true);
     });
 
     it('should apply border-t on footer', async () => {
@@ -360,7 +360,7 @@ describe('CardComponent', () => {
 
       const footer: HTMLElement =
         fixture.nativeElement.querySelector('[twCardFooter]');
-      expect(footer.className).toContain('border-t');
+      expect(footer.classList.contains('border-t')).toBe(true);
     });
   });
 
@@ -386,10 +386,10 @@ describe('CardComponent', () => {
       fixture.detectChanges();
 
       const card: HTMLElement = fixture.nativeElement.querySelector('tw-card');
-      expect(card.className).toContain('rounded-2xl');
-      expect(card.className).toContain('shadow-md');
-      expect(card.className).toContain('custom-card');
-      expect(card.className).toContain('bg-surface-raised');
+      expect(card.classList.contains('rounded-2xl')).toBe(true);
+      expect(card.classList.contains('shadow-md')).toBe(true);
+      expect(card.classList.contains('custom-card')).toBe(true);
+      expect(card.classList.contains('bg-surface-raised')).toBe(true);
     });
 
     it('should resolve internal border-color conflicts via twMerge on outline+color', async () => {

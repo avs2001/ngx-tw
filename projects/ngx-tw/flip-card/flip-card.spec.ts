@@ -147,8 +147,8 @@ describe('FlipCardComponent', () => {
       const fixture = TestBed.createComponent(TwoSidedHost);
       await flushBack(fixture);
       const face = faces(fixture)[0];
-      expect(face.className).toContain('bg-surface');
-      expect(face.className).toContain('border');
+      expect(face.classList.contains('bg-surface')).toBe(true);
+      expect(face.classList.contains('border')).toBe(true);
     });
 
     it('applies elevated variant classes', async () => {
@@ -158,8 +158,8 @@ describe('FlipCardComponent', () => {
       fixture.componentInstance.variant.set('elevated');
       await flushBack(fixture);
       const face = faces(fixture)[0];
-      expect(face.className).toContain('bg-surface-raised');
-      expect(face.className).toContain('shadow');
+      expect(face.classList.contains('bg-surface-raised')).toBe(true);
+      expect(face.classList.contains('shadow')).toBe(true);
     });
 
     it('applies ghost variant classes', async () => {
@@ -169,7 +169,7 @@ describe('FlipCardComponent', () => {
       fixture.componentInstance.variant.set('ghost');
       await flushBack(fixture);
       const face = faces(fixture)[0];
-      expect(face.className).toContain('bg-transparent');
+      expect(face.classList.contains('bg-transparent')).toBe(true);
     });
 
     // ── Deprecated variant aliases ──
@@ -197,8 +197,8 @@ describe('FlipCardComponent', () => {
       fixture.detectChanges();
       expect(faces(fixture)[0].className).toBe(canonicalFace);
       expect(host(fixture).className).toBe(canonicalRoot);
-      expect(faces(fixture)[0].className).toContain('bg-surface');
-      expect(faces(fixture)[0].className).toContain('border-border');
+      expect(faces(fixture)[0].classList.contains('bg-surface')).toBe(true);
+      expect(faces(fixture)[0].classList.contains('border-border')).toBe(true);
     });
 
     it('switches axis classes when direction changes', async () => {
@@ -209,11 +209,11 @@ describe('FlipCardComponent', () => {
       const inner = fixture.nativeElement.querySelector(
         'tw-flip-card > div',
       ) as HTMLElement;
-      expect(inner.className).toContain('tw-flip-axis-y');
+      expect(inner.classList.contains('tw-flip-axis-y')).toBe(true);
 
       fixture.componentInstance.direction.set('vertical');
       fixture.detectChanges();
-      expect(inner.className).toContain('tw-flip-axis-x');
+      expect(inner.classList.contains('tw-flip-axis-x')).toBe(true);
     });
 
     // `duration-300` is deliberately off the codified transition scale — see
@@ -228,7 +228,7 @@ describe('FlipCardComponent', () => {
       const inner = fixture.nativeElement.querySelector(
         'tw-flip-card > div',
       ) as HTMLElement;
-      expect(inner.className).toContain('duration-300');
+      expect(inner.classList.contains('duration-300')).toBe(true);
       expect(inner.className).not.toMatch(/duration-\[/);
     });
   });
@@ -248,15 +248,15 @@ describe('FlipCardComponent', () => {
       const inner = fixture.nativeElement.querySelector(
         'tw-flip-card > div',
       ) as HTMLElement;
-      expect(inner.className).toContain('tw-flip-rotated');
+      expect(inner.classList.contains('tw-flip-rotated')).toBe(true);
     });
 
     it('applies disabled styling and removes tabindex', () => {
       fixture.componentInstance.disabled.set(true);
       fixture.detectChanges();
       const el = host(fixture);
-      expect(el.className).toContain('opacity-50');
-      expect(el.className).toContain('cursor-not-allowed');
+      expect(el.classList.contains('opacity-50')).toBe(true);
+      expect(el.classList.contains('cursor-not-allowed')).toBe(true);
       expect(el.getAttribute('tabindex')).toBeNull();
       expect(el.getAttribute('aria-disabled')).toBe('true');
     });
@@ -518,7 +518,7 @@ describe('FlipCardComponent', () => {
       const fixture = TestBed.createComponent(FrontOnlyHost);
       await flushBack(fixture);
       const back = faces(fixture)[1];
-      expect(back.className).toContain('hidden');
+      expect(back.classList.contains('hidden')).toBe(true);
     });
 
     it('reacts when back content is dynamically projected later', async () => {

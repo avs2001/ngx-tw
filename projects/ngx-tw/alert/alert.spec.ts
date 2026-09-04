@@ -113,9 +113,9 @@ describe('AlertComponent', () => {
 
     it('should apply soft info classes by default', () => {
       const alert: HTMLElement = fixture.nativeElement.querySelector('tw-alert');
-      expect(alert.className).toContain('rounded-lg');
-      expect(alert.className).toContain('p-4');
-      expect(alert.className).toContain('bg-info-soft');
+      expect(alert.classList.contains('rounded-lg')).toBe(true);
+      expect(alert.classList.contains('p-4')).toBe(true);
+      expect(alert.classList.contains('bg-info-soft')).toBe(true);
     });
 
     it('should not render dismiss button by default', () => {
@@ -137,23 +137,23 @@ describe('AlertComponent', () => {
 
     it('should render soft variant', () => {
       const alert: HTMLElement = fixture.nativeElement.querySelector('tw-alert');
-      expect(alert.className).toContain('bg-info-soft');
+      expect(alert.classList.contains('bg-info-soft')).toBe(true);
     });
 
     it('should render outline variant', () => {
       fixture.componentInstance.variant.set('outline');
       fixture.detectChanges();
       const alert: HTMLElement = fixture.nativeElement.querySelector('tw-alert');
-      expect(alert.className).toContain('border');
-      expect(alert.className).toContain('border-info-border');
+      expect(alert.classList.contains('border')).toBe(true);
+      expect(alert.classList.contains('border-info-border')).toBe(true);
     });
 
     it('should render solid variant with the solid-fg slot token', () => {
       fixture.componentInstance.variant.set('solid');
       fixture.detectChanges();
       const alert: HTMLElement = fixture.nativeElement.querySelector('tw-alert');
-      expect(alert.className).toContain('bg-info-solid');
-      expect(alert.className).toContain('text-info-solid-fg');
+      expect(alert.classList.contains('bg-info-solid')).toBe(true);
+      expect(alert.classList.contains('text-info-solid-fg')).toBe(true);
       // No raw shade picks — slot tokens own the pairing.
       expect(alert.className).not.toMatch(/bg-info-\d/);
       expect(alert.className).not.toMatch(/text-on-/);
@@ -183,23 +183,23 @@ describe('AlertComponent', () => {
       fixture.componentInstance.color.set('error');
       fixture.detectChanges();
       const alert: HTMLElement = fixture.nativeElement.querySelector('tw-alert');
-      expect(alert.className).toContain('bg-error-soft');
-      expect(alert.className).toContain('text-error-soft-fg-muted');
+      expect(alert.classList.contains('bg-error-soft')).toBe(true);
+      expect(alert.classList.contains('text-error-soft-fg-muted')).toBe(true);
     });
 
     it('should apply success soft slot bg', () => {
       fixture.componentInstance.color.set('success');
       fixture.detectChanges();
       const alert: HTMLElement = fixture.nativeElement.querySelector('tw-alert');
-      expect(alert.className).toContain('bg-success-soft');
+      expect(alert.classList.contains('bg-success-soft')).toBe(true);
     });
 
     it('should apply neutral slot tokens (which alias surface/fg)', () => {
       fixture.componentInstance.color.set('neutral');
       fixture.detectChanges();
       const alert: HTMLElement = fixture.nativeElement.querySelector('tw-alert');
-      expect(alert.className).toContain('bg-neutral-soft');
-      expect(alert.className).toContain('text-neutral-soft-fg-muted');
+      expect(alert.classList.contains('bg-neutral-soft')).toBe(true);
+      expect(alert.classList.contains('text-neutral-soft-fg-muted')).toBe(true);
     });
 
     it('should apply warning solid variant with slot tokens', () => {
@@ -207,8 +207,8 @@ describe('AlertComponent', () => {
       fixture.componentInstance.color.set('warning');
       fixture.detectChanges();
       const alert: HTMLElement = fixture.nativeElement.querySelector('tw-alert');
-      expect(alert.className).toContain('bg-warning-solid');
-      expect(alert.className).toContain('text-warning-solid-fg');
+      expect(alert.classList.contains('bg-warning-solid')).toBe(true);
+      expect(alert.classList.contains('text-warning-solid-fg')).toBe(true);
     });
 
     it('should apply success solid variant with slot tokens', () => {
@@ -216,8 +216,8 @@ describe('AlertComponent', () => {
       fixture.componentInstance.color.set('success');
       fixture.detectChanges();
       const alert: HTMLElement = fixture.nativeElement.querySelector('tw-alert');
-      expect(alert.className).toContain('bg-success-solid');
-      expect(alert.className).toContain('text-success-solid-fg');
+      expect(alert.classList.contains('bg-success-solid')).toBe(true);
+      expect(alert.classList.contains('text-success-solid-fg')).toBe(true);
     });
 
     it('should render all color values without errors', () => {
@@ -263,13 +263,13 @@ describe('AlertComponent', () => {
       fixture.componentInstance.color.set('info');
       fixture.detectChanges();
       const alert: HTMLElement = fixture.nativeElement.querySelector('tw-alert');
-      expect(alert.className).toContain('bg-info-soft');
-      expect(alert.className).toContain('text-info-soft-fg-muted');
+      expect(alert.classList.contains('bg-info-soft')).toBe(true);
+      expect(alert.classList.contains('text-info-soft-fg-muted')).toBe(true);
       // Title and content children carry the title-strength and body-muted slots.
       const title = fixture.nativeElement.querySelector('[twAlertTitle]');
-      expect(title.className).toContain('text-info-soft-fg');
+      expect(title.classList.contains('text-info-soft-fg')).toBe(true);
       const content = fixture.nativeElement.querySelector('[twAlertContent]');
-      expect(content.className).toContain('text-info-soft-fg-muted');
+      expect(content.classList.contains('text-info-soft-fg-muted')).toBe(true);
     });
 
     it('should consume only slot tokens for the outline error path', () => {
@@ -277,8 +277,8 @@ describe('AlertComponent', () => {
       fixture.componentInstance.color.set('error');
       fixture.detectChanges();
       const alert: HTMLElement = fixture.nativeElement.querySelector('tw-alert');
-      expect(alert.className).toContain('border-error-border');
-      expect(alert.className).toContain('text-error-soft-fg-muted');
+      expect(alert.classList.contains('border-error-border')).toBe(true);
+      expect(alert.classList.contains('text-error-soft-fg-muted')).toBe(true);
     });
   });
 
@@ -300,12 +300,12 @@ describe('AlertComponent', () => {
 
     it('should size the dismiss button to size-6 (square-interactive xs)', () => {
       const dismiss: HTMLButtonElement = fixture.nativeElement.querySelector('button[aria-label="Dismiss"]');
-      expect(dismiss.className).toContain('size-6');
+      expect(dismiss.classList.contains('size-6')).toBe(true);
     });
 
     it('should add right padding when dismissible', () => {
       const alert: HTMLElement = fixture.nativeElement.querySelector('tw-alert');
-      expect(alert.className).toContain('pr-10');
+      expect(alert.classList.contains('pr-10')).toBe(true);
     });
 
     it('should emit dismissed when dismiss button is clicked', () => {
@@ -406,13 +406,13 @@ describe('AlertComponent', () => {
 
     it('should apply title slot classes', () => {
       const title: HTMLElement = fixture.nativeElement.querySelector('[twAlertTitle]');
-      expect(title.className).toContain('font-semibold');
+      expect(title.classList.contains('font-semibold')).toBe(true);
     });
 
     it('should apply actions slot classes', () => {
       const actions: HTMLElement = fixture.nativeElement.querySelector('[twAlertActions]');
-      expect(actions.className).toContain('flex');
-      expect(actions.className).toContain('gap-2');
+      expect(actions.classList.contains('flex')).toBe(true);
+      expect(actions.classList.contains('gap-2')).toBe(true);
     });
   });
 
@@ -501,8 +501,8 @@ describe('AlertComponent', () => {
       fixture.detectChanges();
 
       const dismiss: HTMLButtonElement = fixture.nativeElement.querySelector('button[aria-label="Dismiss"]');
-      expect(dismiss.className).toContain('focus-visible:outline-2');
-      expect(dismiss.className).toContain('focus-visible:outline-primary-500');
+      expect(dismiss.classList.contains('focus-visible:outline-2')).toBe(true);
+      expect(dismiss.classList.contains('focus-visible:outline-primary-500')).toBe(true);
     });
   });
 
@@ -515,8 +515,8 @@ describe('AlertComponent', () => {
       fixture.detectChanges();
 
       const alert: HTMLElement = fixture.nativeElement.querySelector('tw-alert');
-      expect(alert.className).toContain('bg-purple-500');
-      expect(alert.className).toContain('rounded-none');
+      expect(alert.classList.contains('bg-purple-500')).toBe(true);
+      expect(alert.classList.contains('rounded-none')).toBe(true);
     });
   });
 });

@@ -97,7 +97,7 @@ describe('SkeletonComponent', () => {
       const fixture = TestBed.createComponent(ConfiguredSkeletonHost);
       fixture.componentRef.setInput('shape', 'rectangle');
       fixture.detectChanges();
-      expect(getSkeleton(fixture).className).toContain('rounded-md');
+      expect(getSkeleton(fixture).classList.contains('rounded-md')).toBe(true);
     });
 
     it('renders circle shape with rounded-full and aspect-square', () => {
@@ -115,7 +115,7 @@ describe('SkeletonComponent', () => {
       const fixture = TestBed.createComponent(ConfiguredSkeletonHost);
       fixture.componentRef.setInput('animation', 'pulse');
       fixture.detectChanges();
-      expect(getSkeleton(fixture).className).toContain('skeleton-pulse');
+      expect(getSkeleton(fixture).classList.contains('skeleton-pulse')).toBe(true);
     });
 
     it('applies skeleton-wave for animation="wave"', () => {
@@ -176,7 +176,7 @@ describe('SkeletonComponent', () => {
       fixture.componentRef.setInput('lines', 1);
       fixture.detectChanges();
       expect(getRows(fixture).length).toBe(0);
-      expect(getSkeleton(fixture).className).toContain('skeleton-pulse');
+      expect(getSkeleton(fixture).classList.contains('skeleton-pulse')).toBe(true);
     });
 
     it('renders N row spans when lines=3 and shape="text"', () => {
@@ -207,9 +207,9 @@ describe('SkeletonComponent', () => {
       fixture.componentRef.setInput('lines', 3);
       fixture.detectChanges();
       const rows = getRows(fixture);
-      expect(rows[0].className).not.toContain('w-3/5');
-      expect(rows[1].className).not.toContain('w-3/5');
-      expect(rows[2].className).toContain('w-3/5');
+      expect(rows[0].classList.contains('w-3/5')).toBe(false);
+      expect(rows[1].classList.contains('w-3/5')).toBe(false);
+      expect(rows[2].classList.contains('w-3/5')).toBe(true);
     });
 
     it('applies the animation class to each row', () => {
@@ -220,7 +220,7 @@ describe('SkeletonComponent', () => {
       fixture.detectChanges();
       const rows = getRows(fixture);
       for (const row of rows) {
-        expect(row.className).toContain('skeleton-wave');
+        expect(row.classList.contains('skeleton-wave')).toBe(true);
       }
     });
 
@@ -230,7 +230,7 @@ describe('SkeletonComponent', () => {
       fixture.componentRef.setInput('lines', 4);
       fixture.detectChanges();
       expect(getRows(fixture).length).toBe(0);
-      expect(getSkeleton(fixture).className).toContain('rounded-md');
+      expect(getSkeleton(fixture).classList.contains('rounded-md')).toBe(true);
     });
 
     it('ignores lines when shape="circle"', () => {
@@ -239,7 +239,7 @@ describe('SkeletonComponent', () => {
       fixture.componentRef.setInput('lines', 4);
       fixture.detectChanges();
       expect(getRows(fixture).length).toBe(0);
-      expect(getSkeleton(fixture).className).toContain('rounded-full');
+      expect(getSkeleton(fixture).classList.contains('rounded-full')).toBe(true);
     });
 
     it('applies width to non-last rows in multi-line mode', () => {

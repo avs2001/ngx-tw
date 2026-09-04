@@ -177,8 +177,8 @@ describe('CollapsibleComponent', () => {
       const fixture = createFixture(StandaloneHost);
       const root = fixture.nativeElement.querySelector('tw-collapsible');
       // Default variant adds `border-b border-border`
-      expect(root.className).toContain('border-b');
-      expect(root.className).toContain('border-border');
+      expect(root.classList.contains('border-b')).toBe(true);
+      expect(root.classList.contains('border-border')).toBe(true);
     });
 
     it('should merge a partial display config with defaults', () => {
@@ -188,7 +188,7 @@ describe('CollapsibleComponent', () => {
       fixture.detectChanges();
 
       const root = fixture.nativeElement.querySelector('tw-collapsible');
-      expect(root.className).toContain('border');
+      expect(root.classList.contains('border')).toBe(true);
       // Default size `md` -> trigger has `px-4` and the `min-h-9` height floor
       const trigger = fixture.nativeElement.querySelector('[twcollapsibletrigger]');
       const classes = trigger.className.split(/\s+/);
@@ -239,7 +239,7 @@ describe('CollapsibleComponent', () => {
         fixture.detectChanges();
 
         const root = fixture.nativeElement.querySelector('tw-collapsible');
-        expect(root.className).toContain(`border-${color}-border`);
+        expect(root.classList.contains(`border-${color}-border`)).toBe(true);
       });
     }
 
@@ -445,9 +445,9 @@ describe('CollapsibleComponent', () => {
       const fixture = createFixture(StandaloneHost);
       const trigger = fixture.nativeElement.querySelector('[twcollapsibletrigger]');
 
-      expect(trigger.className).toContain('focus-visible:outline-2');
-      expect(trigger.className).toContain('focus-visible:outline-offset-2');
-      expect(trigger.className).toContain('focus-visible:outline-primary-500');
+      expect(trigger.classList.contains('focus-visible:outline-2')).toBe(true);
+      expect(trigger.classList.contains('focus-visible:outline-offset-2')).toBe(true);
+      expect(trigger.classList.contains('focus-visible:outline-primary-500')).toBe(true);
     });
 
     it('should announce state change via LiveAnnouncer', () => {

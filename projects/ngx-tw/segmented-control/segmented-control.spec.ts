@@ -259,7 +259,7 @@ describe('SegmentedControl', () => {
         host.color.set(color);
         fixture.detectChanges();
         const active = getOptions(fixture)[0];
-        expect(active.className).toContain(cls);
+        expect(active.classList.contains(cls)).toBe(true);
       }
     });
 
@@ -268,8 +268,8 @@ describe('SegmentedControl', () => {
       host.color.set('primary');
       fixture.detectChanges();
       const active = getOptions(fixture)[0];
-      expect(active.className).toContain('ring-primary-border-strong');
-      expect(active.className).toContain('text-primary-fg');
+      expect(active.classList.contains('ring-primary-border-strong')).toBe(true);
+      expect(active.classList.contains('text-primary-fg')).toBe(true);
       expect(active.className).not.toMatch(/\bdark:/);
     });
   });
@@ -558,8 +558,8 @@ describe('SegmentedControl', () => {
         host.variant.set(v);
         fixture.detectChanges();
         const inactive = getOptions(fixture)[1];
-        expect(inactive.className).toContain('text-fg-muted');
-        expect(inactive.className).toContain('hover:text-fg');
+        expect(inactive.classList.contains('text-fg-muted')).toBe(true);
+        expect(inactive.classList.contains('hover:text-fg')).toBe(true);
       }
     });
 
@@ -578,9 +578,9 @@ describe('SegmentedControl', () => {
         host.color.set(color);
         fixture.detectChanges();
         const active = getOptions(fixture)[0];
-        expect(active.className).toContain('bg-surface');
-        expect(active.className).toContain('shadow-sm');
-        expect(active.className).toContain(cls);
+        expect(active.classList.contains('bg-surface')).toBe(true);
+        expect(active.classList.contains('shadow-sm')).toBe(true);
+        expect(active.classList.contains(cls)).toBe(true);
       }
     });
 
@@ -588,9 +588,9 @@ describe('SegmentedControl', () => {
       host.optionCDisabled.set(true);
       fixture.detectChanges();
       const disabled = getOptions(fixture)[2];
-      expect(disabled.className).toContain('opacity-50');
-      expect(disabled.className).toContain('pointer-events-none');
-      expect(disabled.className).toContain('cursor-default');
+      expect(disabled.classList.contains('opacity-50')).toBe(true);
+      expect(disabled.classList.contains('pointer-events-none')).toBe(true);
+      expect(disabled.classList.contains('cursor-default')).toBe(true);
     });
 
     it('should keep the active color underneath the disabled layer (no short-circuit)', () => {
@@ -605,11 +605,11 @@ describe('SegmentedControl', () => {
       fixture.detectChanges();
       const activeDisabled = getOptions(fixture)[2];
       // Active color compound is still applied (faded-but-selected).
-      expect(activeDisabled.className).toContain('bg-success-solid');
-      expect(activeDisabled.className).toContain('text-success-solid-fg');
+      expect(activeDisabled.classList.contains('bg-success-solid')).toBe(true);
+      expect(activeDisabled.classList.contains('text-success-solid-fg')).toBe(true);
       // Disabled axis adds the opacity / pointer-events layer on top.
-      expect(activeDisabled.className).toContain('opacity-50');
-      expect(activeDisabled.className).toContain('pointer-events-none');
+      expect(activeDisabled.classList.contains('opacity-50')).toBe(true);
+      expect(activeDisabled.classList.contains('pointer-events-none')).toBe(true);
     });
   });
 
