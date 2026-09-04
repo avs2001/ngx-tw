@@ -53,7 +53,24 @@ export interface TwThemeConfig {
    * the service never does.
    */
   storageKey?: string;
-  /** The HTML attribute written to the target element. Defaults to `'data-theme'`. */
+  /**
+   * The HTML attribute written to the target element. Defaults to `'data-theme'`.
+   *
+   * @deprecated Changing this breaks theming, and cannot be made to work. The
+   * shipped stylesheets key off the **literal** `data-theme` — `_light.css`,
+   * `_dark.css` and both high-contrast files each declare an element-agnostic
+   * `[data-theme="…"]` block, and CSS cannot parameterise an attribute name. So
+   * a renamed attribute matches none of them: `ThemeService.applyToElement()`
+   * writes the new name and nothing reacts, while `ThemeDirective` ignores this
+   * option entirely and keeps writing `data-theme` (which is the only reason
+   * `[twTheme]` still works when it is set). Two of the three consumers
+   * therefore disagree with it by design.
+   *
+   * It is deprecated rather than removed because removing it is a breaking
+   * change; it will go in the next major. To scope a theme to a subtree use the
+   * `[twTheme]` directive, and to retheme, override the semantic tokens in your
+   * own `@theme` block rather than renaming the attribute they hang off.
+   */
   attribute?: string;
   /** Which element receives the theme attribute. Defaults to `'documentElement'`. */
   target?: 'documentElement' | 'body';

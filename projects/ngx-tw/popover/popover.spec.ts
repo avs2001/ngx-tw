@@ -649,6 +649,29 @@ describe('PopoverDirective', () => {
       expect(getOverlayPopover()).toBeNull();
     });
 
+    it('should close popover on Escape raised from INSIDE the overlay panel', () => {
+      // Distinct from the trigger case above, and previously uncovered. Escape
+      // on the trigger travels through the host `(keydown.escape)` binding;
+      // Escape from within the panel reaches the directive only via the CDK
+      // overlay's own `keydownEvents()` channel. Both paths close the popover
+      // and until this test existed only the first was exercised — neutering
+      // the overlay handler entirely left the whole suite green.
+      const fixture = TestBed.configureTestingModule({
+        imports: [BasicPopoverHost, OverlayModule],
+      }).createComponent(BasicPopoverHost);
+      fixture.detectChanges();
+
+      clickTrigger(fixture);
+      fixture.detectChanges();
+      const panel = getOverlayPopover();
+      expect(panel).toBeTruthy();
+
+      pressEscapeOn(panel!);
+      fixture.detectChanges();
+      flushClose(fixture);
+      expect(getOverlayPopover()).toBeNull();
+    });
+
     it('should not close on Escape when closeOnEscape is false', () => {
       const fixture = TestBed.configureTestingModule({
         imports: [NoClosePopoverHost, OverlayModule],
