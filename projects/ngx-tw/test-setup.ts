@@ -25,41 +25,58 @@ import { beforeAll } from 'vitest';
  * the window object so a legitimately fresh test environment re-baselines rather
  * than failing.
  */
+/**
+ * The globals worth baselining are exactly those whose poisoning can stop the
+ * application from ever stabilizing. Angular's zoneless scheduler ticks from
+ * `setTimeout` **raced with `requestAnimationFrame`**, and drains microtasks
+ * between ticks, so all four belong to the same hazard: kill one and
+ * `whenStable()` may never resolve. Nothing in the suite stubs `rAF` or
+ * `queueMicrotask` today, which is what makes baselining them free — they are
+ * here to close the hole, not to police a known offender.
+ *
+ * Deliberately NOT baselined: `localStorage`, `matchMedia` and friends.
+ * `theme.service.spec.ts` leaks those through `vi.stubGlobal` (fixed there by
+ * `vi.unstubAllGlobals()`), but a leaked `localStorage` produces a loud
+ * `TypeError` in the file that trips over it, not a hang — a different and
+ * much cheaper failure mode. Widening the guard to arbitrary globals would turn
+ * every latent stub leak into a hard red at once and needs its own soak.
+ */
+const GUARDED = ['setTimeout', 'clearTimeout', 'requestAnimationFrame', 'queueMicrotask'] as const;
+
+type GuardedName = (typeof GUARDED)[number];
+
 const stash = globalThis as typeof globalThis & {
-  __twTimerBaseline?: {
-    window: unknown;
-    setTimeout: typeof globalThis.setTimeout;
-    clearTimeout: typeof globalThis.clearTimeout;
-  };
+  __twTimerBaseline?: { window: unknown; fns: Record<GuardedName, unknown> };
 };
+
+const snapshot = (): Record<GuardedName, unknown> =>
+  Object.fromEntries(GUARDED.map((name) => [name, globalThis[name]])) as Record<
+    GuardedName,
+    unknown
+  >;
 
 beforeAll(() => {
   const baseline = stash.__twTimerBaseline;
 
   if (!baseline || baseline.window !== globalThis.window) {
-    stash.__twTimerBaseline = {
-      window: globalThis.window,
-      setTimeout: globalThis.setTimeout,
-      clearTimeout: globalThis.clearTimeout,
-    };
+    stash.__twTimerBaseline = { window: globalThis.window, fns: snapshot() };
     return;
   }
 
-  const broken =
-    globalThis.setTimeout !== baseline.setTimeout
-      ? 'setTimeout'
-      : globalThis.clearTimeout !== baseline.clearTimeout
-        ? 'clearTimeout'
-        : null;
+  const broken = GUARDED.find((name) => globalThis[name] !== baseline.fns[name]) ?? null;
 
   if (broken) {
     throw new Error(
       `[ngx-tw test-setup] globalThis.${broken} was replaced by an earlier spec ` +
-        `file in this worker and never restored, so timers are dead for every ` +
-        `file that follows and unrelated specs will hang until the suite budget. ` +
-        `The usual cause is \`vi.spyOn(globalThis, '${broken}')\` called while ` +
+        `file in this worker and never restored. Angular's zoneless scheduler ` +
+        `ticks from setTimeout raced with requestAnimationFrame, so a dead one ` +
+        `means whenStable() can never resolve and unrelated specs that follow ` +
+        `will hang until the suite budget. The usual cause is ` +
+        `\`vi.spyOn(globalThis, '${broken}')\` called while ` +
         `\`vi.useFakeTimers()\` is installed; patch the global by plain ` +
-        `assignment instead — see the note in carousel.spec.ts.`,
+        `assignment instead — see the note in carousel.spec.ts. If a spec used ` +
+        `\`vi.stubGlobal\`, pair it with \`vi.unstubAllGlobals()\` — ` +
+        `\`restoreAllMocks()\` does not undo stubs.`,
     );
   }
 });
