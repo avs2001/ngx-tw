@@ -9,6 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 _Nothing yet._
 
+## 0.9.0 — 2026-09-04
+
+### Bug Fixes
+
+- **test:** stop theme.service.spec killing localStorage suite-wide ([f4d7deb](https://github.com/avs2001/ngx-tw/commit/f4d7debd8442899f6af85d4e6ac3e44ea154b93a))
+- **test:** stop carousel and code-block killing globalThis timers suite-wide ([463916d](https://github.com/avs2001/ngx-tw/commit/463916d64c3a4aa7ee12c41b035be8bd8df466b3))
+
 ## 0.8.0 — 2026-09-04
 
 ### Bug Fixes
