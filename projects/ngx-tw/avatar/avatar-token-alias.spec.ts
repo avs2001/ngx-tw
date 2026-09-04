@@ -41,8 +41,8 @@ describe('AVATAR_GROUP_SIZE → TW_AVATAR_GROUP_SIZE alias', () => {
     fixture.detectChanges();
 
     const avatar = fixture.nativeElement.querySelector('tw-avatar') as HTMLElement;
-    expect(avatar.className).toContain('size-16');
-    expect(avatar.className).not.toContain('size-6');
+    expect(avatar.classList.contains('size-16')).toBe(true);
+    expect(avatar.classList.contains('size-6')).toBe(false);
   });
 
   it('resolves a value provided under the new name when injected under the deprecated name', () => {

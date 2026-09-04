@@ -498,9 +498,9 @@ describe('SelectComponent', () => {
       getTriggerButton(fixture).click();
       await advance(fixture);
       const listbox = document.querySelector('[role="listbox"]') as HTMLElement;
-      expect(listbox.className).toContain('focus-visible:outline-2');
-      expect(listbox.className).toContain('focus-visible:outline-offset-2');
-      expect(listbox.className).toContain('focus-visible:outline-primary-500');
+      expect(listbox.classList.contains('focus-visible:outline-2')).toBe(true);
+      expect(listbox.classList.contains('focus-visible:outline-offset-2')).toBe(true);
+      expect(listbox.classList.contains('focus-visible:outline-primary-500')).toBe(true);
     });
 
     it('renders each option with role="option"', async () => {
@@ -1211,8 +1211,8 @@ describe('SelectComponent', () => {
       fixture.detectChanges();
       const trigger = getTriggerButton(fixture);
       expect(trigger.getAttribute('data-variant')).toBe('naked');
-      expect(trigger.className).toContain('focus-visible:outline-2');
-      expect(trigger.className).not.toContain('focus-visible:outline-none');
+      expect(trigger.classList.contains('focus-visible:outline-2')).toBe(true);
+      expect(trigger.classList.contains('focus-visible:outline-none')).toBe(false);
     });
   });
 

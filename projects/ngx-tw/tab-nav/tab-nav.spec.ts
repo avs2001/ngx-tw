@@ -415,7 +415,7 @@ describe('TabNavComponent', () => {
 
     it('should apply pointer-events-none class to disabled link', () => {
       const links = fixture.nativeElement.querySelectorAll('a[twTabLink]');
-      expect(links[2].className).toContain('pointer-events-none');
+      expect(links[2].classList.contains('pointer-events-none')).toBe(true);
     });
 
     it('should call preventDefault on click to block navigation on disabled link', () => {
@@ -473,8 +473,8 @@ describe('TabNavComponent', () => {
       const activeLink = fixture.nativeElement.querySelector(
         'a[twTabLink]',
       ) as HTMLElement;
-      expect(activeLink.className).toContain('border-primary-border-strong');
-      expect(activeLink.className).toContain('text-primary-fg');
+      expect(activeLink.classList.contains('border-primary-border-strong')).toBe(true);
+      expect(activeLink.classList.contains('text-primary-fg')).toBe(true);
       expect(activeLink.className).not.toMatch(/\bdark:/);
     });
 
@@ -485,7 +485,7 @@ describe('TabNavComponent', () => {
       const activeLink = fixture.nativeElement.querySelector(
         'a[twTabLink]',
       ) as HTMLElement;
-      expect(activeLink.className).toContain('text-success-fg');
+      expect(activeLink.classList.contains('text-success-fg')).toBe(true);
       expect(activeLink.className).not.toMatch(/\bdark:/);
     });
   });
@@ -565,7 +565,7 @@ describe('TabNavComponent', () => {
       fixture.componentInstance.fitted.set(true);
       fixture.detectChanges();
       const link = fixture.nativeElement.querySelector('a[twTabLink]');
-      expect(link.className).toContain('flex-1');
+      expect(link.classList.contains('flex-1')).toBe(true);
     });
   });
 
@@ -582,8 +582,8 @@ describe('TabNavComponent', () => {
 
     it('should apply focus-visible outline classes to links', () => {
       const link = fixture.nativeElement.querySelector('a[twTabLink]');
-      expect(link.className).toContain('focus-visible:outline-2');
-      expect(link.className).toContain('focus-visible:outline-primary-500');
+      expect(link.classList.contains('focus-visible:outline-2')).toBe(true);
+      expect(link.classList.contains('focus-visible:outline-primary-500')).toBe(true);
     });
   });
 
@@ -735,13 +735,13 @@ describe('TabNavComponent', () => {
 
     it('should merge navClass onto the nav host', () => {
       const nav = fixture.nativeElement.querySelector('nav');
-      expect(nav.className).toContain('custom-nav');
+      expect(nav.classList.contains('custom-nav')).toBe(true);
     });
 
     it('should merge linkClass onto every link', () => {
       const links = fixture.nativeElement.querySelectorAll('a[twTabLink]');
       for (const link of Array.from(links)) {
-        expect((link as HTMLElement).className).toContain('custom-link');
+        expect((link as HTMLElement).classList.contains('custom-link')).toBe(true);
       }
     });
 
@@ -749,8 +749,8 @@ describe('TabNavComponent', () => {
       fixture.componentInstance.navClass.set('');
       fixture.detectChanges();
       const nav = fixture.nativeElement.querySelector('nav');
-      expect(nav.className).toContain('flex');
-      expect(nav.className).not.toContain('custom-nav');
+      expect(nav.classList.contains('flex')).toBe(true);
+      expect(nav.classList.contains('custom-nav')).toBe(false);
     });
   });
 

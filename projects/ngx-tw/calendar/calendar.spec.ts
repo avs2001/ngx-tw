@@ -1889,8 +1889,8 @@ describe('CalendarComponent', () => {
       ) as HTMLElement[];
       expect(headers.length).toBeGreaterThan(0);
       for (const header of headers) {
-        expect(header.className).toContain('text-2xs');
-        expect(header.className).not.toContain('text-xs ');
+        expect(header.classList.contains('text-2xs')).toBe(true);
+        expect(header.classList.contains('text-xs')).toBe(false);
       }
     });
   });

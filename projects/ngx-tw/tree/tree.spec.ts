@@ -234,7 +234,7 @@ describe('TreeComponent', () => {
       fixture.detectChanges();
       const child = nodeByLabel(fixture, 'Child 1.1');
       const spacer = child.querySelector('span[style*="width"]') as HTMLElement;
-      expect(spacer.className).toContain('border-s');
+      expect(spacer.classList.contains('border-s')).toBe(true);
     });
   });
 

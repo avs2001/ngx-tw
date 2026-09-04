@@ -113,9 +113,9 @@ describe('ButtonDirective', () => {
       fixture.detectChanges();
       const el = getButton(fixture);
       expect(el).toBeTruthy();
-      expect(el.className).toContain('inline-flex');
-      expect(el.className).toContain('rounded-md');
-      expect(el.className).toContain('font-medium');
+      expect(el.classList.contains('inline-flex')).toBe(true);
+      expect(el.classList.contains('rounded-md')).toBe(true);
+      expect(el.classList.contains('font-medium')).toBe(true);
     });
 
     it('should render an anchor with the directive', () => {
@@ -123,7 +123,7 @@ describe('ButtonDirective', () => {
       fixture.detectChanges();
       const el = getButton(fixture);
       expect(el.tagName).toBe('A');
-      expect(el.className).toContain('inline-flex');
+      expect(el.classList.contains('inline-flex')).toBe(true);
     });
 
     it('should render canonical focus-visible outline classes', () => {
@@ -152,7 +152,7 @@ describe('ButtonDirective', () => {
       const fixture = TestBed.createComponent(StyledButtonHost);
       fixture.componentRef.setInput('variant', 'outline');
       fixture.detectChanges();
-      expect(getButton(fixture).className).toContain('border');
+      expect(getButton(fixture).classList.contains('border')).toBe(true);
     });
 
     it('should strip padding for link variant', () => {
@@ -227,7 +227,7 @@ describe('ButtonDirective', () => {
       const fixture = TestBed.createComponent(DisabledButtonHost);
       fixture.componentRef.setInput('isDisabled', true);
       fixture.detectChanges();
-      expect(getButton(fixture).className).toContain('opacity-50');
+      expect(getButton(fixture).classList.contains('opacity-50')).toBe(true);
     });
 
     it('should block click events when disabled on anchor', () => {
@@ -270,7 +270,7 @@ describe('ButtonDirective', () => {
       const fixture = TestBed.createComponent(LoadingButtonHost);
       fixture.componentRef.setInput('isLoading', true);
       fixture.detectChanges();
-      expect(getButton(fixture).className).toContain('pointer-events-none');
+      expect(getButton(fixture).classList.contains('pointer-events-none')).toBe(true);
     });
 
     it('should block click events when loading', () => {

@@ -153,7 +153,7 @@ describe('AvatarComponent', () => {
       const span = getAvatar(fixture).querySelector('span')!;
       // Text content stays as-is, the `uppercase` utility transforms render
       expect(span.textContent?.trim()).toBe('jd');
-      expect(span.className).toContain('uppercase');
+      expect(span.classList.contains('uppercase')).toBe(true);
     });
 
     it('should fall back to initials when image fails to load', () => {
@@ -246,7 +246,7 @@ describe('AvatarComponent', () => {
       fixture.componentRef.setInput('size', 'md');
       fixture.detectChanges();
       // The text-* class is applied on the host element (root slot) via the size variant
-      expect(getAvatar(fixture).className).toContain('text-sm');
+      expect(getAvatar(fixture).classList.contains('text-sm')).toBe(true);
     });
 
     it('should apply text-xs to initials at xs/sm size', () => {
@@ -254,7 +254,7 @@ describe('AvatarComponent', () => {
       fixture.componentRef.setInput('initials', 'JD');
       fixture.componentRef.setInput('size', 'xs');
       fixture.detectChanges();
-      expect(getAvatar(fixture).className).toContain('text-xs');
+      expect(getAvatar(fixture).classList.contains('text-xs')).toBe(true);
     });
 
     it('should apply text-base to initials at xl size', () => {
@@ -262,7 +262,7 @@ describe('AvatarComponent', () => {
       fixture.componentRef.setInput('initials', 'JD');
       fixture.componentRef.setInput('size', 'xl');
       fixture.detectChanges();
-      expect(getAvatar(fixture).className).toContain('text-base');
+      expect(getAvatar(fixture).classList.contains('text-base')).toBe(true);
     });
   });
 
@@ -284,21 +284,21 @@ describe('AvatarComponent', () => {
     it('should apply rounded-full by default', () => {
       const fixture = TestBed.createComponent(SizedAvatarHost);
       fixture.detectChanges();
-      expect(getAvatar(fixture).className).toContain('rounded-full');
+      expect(getAvatar(fixture).classList.contains('rounded-full')).toBe(true);
     });
 
     it('should apply rounded-lg when appearance.rounded="lg"', () => {
       const fixture = TestBed.createComponent(SizedAvatarHost);
       fixture.componentRef.setInput('appearance', { rounded: 'lg' } satisfies AvatarAppearance);
       fixture.detectChanges();
-      expect(getAvatar(fixture).className).toContain('rounded-lg');
+      expect(getAvatar(fixture).classList.contains('rounded-lg')).toBe(true);
     });
 
     it('should apply rounded-none when appearance.rounded="none"', () => {
       const fixture = TestBed.createComponent(SizedAvatarHost);
       fixture.componentRef.setInput('appearance', { rounded: 'none' } satisfies AvatarAppearance);
       fixture.detectChanges();
-      expect(getAvatar(fixture).className).toContain('rounded-none');
+      expect(getAvatar(fixture).classList.contains('rounded-none')).toBe(true);
     });
   });
 
@@ -591,7 +591,7 @@ describe('AvatarGroupComponent', () => {
 
       const avatars = getGroup(fixture).querySelectorAll('tw-avatar');
       avatars.forEach((avatar) => {
-        expect(avatar.className).toContain('size-8');
+        expect(avatar.classList.contains('size-8')).toBe(true);
       });
     });
   });

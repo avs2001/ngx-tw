@@ -491,8 +491,8 @@ describe('TwDialog', () => {
       const fixture = TestBed.createComponent(DialogIconHost);
       fixture.detectChanges();
       const el = fixture.nativeElement.querySelector('[twDialogIcon]') as HTMLElement;
-      expect(el.className).toContain('rounded-full');
-      expect(el.className).toContain('bg-surface-muted');
+      expect(el.classList.contains('rounded-full')).toBe(true);
+      expect(el.classList.contains('bg-surface-muted')).toBe(true);
     });
 
     it('DialogIconDirective applies semantic color classes', () => {
@@ -500,15 +500,15 @@ describe('TwDialog', () => {
       fixture.componentInstance.color = 'error';
       fixture.detectChanges();
       const el = fixture.nativeElement.querySelector('[twDialogIcon]') as HTMLElement;
-      expect(el.className).toContain('bg-error-soft');
-      expect(el.className).toContain('text-error-icon');
+      expect(el.classList.contains('bg-error-soft')).toBe(true);
+      expect(el.classList.contains('text-error-icon')).toBe(true);
     });
 
     it('DialogSubtitleDirective applies muted text styling', () => {
       const fixture = TestBed.createComponent(DialogSubtitleHost);
       fixture.detectChanges();
       const el = fixture.nativeElement.querySelector('[twDialogSubtitle]') as HTMLElement;
-      expect(el.className).toContain('text-fg-muted');
+      expect(el.classList.contains('text-fg-muted')).toBe(true);
     });
   });
 
@@ -663,7 +663,7 @@ describe('TwDialog', () => {
       await flushEnter();
 
       const container = getContainerEl()!;
-      expect(container.className).toContain('max-w-2xl');
+      expect(container.classList.contains('max-w-2xl')).toBe(true);
       // Confirm the provider-supplied default beat TwDialogConfig's own default of `true`.
       expect(container.getAttribute('aria-modal')).toBe('false');
 

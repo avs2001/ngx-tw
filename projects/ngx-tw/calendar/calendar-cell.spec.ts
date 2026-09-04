@@ -204,14 +204,14 @@ describe('CalendarCellComponent', () => {
       fixture.componentInstance.outside.set(true);
       fixture.detectChanges();
       // The outside variant adds `text-fg-muted` to the button's class list.
-      expect(getButton(fixture).className).toContain('text-fg-muted');
+      expect(getButton(fixture).classList.contains('text-fg-muted')).toBe(true);
     });
 
     it('does not apply the outside styling when outside is false', () => {
       const fixture = TestBed.createComponent(CellHost);
       fixture.componentInstance.outside.set(false);
       fixture.detectChanges();
-      expect(getButton(fixture).className).not.toContain('text-fg-muted');
+      expect(getButton(fixture).classList.contains('text-fg-muted')).toBe(false);
     });
   });
 

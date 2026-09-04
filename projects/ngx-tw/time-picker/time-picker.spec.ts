@@ -561,9 +561,9 @@ describe('TimePickerComponent', () => {
       const fixture = setup(BasicHost);
       fixture.detectChanges();
       const hour = queryField(fixture, 'Hours');
-      expect(hour.className).toContain('focus-visible:outline-2');
-      expect(hour.className).toContain('focus-visible:outline-primary-500');
-      expect(hour.className).not.toContain('focus-visible:bg-surface-muted');
+      expect(hour.classList.contains('focus-visible:outline-2')).toBe(true);
+      expect(hour.classList.contains('focus-visible:outline-primary-500')).toBe(true);
+      expect(hour.classList.contains('focus-visible:bg-surface-muted')).toBe(false);
     });
 
     // The active meridiem fill takes the theme's AA-checked `-solid` /

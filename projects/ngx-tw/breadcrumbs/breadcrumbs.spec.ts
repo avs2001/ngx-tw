@@ -397,7 +397,7 @@ describe('BreadcrumbsComponent', () => {
     it('should include rtl:rotate-180 class on the separator <li>', () => {
       const fixture = setup(BasicHost);
       const sep = getSeparatorListItems(fixture)[0];
-      expect(sep.className).toContain('rtl:rotate-180');
+      expect(sep.classList.contains('rtl:rotate-180')).toBe(true);
     });
   });
 
@@ -443,7 +443,7 @@ describe('BreadcrumbsComponent', () => {
       expect(anchors[2].getAttribute('aria-current')).toBe('page');
       expect(anchors[0].getAttribute('aria-current')).toBeNull();
       expect(anchors[1].getAttribute('aria-current')).toBeNull();
-      expect(anchors[1].className).toContain('opacity-50');
+      expect(anchors[1].classList.contains('opacity-50')).toBe(true);
     });
   });
 
@@ -563,9 +563,9 @@ describe('BreadcrumbsComponent', () => {
     it('should apply the canonical focus-visible ring classes on anchors', () => {
       const fixture = setup(BasicHost);
       const link = fixture.nativeElement.querySelector('a') as HTMLAnchorElement;
-      expect(link.className).toContain('focus-visible:outline-2');
-      expect(link.className).toContain('focus-visible:outline-offset-2');
-      expect(link.className).toContain('focus-visible:outline-primary-500');
+      expect(link.classList.contains('focus-visible:outline-2')).toBe(true);
+      expect(link.classList.contains('focus-visible:outline-offset-2')).toBe(true);
+      expect(link.classList.contains('focus-visible:outline-primary-500')).toBe(true);
     });
 
     it('should apply the canonical focus-visible ring classes on the overflow trigger', () => {
@@ -575,8 +575,8 @@ describe('BreadcrumbsComponent', () => {
       const trigger = fixture.nativeElement.querySelector(
         'button[aria-label="Show more breadcrumbs"]',
       ) as HTMLButtonElement;
-      expect(trigger.className).toContain('focus-visible:outline-2');
-      expect(trigger.className).toContain('focus-visible:outline-primary-500');
+      expect(trigger.classList.contains('focus-visible:outline-2')).toBe(true);
+      expect(trigger.classList.contains('focus-visible:outline-primary-500')).toBe(true);
     });
   });
 

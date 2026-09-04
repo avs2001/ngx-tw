@@ -489,9 +489,9 @@ describe('InputDirective', () => {
       expect(formField.control()).toBe(fixture.componentInstance.directive());
 
       const el = inputEl(fixture);
-      expect(el.className).toContain('border-0');
-      expect(el.className).toContain('p-0');
-      expect(el.className).not.toContain('rounded-md');
+      expect(el.classList.contains('border-0')).toBe(true);
+      expect(el.classList.contains('p-0')).toBe(true);
+      expect(el.classList.contains('rounded-md')).toBe(false);
     });
 
     it('provides FormFieldControl via TW_FORM_FIELD_CONTROL', async () => {

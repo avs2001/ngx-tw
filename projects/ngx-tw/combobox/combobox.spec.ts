@@ -471,8 +471,8 @@ describe('ComboboxComponent', () => {
       fixture.componentInstance.disabled.set(true);
       fixture.detectChanges();
       const host = getCombobox(fixture);
-      expect(host.className).toContain('opacity-50');
-      expect(host.className).toContain('pointer-events-none');
+      expect(host.classList.contains('opacity-50')).toBe(true);
+      expect(host.classList.contains('pointer-events-none')).toBe(true);
     });
 
     it('renders the inline spinner when loading=true', () => {

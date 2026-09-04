@@ -216,7 +216,7 @@ describe('FormFieldComponent', () => {
 
     it('applies a controlType class hook to the host', () => {
       const host: HTMLElement = fixture.nativeElement.querySelector('tw-form-field');
-      expect(host.className).toContain('tw-form-field-type-fake');
+      expect(host.classList.contains('tw-form-field-type-fake')).toBe(true);
     });
 
     it('renders the subscript wrapper even with no hint or error', async () => {
@@ -224,7 +224,7 @@ describe('FormFieldComponent', () => {
       fixture.detectChanges();
       await fixture.whenStable();
       expect(subscriptWrapper(fixture)).toBeTruthy();
-      expect(subscriptWrapper(fixture).className).toContain('min-h-5');
+      expect(subscriptWrapper(fixture).classList.contains('min-h-5')).toBe(true);
     });
   });
 
@@ -247,17 +247,17 @@ describe('FormFieldComponent', () => {
 
     it('renders outline by default', () => {
       const wrapper = controlWrapper(fixture);
-      expect(wrapper.className).toContain('border');
-      expect(wrapper.className).toContain('border-border');
-      expect(wrapper.className).not.toContain('bg-surface-muted');
+      expect(wrapper.classList.contains('border')).toBe(true);
+      expect(wrapper.classList.contains('border-border')).toBe(true);
+      expect(wrapper.classList.contains('bg-surface-muted')).toBe(false);
     });
 
     it('renders filled when appearance is "filled"', () => {
       fixture.componentInstance.appearance.set('filled');
       fixture.detectChanges();
       const wrapper = controlWrapper(fixture);
-      expect(wrapper.className).toContain('bg-surface-muted');
-      expect(wrapper.className).toContain('border-b');
+      expect(wrapper.classList.contains('bg-surface-muted')).toBe(true);
+      expect(wrapper.classList.contains('border-b')).toBe(true);
     });
   });
 
@@ -286,7 +286,7 @@ describe('FormFieldComponent', () => {
         fixture.detectChanges();
         await fixture.whenStable();
         const wrapper = controlWrapper(fixture);
-        expect(wrapper.className).toContain(`border-${color}-border`);
+        expect(wrapper.classList.contains(`border-${color}-border`)).toBe(true);
       });
     }
 
@@ -296,7 +296,7 @@ describe('FormFieldComponent', () => {
       fixture.detectChanges();
       await fixture.whenStable();
       const wrapper = controlWrapper(fixture);
-      expect(wrapper.className).toContain('border-border-strong');
+      expect(wrapper.classList.contains('border-border-strong')).toBe(true);
     });
   });
 
@@ -455,8 +455,8 @@ describe('FormFieldComponent', () => {
     it('shows a bare twError (no match) whenever the control is in error state', async () => {
       // No match on either, no errors map — both should be visible.
       const [first, second] = errorEls();
-      expect(first.className).not.toContain('hidden');
-      expect(second.className).not.toContain('hidden');
+      expect(first.classList.contains('hidden')).toBe(false);
+      expect(second.classList.contains('hidden')).toBe(false);
     });
 
     it('shows a matching twError when the matched key is active', async () => {
@@ -466,8 +466,8 @@ describe('FormFieldComponent', () => {
       fixture.detectChanges();
       await fixture.whenStable();
       const [first, second] = errorEls();
-      expect(first.className).not.toContain('hidden');
-      expect(second.className).toContain('hidden');
+      expect(first.classList.contains('hidden')).toBe(false);
+      expect(second.classList.contains('hidden')).toBe(true);
     });
 
     it('switches which twError shows when the active error key changes', async () => {
@@ -481,8 +481,8 @@ describe('FormFieldComponent', () => {
       fixture.detectChanges();
       await fixture.whenStable();
       const [first, second] = errorEls();
-      expect(first.className).toContain('hidden');
-      expect(second.className).not.toContain('hidden');
+      expect(first.classList.contains('hidden')).toBe(true);
+      expect(second.classList.contains('hidden')).toBe(false);
     });
 
     it('hides every matched twError when no error key matches', async () => {
@@ -492,8 +492,8 @@ describe('FormFieldComponent', () => {
       fixture.detectChanges();
       await fixture.whenStable();
       const [first, second] = errorEls();
-      expect(first.className).toContain('hidden');
-      expect(second.className).toContain('hidden');
+      expect(first.classList.contains('hidden')).toBe(true);
+      expect(second.classList.contains('hidden')).toBe(true);
     });
 
     it('lets a bare twError act as a fallback alongside matched ones', async () => {
@@ -503,8 +503,8 @@ describe('FormFieldComponent', () => {
       fixture.detectChanges();
       await fixture.whenStable();
       const [first, second] = errorEls();
-      expect(first.className).not.toContain('hidden');
-      expect(second.className).toContain('hidden');
+      expect(first.classList.contains('hidden')).toBe(false);
+      expect(second.classList.contains('hidden')).toBe(true);
     });
 
     it('excludes hidden errors from aria-describedby ids on the control', async () => {
@@ -560,37 +560,37 @@ describe('FormFieldComponent', () => {
 
     it('renders label in resting position when empty and not focused', () => {
       const wrapper = labelWrapperEl();
-      expect(wrapper.className).toContain('top-1/2');
-      expect(labelFontSizeEl().className).toContain('text-sm');
+      expect(wrapper.classList.contains('top-1/2')).toBe(true);
+      expect(labelFontSizeEl().classList.contains('text-sm')).toBe(true);
     });
 
     it('floats the label when the control is focused', async () => {
       fixture.componentInstance.fake().focused.set(true);
       fixture.detectChanges();
       await fixture.whenStable();
-      expect(labelFontSizeEl().className).toContain('text-xs');
-      expect(labelWrapperEl().className).not.toContain('top-1/2');
+      expect(labelFontSizeEl().classList.contains('text-xs')).toBe(true);
+      expect(labelWrapperEl().classList.contains('top-1/2')).toBe(false);
     });
 
     it('floats the label when the control is not empty', async () => {
       fixture.componentInstance.fake().empty.set(false);
       fixture.detectChanges();
       await fixture.whenStable();
-      expect(labelFontSizeEl().className).toContain('text-xs');
+      expect(labelFontSizeEl().classList.contains('text-xs')).toBe(true);
     });
 
     it('always floats when floatLabel="always"', async () => {
       fixture.componentInstance.floatLabel.set('always');
       fixture.detectChanges();
       await fixture.whenStable();
-      expect(labelFontSizeEl().className).toContain('text-xs');
+      expect(labelFontSizeEl().classList.contains('text-xs')).toBe(true);
     });
 
     it('applies the outline notch (bg-surface) when floated and outline', async () => {
       fixture.componentInstance.floatLabel.set('always');
       fixture.detectChanges();
       await fixture.whenStable();
-      expect(labelWrapperEl().className).toContain('bg-surface');
+      expect(labelWrapperEl().classList.contains('bg-surface')).toBe(true);
     });
 
     it('uses in-surface position for filled floated (no notch)', async () => {
@@ -598,15 +598,15 @@ describe('FormFieldComponent', () => {
       fixture.componentInstance.floatLabel.set('always');
       fixture.detectChanges();
       await fixture.whenStable();
-      expect(labelWrapperEl().className).not.toContain('bg-surface');
-      expect(labelWrapperEl().className).toContain('top-1');
+      expect(labelWrapperEl().classList.contains('bg-surface')).toBe(false);
+      expect(labelWrapperEl().classList.contains('top-1')).toBe(true);
     });
 
     it('does not force the label to float just because a prefix is present', async () => {
       fixture.componentInstance.showPrefix.set(true);
       fixture.detectChanges();
       await fixture.whenStable();
-      expect(labelFontSizeEl().className).toContain('text-sm');
+      expect(labelFontSizeEl().classList.contains('text-sm')).toBe(true);
     });
 
     it('still floats the label on focus when a prefix is present', async () => {
@@ -614,7 +614,7 @@ describe('FormFieldComponent', () => {
       fixture.componentInstance.fake().focused.set(true);
       fixture.detectChanges();
       await fixture.whenStable();
-      expect(labelFontSizeEl().className).toContain('text-xs');
+      expect(labelFontSizeEl().classList.contains('text-xs')).toBe(true);
     });
 
     it('pins the floated label to the container left edge (0.5rem)', async () => {
@@ -642,21 +642,21 @@ describe('FormFieldComponent', () => {
     });
 
     it('hides the input placeholder when the label is resting', () => {
-      expect(infixEl().className).toContain('[&_input::placeholder]:opacity-0');
+      expect(infixEl().classList.contains('[&_input::placeholder]:opacity-0')).toBe(true);
     });
 
     it('does not hide the placeholder when the label is floated', async () => {
       fixture.componentInstance.floatLabel.set('always');
       fixture.detectChanges();
       await fixture.whenStable();
-      expect(infixEl().className).not.toContain('[&_input::placeholder]:opacity-0');
+      expect(infixEl().classList.contains('[&_input::placeholder]:opacity-0')).toBe(false);
     });
 
     it('does not hide the placeholder when there is no label', async () => {
       fixture.componentInstance.showLabel.set(false);
       fixture.detectChanges();
       await fixture.whenStable();
-      expect(infixEl().className).not.toContain('[&_input::placeholder]:opacity-0');
+      expect(infixEl().classList.contains('[&_input::placeholder]:opacity-0')).toBe(false);
     });
   });
 
@@ -740,12 +740,12 @@ describe('FormFieldComponent', () => {
 
     it('applies ml-auto to an end-aligned hint', () => {
       const endHint = fixture.nativeElement.querySelector('[twHint][align="end"]') as HTMLElement;
-      expect(endHint.className).toContain('ml-auto');
+      expect(endHint.classList.contains('ml-auto')).toBe(true);
     });
 
     it('does not apply ml-auto to a start-aligned hint', () => {
       const startHint = fixture.nativeElement.querySelector('[twHint]:not([align])') as HTMLElement;
-      expect(startHint.className).not.toContain('ml-auto');
+      expect(startHint.classList.contains('ml-auto')).toBe(false);
     });
   });
 
@@ -766,8 +766,8 @@ describe('FormFieldComponent', () => {
       const host: HTMLElement = fixture.nativeElement.querySelector('tw-form-field');
       // The wash is on the control row; the pointer block stays on the host so
       // clicks on the subscript row cannot reach `onContainerClick`.
-      expect(controlWrapper(fixture).className).toContain('opacity-50');
-      expect(host.className).toContain('pointer-events-none');
+      expect(controlWrapper(fixture).classList.contains('opacity-50')).toBe(true);
+      expect(host.classList.contains('pointer-events-none')).toBe(true);
     });
 
     // SC 1.4.3 regression guard. The wash used to sit on the host, which meant
@@ -784,7 +784,7 @@ describe('FormFieldComponent', () => {
       await fixture.whenStable();
 
       const host: HTMLElement = fixture.nativeElement.querySelector('tw-form-field');
-      expect(host.className).not.toContain('opacity-50');
+      expect(host.classList.contains('opacity-50')).toBe(false);
 
       const hint = fixture.nativeElement.querySelector('[twHint]') as HTMLElement;
       expect(hint).toBeTruthy();
@@ -793,7 +793,7 @@ describe('FormFieldComponent', () => {
         el && el !== host.parentElement;
         el = el.parentElement
       ) {
-        expect(el.className).not.toContain('opacity-50');
+        expect(el.classList.contains('opacity-50')).toBe(false);
       }
     });
   });
@@ -812,7 +812,7 @@ describe('FormFieldComponent', () => {
       fixture.componentInstance.fake().errorState.set(true);
       fixture.detectChanges();
       await fixture.whenStable();
-      expect(controlWrapper(fixture).className).toContain('border-error-border');
+      expect(controlWrapper(fixture).classList.contains('border-error-border')).toBe(true);
     });
 
     it('applies a thicker error bottom border on the filled appearance when errorState is true', async () => {
@@ -820,8 +820,8 @@ describe('FormFieldComponent', () => {
       fixture.componentInstance.fake().errorState.set(true);
       fixture.detectChanges();
       await fixture.whenStable();
-      expect(controlWrapper(fixture).className).toContain('border-b-2');
-      expect(controlWrapper(fixture).className).toContain('border-error-border');
+      expect(controlWrapper(fixture).classList.contains('border-b-2')).toBe(true);
+      expect(controlWrapper(fixture).classList.contains('border-error-border')).toBe(true);
     });
   });
 
@@ -839,7 +839,7 @@ describe('FormFieldComponent', () => {
       await fixture.whenStable();
       const prefix = fixture.nativeElement.querySelector('[twPrefix]') as HTMLElement;
       expect(prefix).toBeTruthy();
-      expect(prefix.className).toContain('shrink-0');
+      expect(prefix.classList.contains('shrink-0')).toBe(true);
     });
 
     it('applies suffix slot classes to projected suffix element', async () => {
@@ -848,7 +848,7 @@ describe('FormFieldComponent', () => {
       await fixture.whenStable();
       const suffix = fixture.nativeElement.querySelector('[twSuffix]') as HTMLElement;
       expect(suffix).toBeTruthy();
-      expect(suffix.className).toContain('shrink-0');
+      expect(suffix.classList.contains('shrink-0')).toBe(true);
     });
   });
 
@@ -901,9 +901,9 @@ describe('FormFieldComponent', () => {
         fixture.detectChanges();
         await fixture.whenStable();
         const wrapper = controlWrapper(fixture);
-        expect(wrapper.className).toContain(px);
-        expect(wrapper.className).toContain(pt);
-        expect(wrapper.className).toContain(pb);
+        expect(wrapper.classList.contains(px)).toBe(true);
+        expect(wrapper.classList.contains(pt)).toBe(true);
+        expect(wrapper.classList.contains(pb)).toBe(true);
       });
     }
 
@@ -959,7 +959,7 @@ describe('FormFieldComponent', () => {
         fixture.detectChanges();
         await fixture.whenStable();
         const label = fixture.nativeElement.querySelector('label[twLabel]') as HTMLElement;
-        expect(label.className).toContain(fontClass);
+        expect(label.classList.contains(fontClass)).toBe(true);
       });
     }
 
@@ -977,7 +977,7 @@ describe('FormFieldComponent', () => {
         fixture.detectChanges();
         await fixture.whenStable();
         const label = fixture.nativeElement.querySelector('label[twLabel]') as HTMLElement;
-        expect(label.className).toContain(fontClass);
+        expect(label.classList.contains(fontClass)).toBe(true);
       });
     }
   });
@@ -1002,7 +1002,7 @@ describe('FormFieldComponent', () => {
       const infix = fixture.nativeElement.querySelector(
         'tw-form-field > div > div',
       ) as HTMLElement;
-      expect(infix.className).not.toContain('[&_input::placeholder]:opacity-0');
+      expect(infix.classList.contains('[&_input::placeholder]:opacity-0')).toBe(false);
     });
 
     it('keeps the floated state false', async () => {
@@ -1028,7 +1028,7 @@ describe('FormFieldComponent', () => {
     it('drops the min-h-5 reserve on the subscript wrapper when hints exist', () => {
       const sub = subscriptWrapper(fixture);
       expect(sub).toBeTruthy();
-      expect(sub.className).not.toContain('min-h-5');
+      expect(sub.classList.contains('min-h-5')).toBe(false);
     });
 
     it('omits the subscript wrapper entirely when no hint or error is projected', async () => {
@@ -1066,7 +1066,7 @@ describe('FormFieldComponent', () => {
       fixture.detectChanges();
       await fixture.whenStable();
       const sub = subscriptWrapper(fixture);
-      expect(sub.className).toContain('min-h-5');
+      expect(sub.classList.contains('min-h-5')).toBe(true);
     });
   });
 

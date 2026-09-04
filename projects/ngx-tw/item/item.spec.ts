@@ -117,9 +117,9 @@ describe('ItemComponent', () => {
 
     it('should apply flex and gap-3 by default (md size)', () => {
       const item: HTMLElement = fixture.nativeElement.querySelector('tw-item');
-      expect(item.className).toContain('flex');
-      expect(item.className).toContain('gap-3');
-      expect(item.className).toContain('text-fg');
+      expect(item.classList.contains('flex')).toBe(true);
+      expect(item.classList.contains('gap-3')).toBe(true);
+      expect(item.classList.contains('text-fg')).toBe(true);
     });
 
     it('should not apply role, tabindex, or aria-disabled by default', () => {
@@ -149,12 +149,12 @@ describe('ItemComponent', () => {
       const title: HTMLElement = fixture.nativeElement.querySelector('[twItemTitle]');
       const description: HTMLElement = fixture.nativeElement.querySelector('[twItemDescription]');
 
-      expect(item.className).toContain('gap-2');
-      expect(item.className).toContain('py-1.5');
-      expect(title.className).toContain('text-sm');
-      expect(title.className).toContain('truncate');
-      expect(description.className).toContain('text-xs');
-      expect(description.className).toContain('truncate');
+      expect(item.classList.contains('gap-2')).toBe(true);
+      expect(item.classList.contains('py-1.5')).toBe(true);
+      expect(title.classList.contains('text-sm')).toBe(true);
+      expect(title.classList.contains('truncate')).toBe(true);
+      expect(description.classList.contains('text-xs')).toBe(true);
+      expect(description.classList.contains('truncate')).toBe(true);
     });
 
     it('should apply md classes without truncation', () => {
@@ -165,12 +165,12 @@ describe('ItemComponent', () => {
       const title: HTMLElement = fixture.nativeElement.querySelector('[twItemTitle]');
       const description: HTMLElement = fixture.nativeElement.querySelector('[twItemDescription]');
 
-      expect(item.className).toContain('gap-3');
-      expect(item.className).toContain('py-2');
-      expect(title.className).toContain('text-sm');
-      expect(title.className).not.toContain('truncate');
-      expect(description.className).toContain('text-sm');
-      expect(description.className).not.toContain('truncate');
+      expect(item.classList.contains('gap-3')).toBe(true);
+      expect(item.classList.contains('py-2')).toBe(true);
+      expect(title.classList.contains('text-sm')).toBe(true);
+      expect(title.classList.contains('truncate')).toBe(false);
+      expect(description.classList.contains('text-sm')).toBe(true);
+      expect(description.classList.contains('truncate')).toBe(false);
     });
 
     it('should apply lg classes with large semibold title', () => {
@@ -180,10 +180,10 @@ describe('ItemComponent', () => {
       const item: HTMLElement = fixture.nativeElement.querySelector('tw-item');
       const title: HTMLElement = fixture.nativeElement.querySelector('[twItemTitle]');
 
-      expect(item.className).toContain('gap-3');
-      expect(item.className).toContain('py-3');
-      expect(title.className).toContain('text-base');
-      expect(title.className).toContain('font-semibold');
+      expect(item.classList.contains('gap-3')).toBe(true);
+      expect(item.classList.contains('py-3')).toBe(true);
+      expect(title.classList.contains('text-base')).toBe(true);
+      expect(title.classList.contains('font-semibold')).toBe(true);
     });
   });
 
@@ -200,13 +200,13 @@ describe('ItemComponent', () => {
 
     it('should apply items-start on root by default (align=start)', () => {
       const item: HTMLElement = fixture.nativeElement.querySelector('tw-item');
-      expect(item.className).toContain('items-start');
-      expect(item.className).not.toContain('items-center');
+      expect(item.classList.contains('items-start')).toBe(true);
+      expect(item.classList.contains('items-center')).toBe(false);
     });
 
     it('should apply mt-0.5 nudge on leading at md size with align=start', () => {
       const leading: HTMLElement = fixture.nativeElement.querySelector('[twItemLeading]');
-      expect(leading.className).toContain('mt-0.5');
+      expect(leading.classList.contains('mt-0.5')).toBe(true);
     });
 
     it('should apply items-center on root when align=center', () => {
@@ -214,7 +214,7 @@ describe('ItemComponent', () => {
       fixture.detectChanges();
 
       const item: HTMLElement = fixture.nativeElement.querySelector('tw-item');
-      expect(item.className).toContain('items-center');
+      expect(item.classList.contains('items-center')).toBe(true);
     });
 
     it('should clear the leading mt-0.5 nudge when align=center', () => {
@@ -222,8 +222,8 @@ describe('ItemComponent', () => {
       fixture.detectChanges();
 
       const leading: HTMLElement = fixture.nativeElement.querySelector('[twItemLeading]');
-      expect(leading.className).not.toContain('mt-0.5');
-      expect(leading.className).toContain('mt-0');
+      expect(leading.classList.contains('mt-0.5')).toBe(false);
+      expect(leading.classList.contains('mt-0')).toBe(true);
     });
   });
 
@@ -247,10 +247,10 @@ describe('ItemComponent', () => {
 
     it('should apply hover and focus-visible classes', () => {
       const item: HTMLElement = fixture.nativeElement.querySelector('tw-item');
-      expect(item.className).toContain('hover:bg-surface-muted');
-      expect(item.className).toContain('focus-visible:outline-primary-500');
-      expect(item.className).toContain('cursor-pointer');
-      expect(item.className).toContain('rounded-md');
+      expect(item.classList.contains('hover:bg-surface-muted')).toBe(true);
+      expect(item.classList.contains('focus-visible:outline-primary-500')).toBe(true);
+      expect(item.classList.contains('cursor-pointer')).toBe(true);
+      expect(item.classList.contains('rounded-md')).toBe(true);
     });
 
     it('should emit selected on click', () => {
@@ -323,8 +323,8 @@ describe('ItemComponent', () => {
 
     it('should apply opacity-50 and pointer-events-none', () => {
       const item: HTMLElement = fixture.nativeElement.querySelector('tw-item');
-      expect(item.className).toContain('opacity-50');
-      expect(item.className).toContain('pointer-events-none');
+      expect(item.classList.contains('opacity-50')).toBe(true);
+      expect(item.classList.contains('pointer-events-none')).toBe(true);
     });
 
     it('should not emit selected on click', () => {
@@ -378,8 +378,8 @@ describe('ItemComponent', () => {
       fixture.detectChanges();
 
       const title: HTMLElement = fixture.nativeElement.querySelector('[twItemTitle]');
-      expect(title.className).toContain('font-medium');
-      expect(title.className).toContain('text-fg');
+      expect(title.classList.contains('font-medium')).toBe(true);
+      expect(title.classList.contains('text-fg')).toBe(true);
     });
 
     it('should apply description classes onto the projected description element', async () => {
@@ -390,7 +390,7 @@ describe('ItemComponent', () => {
       fixture.detectChanges();
 
       const description: HTMLElement = fixture.nativeElement.querySelector('[twItemDescription]');
-      expect(description.className).toContain('text-fg-muted');
+      expect(description.classList.contains('text-fg-muted')).toBe(true);
     });
 
     it('should apply shrink-0 to leading and trailing', async () => {
@@ -402,8 +402,8 @@ describe('ItemComponent', () => {
 
       const leading: HTMLElement = fixture.nativeElement.querySelector('[twItemLeading]');
       const trailing: HTMLElement = fixture.nativeElement.querySelector('[twItemTrailing]');
-      expect(leading.className).toContain('shrink-0');
-      expect(trailing.className).toContain('shrink-0');
+      expect(leading.classList.contains('shrink-0')).toBe(true);
+      expect(trailing.classList.contains('shrink-0')).toBe(true);
     });
   });
 
@@ -461,8 +461,8 @@ describe('ItemComponent', () => {
     it('should not set aria-current or current classes by default', () => {
       const item: HTMLElement = fixture.nativeElement.querySelector('tw-item');
       expect(item.getAttribute('aria-current')).toBeNull();
-      expect(item.className).not.toContain('bg-primary-soft');
-      expect(item.className).not.toContain('ring-primary-border');
+      expect(item.classList.contains('bg-primary-soft')).toBe(false);
+      expect(item.classList.contains('ring-primary-border')).toBe(false);
     });
 
     it('should apply current ring and aria-current when current=true', () => {
@@ -471,10 +471,10 @@ describe('ItemComponent', () => {
 
       const item: HTMLElement = fixture.nativeElement.querySelector('tw-item');
       expect(item.getAttribute('aria-current')).toBe('true');
-      expect(item.className).toContain('bg-primary-soft');
-      expect(item.className).toContain('ring-2');
-      expect(item.className).toContain('ring-inset');
-      expect(item.className).toContain('ring-primary-border-strong');
+      expect(item.classList.contains('bg-primary-soft')).toBe(true);
+      expect(item.classList.contains('ring-2')).toBe(true);
+      expect(item.classList.contains('ring-inset')).toBe(true);
+      expect(item.classList.contains('ring-primary-border-strong')).toBe(true);
     });
 
     it('should stack current and interactive focus styling together', () => {
@@ -483,8 +483,8 @@ describe('ItemComponent', () => {
       fixture.detectChanges();
 
       const item: HTMLElement = fixture.nativeElement.querySelector('tw-item');
-      expect(item.className).toContain('ring-primary-border-strong');
-      expect(item.className).toContain('focus-visible:outline-primary-500');
+      expect(item.classList.contains('ring-primary-border-strong')).toBe(true);
+      expect(item.classList.contains('focus-visible:outline-primary-500')).toBe(true);
     });
   });
 
@@ -539,9 +539,9 @@ describe('ItemComponent', () => {
       // Consumer's static class attribute coexists with the host [class] binding.
       // Tailwind's CSS source order resolves the final winner — the host binding
       // never overwrites the consumer's class.
-      expect(item.className).toContain('py-4');
-      expect(item.className).toContain('cursor-pointer');
-      expect(item.className).toContain('opacity-50');
+      expect(item.classList.contains('py-4')).toBe(true);
+      expect(item.classList.contains('cursor-pointer')).toBe(true);
+      expect(item.classList.contains('opacity-50')).toBe(true);
     });
   });
 });

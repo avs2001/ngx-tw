@@ -137,7 +137,7 @@ describe('ToastService', () => {
       toast.success('done');
       await flushEnter();
       const panel = getAllToasts()[0];
-      expect(panel.className).toContain('bg-success-soft');
+      expect(panel.classList.contains('bg-success-soft')).toBe(true);
       expect(panel.getAttribute('role')).toBe('status');
     });
 
@@ -208,8 +208,8 @@ describe('ToastService', () => {
       await flushEnter();
       const closeBtn = document.querySelector('button[aria-label="Dismiss"]') as HTMLElement;
       expect(closeBtn).not.toBeNull();
-      expect(closeBtn.className).toContain('size-6');
-      expect(closeBtn.className).not.toContain('size-5');
+      expect(closeBtn.classList.contains('size-6')).toBe(true);
+      expect(closeBtn.classList.contains('size-5')).toBe(false);
       const svg = closeBtn.querySelector('svg');
       expect(svg?.getAttribute('class')).toContain('size-4');
     });
@@ -310,7 +310,7 @@ describe('ToastService', () => {
           'button, a[href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
         ).length,
       ).toBe(0);
-      expect(wrapper.className).toContain('focus-visible:outline-2');
+      expect(wrapper.classList.contains('focus-visible:outline-2')).toBe(true);
 
       wrapper.dispatchEvent(new FocusEvent('focusin', { bubbles: true }));
       advance(30_000);
@@ -746,7 +746,7 @@ describe('ToastService', () => {
     it('merges extra classes onto the tw-toast root', async () => {
       toast.show('styled', { panelClass: ['my-custom-class'], duration: 0 });
       await flushEnter();
-      expect(getAllToasts()[0].className).toContain('my-custom-class');
+      expect(getAllToasts()[0].classList.contains('my-custom-class')).toBe(true);
     });
   });
 
@@ -794,7 +794,7 @@ describe('ToastService', () => {
       const panel = getAllToasts()[0];
       expect(panel.textContent).toContain('done!');
       expect(panel.textContent).not.toContain('loading…');
-      expect(panel.className).toContain('bg-success-soft');
+      expect(panel.classList.contains('bg-success-soft')).toBe(true);
     });
   });
 });

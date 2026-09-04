@@ -249,7 +249,7 @@ describe('CheckboxComponent', () => {
       const fixture = TestBed.createComponent(BasicHost);
       fixture.componentInstance.labelPosition.set('before');
       fixture.detectChanges();
-      expect(getCheckbox(fixture).className).toContain('flex-row-reverse');
+      expect(getCheckbox(fixture).classList.contains('flex-row-reverse')).toBe(true);
     });
   });
 
@@ -852,9 +852,9 @@ describe('CheckboxComponent color × variant combinatorial', () => {
         fixture.detectChanges();
         const box = fixture.nativeElement.querySelector('tw-checkbox > span > span') as HTMLElement;
         if (v === 'solid') {
-          expect(box.className).toContain(SOLID_BG_HINT[c]);
+          expect(box.classList.contains(SOLID_BG_HINT[c])).toBe(true);
         } else {
-          expect(box.className).toContain(OUTLINE_BORDER_HINT[c]);
+          expect(box.classList.contains(OUTLINE_BORDER_HINT[c])).toBe(true);
         }
         const iconColorSpan = fixture.nativeElement.querySelector(
           'tw-checkbox .inline-flex.items-center.justify-center.text-on-' + c +
@@ -1150,7 +1150,7 @@ describe('CheckboxComponent error state', () => {
     fixture.componentInstance.control.updateValueAndValidity();
     fixture.detectChanges();
     const box = fixture.nativeElement.querySelector('tw-checkbox > span > span') as HTMLElement;
-    expect(box.className).toContain('border-error-500');
+    expect(box.classList.contains('border-error-500')).toBe(true);
   });
 
   it('should clear aria-invalid after the user fixes the value', () => {

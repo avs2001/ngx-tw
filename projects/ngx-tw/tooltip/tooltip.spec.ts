@@ -326,8 +326,8 @@ describe('TooltipDirective', () => {
       fixture.detectChanges();
 
       const panel = getTooltipPanel();
-      expect(panel?.className).toContain('text-on-success');
-      expect(panel?.className).not.toContain('text-white');
+      expect(panel?.classList.contains('text-on-success')).toBe(true);
+      expect(panel?.classList.contains('text-white')).toBe(false);
     });
   });
 
@@ -973,8 +973,8 @@ describe('TooltipDirective', () => {
       fixture.detectChanges();
 
       const panel = getTooltipPanel();
-      expect(panel?.className).toContain('max-w-md');
-      expect(panel?.className).toContain('custom-class');
+      expect(panel?.classList.contains('max-w-md')).toBe(true);
+      expect(panel?.classList.contains('custom-class')).toBe(true);
     });
 
     it('should accept multiple classes in a space-separated string', () => {
@@ -989,8 +989,8 @@ describe('TooltipDirective', () => {
       fixture.detectChanges();
 
       const panel = getTooltipPanel();
-      expect(panel?.className).toContain('a-class');
-      expect(panel?.className).toContain('b-class');
+      expect(panel?.classList.contains('a-class')).toBe(true);
+      expect(panel?.classList.contains('b-class')).toBe(true);
     });
   });
 

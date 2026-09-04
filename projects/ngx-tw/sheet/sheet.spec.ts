@@ -210,25 +210,25 @@ describe('Sheet', () => {
       sheet.open(SheetComponentContent, { data: { value: 'x' }, side: 'right', size: 'md' });
       await flushEnter();
       const el = getContainerEl()!;
-      expect(el.className).toContain('max-w-md');
-      expect(el.className).toContain('h-screen');
-      expect(el.className).toContain('right-0');
+      expect(el.classList.contains('max-w-md')).toBe(true);
+      expect(el.classList.contains('h-screen')).toBe(true);
+      expect(el.classList.contains('right-0')).toBe(true);
     });
 
     it('should apply height-based class for vertical sides', async () => {
       sheet.open(SheetComponentContent, { data: { value: 'x' }, side: 'top', size: 'md' });
       await flushEnter();
       const el = getContainerEl()!;
-      expect(el.className).toContain('h-[50vh]');
-      expect(el.className).toContain('w-screen');
+      expect(el.classList.contains('h-[50vh]')).toBe(true);
+      expect(el.classList.contains('w-screen')).toBe(true);
     });
 
     it('should set bottom-0 for bottom-anchored sheets', async () => {
       sheet.open(SheetComponentContent, { data: { value: 'x' }, side: 'bottom', size: 'lg' });
       await flushEnter();
       const el = getContainerEl()!;
-      expect(el.className).toContain('bottom-0');
-      expect(el.className).toContain('h-[66vh]');
+      expect(el.classList.contains('bottom-0')).toBe(true);
+      expect(el.classList.contains('h-[66vh]')).toBe(true);
     });
   });
 
@@ -543,8 +543,8 @@ describe('Sheet', () => {
       const fixture = TestBed.createComponent(SheetIconHost);
       fixture.detectChanges();
       const el = fixture.nativeElement.querySelector('[twSheetIcon]') as HTMLElement;
-      expect(el.className).toContain('rounded-full');
-      expect(el.className).toContain('bg-surface-muted');
+      expect(el.classList.contains('rounded-full')).toBe(true);
+      expect(el.classList.contains('bg-surface-muted')).toBe(true);
     });
 
     it('SheetIconDirective applies semantic color classes', () => {
@@ -552,15 +552,15 @@ describe('Sheet', () => {
       fixture.componentInstance.color = 'error';
       fixture.detectChanges();
       const el = fixture.nativeElement.querySelector('[twSheetIcon]') as HTMLElement;
-      expect(el.className).toContain('bg-error-soft');
-      expect(el.className).toContain('text-error-icon');
+      expect(el.classList.contains('bg-error-soft')).toBe(true);
+      expect(el.classList.contains('text-error-icon')).toBe(true);
     });
 
     it('SheetSubtitleDirective applies muted text styling', () => {
       const fixture = TestBed.createComponent(SheetSubtitleHost);
       fixture.detectChanges();
       const el = fixture.nativeElement.querySelector('[twSheetSubtitle]') as HTMLElement;
-      expect(el.className).toContain('text-fg-muted');
+      expect(el.classList.contains('text-fg-muted')).toBe(true);
     });
 
     it('SheetDescriptionDirective generates a unique id on the host element', () => {
@@ -611,7 +611,7 @@ describe('Sheet', () => {
 
       const container = getContainerEl()!;
       expect(container.getAttribute('data-side')).toBe('left');
-      expect(container.className).toContain('max-w-xl');
+      expect(container.classList.contains('max-w-xl')).toBe(true);
       expect(container.getAttribute('aria-modal')).toBe('false');
 
       localSheet.closeAll();

@@ -674,6 +674,24 @@ Practical consequences:
 
 - Internal signal values or computed property values — test DOM output instead.
 - Class names applied to elements — test observable behavior, not implementation details.
+
+  **Read this rule as written, not as an absolute.** It was measured on 2026-09-04: 47 of 75 spec
+  files make ~520 class assertions, so taken literally the suite has been in violation of it since
+  the beginning. That is the rule being too broad rather than the suite being wrong — this is a
+  Tailwind library rendered in jsdom, where no style is computed, so the applied class is the only
+  observable proxy for "does `variant="outline"` paint an outline". What the rule is really
+  protecting against is asserting *incidental* classes (layout utilities, ordering, whole strings).
+  Assert the one class that encodes the behaviour under test.
+
+  **When you do assert a class, use `classList.contains(...)`, never
+  `expect(el.className).toContain(...)`.** `className` is a space-joined string, so `toContain` is a
+  substring match and silently passes on any longer class with the same prefix. Measured: **75 of
+  those assertions could not distinguish what they claimed to test** — `toContain('bg-surface')`
+  also matches `bg-surface-muted`/`-sunken`/`-raised`, `toContain('border-t')` also matches
+  `border-transparent`, and `toContain('ring-primary-border')` kept passing after the class became
+  `ring-primary-border-strong`. All ~470 were converted to `classList.contains()`, which is exact
+  and order-independent. Demonstrated on `card`: changing `bg-surface` to `bg-surface-muted` passes
+  the old form and fails the new one.
 - Implementation details of CDK modules — trust CDK; test your integration with it.
 
 ## Templates

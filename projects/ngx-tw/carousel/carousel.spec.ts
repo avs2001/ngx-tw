@@ -193,8 +193,8 @@ describe('CarouselComponent — rendering', () => {
   it('applies orientation-specific overflow utilities', () => {
     const { viewport } = setup();
     // Default orientation is horizontal.
-    expect(viewport.className).toContain('overflow-x-auto');
-    expect(viewport.className).toContain('snap-x');
+    expect(viewport.classList.contains('overflow-x-auto')).toBe(true);
+    expect(viewport.classList.contains('snap-x')).toBe(true);
   });
 
   // Regression guard for the slide-sizing wiring fix. This is a binding check,
@@ -508,8 +508,8 @@ describe('CarouselComponent — autoplay', () => {
     const pauseButton = carouselHost.querySelector(
       'button[aria-label="Pause autoplay"]',
     ) as HTMLButtonElement;
-    expect(pauseButton.className).toContain('bg-overlay-control');
-    expect(pauseButton.className).toContain('hover:bg-overlay-control-hover');
+    expect(pauseButton.classList.contains('bg-overlay-control')).toBe(true);
+    expect(pauseButton.classList.contains('hover:bg-overlay-control-hover')).toBe(true);
     expect(pauseButton.className).not.toMatch(/\bbg-black\b/);
   });
 });
@@ -842,11 +842,11 @@ describe('CarouselComponent — teardown', () => {
       // engages. If the pointer events never reached the handlers, this is
       // where it shows.
       expect(viewport.style.scrollSnapType).toBe('none');
-      expect(viewport.className).toContain('cursor-grabbing');
+      expect(viewport.classList.contains('cursor-grabbing')).toBe(true);
 
       dispatchPointer(window, 'pointerup', 140);
       expect(viewport.style.scrollSnapType).toBe('');
-      expect(viewport.className).not.toContain('cursor-grabbing');
+      expect(viewport.classList.contains('cursor-grabbing')).toBe(false);
 
       // `_onPointerUp` arms the pause timer at `interval * 2 + 16`. The host
       // uses the default 5000ms interval and autoplay is off, so nothing else
@@ -874,7 +874,7 @@ describe('CarouselComponent — teardown', () => {
     dispatchPointer(viewport, 'pointerdown', 100);
     dispatchPointer(window, 'pointermove', 140);
     expect(viewport.style.scrollSnapType).toBe('none');
-    expect(viewport.className).toContain('cursor-grabbing');
+    expect(viewport.classList.contains('cursor-grabbing')).toBe(true);
 
     // Destroyed mid-drag: `pointerup` never arrives while the component is
     // alive, so the natural cleanup in `_onPointerUp` never runs. Only the
@@ -886,6 +886,6 @@ describe('CarouselComponent — teardown', () => {
     // Both staying put is the proof the listener is gone.
     dispatchPointer(window, 'pointerup', 140);
     expect(viewport.style.scrollSnapType).toBe('none');
-    expect(viewport.className).toContain('cursor-grabbing');
+    expect(viewport.classList.contains('cursor-grabbing')).toBe(true);
   });
 });
