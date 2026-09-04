@@ -40,7 +40,7 @@
         [attr.aria-selected]="isTabActive(tab.value())"
         [attr.aria-controls]="getPanelId(tab.value())"
         [attr.aria-disabled]="tab.disabled() || null"
-        [attr.aria-keyshortcuts]="tab.closable() && !tab.disabled() ? 'Delete' : null"
+        [attr.aria-keyshortcuts]="tab.isDismissible() && !tab.disabled() ? 'Delete' : null"
         [class]="getTriggerClasses(tab.value(), isTabActive(tab.value()))"
         [class.opacity-50]="tab.disabled()"
         [class.pointer-events-none]="tab.disabled()"
@@ -64,7 +64,7 @@
              keyboard path is the APG-recommended Delete key on the tab
              itself, handled in onKeydown and advertised to assistive tech
              through aria-keyshortcuts on the trigger above. -->
-        @if (tab.closable() && !tab.disabled()) {
+        @if (tab.isDismissible() && !tab.disabled()) {
           <span
             data-tw-tab-close
             aria-hidden="true"
