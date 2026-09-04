@@ -514,6 +514,16 @@ Exception: pure-CVA controls that do *not* integrate `TW_ERROR_STATE_MATCHER` (`
 
 - **Inputs:** adjectives for state (`disabled`, `selected`), nouns for data (`label`, `color`, `size`). Boolean inputs default to `false` unless they qualify for the documented exception below.
 - **Outputs:** Angular's `propertyChange` pattern (`valueChange`, `openedChange`). Action events use past tense (`closed`, `selected`).
+
+  **Carve-out: a form control's user-interaction event is named `change`.** `checkbox`, `switch`,
+  `slider` and both `radio` classes each expose a bare `change` alongside the `model()`-derived
+  `checkedChange` / `valueChange`, and that is correct, not drift. The two are semantically
+  distinct and each JSDoc says so: `checkedChange` fires on **any** change including programmatic
+  `writeValue` / `FormControl.setValue`, while `change` fires **only** on user interaction. It is
+  also the name Angular Material uses for exactly this event (`MatCheckbox.change`,
+  `MatSlideToggle.change`), so consumers arrive expecting it. Verified 2026-09-04 — do not "fix"
+  these to `propertyChange` form: it is a breaking rename that diverges from Material and collapses
+  a distinction the components deliberately draw.
 - Use `input()` for configuration. Use `model()` only when the consumer needs two-way binding `[(prop)]` — the component mutates a value the parent owns.
 - Prefer a single `variant` input for the primary visual axis (`solid | outline | ghost`). Use separate inputs when axes are independent (`color`, `size`).
 - **Shared variant types:** define common variant types (`TwColor`, `TwSize`) in `ngx-tw/core`. Every component exposing `color` or `size` must use these shared types.
