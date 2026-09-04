@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 _Nothing yet._
 
+## 0.8.0 — 2026-09-04
+
+### Bug Fixes
+
+- **test:** isolate vitest files — the harness blocker was a starved macrotask queue ([665a6bb](https://github.com/avs2001/ngx-tw/commit/665a6bbc6e7d965f4c8693189dd36ff755ad6e79))
+
 ## 0.7.0 — 2026-09-04
 
 ### Features
