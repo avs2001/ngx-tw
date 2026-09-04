@@ -9,6 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 _Nothing yet._
 
+## 0.6.2 — 2026-09-04
+
+### Bug Fixes
+
+- **a11y:** move outline-variant boundaries onto the -border slot ([0d20470](https://github.com/avs2001/ngx-tw/commit/0d204702c2186b3981042546ff2e2c8c759220f4))
+- **a11y:** move focus rings and focused borders onto the -border slot ([7700bba](https://github.com/avs2001/ngx-tw/commit/7700bba6dad2c1aafc0a67025de950e2da941aab))
+
 ## 0.6.1 — 2026-09-03
 
 ### Bug Fixes
