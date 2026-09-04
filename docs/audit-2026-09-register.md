@@ -2146,8 +2146,19 @@ the instrument that decides** — pass 7's own correction says exactly this.
 
 The fix is `"isolate": true` on both `test` targets in `angular.json`.
 
-**It costs wall-clock**, and that is the trade being made deliberately: a process per file takes an
-isolated run to roughly 2–2.5 minutes against ~80 seconds. The hazard it retires has cost three
+**It costs wall-clock**, and that is the trade being made deliberately. Measured on `ci.yml`, which
+is the number that matters for the gate: the `unit tests` job goes **74 s → 121 s** (+64%), comparing
+the last green non-isolated run to the first green isolated one. Locally the ratio is worse
+(~80 s → ~2–2.5 min) because a dev machine has more cores to lose to per-file processes.
+
+**There is a second cost, and it is not wall-clock.** A process per file needs process slots, so on
+a saturated machine the suite stops being able to start workers at all:
+`[vitest-pool]: Failed to start forks worker … Timeout waiting for worker to respond`, 14 files in
+one run. That was measured at **load average 21–30 on 8 cores** — roughly 3.5× oversubscription,
+caused by unrelated work on the same box, not by the suite. It has never been seen on `ci.yml`,
+whose runner is dedicated. Worth knowing before someone reports it as a new flake: it is a symptom
+of the machine, and the tell is that the failures name *files that could not start* rather than
+tests that failed. The hazard it retires has cost three
 passes, one deleted test, one misattributed flake fix and two harness withdrawals, so the trade is
 worth it — but if a future maintainer wants the speed back, the alternative is to find the single
 file that leaks a runaway loop rather than isolating all 97. That hunt is now well-posed: it is a
