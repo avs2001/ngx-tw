@@ -110,6 +110,18 @@ describe('ThemeService', () => {
 
   afterEach(() => {
     vi.restoreAllMocks();
+    // `vi.stubGlobal` is a SEPARATE registry from mocks: `restoreAllMocks()`
+    // does not undo it, and Vitest's `unstubGlobals` option defaults to
+    // `false`. Under `isolate: false` one jsdom window is shared by every spec
+    // file in a worker, so whichever stub this file installed last outlives it
+    // and becomes the `localStorage` / `matchMedia` that unrelated later files
+    // see. Several stubs here are deliberately PARTIAL doubles — the last one
+    // in the file has `getItem` and `setItem` and no `removeItem` — which is
+    // exactly how `split.spec.ts` came to die on
+    // `TypeError: localStorage.removeItem is not a function`, five failures in
+    // a file that never mentions this one. Same family as the `setTimeout`
+    // leak fixed in `11258ff`: replace a global, restore it.
+    vi.unstubAllGlobals();
     TestBed.resetTestingModule();
     // `data-theme` lives on the shared jsdom documentElement and survives
     // `resetTestingModule`. Without this, a test asserting the attribute can
@@ -508,6 +520,9 @@ describe('ThemeService', () => {
 describe('provideTheme bootstrap', () => {
   afterEach(() => {
     vi.restoreAllMocks();
+    // Same reason as the `afterEach` above: `stubGlobal` survives
+    // `restoreAllMocks`, and under `isolate: false` it survives this file.
+    vi.unstubAllGlobals();
     TestBed.resetTestingModule();
     document.documentElement.removeAttribute('data-theme');
   });
