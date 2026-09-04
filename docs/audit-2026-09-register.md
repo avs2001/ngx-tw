@@ -2054,3 +2054,241 @@ justified from the drifted, and that framing invites a breaking rename that woul
   clear 4.5 collapses the two foreground tiers — the same trap the borders hit in pass 8.
 - The remaining consistency items: the Escape-dismiss *implementation* split (three overlapping
   abstractions, one now dogfooded), and `_IdGenerator` — **closed as won't-do**, above.
+
+---
+
+# Pass 14 — 2026-09-04, the two withdrawn harnesses, restored by removing the dependency instead of surviving it
+
+Scope: close the audit's last open item. 13 of 15 overlay-ish entry points shipped a `testing/`
+harness; `popover` and `tooltip` did not, so a **consumer** had no supported way to test them. That
+was the gap — not our own coverage, which was never in question.
+
+Both are restored. `@cdevhub/ngx-tw/popover/testing` and `@cdevhub/ngx-tw/tooltip/testing` ship,
+making **15 harness entry points** and 73 exported entry points in total.
+
+## Pass 7 named the wrong mechanism, and the name was load-bearing
+
+The blocker was recorded three times, in the register and in two commit messages, as:
+
+> `TestbedHarnessEnvironment` + zoneless + **an overlay leave animation** means
+> `fixture.whenStable()` may never resolve.
+
+The leave animation is not part of it. Measured in the actual Vitest/jsdom environment before
+anything was written:
+
+```
+PROBE getAnimations: undefined
+```
+
+Angular gates its whole native-animation implementation on
+`typeof document?.documentElement?.getAnimations === 'function'`
+(`@angular/core/fesm2022/_debug_node-chunk.mjs:3998`), and every `animate.leave` entry point returns
+early when that is false. jsdom does not implement the Web Animations API, so **`animate.leave` is
+inert in this suite** — for `popover`, `tooltip`, and the six overlay components whose harnesses
+were shipping green all along. The thing named as the cause could not have been the cause.
+
+What *is* true is the half of the sentence that got less attention: every `TestElement` operation
+routes through `forceStabilize()`, which is `fixture.detectChanges()` followed by
+`await fixture.whenStable()` (`@angular/cdk/fesm2022/testing-testbed.mjs:596,644`), and that await
+resolves only when Angular's `PendingTasks` set empties. **The precise reason it sometimes does not
+empty around an open overlay was not identified in this pass, and the fix does not depend on it** —
+that is the point of the fix. This is recorded plainly rather than quietly repaired, because a wrong
+mechanism in the register is worse than an unknown one: it sent two authors looking at animation
+timings, and it is why "wait longer" and "poll harder" were the two things tried.
+
+The reproduction stands, and was reproduced here on the **first** full-suite run after restoring both
+harnesses verbatim: `tooltip`'s three show/hide tests timed out together at the full 15 000 ms
+budget, while the same file passed 3 of 3 in isolation. Load-dependent, and — worth recording —
+**not reproducible by CPU starvation alone**: 14 busy Node processes on 8 cores did not provoke it.
+
+## The fix took three stages, and the two failed ones are the finding
+
+`@angular/cdk/testing` exports `manualChangeDetection(fn)`. It sets the module flag that
+`forceStabilize()` early-returns on, so for the duration of `fn` **every** `TestElement` operation
+skips both the `detectChanges()` and the `whenStable()` — verified by reading
+`batchChangeDetection` (`testing.mjs:18`), which with `triggerBeforeAndAfter: false` emits no
+`onDetectChangesNow` and so never triggers the environment's own `detectChanges` either. Nesting is
+safe: it early-returns when the flag is already set.
+
+**Stage 1 — wrap every method body.** Six of six on `PopoverHarness`, seven of seven on
+`TooltipHarness`. Correct, and still in place. Pushed; `ci.yml` failed. **All nine** `tooltip` tests
+timed out at 5 000 ms, the stack pointing at the first statement of every test:
+
+```
+× starts hidden and reads the trigger text  5012ms
+    const tooltip = await loader.getHarness(TooltipHarness.with({ triggerText: 'Save' }));
+```
+
+**Stage 2 — wrap acquisition too.** `loader.getHarness` stabilizes twice, and the second half is the
+interesting one: `getAllRawElements` calls `forceStabilize()` directly, and `HarnessPredicate`
+filtering routes through CDK's `parallel()` — `batchChangeDetection(fn, /* triggerBeforeAndAfter */
+true)` — which emits `onDetectChangesNow`, and the environment answers with
+`Promise.all(Array.from(activeFixtures).map(detectChanges))`. **That awaits `whenStable()` on every
+active fixture registered in the worker, not just this test's.** So each harness gained a static
+`load(loader, filters?)` / `loadAll(...)` wrapping acquisition; the flag nests, so the inner
+`parallel()` skips the whole `activeFixtures` round trip. Pushed; `ci.yml` failed **again** — and
+this time it was **`popover`**, all eight tests, the component that had been green in every run
+local and remote up to that point.
+
+Two things fall out of that second failure, and both were needed:
+
+- **It is not a `tooltip` problem, and it never was.** The failure moved component between runs. It
+  belongs to whichever harness spec lands in the unlucky worker slot, which is also why `popover`'s
+  perfect record up to then was a run tally and not evidence — the same instrument pass 7 was
+  corrected for trusting.
+- **The remaining hang was in `beforeEach`.** The guards timed out at the suite's 5 000 ms rather
+  than failing at their own 1 000 ms bound with `PopoverHarness.load awaited app stabilization`. A
+  guard cannot report on work it never reached: the hang was upstream of the test body, in
+  `beforeEach`'s own `await fixture.whenStable()`. (The stage-1 failure's stack, which appeared to
+  point at `getHarness`, is not reliable evidence for *which* of the two it was — Vitest attributes a
+  hook timeout to the test. Both are gone now, so it does not matter.)
+
+**Stage 3 — delete the last one.** `await fixture.whenStable()` is gone from both `beforeEach`
+blocks, and from the one mid-test place `popover` used it. In zoneless, `fixture.detectChanges()` is
+`includeAllTestViews = true; _appRef.tick()` — **synchronous**; the fixture is rendered when it
+returns, and `load()` queries the DOM without stabilizing anyway, so nothing needed it.
+
+**`grep -c whenStable` over the harness and spec code of both entry points now returns zero.** That
+is the whole claim, and it is checkable in one command rather than by counting green runs.
+
+Stage 1's cost showed up immediately as a real defect rather than a theoretical one:
+`getTooltipText()` returned `''` on a tooltip that had just attached. Measured timeline:
+
+```
+after show(): present=true  text=""
++10ms:        present=true  text="Saves your changes"
+```
+
+The panel element is attached synchronously inside the directive's own `showDelay` timer, but its
+first *render* needs an `ApplicationRef` tick, which the zoneless scheduler had only just queued. So
+each method spends one macrotask on the scheduler: an action yields *after* dispatching, a read
+yields *before* looking. That is ordering, not luck — the scheduler schedules its tick with
+`setTimeout(cb)` raced against `requestAnimationFrame`, and a timer registered afterwards fires
+afterwards. It is a fixed, bounded yield, so unlike a stabilization await it cannot hang.
+
+What the yield does **not** cover is state behind the component's own timers — popover's 120 ms
+leave window, tooltip's show/hide delays. Those still need a DOM wait, and both specs do it by
+polling `document.querySelector`, which needs no stabilization and so can neither hang nor burn a
+fixed interval.
+
+## Why the application stops stabilizing is still unknown — this removes the dependency, it is not a cure
+
+Stated plainly because the temptation to imply otherwise is strong. What *was* pinned down:
+
+- **`PendingTasksInternal` keeps its state in a `BehaviorSubject`**, so a late subscriber cannot miss
+  the transition to zero. A hang therefore means a task is genuinely stuck, not that a resolve was
+  missed. That rules out a whole class of explanation.
+- **`fixture.whenStable()` waits on *this* injector's `PendingTasks`; `parallel()`'s handler awaits
+  `whenStable()` on *every* fixture in `activeFixtures`.** `activeFixtures` is module-level state in
+  `@angular/cdk/testing`, shared by every file in a worker.
+- **`isolate` defaults to `false`** in `@angular/build:unit-test` — the schema says so in as many
+  words ("Defaults to false to align with the Karma/Jasmine experience") and the executor hardcodes
+  `isolate: false`. So files in a worker **do** share the module registry, which is what makes a
+  cross-file `activeFixtures` leak a live hypothesis rather than a guess: a fixture left registered
+  by an earlier file would make acquisition wait on an app that is never going to settle, and it
+  would be intermittent exactly as observed, because which files share a worker varies per run.
+
+**The experiment that would settle it** and was not run: revert to the stage-1 shape and run the full
+suite several times with `isolate: true` against several with the default. If isolation makes it
+green, cross-file module state is the mechanism.
+
+Ruled out by measurement, so do not re-derive: CPU starvation (14 busy Node processes on 8 cores
+provoked nothing), and the components themselves (`tooltip.spec.ts` and `popover.spec.ts` are green
+every run; the tooltip pair run together in isolation passed 6 of 6). Monkey-patching
+`ɵPendingTasksInternal.add/remove` to record stacks did **not** reproduce in five full-suite runs,
+which may itself be a timing perturbation worth knowing about.
+
+## The reusable half: a load-dependent hang made deterministic
+
+This is the finding worth carrying forward, and it generalises well beyond these two files.
+
+Both harnesses were withdrawn on **run tallies** — popover on "3 tests hung in ~1 run in 3", tooltip
+on "5 green local runs, then 1 red CI run". Pass 7 drew the right lesson from that (local green is
+not evidence; CI is the authority) but stopped one step short: **CI green is not proof either.** A
+probabilistic failure cannot be closed by a finite number of passes, whoever runs them.
+
+It can be made deterministic. `PendingTasks` is public Angular API and `add()` returns a release
+function; holding one entry open guarantees `whenStable()` never resolves. That is the exact
+production failure, on demand, in every environment, with no contention required. Each harness spec
+now carries a `never awaits application stabilization` block that acquires the harness on the
+ordinary path, holds one such entry, and asserts every method still answers — bounded by
+`Promise.race`, which does the one thing a polling deadline cannot: **bound a single await that
+never returns**, turning a hang into a named failure.
+
+**The guard's own first draft would have passed while leaving the real defect in place**, and that
+is the sharpest lesson here. It acquired the harness on the ordinary path and only *then* held the
+entry — so it could see a hang in a method and was structurally blind to a hang in acquisition,
+which is exactly where the failure was. The instrument had the same blind spot as the fix. It now
+holds the entry first and acquires under it, so `load` is inside the guarded region.
+
+It was verified by breaking it, not by watching it pass. Removing `manualChangeDetection` from
+`TooltipHarness.hide`, `TooltipHarness.load`, `PopoverHarness.getText` and
+`PopoverHarness.loadAll`:
+
+```
+Error: PopoverHarness.getText awaited app stabilization.
+Error: PopoverHarness.loadAll awaited app stabilization.
+Error: TooltipHarness.hide awaited app stabilization.
+Error: TooltipHarness.load awaited app stabilization.
+```
+
+Red in about a second, naming the offending method. Every public method on both harnesses is
+exercised by these blocks.
+
+Two consequences follow, and both were applied:
+
+- **The 15 000 ms suite budget is gone.** It was sized for "bounded, genuinely-real work" against a
+  failure mode that is now structurally impossible; kept, it would only have guaranteed that a
+  future regression fails *slowly*. Both files run on Vitest's 5 000 ms default and take ~1.8 s
+  together.
+- **A third withdrawal would have needed a structural reason, not a tally.** None was found.
+
+## Two smaller corrections to the restored surface
+
+- `PopoverHarness` hosts on `[data-tw-popover-trigger]`, and that deletes ~32 lines. The withdrawn
+  version selected `[aria-haspopup="dialog"]` — which `tw-date-picker` and `tw-date-range-picker`
+  triggers also carry — and carried a prefix-checking guard, a named error and a whole spec test to
+  turn that ambiguity into something safe. Pass 7's markers made the match exact; the guard, the
+  error and the test are gone. *(The register credited this saving to pass 7. It was never
+  realised there: no post-marker popover harness exists anywhere in history — the file was deleted
+  in `2b9455c`, before the markers landed in `28dd6a4`, and the two versions are byte-identical.)*
+- `TooltipHarness`'s "known limitation: only statically-declared triggers are matched" section is
+  deleted with the limitation. The marker matches `[twTooltip]="expr()"` too.
+
+## The other two open items were re-measured, not assumed, and neither needed work
+
+- **The `dark:` rule holds.** All **12** hits in shipped library `.ts` are prose inside comments;
+  **zero** real utilities. Confirmed against the source, not the record.
+- **`fg-subtle` on `surface-muted` still has no governed painted instance.** `stepper.ts:161`
+  `INDICATOR_DISABLED` remains the only direct pairing and is a disabled state (SC 1.4.3 exempt);
+  `INDICATOR_PENDING` beside it uses `text-fg-muted`. `calendar-header`'s two slots pair
+  `disabled:text-fg-subtle` with `disabled:hover:bg-transparent` on the same element, so the muted
+  background never applies — verified by reading both class strings in full.
+
+Neither was touched. Recording the re-measurement matters more than the outcome: pass 13 had already
+corrected its own overstatement of both, and this is the third pass in a row where the code was
+right and the record was not.
+
+## Open
+
+The audit's queue is empty. What is left is recorded here so a later pass does not mistake it for an
+oversight:
+
+**Which half of this pass is structural and which is a tally**, stated so nobody has to guess. The
+claim "no harness or spec code awaits `whenStable()`" is structural — `grep -c whenStable` returns
+zero and four break-tests prove the guards bite. The claim "therefore the suite no longer hangs" is
+supported by five green full-suite runs and a green `ci.yml`, which is a tally, and is exactly the
+kind of evidence this pass twice caught out. The reason to believe it anyway is not the count: it is
+that both CI failures were traced to a specific `whenStable()` await, and there are none left.
+
+- **The MCP index still does not cover `testing/` entry points** — `verify:mcp-index` reports 56,
+  the count excluding all 15. Unchanged, and unchanged deliberately: the index feeds consumer-facing
+  component guidance, and harnesses are not that.
+- **The same exposure exists in the other 13 harnesses, and it is broader than acquisition.** Every
+  one of their specs opens with `fixture.detectChanges(); await fixture.whenStable();` and acquires
+  through plain `loader.getHarness`, so all three of the awaits removed here are still present
+  there. They have simply never been observed to hit it. If one ever does, the fix is what this pass
+  landed — drop the `beforeEach` await, use `load` / `loadAll`, wrap the methods — not another
+  withdrawal.
+- The remaining consistency items are unchanged from pass 13: the Escape-dismiss implementation
+  split, and `_IdGenerator` (closed as won't-do).
