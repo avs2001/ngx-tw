@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { ChangeDetectionStrategy, Component, signal } from '@angular/core';
 import { type ComponentFixture, TestBed } from '@angular/core/testing';
 import { OverlayModule } from '@angular/cdk/overlay';
@@ -33,24 +33,42 @@ class HarnessHost {
 }
 
 /**
- * Harness specs get a larger budget than Vitest's 5000ms default, applied at the
- * suite level rather than per test.
+ * The palette's overlay component. `role="dialog"` — what the harness resolves —
+ * is rendered *inside* this element, so the two attach and detach together.
  *
- * Every harness call is an async round-trip through `fixture.whenStable()`, and
- * overlay components add real time that cannot be zeroed: their enter/leave
- * animations are hard-coded constants, not inputs, and fake timers hang against
- * `whenStable()`. A file that fits the default comfortably when run alone loses
- * the race under full-suite contention — these failed roughly one run in three,
- * one file at a time, which is how a suite trains people to re-run until green.
- *
- * This is sizing a budget to bounded, genuinely-real work. It is NOT the same as
- * widening a timeout to paper over a fixed sleep standing in for a condition —
- * that was the `menu` type-ahead flake, and it was fixed with virtual time
- * instead.
+ * Deliberately NOT `.tw-command-palette-panel`: that class sits on the CDK pane,
+ * which `overlayRef.detach()` leaves in the document, so a poll on it could
+ * never observe a close.
  */
-const HARNESS_TIMEOUT_MS = 15_000;
+const PANEL = 'tw-command-palette-overlay';
 
-describe('CommandPaletteHarness', { timeout: HARNESS_TIMEOUT_MS }, () => {
+/**
+ * Waits by reading `document` directly, never through the harness.
+ *
+ * The panel detaches behind the component's hard-coded 120 ms leave window, so a
+ * test has to wait for something. The two things it must not be: a fixed sleep
+ * (the deleted version of the Escape test slept 250 ms, which is a guess racing
+ * a budget rather than a condition), or a poll on a *harness* method — every
+ * `CommandPaletteHarness` call routes through `fixture.whenStable()`, and a
+ * deadline checked *between* awaits cannot bound a single await that never
+ * returns. `document.querySelector` needs no stabilization, so it can neither
+ * hang nor burn a fixed interval.
+ */
+async function settleUntil(condition: () => boolean, what: string): Promise<void> {
+  const deadline = Date.now() + 2000;
+  while (Date.now() < deadline) {
+    if (condition()) return;
+    await new Promise((resolve) => setTimeout(resolve, 10));
+  }
+  throw new Error(`command palette harness spec: timed out waiting for ${what}.`);
+}
+
+const settleOpen = () =>
+  settleUntil(() => document.querySelector(PANEL) !== null, 'the palette to attach');
+const settleClosed = () =>
+  settleUntil(() => document.querySelector(PANEL) === null, 'the palette to detach');
+
+describe('CommandPaletteHarness', () => {
   let fixture: ComponentFixture<HarnessHost>;
   let loader: HarnessLoader;
 
@@ -64,6 +82,14 @@ describe('CommandPaletteHarness', { timeout: HARNESS_TIMEOUT_MS }, () => {
     // The ordinary fixture loader. The palette renders into the overlay
     // container, but the harness resolves it via `documentRootLocatorFactory()`.
     loader = TestbedHarnessEnvironment.loader(fixture);
+  });
+
+  // Six tests here open the palette and never close it. `settleClosed()` below
+  // waits for the LAST `tw-command-palette-overlay` to leave the document, so a
+  // panel surviving into the next test would make it time out for a reason that
+  // has nothing to do with Escape. Same guard both newer harness specs carry.
+  afterEach(() => {
+    document.querySelectorAll('.cdk-overlay-container').forEach((el) => (el.innerHTML = ''));
   });
 
   /** Opens through the host's two-way `open` model, as a consumer would. */
@@ -169,19 +195,37 @@ describe('CommandPaletteHarness', { timeout: HARNESS_TIMEOUT_MS }, () => {
     );
   });
 
-  // The `closes with Escape` case was REMOVED, not skipped.
-  //
-  // It hung at the full 15000ms budget in ~1 run in 3 — a hang, not slowness,
-  // which no timeout can fix. Every harness call routes through
-  // `fixture.whenStable()`, and under zoneless that can wait on a re-scheduled
-  // timer and never resolve. Around an overlay LEAVE animation it reliably does.
-  // Reading the DOM directly fixes the final assertion but not the harness calls
-  // before it (`close()` itself resolves the input through the same path).
-  //
-  // The close path is still covered: `command-palette.spec.ts` asserts Escape
-  // dismissal directly against the component, without a harness. What is not
-  // covered is `CommandPaletteHarness.close()` itself, and its JSDoc says so.
-  //
-  // This shipped to develop in e911bbb before the flake was understood. Removing
-  // it is the honest fix; the alternative is a suite people learn to re-run.
+  /**
+   * The only coverage `CommandPaletteHarness.close()` has.
+   *
+   * Deleted in pass 7 (`28dd6a4`) as an overlay-leave-animation flake; restored
+   * in pass 14, when the hang was root-caused to something else entirely — a
+   * STARVED MACROTASK QUEUE. `@angular/build:unit-test` defaulted `isolate` to
+   * `false`, so spec files shared a worker and a runaway microtask loop in one
+   * file starved timers in the next; Angular's zoneless scheduler ticks off
+   * `setTimeout`, so `whenStable()` could not resolve and every harness call
+   * hung for the whole budget. `angular.json` now sets `"isolate": true` on both
+   * test targets, and files that do not share a process cannot starve each other.
+   *
+   * `command-palette.spec.ts` covers Escape dismissal against the component; what
+   * is covered *here* is that a consumer can drive it through the harness.
+   */
+  it('closes with Escape', async () => {
+    const palette = await openPalette();
+    await settleOpen();
+    expect(await palette.isOpen()).toBe(true);
+    // Exactly one panel, so the detach polled for below is this test's own.
+    expect(document.querySelectorAll(PANEL).length).toBe(1);
+
+    await palette.close();
+    // `close()` resolves while the overlay is STILL ATTACHED — the component
+    // defers the detach behind its 120 ms leave window — so the wait is the
+    // caller's job, and its JSDoc says so.
+    await settleClosed();
+
+    expect(await palette.isOpen()).toBe(false);
+    // The detach writes `false` back through the two-way `open` model, so the
+    // consumer's binding is dismissed too, not just the DOM.
+    expect(fixture.componentInstance.isOpen()).toBe(false);
+  });
 });
