@@ -1,5 +1,5 @@
 // Spec-only ambient declarations for the three Node built-ins the theme
-// token-parity guard needs.
+// token-parity and contrast guards need.
 //
 // They are hand-written rather than pulled from `@types/node` because
 // `@types/node` is not a devDependency of this repo, and adding one purely so a
@@ -25,6 +25,16 @@
 
 declare module 'node:fs' {
   export function readFileSync(path: string, encoding: 'utf-8' | 'utf8'): string;
+
+  // Only the two members the raw-scale guard in `theme-contrast.spec.ts` walks
+  // a directory tree with. `withFileTypes: true` is the sole overload declared,
+  // because that is the sole form used — a wider hand-written shim would be
+  // guessing at `@types/node` rather than describing a call site.
+  export interface Dirent {
+    readonly name: string;
+    isDirectory(): boolean;
+  }
+  export function readdirSync(path: string, options: { withFileTypes: true }): Dirent[];
 }
 
 declare module 'node:path' {

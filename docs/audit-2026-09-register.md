@@ -1787,3 +1787,73 @@ Two method notes, because both cost a cycle:
 | `npm run verify:package` | pass |
 | `npm run verify:mcp-index` | 6 warnings |
 | Visual baselines | 2 created (`alert-variants` light/dark), 6 modified. All dimensions unchanged; light diffs confirmed as the intended tokens (`#7bf1a8` green-300 → `#008236` green-700; `#8ec5ff` blue-300 → `#2b7fff` blue-500). The new alert scene was read by eye and captures the full section, outline border included. |
+
+---
+
+# Pass 10 — 2026-09-04, making pass 9 permanent
+
+Scope: one thing. Pass 9 fixed every raw-scale border, ring and focus outline in the library, and
+**nothing stopped the next component reintroducing one.** `.claude/CLAUDE.md` says to use the
+`{role}-border` slot; `theme-contrast.spec.ts` asserted the slots themselves. Neither asserted what
+components actually *use*. That gap is precisely how 14 of 28 such utilities shipped below the floor
+for the life of the library.
+
+## What was added
+
+A second `describe` block in `theme-contrast.spec.ts` — the same file, deliberately, so it reuses
+the colour maths that file already validates against Tailwind's published hexes rather than
+duplicating it. It walks shipped component source for
+`(border|ring|outline|divide)-{role}-{step}`, resolves each through **all four schemes**, and
+asserts 3:1 against that scheme's `--color-surface`.
+
+**It measures rather than pattern-matches, and that distinction is the design.** A lint rule banning
+the syntax would also reject `outline-primary-500` — the canonical focus ring CLAUDE.md documents
+verbatim, present in 36 files, which passes comfortably at 3.76. Banning a *spelling* would have
+forced 36 files of churn to change nothing. The rule that matters is the contrast floor, so that is
+what is asserted.
+
+**Both sides were proven to fail before the guard was kept:**
+
+- Reintroducing `border-success-300` in `badge.ts` produced
+  `light: success-300 = 1.40:1 (badge/badge.ts)` **and**
+  `high-contrast: success-300 = 1.78:1` — it names the file, and it caught the high-contrast
+  scheme, which is exactly the blind spot that made pass 9 necessary.
+- A bogus `RAW_SCALE_BACKLOG` entry was reported as `stale`, so the allowlist cannot rot into
+  permission. Same two-sided shape as `KNOWN_FAILING` and `A11Y_BACKLOG`.
+
+The backlog carries exactly one entry: `warning-500`, the deferred `-solid`-fill boundary question
+in checkbox / radio / paginator, with the amber-500-is-load-bearing reasoning attached.
+
+## The limitation is stated in the guard itself, not discovered later
+
+It resolves each utility against its scheme's `--color-surface`, because that is where the
+overwhelming majority are painted. A utility on a **coloured** background is not covered — and the
+assumption is **not always conservative**: `switch`'s error ring sits on `bg-error-100` and measured
+**1.57** there versus 1.92 against white. Worse, not better. The guard's own doc comment says so, so
+green here is not mistaken for completeness.
+
+`theme-node-shims.d.ts` gained `readdirSync` + `Dirent`, declared narrowly at the single call site's
+shape rather than guessing at `@types/node`, which remains not a dependency.
+
+## Still open
+
+- **The `-solid` boundary question** (`warning-500` in checkbox, radio, paginator) — the one real
+  contrast defect left, deferred because it applies to every `-solid` in the library.
+- **`fg-subtle on surface-muted` = 4.39:1** against a 4.5 text floor in light — pre-existing, not
+  border-governed, needs the fg-tier analysis.
+- **The `dark:` rule is still unenforced.** CLAUDE.md calls it "greppable as a lint rule" and
+  nothing greps it. This pass deliberately did not expand to cover it — pass 6 already found that a
+  documentation comment in `file-upload.ts` and a demo page resurrect dead `dark:` utilities through
+  Tailwind's scanner, so a naive guard would need to reason about comments and about the demo. Same
+  shape of problem, its own pass.
+- The consistency items: Escape-dismiss split; `_IdGenerator` (4 files vs 28 hand-rolling an id
+  counter); `core/form-reset.ts` delete-or-adopt.
+
+## Verification state at hand-off
+
+| Gate | Result |
+|---|---|
+| `npm run test:ci` | **3519 passed**, 4 skipped (was 3517 + 2 guard tests) |
+| `npm run build:lib` | pass |
+| `npm run lint` | 0 errors, 79 warnings — all in `e2e/` |
+| Guard forced-failure | both sides confirmed red before being kept |
