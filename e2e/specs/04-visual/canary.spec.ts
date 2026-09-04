@@ -301,6 +301,25 @@ for (const scheme of FULL_SCENE_SCHEMES) {
       });
     });
 
+    test(`@visual checkbox — Colors section`, async ({ page }) => {
+      // `checkbox`, `radio` and `paginator` had NO visual coverage at all, which
+      // is why pass 11's fix — giving `warning`'s solid box a
+      // `border-warning-border-strong` boundary, because `amber-500` is
+      // load-bearing for the dark-on-yellow glyph and cannot be darkened —
+      // moved zero baselines. Same gap, same reasoning as the `alert-variants`
+      // scene above: a rule whose only consumer is unphotographed cannot
+      // regress visibly. `Colors` is the section that renders all eight roles
+      // checked, so the warning rim is in frame.
+      await page.goto('/components/checkbox/examples');
+      await waitForRoute(page, scheme);
+      const colors = section(page, 'Colors');
+      await expect(colors).toBeVisible();
+      await prepareRegionCapture(page, colors);
+      await expect(colors).toHaveScreenshot(`checkbox-colors.${scheme}.png`, {
+        maxDiffPixelRatio: DIFF,
+      });
+    });
+
     test(`@visual select — closed trigger`, async ({ page }) => {
       await page.goto('/components/select/examples');
       await waitForRoute(page, scheme);
