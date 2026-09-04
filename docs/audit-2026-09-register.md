@@ -2253,3 +2253,191 @@ pre-fix CI failure rate was 3 of 3 rather than the ~17% seen locally. The 8-of-8
 is *supporting* evidence only: against a ~17% baseline it puts the null at p ≈ 0.22 on its own. What
 makes the fix credible is neither tally but the mechanism — files that do not share a process cannot
 leak into one another.
+
+---
+
+# Pass 15 — 2026-09-04, the timer leak: pass 14's diagnosis was also wrong
+
+Scope: the four items pass 14 left open. Three are closed here, and the first of them closes the
+whole seven-pass thread — **including pass 14's own diagnosis, which was wrong in the same way as
+pass 7's, one layer further in.**
+
+## P15-1: the leaker, found
+
+**`carousel.spec.ts:830-832` and `code-block.spec.ts:232-233`.** The mechanism, traced rather than
+inferred:
+
+```ts
+vi.useFakeTimers();                   // globalThis.setTimeout = Sinon's fake
+vi.spyOn(globalThis, 'setTimeout');   // the spy captures the FAKE as its "original"
+setSpy.mockRestore(); vi.useRealTimers();   // the file ends healthy — measurably so
+```
+
+Vitest then runs, after **every** spec file (`vitest/dist/chunks/base.RR7zL1h0.js:97`,
+commented *"mocks should not affect different files"*):
+
+```js
+vi.restoreAllMocks();
+```
+
+That re-applies the captured original — putting Sinon's fake back **after** `useRealTimers()` has
+uninstalled its clock. What remains accepts callbacks and never runs them, for every later file in
+the same worker under `isolate: false`. Angular's zoneless scheduler ticks from `setTimeout`, so no
+tick, no `PendingTasks` clear, and `whenStable()` can never resolve.
+
+Both call sites now patch the global by **plain assignment**, which never enters Vitest's mock
+registry, so `restoreAllMocks()` has nothing to re-apply.
+
+## Two things pass 14 got wrong, and they are the lesson
+
+**1. "It IS a starved macrotask queue" — falsified.** In a hung file `setImmediate` fired in
+3–16 ms while `setTimeout` never resolved. The event loop was alive throughout; nothing was starved.
+Pass 14's *observation* — a real `setTimeout(…, 1000)` registered inside the test that never fired —
+was correct and was the right thing to notice. The *inference* drawn from it was wrong: the queue
+was not blocked, the function was dead.
+
+**2. "Leaked fake timers" was rejected for the wrong reason.** Pass 14 probed
+`vi.isFakeTimers()` at the start of `beforeEach`, saw `false`, and struck the hypothesis off. The
+flag *is* restored; it is the **function** that is not. The probe tested a proxy for the thing rather
+than the thing — which is the exact failure `.claude/CLAUDE.md` already warns about in the
+`ControlValueAccessor` section (*"verify a claim about a component against that component, not a
+model of it"*). A hypothesis was killed by a measurement that could not have detected it.
+
+The contradiction that eventually cracked it was sitting in pass 14's own evidence and was noted
+without being followed: **the guards died at the suite's 5000 ms rather than at their own 1000 ms
+`Promise.race` bail.** `@vitest/runner`'s `withTimeout` uses `getSafeTimers()` — stashed native
+timers — so Vitest's budget fires while user-land timers are dead. Pass 14 called that observation
+"the linchpin", reasoned from it to a starved queue, and stopped one step short.
+
+## P15-2: `isolate: true` reverted, and the cost recovered
+
+v0.8.0 set `"isolate": true` to *contain* a cause it could not name. The cause is now removed, so the
+mitigation is no longer earned. Reverted.
+
+The gate was chosen because it is a real test rather than a tally: **`ci.yml` was 3 of 3 RED without
+isolation before the fix.** After it:
+
+| | `unit tests` job |
+|---|---|
+| pre-fix, no isolation | **3 of 3 red** |
+| post-fix, no isolation | **3 of 3 green** — 71 s / 69 s / 68 s |
+| with isolation (v0.8.0) | green — 121 s / 139 s / 135 s |
+| pre-audit baseline | green — 74 s |
+
+So the +80% CI tax is fully repaid, and the suite is marginally faster than before the audit began.
+
+## P15-3: a guard, because the next occurrence must not cost another pass
+
+`projects/ngx-tw/test-setup.ts` now compares the global timer functions against a baseline at each
+spec-file boundary and fails loudly, naming the cause, instead of hanging an innocent file. Two
+details are load-bearing and should not be "cleaned up":
+
+- The baseline is stashed on **`globalThis`, not module scope** — the setup file is re-evaluated per
+  spec file, so a module-scope capture would re-capture the already-poisoned function and never fire.
+- It is keyed to the window object, so a legitimately fresh environment re-baselines rather than
+  failing.
+
+Proven to bite: re-introducing the bug fails one file in 2.4 s with a message naming the cause.
+
+## P15-4: `command-palette`'s deleted Escape test, restored
+
+Pass 7 deleted `closes with Escape` from the command-palette harness spec because it hung on this
+same hazard. It is back, rewritten to poll the DOM on a bounded deadline rather than sleep a fixed
+250 ms, and **verified to bite**: neutering only the `Escape` case in `handleOverlayKeydown` gives
+exactly 1 red and 9 green, failing through the poll's own named error rather than an assertion diff.
+
+Its `HARNESS_TIMEOUT_MS = 15_000` budget is dropped, on a structural argument rather than a
+measurement: a bounded poll **cannot** consume a suite budget — it fails at ~2 s with a diagnostic
+however large the budget is — so the 15 s budget was guarding a failure mode the poll forecloses.
+
+The harness's `close()` JSDoc also claimed in bold *"This method is not covered by a spec"*. That
+ships to the `.d.ts` and a consumer's IDE hover, so landing the test while it stood would have been
+this audit's own recurring failure: a record that outlived the fact.
+
+## P15-5: the stabilization-free harness machinery was a defect, not insurance — removed
+
+Pass 14 wrapped every `popover` / `tooltip` harness method in CDK's `manualChangeDetection()` and
+added static `load` / `loadAll` doing the same for acquisition. It justified this as cheap insurance
+that "removes a real dependency". **That was wrong, and the cost is measurable on the real harness.**
+
+`manualChangeDetection()` sets the module-global flag `forceStabilize()` early-returns on
+(`testing-testbed.mjs:644`), so `detectChanges()` **and** `whenStable()` never ran; a one-macrotask
+yield stood in for both. Probed against a popover whose content resolves behind a real
+`PendingTasks` entry — which is exactly what `httpResource()` / `resource()` register:
+
+```
+under the pass-14 wrapper  ->  getText() === 'loading'
+plain harness              ->  getText() === 'resolved'
+```
+
+Non-vacuous: flipping the assertion to `'resolved'` went red. So the wrapper **silently removed the
+harness's core service — stabilization — from public API**, to work around a defect in *this
+repository's own suite* that no consumer has. Two lesser costs came with it: `forceStabilize()` also
+carries the destroyed-fixture check the wrapper skipped, and `disableAutoChangeDetection` is a
+global boolean rather than a counter, so in `Promise.all([h.isOpen(), h.getText()])` whichever
+settles first re-enables auto-CD underneath the other.
+
+Both harnesses are now the plain CDK shape the other 13 use. Porting the machinery to those 13 was
+the alternative and was rejected for the same reason, more so: it would spread silent staleness to
+the form controls (combobox, the pickers, tags-input, transfer, file-upload) where async content is
+most likely.
+
+**`load` / `loadAll` are removed, and that is a breaking change** — confirmed present in the
+published 0.8.0 tarball. Stated honestly rather than minimised: test-only surface, no runtime path,
+0.x, and it fails at **compile** time (TS2339) with a one-line migration to
+`loader.getHarness(PopoverHarness.with({ … }))`. Keeping them as stabilizing aliases was considered
+and rejected: their documented contract was "acquires *without* waiting for the application to
+stabilize", so an alias would trade a loud compile error for a silent semantic change.
+
+The seven `never awaits application stabilization` guard tests go with it. They worked — pass 14
+verified they bite — but they pinned 2 of 15 harnesses against a **symptom**. The guard that matters
+now is in `test-setup.ts` and names the **cause**; measured, it arms at 90 of 97 file boundaries
+(the 7 misses are each worker's first file, which re-baselines by design). Protection moved layer
+rather than being lost.
+
+## P15-6: a second leak of the same family
+
+`theme.service.spec.ts` was the only file using `vi.stubGlobal` (14 calls) and never called
+`vi.unstubAllGlobals()`. That registry is **separate from mocks** — `restoreAllMocks()` does not undo
+it and Vitest's `unstubGlobals` defaults to `false` — so under `isolate: false` its last, *partial*
+`localStorage` double (`getItem`/`setItem`, no `removeItem`) outlived the file. It surfaced as five
+failures in `split.spec.ts`, a file that has nothing to do with it. Deterministic repro; fixed.
+
+The boundary guard now also covers `requestAnimationFrame` and `queueMicrotask` — the remaining
+globals whose poisoning reproduces the original stabilization hang. Verified it can fail: forcing a
+bad rAF baseline reds 90 of 97 files with a message naming `requestAnimationFrame`.
+
+**Residual, named rather than hidden:** the guard covers the four globals that can cause a
+stabilization hang. It is *not* a general cross-file global guard — a `localStorage`/`matchMedia`
+class leak is still caught only by whichever file trips over it. Widening it to arbitrary globals
+would turn every latent stub leak into a hard red at once and needs its own soak.
+
+## Verification state at hand-off
+
+| Gate | Result |
+|---|---|
+| `npm run build:lib` | pass — 56 entry points + 15 `testing/` |
+| `npx ng build demo` | pass |
+| `npm run test:ci` | **3534 passed**, 4 skipped + 4 demo — 8 of 8 consecutive runs |
+| `npm run lint` | 0 errors, 79 warnings — all in `e2e/` |
+| `npm run verify:package` | pass — 73 entry points exported |
+| `npm run verify:mcp-index` | 6 warnings |
+| `ci.yml`, no isolation, post-fix | **4 of 4 green** — `unit tests` 71 s / 69 s / 68 s |
+| `ci.yml`, no isolation, pre-fix | **3 of 3 red** |
+
+3541 → 3534 is exactly the seven deleted guard tests.
+
+**The before/after CI contrast is the load-bearing evidence**, not any tally: same harnesses, same
+workflow, 3 red before the leak fix and 4 green after. The local run counts (12 harness-change runs,
+8 full `test:ci`) corroborate and no more — against the historical ~1-in-5 rate they leave a
+meaningful null on their own, and several were taken at load average 21–35, the band this register
+already flags as artefact-producing.
+
+## Open
+
+- **A general cross-file global-stub guard** — see P15-6. Deliberately deferred.
+- The `demo` project has no `setupFiles`, so its two specs sit outside the boundary guard.
+- **The MCP index still does not cover `testing/` entry points** — deliberate; the index feeds
+  consumer-facing component guidance.
+- The remaining consistency items are unchanged: the Escape-dismiss implementation split, and
+  `_IdGenerator` (closed as won't-do).
