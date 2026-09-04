@@ -2147,8 +2147,8 @@ the instrument that decides** — pass 7's own correction says exactly this.
 The fix is `"isolate": true` on both `test` targets in `angular.json`.
 
 **It costs wall-clock**, and that is the trade being made deliberately. Measured on `ci.yml`, which
-is the number that matters for the gate: the `unit tests` job goes **74 s → 121 s** (+64%), comparing
-the last green non-isolated run to the first green isolated one. Locally the ratio is worse
+is the number that matters for the gate: the `unit tests` job goes **74 s → 121/139/135 s** across
+three green isolated runs, against the last green non-isolated run — call it **+80%**. Locally the ratio is worse
 (~80 s → ~2–2.5 min) because a dev machine has more cores to lose to per-file processes.
 
 **There is a second cost, and it is not wall-clock.** A process per file needs process slots, so on
@@ -2226,3 +2226,30 @@ by reading rather than by counting runs: `grep -c whenStable` over both entry po
 - The remaining consistency items are unchanged from pass 13: the Escape-dismiss implementation
   split, and `_IdGenerator` (closed as won't-do).
 
+## Verification state at hand-off
+
+| Gate | Result |
+|---|---|
+| `npm run build:lib` | pass — 56 entry points + **15 `testing/`** |
+| `npx ng build demo` | pass |
+| `npm run lint` | 0 errors, 79 warnings — all in `e2e/` |
+| `npm run verify:package` | pass — **73 entry points exported** |
+| `npm run verify:mcp-index` | 6 warnings |
+| `ci.yml` **with the fix** | **3 of 3 green** (`unit tests` 121 s / 139 s / 135 s) |
+| `ci.yml` **without it**, same harnesses | **3 of 3 red** |
+
+**Local `test:ci` verification was not completed, and that is stated rather than glossed.** The
+machine sat at load average 21–35 on 8 cores throughout the verification window because of unrelated
+work, and at that oversubscription the suite produces artefacts that are not the thing under test:
+one run lost 14 files to `Failed to start forks worker`, another lost a single unrelated
+`dialog.spec.ts` test at 5223 ms against a 5000 ms budget. Both harness specs passed in both. The
+five-run local gate should be re-run on a quiet machine before this is treated as fully verified;
+the `ci.yml` evidence above is what the decision rests on, which is what pass 7's own correction
+prescribes — **CI is the authority for this failure class.**
+
+**Statistical honesty, since this pass twice caught the suite out on exactly this.** Three green CI
+runs against three red ones is the load-bearing evidence, and it is strong precisely because the
+pre-fix CI failure rate was 3 of 3 rather than the ~17% seen locally. The 8-of-8 local isolated arm
+is *supporting* evidence only: against a ~17% baseline it puts the null at p ≈ 0.22 on its own. What
+makes the fix credible is neither tally but the mechanism — files that do not share a process cannot
+leak into one another.
