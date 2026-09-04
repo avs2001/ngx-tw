@@ -90,6 +90,19 @@ class ClosableHost {
 }
 
 @Component({
+  imports: [TabsComponent, TabComponent],
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  template: `
+    <tw-tabs [(value)]="activeTab">
+      <tw-tab value="a" label="A" [dismissible]="true">A content</tw-tab>
+    </tw-tabs>
+  `,
+})
+class DismissibleHost {
+  activeTab = signal('a');
+}
+
+@Component({
   imports: [TabsComponent, TabComponent, TabContentDirective],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
@@ -455,6 +468,17 @@ describe('TabsComponent', () => {
       fixture.detectChanges();
 
       expect(fixture.componentInstance.closedValue()).toBe('closable');
+    });
+
+    it('should render the close affordance from the canonical `dismissible` spelling too', () => {
+      // `closable` is deprecated in favour of `dismissible` — one concept had two
+      // names across the library (`alert`, `badge` and `toast` all say
+      // `dismissible`). Both bindings must work until the next major, and an
+      // alias with no test is a compatibility promise nobody checks. The host
+      // above binds `[closable]`; this one binds the new name.
+      const local = TestBed.createComponent(DismissibleHost);
+      local.detectChanges();
+      expect(local.nativeElement.querySelector('[data-tw-tab-close]')).toBeTruthy();
     });
 
     it('should not render a close affordance on non-closable tab', () => {

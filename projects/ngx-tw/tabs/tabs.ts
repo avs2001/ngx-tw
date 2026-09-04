@@ -1,5 +1,6 @@
 import {
   afterNextRender,
+  booleanAttribute,
   ChangeDetectionStrategy,
   Component,
   computed,
@@ -180,8 +181,30 @@ export class TabComponent {
   /** When true, the tab cannot be selected and is skipped by keyboard navigation. Defaults to false. */
   readonly disabled = input(false);
 
-  /** When true, a dismiss control is rendered in the tab trigger. The control is pointer-only; the keyboard gesture is Delete on the focused tab. Defaults to false. */
-  readonly closable = input(false);
+  /**
+   * When true, a dismiss control is rendered in the tab trigger. The control is pointer-only; the keyboard gesture is Delete on the focused tab. Defaults to false.
+   *
+   * @deprecated Bind `dismissible` instead. `closable` was the library's only
+   * spelling of this concept — `alert`, `badge` and `toast` all call it
+   * `dismissible` — and one idea should not have two names. Both work; `closable`
+   * is removed in the next major.
+   */
+  readonly closable = input(false, { transform: booleanAttribute });
+
+  /**
+   * When true, a dismiss control is rendered in the tab trigger. The control is pointer-only; the keyboard gesture is Delete on the focused tab. Defaults to false.
+   *
+   * Canonical spelling, matching `alert`, `badge` and `toast`. Supersedes the
+   * deprecated `closable`; binding either one enables the control.
+   */
+  readonly dismissible = input(false, { transform: booleanAttribute });
+
+  /**
+   * @internal Whether a dismiss control should render, from either spelling.
+   * Both inputs default to `false`, so `||` is the correct reconciliation: it is
+   * true exactly when the consumer opted in through one name or the other.
+   */
+  readonly isDismissible = computed(() => this.dismissible() || this.closable());
 
   /** When true, the tab panel content is only instantiated when the tab becomes active for the first time. Defaults to false. */
   readonly lazy = input(false);
@@ -501,7 +524,7 @@ export class TabsComponent implements AfterViewInit {
     // on the trigger advertises this gesture to assistive tech.
     if (event.key === 'Delete' && focusedIdx >= 0) {
       const tab = this.tabs()[focusedIdx];
-      if (tab.closable() && !tab.disabled()) {
+      if (tab.isDismissible() && !tab.disabled()) {
         event.preventDefault();
         this.closeTab(tab, event);
         return;
