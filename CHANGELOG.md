@@ -9,6 +9,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 _Nothing yet._
 
+## 0.7.0 — 2026-09-04
+
+### Features
+
+- **tabs:** add `dismissible`, deprecating `closable` ([5309d61](https://github.com/avs2001/ngx-tw/commit/5309d610e11c0369e8bad6ecc92b8fcb231ad5b9))
+
+### Bug Fixes
+
+- **a11y:** give warning's solid fill a boundary ring in alert, badge and button ([478a592](https://github.com/avs2001/ngx-tw/commit/478a5923d2bbc083be7a23c760c63f1f4f25445e))
+- **a11y:** give warning's solid fill a boundary token instead of migrating it ([97b8528](https://github.com/avs2001/ngx-tw/commit/97b85284fa04b0b850992a9750f254adefce506a))
+
 ## 0.6.2 — 2026-09-04
 
 ### Bug Fixes
