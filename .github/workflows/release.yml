@@ -37,7 +37,7 @@ jobs:
       # "Read+Write" token will fail the publish, not silently skip provenance.
     steps:
       - name: Checkout tag
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           # Need history for changelog extraction and tag verification.
           fetch-depth: 0
