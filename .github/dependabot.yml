@@ -23,8 +23,27 @@ updates:
           - angular-eslint
           - ng-packagr
       # Test/lint tooling churns often on patch/minor — batch it.
+      #
+      # `exclude-patterns` is load-bearing, not decoration. Four of the
+      # Angular family are devDependencies (`@angular/build`, `@angular/cli`,
+      # `@angular/compiler-cli`, `ng-packagr`), so they match
+      # `dependency-type: development` and can be sorted into this group
+      # instead of `angular` above. When that happened, the two groups
+      # shipped a *partial* Angular set each: PR #45 raised the runtime
+      # packages while leaving `compiler-cli` behind, PR #51 raised
+      # `compiler-cli` while leaving `compiler` behind. `compiler-cli`
+      # peer-pins `compiler` at an exact version, so both PRs failed
+      # `npm ci` with a mirrored ERESOLVE and neither could be merged —
+      # not even together. `ng-packagr` proved the leak: it appeared in
+      # both PRs, grouped one way on one run and the other way on the next.
+      # Keep these patterns in sync with the `angular` group above.
       dev-tooling:
         dependency-type: development
+        exclude-patterns:
+          - '@angular/*'
+          - '@angular-eslint/*'
+          - angular-eslint
+          - ng-packagr
         update-types:
           - minor
           - patch
