@@ -9,6 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 _Nothing yet._
 
+## 0.9.1 — 2026-09-07
+
+### Bug Fixes
+
+- **e2e:** the split RTL test never set dir at all — repair it and drop the guard (#75) ([4b9d877](https://github.com/avs2001/ngx-tw/commit/4b9d8771453793217ccefef5723333b9cedcfe5c))
+- **deps:** declare tailwind-merge at the root, where two components import it (#76) ([cbacda3](https://github.com/avs2001/ngx-tw/commit/cbacda3f15df4db2a6e3367479003107b951528c))
+
 ## 0.9.0 — 2026-09-04
 
 ### Bug Fixes
