@@ -460,29 +460,38 @@ test.describe('Split', () => {
   // read as that test's rationale — the misattribution class the audit register
   // records as having cost a pass real time. The RTL reason is in the body.
 
-  // `test.fail()`, not `test.fixme`: this body fails on a real assertion, so
-  // Playwright runs it and turns the suite RED the day it starts passing —
-  // the self-expiry a `test.fixme` can never have. See `support/fixme-registry.ts`.
-  test.fail('@keyboard @rtl horizontal arrow keys invert under dir=rtl', async ({ page }) => {
-    test.setTimeout(EXPECTED_FAILURE_TIMEOUT_MS);
-    // BLOCKED: setting `document.documentElement.dir = 'rtl'` via an init
-    // script does not flip CDK's `Directionality` service in the demo
-    // shell — the keydown handler still treats ArrowRight as
-    // grow-first-pane. The library does consume `Directionality`
-    // (`split.ts:319-324`), and unit tests confirm the inversion math.
-    // Needs either (a) a demo-shell RTL affordance, or (b) a fixture
-    // that bootstraps the app with `bootstrapApplication(..., { providers:
-    // [{ provide: DIR_DOCUMENT, useValue: ... }] })`. See REVIEW.md
-    // §"RTL handling" for the broader plan.
-    // Chapter 04 calls out that horizontal arrow keys / drag delta invert
-    // under `dir="rtl"`. The demo has no RTL affordance, so seed it via
-    // an init script before navigation.
+  // Chapter 04 calls out that horizontal arrow keys / drag delta invert under
+  // `dir="rtl"`. The demo has no RTL affordance, so seed it before navigation.
+  //
+  // This was a `test.fail()` suppression until its guard fired. The recorded
+  // reason — "setting dir via an init script does not flip CDK's
+  // `Directionality`" — was a misdiagnosis: the init script never set `dir` at
+  // all. `addInitScript` runs at `document_start`, before `<html>` is parsed,
+  // so `document.documentElement` is `null` and the `setAttribute` call threw
+  // inside the injected script. The body then asserted RTL behaviour against a
+  // plain LTR page, which is why it failed in every browser and why "unit tests
+  // confirm the inversion math" never contradicted it — the real chain was
+  // never exercised. `rtl.spec.ts` already documents this exact trap and works
+  // around it with a `DOMContentLoaded` listener; this now does the same.
+  test('@keyboard @rtl horizontal arrow keys invert under dir="rtl"', async ({ page }) => {
     await page.addInitScript(() => {
-      document.documentElement.setAttribute('dir', 'rtl');
+      document.addEventListener(
+        'DOMContentLoaded',
+        () => {
+          document.documentElement.dir = 'rtl';
+        },
+        { once: true },
+      );
     });
 
     const split = new SplitPage(page);
     await split.goto();
+
+    // Precondition, not decoration: without it a regression in init-script
+    // timing silently returns this to asserting RTL behaviour on an LTR page —
+    // the exact failure that hid here before. `rtl.spec.ts` pins the same
+    // attribute for the same reason.
+    await expect(page.locator('html')).toHaveAttribute('dir', 'rtl');
 
     const gutter = split.gutter(split.horizontalSection, 0);
     await gutter.focus();
