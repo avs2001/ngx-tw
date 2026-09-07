@@ -25,7 +25,14 @@
  * - **The body fails on a real assertion** → use **`test.fail()`**, not a
  *   registry row. Playwright runs the body and fails the suite the day it
  *   unexpectedly passes, which is exactly the `A11Y_BACKLOG` self-expiry
- *   property. Nine entries qualify — see `EXPECTED_FAILURE_TIMEOUT_MS`.
+ *   property. Eight entries qualify — see `EXPECTED_FAILURE_TIMEOUT_MS`.
+ *
+ *   It was nine until `split.spec.ts`'s RTL arrow-key body was promoted back to
+ *   a plain `test`. That guard is the only one that has fired so far, and it
+ *   fired correctly: a Playwright bump shipped a Firefox that ran the injected
+ *   init script late enough for it to work, the body passed unexpectedly, and
+ *   the suite went red. The recorded suppression reason turned out to be a
+ *   misdiagnosis — see the comment on that test.
  * - **The body cannot run at all** — it is empty, or it hangs waiting for DOM
  *   the demo never renders → it belongs **here**. `test.fail()` is wrong for
  *   these: an empty body passes (permanently red under `test.fail`), and a
