@@ -173,8 +173,6 @@ describe('NumberStepperComponent', () => {
     const fixture = await create(StepperHost);
     const hostEl = fixture.nativeElement.querySelector('tw-number-stepper');
     expect(hostEl.classList.contains('my-class')).toBe(true);
-    expect(fixture.nativeElement.querySelector('div')?.className).toContain(
-      'flex',
-    );
+    expect(fixture.nativeElement.querySelector('div')?.classList.contains('flex')).toBe(true);
   });
 });

@@ -138,7 +138,7 @@ describe('SpinnerComponent', () => {
         fixture.componentRef.setInput('color', color);
         fixture.detectChanges();
         const expected = color === 'neutral' ? 'text-fg-muted' : `text-${color}-500`;
-        expect(getSpinner(fixture).className).toContain(expected);
+        expect(getSpinner(fixture).classList.contains(expected)).toBe(true);
       });
     }
 
@@ -174,7 +174,7 @@ describe('SpinnerComponent', () => {
         const fixture = TestBed.createComponent(ConfiguredSpinnerHost);
         fixture.componentRef.setInput('size', size);
         fixture.detectChanges();
-        expect(getSpinner(fixture).className).toContain(expected);
+        expect(getSpinner(fixture).classList.contains(expected)).toBe(true);
       });
     }
   });
