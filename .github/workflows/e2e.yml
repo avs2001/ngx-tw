@@ -36,8 +36,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version-file: .nvmrc
           cache: npm
@@ -62,7 +62,7 @@ jobs:
     needs: [build-lib]
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       # ──────────────────────────────────────────────────────────────
       # `test.fixme` registry guard.
       #
@@ -130,7 +130,7 @@ jobs:
               sys.exit(1)
           print(f'fixme registry OK — {len(used)} suppressions, all registered, no orphans.')
           PY
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version-file: .nvmrc
           cache: npm
@@ -184,8 +184,8 @@ jobs:
     # brings the a11y job to the same ~2.5x margin.
     timeout-minutes: 25
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version-file: .nvmrc
           cache: npm
@@ -234,8 +234,8 @@ jobs:
         shard: [1, 2, 3, 4]
         total: [4]
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version-file: .nvmrc
           cache: npm
@@ -321,7 +321,7 @@ jobs:
       # ref is `refs/pull/N/merge`, whose first parent is the base-branch tip.
       # `HEAD^1..HEAD` is therefore exactly the PR's own diff, with no full
       # clone and no extra action dependency.
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         if: github.event_name == 'pull_request'
         with:
           fetch-depth: 2
@@ -362,8 +362,8 @@ jobs:
     needs: [build-lib, visual-baseline-scope]
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version-file: .nvmrc
           cache: npm
