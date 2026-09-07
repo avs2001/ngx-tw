@@ -22,10 +22,19 @@ export default defineConfig({
      OOM) doesn't fail the gate. */
   retries: process.env['CI'] ? 1 : 0,
   workers: process.env['CI'] ? 2 : undefined,
-  /* Reporter: HTML locally for the audit, JSON + GitHub on CI so the
-     job summary surfaces failures inline. */
+  /* Reporter: HTML locally for the audit; GitHub + JSON + list on CI.
+     The JSON report is what `scripts/report-flaky.mjs` reads to surface tests
+     that passed only on retry — Playwright reports those as a `##[notice]`
+     and the job still concludes `success`, so without this a genuine race is
+     invisible in the checks UI. This comment previously claimed JSON was
+     configured when it was not; it is now. */
   reporter: process.env['CI']
-    ? [['github'], ['html', { open: 'never' }], ['list']]
+    ? [
+        ['github'],
+        ['html', { open: 'never' }],
+        ['json', { outputFile: 'test-results/results.json' }],
+        ['list'],
+      ]
     : 'html',
 
   /* Auto-start the demo dev server so `npm run e2e` is self-contained. */

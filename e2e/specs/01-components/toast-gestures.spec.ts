@@ -95,6 +95,16 @@ test.describe('Toast gestures', () => {
     await expect(toast.toasts).toHaveCount(1);
     // Snap-back clears the inline transform the drag applied, so the toast
     // returns to where it started instead of sitting where it was dropped.
+    //
+    // Wait for that clearing before measuring. `swipeTransform` is a signal
+    // bound through `[style.transform]`, so releasing the pointer schedules a
+    // change-detection pass rather than moving the element synchronously — and
+    // the two assertions above pass instantly (already visible, already one
+    // toast), so they do not absorb the gap. Reading `boundingBox()` straight
+    // after `mouse.up()` therefore races the re-render, which is what made this
+    // test flaky in chromium-dark. `touch-action` is bound unconditionally, so
+    // the style attribute never empties — match `transform` specifically.
+    await expect(el).not.toHaveAttribute('style', /transform/);
     const after = await el.boundingBox();
     expect(Math.abs(after!.x - before!.x)).toBeLessThan(2);
   });
