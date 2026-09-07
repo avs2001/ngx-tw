@@ -236,7 +236,7 @@ describe('AvatarComponent', () => {
         const fixture = TestBed.createComponent(SizedAvatarHost);
         fixture.componentRef.setInput('size', size);
         fixture.detectChanges();
-        expect(getAvatar(fixture).className).toContain(expectedClass);
+        expect(getAvatar(fixture).classList.contains(expectedClass)).toBe(true);
       });
     }
 

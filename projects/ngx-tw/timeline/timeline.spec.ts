@@ -353,12 +353,12 @@ describe('TimelineComponent', () => {
         { id: 1, color: 'primary', marker: 'circle', state: 'reached', label: 'A' },
       ]);
       fx2.detectChanges();
-      expect(markerOf(items(fx2)[0]).className).toContain(circleSizeMap.md);
+      expect(markerOf(items(fx2)[0]).classList.contains(circleSizeMap.md)).toBe(true);
 
       for (const size of ['xs', 'sm', 'md', 'lg', 'xl'] as const) {
         fx2.componentRef.setInput('size', size);
         fx2.detectChanges();
-        expect(markerOf(items(fx2)[0]).className).toContain(circleSizeMap[size]);
+        expect(markerOf(items(fx2)[0]).classList.contains(circleSizeMap[size])).toBe(true);
       }
     });
 

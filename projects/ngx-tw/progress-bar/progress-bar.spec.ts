@@ -309,7 +309,7 @@ describe('ProgressBarComponent', () => {
         fixture.componentRef.setInput('size', size);
         fixture.componentRef.setInput('value', 50);
         fixture.detectChanges();
-        expect(getProgressEl(fixture).className).toContain(expected);
+        expect(getProgressEl(fixture).classList.contains(expected)).toBe(true);
       });
     }
   });

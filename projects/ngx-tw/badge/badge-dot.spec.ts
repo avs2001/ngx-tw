@@ -68,7 +68,7 @@ describe('BadgeDotDirective', () => {
         const fixture = TestBed.createComponent(DotHost);
         fixture.componentRef.setInput('color', color);
         fixture.detectChanges();
-        expect(getDot(fixture).className).toContain(expected);
+        expect(getDot(fixture).classList.contains(expected)).toBe(true);
       });
     }
   });
@@ -91,7 +91,7 @@ describe('BadgeDotDirective', () => {
         const fixture = TestBed.createComponent(DotHost);
         fixture.componentRef.setInput('size', size);
         fixture.detectChanges();
-        expect(getDot(fixture).className).toContain(expected);
+        expect(getDot(fixture).classList.contains(expected)).toBe(true);
       });
     }
 
