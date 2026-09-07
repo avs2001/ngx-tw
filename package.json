@@ -78,7 +78,7 @@
     "lucide": "^1.25.0",
     "luxon": "^3.7.2",
     "ng-packagr": "^22.1.1",
-    "playwright-ng-schematics": "^21.0.10",
+    "playwright-ng-schematics": "^22.1.2",
     "postcss": "^8.5.3",
     "tailwind-variants": "^0.3.1",
     "tailwindcss": "^4.1.12",
