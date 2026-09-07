@@ -52,6 +52,7 @@ async function assertOutletReady(
       : '\n\nNo console errors were captured — chunk likely hung or stayed unrendered without throwing.';
     throw new Error(
       `${(err as Error).message}${consoleSummary}`,
+      { cause: err },
     );
   }
 }

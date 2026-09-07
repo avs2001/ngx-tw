@@ -763,7 +763,7 @@ export class RadioGroupComponent<T = unknown> implements ControlValueAccessor, O
     );
     const startIdx = currentIdx >= 0 ? currentIdx : this.firstEnabledIndex(radios);
 
-    let targetIndex = -1;
+    let targetIndex: number;
     switch (event.key) {
       case 'ArrowRight':
       case 'ArrowDown':
