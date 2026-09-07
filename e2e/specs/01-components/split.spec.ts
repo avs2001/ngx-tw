@@ -495,10 +495,19 @@ test.describe('Split', () => {
 
     const gutter = split.gutter(split.horizontalSection, 0);
     await gutter.focus();
+    // Same focus sanity-check the other @keyboard cases in this file carry:
+    // `.focus()` is JS-API only and some browsers under load skip the `focus`
+    // DOM event on first call, leaving `_focusedGutter` null so the keydown is
+    // dropped. Without this the test is flaky in chromium-light — measured.
+    await expect(gutter).toBeFocused();
+
     const before = Number(await gutter.getAttribute('aria-valuenow'));
 
     // Under RTL, ArrowRight should *decrease* the first pane's size.
-    await page.keyboard.press('ArrowRight');
+    await gutter.press('ArrowRight');
+    // Auto-retrying wait for the value to actually move before reading it, so
+    // a slow keydown reads as "not yet" rather than "did not invert".
+    await expect(gutter).not.toHaveAttribute('aria-valuenow', String(before));
     const after = Number(await gutter.getAttribute('aria-valuenow'));
     expect(after).toBeLessThan(before);
   });
