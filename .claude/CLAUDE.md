@@ -74,6 +74,16 @@ Three measured costs, in descending order of severity:
    `npm i @angular/cdk@22.0.5 @angular/aria@22.1.5` → `ERESOLVE`. A published library declaring
    it as a peer imposes **lockstep CDK on every consumer of every entry point** — including
    consumers who import one component that has nothing to do with it.
+
+   > **The install now succeeds here, and that changes nothing.** Since the Angular family moved
+   > to 22.1.5 (2026-09-07), our CDK and the latest `@angular/aria` are the *same* version, so
+   > `npm i @angular/cdk@22.1.5 @angular/aria@22.1.5` installs cleanly — measured both ways, the
+   > old command still `ERESOLVE`s and the new one adds 12 packages. Do not read that as the
+   > blocker lifting. The objection is the **exact pin itself**, which is unchanged
+   > (`@angular/aria@22.1.5` → `@angular/cdk@"22.1.5"`); today's alignment is a coincidence of
+   > version numbers that breaks again the next time either package ships alone. The documented
+   > revisit condition is still "the pin relaxes to a **range**". And costs 2 and 3 below are
+   > untouched by any version bump — each disqualifies the overlay-heavy components on its own.
 2. **`KeyboardEventManager` defaults to `stopPropagation: true`** for every key it registers,
    including no-op handlers. CDK's overlay keyboard channel is a bubble-phase listener on
    `document.body`, so **any `@angular/aria` widget inside a CDK overlay swallows the keys that
@@ -150,6 +160,25 @@ Describe *purpose and behavior* in one line. Do not describe TypeScript types �
 - Peer dependencies: `@angular/core`, `@angular/common`, `@angular/cdk`, `@angular/forms`, `rxjs`, `tailwindcss`, `tailwind-variants`, `tailwind-merge`, plus `luxon` and `lucide` as **optional** peers (the `calendar/luxon` and `icon/lucide` nested entry points).
 
   **Every package the shipped bundles import must be declared here and in `projects/ngx-tw/package.json`.** Under npm's hoisted `node_modules` an undeclared import still resolves, so this is invisible locally; under pnpm or Yarn PnP a package resolves only what it declares, and the entry point fails to load *even when the consumer has the package installed*. `@angular/forms` (16 entry points), `rxjs` (19) and `tailwind-merge` (2, imported directly by `tabs.ts` and `tab-nav.ts`) were all undeclared until 2026-09-02. `npm run verify:package` does not catch this — it compiles CSS and never imports a library module. To re-check: `grep -l "from '<pkg>'" dist/ngx-tw/fesm2022/*.mjs`.
+
+  **The same class bites the root `package.json`, for a different reason.** The rule above is about
+  the *published* package; this is about the dev harness that builds and tests it. A tool or module
+  the repo loads directly must be a declared root dependency, because "it resolves today" only means
+  some *other* package currently happens to supply it. Two cases, both real:
+
+  - `eslint.config.js` requires `@eslint/js`, which was never declared — it arrived as a transitive
+    dependency of eslint 9. **ESLint 10 dropped it** (it is separately versioned now, latest 10.0.1),
+    and the lint job died with `Cannot find module '@eslint/js'` before reading a single file.
+    Declared 2026-09-07.
+  - `tabs.ts` and `tab-nav.ts` import `tailwind-merge`. It is correctly a peer of the published
+    package, but the root declared it nowhere and it resolved only through `tailwind-variants@0.3.x`,
+    which lists it as a real dependency. `tailwind-variants@3.x` makes it a **peer** instead — so the
+    pending tailwind-variants major would have removed the only thing supplying it. Declared
+    2026-09-07, ahead of that migration.
+
+  The tell is identical each time: a direct import that nothing in your own manifest accounts for.
+  It works right up until whatever was quietly providing it stops, and then it fails somewhere
+  unrelated to the change that caused it.
 
 ## Styling with Tailwind CSS v4
 
@@ -616,7 +645,10 @@ second gate.**
 
 **3. `@angular/aria` peer-depends on `@angular/cdk` at an *exact* version**, not a range
 (`@angular/aria@22.1.5` → `@angular/cdk@"22.1.5"`; verified across 22.0.5, 22.0.7 and 22.1.5 —
-`npm i @angular/cdk@22.0.5 @angular/aria@22.1.5` fails with `ERESOLVE`). A published library that
+`npm i @angular/cdk@22.0.5 @angular/aria@22.1.5` fails with `ERESOLVE`). Note since 2026-09-07 this
+repo sits on CDK 22.1.5, so that pin happens to be *satisfied* today and the install succeeds; the
+pin is still exact, so this is a coincidence rather than a change — see the boxed note in
+**`@angular/aria` — evaluated, NOT adopted**. A published library that
 declares `@angular/aria` as a peer imposes lockstep CDK on **every** consumer of **every** entry
 point, including those importing only `tw-button`. Any adoption must declare it **optional** via
 `peerDependenciesMeta` (as `luxon` and `lucide` already are), declare it in **both**
@@ -663,6 +695,35 @@ Practical consequences:
   demo target was historically excluded from `npm test`, so the guard never ran and five components
   (`aspect-ratio`, `file-upload`, `number-input`, `tags-input`, `tree`) went uncovered. Do not narrow
   these scripts back to the library alone.
+- **Verify a dependency change with `npm ci`, never `npm install`.** `npm install` silently
+  *repairs* drift between `package.json` and `package-lock.json`; `npm ci` refuses it. Every CI job
+  starts with `npm ci`, so a change that passes locally under `npm install` can still fail the
+  build immediately. Measured 2026-09-07 on the eslint 10 bump: a merge resolution staged the lock
+  from one branch and the `package.json` from another, `npm install` fixed it up in place and every
+  local gate passed, and CI died on *"npm ci can only install packages when your package.json and
+  package-lock.json are in sync"*.
+
+### Reading e2e results (Playwright)
+
+The `e2e` workflow's own comments document the job matrix; these two traps are about *reading* what
+it reports, and both silently produce a green tick over a real problem.
+
+- **A flaky test does not fail the run.** Playwright retries a failed test, and a test that fails
+  then passes on retry is reported as `N flaky` — a `##[notice]`, not an error. The job concludes
+  `success` and the PR check goes green. So `gh run view <id> --json conclusion` is **not** a
+  sufficient gate for anything touching e2e: read the log for a `flaky` line and confirm which test
+  it names. Measured 2026-09-07 — a restored test that failed on attempt 1 in `chromium-light`
+  (`Expected: < 40, Received: 40`) and passed on retry would otherwise have landed flaky behind a
+  green run. Note the suite carries an ambient rate of roughly one flaky test per full run, a
+  different test each time, so a `flaky` line naming something you did not touch is usually
+  pre-existing — check before assuming either way.
+- **The visual canary is SKIPPED on `pull_request` runs.** Its `if:` (`e2e.yml`) admits only
+  `push`, the Sunday schedule, `workflow_dispatch`, or a baselines-changed PR. A dependency bump
+  that can shift rendering — Tailwind, a component library, or Playwright itself (which ships the
+  browsers) — therefore gets **no** visual coverage from its own PR checks. Dispatch it explicitly:
+  `gh workflow run e2e.yml --ref <branch>`, which also runs the four full shards.
+- **Never run `e2e-update-baselines.yml` to make a visual diff go away.** Accepting a rendering
+  change is a judgement about the library's visual contract, not a step in landing a dependency.
 
 ### What every spec must cover
 

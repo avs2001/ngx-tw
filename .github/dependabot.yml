@@ -47,6 +47,27 @@ updates:
         update-types:
           - minor
           - patch
+    # Majors that the Angular 22 toolchain forbids outright. Each was opened,
+    # failed `npm ci` with ERESOLVE before compiling anything, and was closed —
+    # they cannot pass until Angular widens its own peer range, so re-proposing
+    # them weekly is pure noise. REMOVE the matching entry the moment
+    # `@angular/build`'s peer range moves; check with
+    # `npm view @angular/build peerDependencies`.
+    ignore:
+      # @angular/build@22.1.x → typescript ">=6.0 <6.1"
+      # typescript-eslint@8.x → typescript ">=4.8.4 <6.1.0"   (two peers, both cap it)
+      - dependency-name: typescript
+        update-types:
+          - version-update:semver-major
+      # @angular/build@22.1.x → vitest "^4.0.8"
+      - dependency-name: vitest
+        update-types:
+          - version-update:semver-major
+      # NOTE: `tailwind-variants` majors are deliberately NOT ignored. That bump
+      # is blocked by *our* work, not by upstream — it needs tailwind-merge 3.x
+      # alongside it, two published peer ranges widened, ~57 tv() call sites
+      # reviewed and a semver-major release. A weekly PR is a standing reminder
+      # of real debt; silencing it would hide work we intend to do.
 
   # Pinned action SHAs/tags (e.g. softprops/action-gh-release) get tracked
   # and bumped here, with the pin comment kept in sync.
