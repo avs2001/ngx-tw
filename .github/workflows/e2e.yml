@@ -158,6 +158,12 @@ jobs:
           path: dist/ngx-tw
       - name: Smoke
         run: npm run e2e:smoke
+      # A test that fails then passes on retry is reported as "N flaky" —
+      # a notice, not an error — so the job still goes green. Surface it.
+      # Non-failing on purpose: retries stay available for infra blips.
+      - name: Surface flaky tests
+        if: always()
+        run: node scripts/report-flaky.mjs test-results/results.json "smoke"
       - if: failure()
         uses: actions/upload-artifact@v4
         with:
@@ -209,6 +215,12 @@ jobs:
           path: dist/ngx-tw
       - name: A11y sweep (light + dark)
         run: npm run e2e:a11y
+      # A test that fails then passes on retry is reported as "N flaky" —
+      # a notice, not an error — so the job still goes green. Surface it.
+      # Non-failing on purpose: retries stay available for infra blips.
+      - name: Surface flaky tests
+        if: always()
+        run: node scripts/report-flaky.mjs test-results/results.json "accessibility"
       - if: failure()
         uses: actions/upload-artifact@v4
         with:
@@ -263,6 +275,12 @@ jobs:
         # `--grep-invert @visual` excludes the visual sweep — visual has
         # its own job below with chromium-only baselines.
         run: npm run e2e -- --shard=${{ matrix.shard }}/${{ matrix.total }} --grep-invert @visual
+      # A test that fails then passes on retry is reported as "N flaky" —
+      # a notice, not an error — so the job still goes green. Surface it.
+      # Non-failing on purpose: retries stay available for infra blips.
+      - name: Surface flaky tests
+        if: always()
+        run: node scripts/report-flaky.mjs test-results/results.json "full shard ${{ matrix.shard }}/${{ matrix.total }}"
       - if: failure()
         uses: actions/upload-artifact@v4
         with:
@@ -389,6 +407,12 @@ jobs:
         # Canary spec uses both chromium projects (light + dark). The
         # `@visual` grep is the source of truth for which tests run.
         run: npm run e2e -- --grep @visual --project=chromium-light --project=chromium-dark
+      # A test that fails then passes on retry is reported as "N flaky" —
+      # a notice, not an error — so the job still goes green. Surface it.
+      # Non-failing on purpose: retries stay available for infra blips.
+      - name: Surface flaky tests
+        if: always()
+        run: node scripts/report-flaky.mjs test-results/results.json "visual canary"
       - if: failure()
         uses: actions/upload-artifact@v4
         with:
