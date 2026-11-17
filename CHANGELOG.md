@@ -7,7 +7,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-_Nothing yet._
+### Upgrade notes — 0.4/0.5 → 0.6+ for branded apps
+
+Found upgrading a production consumer (an app that brands through Tailwind `@theme` and pins
+`<html data-theme="light">`) from 0.4.0 to 0.9.1. All three are visual changes that compile and pass
+tests silently — check them when upgrading across 0.6.0.
+
+- **theme — brand colours are overridden.** `theme/_light.css` (0.6.0) is an *unlayered*
+  `[data-theme="light"]` block that restates every colour token. Tailwind emits `@theme` inside a
+  cascade layer, and unlayered rules beat layered ones, so a consumer's `@theme` brand tokens lose to
+  the library defaults as soon as `data-theme="light"` is set (the whole app turns library-blue, input
+  borders go gray-500). The "light-on-light computes byte-identical values" note in that file holds only
+  for consumers that do not brand. **Workaround:** restate the brand colour tokens in an unlayered
+  `:root, [data-theme='light'] { … }` rule placed *after* the theme import, wrapped in
+  `@media not (forced-colors: active)` so the high-contrast remap still wins. **Library fix to
+  consider:** ship the scheme blocks in a cascade layer (e.g. `@layer theme`) so `@theme` overrides keep
+  working.
+- **theme — inherited line-heights change.** 0.6.0 pins `--text-{xs,sm,base}--line-height` in `rem`.
+  A length line-height is inherited as an absolute value, so a descendant with a smaller font-size (a
+  12px caption inside a `text-sm` card) now gets the parent's taller line box — 17px → 20px observed, a
+  long FAQ page grew ~400px. The "visual diff is zero" claim covers the element itself, not its
+  descendants. **Workaround:** restore unitless ratios in the app's `@theme`. **Library fix to
+  consider:** unitless line-heights (they scale with each descendant's own font-size).
+- **button — wrapped labels overflow.** Pinning control heights to one shared scale (`h-9`) means a
+  label that wraps on a narrow viewport now overflows the button border instead of growing the button.
+  **Workaround:** `h-auto min-h-9` (plus vertical padding) on buttons whose label can wrap. **Library
+  fix to consider:** `min-height` rather than `height` for the size scale.
 
 ## 0.9.1 — 2026-09-07
 
